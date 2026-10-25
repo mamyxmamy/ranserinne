@@ -85,6 +85,9 @@
         @keyframes freezeSequence { 0% { opacity: 0; background: #000; } 12% { opacity: 1; background: #000; } 85% { opacity: 1; background: #000; } 88% { opacity: 1; background: #FFF; } 100% { opacity: 0; background: #FFF; display: none; } }
 
         .premium-bg { background: radial-gradient(circle at center, rgba(160, 120, 40, 0.28) 0%, rgba(8, 7, 6, 0.98) 85%); animation: goldRadiance 4s infinite alternate ease-in-out; }
+
+        /* 大往生の桜・金粉エフェクト用キャンバス：アプリ枠（#app-container）の外に置く全画面固定レイヤー */
+        #particle-canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; z-index: 90; pointer-events: none; display: none; }
         @keyframes goldRadiance { from { background: radial-gradient(circle at center, rgba(160, 120, 40, 0.22) 0%, rgba(8, 7, 6, 0.98) 85%); } to { background: radial-gradient(circle at center, rgba(215, 165, 55, 0.42) 0%, rgba(12, 10, 8, 0.96) 85%); } }
 
         .text-golden { background: linear-gradient(180deg, #FFF9E6 0%, #E5BE53 50%, #946B12 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 0 20px rgba(229,190,83,0.5); filter: drop-shadow(0 2px 4px rgba(0,0,0,0.9)); }
@@ -321,7 +324,6 @@
         </div>
 
         <div id="premium-screen" class="hidden absolute inset-0 z-50 premium-bg flex flex-col items-center justify-center text-center overflow-hidden pointer-events-auto">
-            <canvas id="particle-canvas" class="absolute inset-0 z-0 pointer-events-none"></canvas>
             <div id="freeze-overlay" class="freeze-overlay"></div>
             <div id="premium-content" class="z-20 w-full px-6 opacity-0 flex flex-col items-center pointer-events-auto">
                 <p class="text-sm sm:text-base text-yellow-200 mb-2 font-bold tracking-[0.3em] anim-slide-up" style="animation-delay: 2.0s;">人生六十年、化天のうちを比ぶれば</p>
@@ -791,6 +793,20 @@
                     } },
                     { text: '【知略60】帳簿を巧妙に偽装し、税を逃れる', condition: (s) => s.strategy >= 60, hint: '知略で全額回避', effect: (s) => { s.strategy += 5; return { hp: 0, log: '二重帳簿を駆使して役人の目を欺き、見事に一文も払わずに追い返した！' }; } },
                     { text: '「払う銭などない！」と役人を追い返す', condition: () => true, hint: '負傷・悪逆上昇', effect: (s) => { s.karma += 15; return { hp: -25, log: '激怒した役人たちに袋叩きにされた。銭は守り抜いたが、身体中にひどい痣と痛みが残った。' }; } }
+                ] },
+            { id: 'earthquake', mode: ['normal'], weight: 10, condition: (s) => s.age >= 20,
+                title: '【災異】大地震', text: '突如、大地が轟音と共に激しく揺れた！家々は倒壊し、蔵は崩れ、人々の悲鳴が四方に木霊する。',
+                choices: [
+                    { text: '倒壊した蔵の復旧に追われる', condition: () => true, hint: '銭・体力を失う', effect: (s) => { let cost = Math.min(s.money, 150); recordChronology("大地震に見舞われ、復旧に奔走する"); return { money: -cost, hp: -5, log: '瓦礫の山と化した蔵の復旧に追われ、蓄えも体力も大きく削られた。' }; } },
+                    { text: '瓦礫の中から領民を救助する', condition: () => true, hint: '人徳上昇・負傷', effect: (s) => { s.virtue += 25; recordChronology("大地震で領民を救助し、名声を得る"); return { hp: -20, log: '身を挺して何人もの民を瓦礫から救い出した。あなたの名は語り草となるだろう。' }; } },
+                    { text: '【銭100文】復興資材を買い占めて売り捌く', condition: (s) => s.money >= 100, hint: '悪逆上昇・大儲け', effect: (s) => { s.karma += 15; return { money: 100, hp: 0, log: '材木や食糧を買い占め、高値で売り捌いた。恨みを買ったが、懐はたっぷり潤った。' }; } }
+                ] },
+            { id: 'dropped_wallet', mode: ['normal'], weight: 20, condition: () => true,
+                title: '【市井】落し物の財布', text: '人気のない路地で、ずっしりと重い財布が落ちているのを見つけた。持ち主の姿はどこにもない。',
+                choices: [
+                    { text: '持ち主を探して届け出る', condition: () => true, hint: '人徳上昇・謝礼', effect: (s) => { s.virtue += 20; recordChronology("落し物を届け出て称えられる"); return { money: 30, hp: 0, log: '財布は裕福な商人の物だった。涙を流して感謝され、謝礼をたっぷりと受け取った。' }; } },
+                    { text: '誰も見ていない。今のうちに懐へ入れる', condition: () => true, hint: '悪逆上昇・銭獲得', effect: (s) => { s.karma += 15; return { money: 120, hp: 0, log: '周囲を素早く見回し、財布を懐にねじ込んだ。しばらくは後ろめたさが付きまとう……。' }; } },
+                    { text: '拾わずに通り過ぎる', condition: () => true, hint: '運上昇', effect: (s) => { s.luck += 15; return { hp: 0, log: '他人の不幸に付け込む真似はしない。何も見なかったことにして歩き去った。' }; } }
                 ] }
         ];
 
@@ -802,10 +818,12 @@
                         s.valor += 30; s.deathCause = 'battle'; 
                         let isDodge = Math.random() < (s.luck * 0.005);
                         let dmg = isDodge ? 0 : Math.max(5, (Math.floor(Math.random() * 35) + 30) - Math.floor(s.valor * 0.3));
+                        let teppoHit = false;
+                        if (!isDodge && s.flags.teppo) { dmg += 4; teppoHit = true; }
                         if(s.valor > 60 && !isDodge) recordChronology("激戦の中で敵兵を次々と討ち取り、大いなる武功を挙げる");
-                        return { hp: -dmg, log: isDodge ? '奇跡的に敵の反撃が急所を外れた！' : '先頭の騎馬兵を突き落としたが、乱戦の中で手傷を負った。' }; 
+                        return { hp: -dmg, log: isDodge ? '奇跡的に敵の反撃が急所を外れた！' : (teppoHit ? '先頭の騎馬兵を突き落としたが、乱戦の中で手傷を負った。さらに飛来した流れ弾が肩をかすめた！鉄砲の時代、合戦は以前より危険だ。' : '先頭の騎馬兵を突き落としたが、乱戦の中で手傷を負った。') }; 
                     } },
-                    { text: '【知略】戦局を俯瞰し、有利な高所へ退避・布陣', condition: () => true, hint: '知略増・被ダメージ軽減', effect: (s) => { s.strategy += 15; s.deathCause = 'battle'; return { hp: -8, log: '高台へ移動し、味方への被害を最小限に抑えつつ敵をいなした。' }; } },
+                    { text: '【知略】戦局を俯瞰し、有利な高所へ退避・布陣', condition: () => true, hint: '知略増・被ダメージ軽減（鉄砲伝来後は被弾増）', effect: (s) => { s.strategy += 15; s.deathCause = 'battle'; let dmg = s.flags.teppo ? 12 : 8; return { hp: -dmg, log: s.flags.teppo ? '高台へ移動し敵をいなしたが、遠方からの銃撃が絶えず、被害は以前より大きくなった。' : '高台へ移動し、味方への被害を最小限に抑えつつ敵をいなした。' }; } },
                     { text: '【乾坤一擲】血路を開き、敵本陣へ単騎突撃！（低確率）', condition: () => true, hint: '大逆転か即死', effect: (s) => {
                         if (Math.random() < 0.25 + (s.valor * 0.001)) { s.valor += 90; recordChronology("敵本陣へ単騎突撃し大戦果"); return { hp: -25, money: 250, log: '敵将の首級を高く掲げ、莫大な報奨金を手にした！' }; }
                         else { s.deathCause = 'battle'; return { hp: -999, log: '待ち構えていた敵の鉄砲隊に蜂の巣にされ、凄惨な最期を遂げた……。' }; }
@@ -842,6 +860,16 @@
                     { text: '【人徳15】かつて助けた里人に助けを求める', condition: (s) => s.virtue >= 15, hint: '農民へ復帰・回復', effect: (s) => { s.mode = 'normal'; s.classInfo = CLASSES.find(c=>c.id==='peasant'); recordChronology("農民として生き直す"); return { hp: 35, log: '村の長が匿ってくれた。再び「農民」となり土に生きる道を選ぶ。' }; } },
                     { text: '【銭80文】頭を金で買収し見逃させる', condition: (s) => s.money >= 80, hint: '浪人へ復帰', effect: (s) => { s.mode = 'normal'; s.classInfo = CLASSES.find(c=>c.id==='ronin'); recordChronology("浪人へと復帰する"); return { money: -80, hp: 10, log: '農民どもに有り金を叩きつけ、その隙に「浪人」として他国へ逃れた。' }; } },
                     { text: '腹をくくり、山賊の群れに加わって野盗に堕ちる', condition: () => true, hint: '野盗へ転身・悪逆上昇', effect: (s) => { s.mode = 'normal'; s.classInfo = CLASSES.find(c=>c.id==='bandit'); s.karma += 25; recordChronology("野盗に堕ちる"); return { hp: 15, money: 40, log: '農民を返り討ちにし、付近を荒らし回る野盗に仲間入りを果たした。' }; } }
+                ] },
+            { id: 'checkpoint_break', mode: ['fugitive'], weight: 40, condition: () => true,
+                title: '【関所】追手の関門', text: '街道の先に関所が見えた。厳重な検問が行われており、素通りはできそうにない。追手の手が迫る中、どう切り抜けるか。',
+                choices: [
+                    { text: '【銭50文】関守に賄賂を握らせ、見逃してもらう', condition: (s) => s.money >= 50, hint: '逃亡継続・小回復', effect: (s) => { return { money: -50, hp: 5, log: '関守は黙って金を受け取り、知らぬ顔で関門を開けた。冷や汗がようやく引いていく。' }; } },
+                    { text: '夜陰に紛れて強行突破する', condition: () => true, hint: '成功で通常生活へ・失敗で大ダメージ', effect: (s) => {
+                        if (Math.random() < 0.45 + (s.luck * 0.003)) { s.mode = 'normal'; s.classInfo = CLASSES.find(c=>c.id==='ronin'); recordChronology("関所を突破し、追手の手を逃れる"); return { hp: -5, log: '闇に紛れて関所を突破！追手の声が遠ざかり、ようやく人並みの生活を取り戻した。' }; }
+                        else { s.deathCause = 'battle'; return { hp: -40, log: '見つかった！乱闘の末に深手を負い、命からがら藪の中へ転がり込んだ……。' }; }
+                    } },
+                    { text: '山中に潜伏し、ほとぼりが冷めるのを待つ', condition: () => true, hint: '体力減少・逃亡継続', effect: (s) => { return { hp: -15, log: '息を殺して山中に潜む日々。寒さと飢えに耐え、検問が緩むのをじっと待ち続けた。' }; } }
                 ] }
         ];
 
@@ -954,6 +982,13 @@
                 choices: [
                     { text: '「天下布武のため」と吠える', condition: () => true, hint: '武功・悪逆上昇', effect: (s) => { s.valor+=20; s.karma+=20; s.flags.metNobunaga = true; return { hp: 0, log: '信長は不敵に笑って去っていった。覇道へ付き従う覚悟が決まる。' }; } },
                     { text: '【知略40】不敵に返す', condition: (s) => s.strategy >= 40, hint: '銭獲得', effect: (s) => { s.strategy+=15; s.flags.metNobunaga = true; return { money: 100, hp: 0, log: '見事な返答に信長は大笑いし、褒美を下賜された。' }; } }
+                ] },
+            { id: 'teppo_unit', mode: ['normal'], weight: 25, condition: (s) => s.flags.teppo && (s.classInfo.id === 'bushou' || s.classInfo.id === 'daimyo') && !s.flags.teppoUnit,
+                title: '【軍備】鉄砲隊の編制', text: '伝来した鉄砲は、戦の常識を覆しつつある。この新兵器を自軍に取り入れるかどうかは、今後の命運を大きく左右するだろう。',
+                choices: [
+                    { text: '【銭200文】南蛮商人から鉄砲を買い集め、鉄砲隊を編む', condition: (s) => s.money >= 200, hint: '武功大幅上昇', effect: (s) => { s.flags.teppoUnit = true; s.valor += 25; recordChronology("鉄砲隊を編制し、軍備を近代化する"); return { money: -200, hp: 0, log: '轟音と共に一斉射撃を行う鉄砲隊が完成した。敵は近づくことすらできまい！' }; } },
+                    { text: '「武士の戦は刀槍でこそ」と旧来の戦法を守る', condition: () => true, hint: '人徳・武功上昇', effect: (s) => { s.flags.teppoUnit = true; s.virtue += 15; s.valor += 5; return { hp: 0, log: '古き良き武士の誇りを貫いた。兵たちの結束はより強固なものとなった。' }; } },
+                    { text: '鉄砲は卑劣な武器と禁じる', condition: () => true, hint: '人徳上昇・悪逆低下', effect: (s) => { s.flags.teppoUnit = true; s.virtue += 20; s.karma = Math.max(0, s.karma - 10); return { hp: 0, log: '「卑怯者の武器に頼らぬ」と領内に鉄砲禁止令を布いた。その高潔さは領民に称えられた。' }; } }
                 ] }
         ];
 
@@ -1003,9 +1038,11 @@
                     { text: '天命に身を委ねて祈る', condition: () => true, hint: '通常出産', effect: (s) => { s.flags.hasChild = true; s.virtue += 5; recordChronology("子が誕生する"); return { hp: 10, log: '無事に赤子が誕生した。この家路を守り抜く誓いを立てた。' }; } }
                 ] },
             { id: 'aging_40', mode: ['normal'], weight: 100, condition: (s) => s.age >= 40 && !s.flags.aging40,
-                title: '【不惑】初老の兆し', text: '「四十、五十は化け物」と言われる戦国時代。ふとした瞬間に息切れを感じるようになり、確実に肉体の衰えが始まっていることを悟る。だが、積み重ねた経験は確かな知恵となっている。',
+                title: '【不惑】初老の兆し', text: '「四十、五十は化け物」と言われる戦国時代。ふとした瞬間に息切れを感じるようになり、確実に肉体の衰えが始まっていることを悟る。だが、積み重ねた経験は確かな知恵となっている。衰えとどう向き合うかは、己自身で決めることだ。',
                 choices: [
-                    { text: '老いを受け入れ、頭脳で戦う覚悟を決める', condition: () => true, hint: '知略上昇・体力減少', effect: (s) => { s.flags.aging40 = true; s.strategy += 20; return { hp: -10, log: '無理な無茶は控え、経験と知恵を武器にしてこれからの乱世を渡り歩くことにした。' }; } }
+                    { text: '老いを受け入れ、頭脳で戦う覚悟を決める', condition: () => true, hint: '知略上昇・体力減少', effect: (s) => { s.flags.aging40 = true; s.strategy += 20; recordChronology("四十を迎え、不惑の境地に至る"); return { hp: -10, log: '無理な無茶は控え、経験と知恵を武器にしてこれからの乱世を渡り歩くことにした。' + (s.flags.sukanpin ? '棍棒一本で生き抜いてきた身には、この程度の衰えは屁でもない。' : '') }; } },
+                    { text: '衰えを認めず、若い頃と同じ鍛錬を続ける', condition: () => true, hint: '武功上昇・体力小減少', effect: (s) => { s.flags.aging40 = true; s.valor += 15; recordChronology("四十を迎え、なお武の鍛錬を続ける"); return { hp: -5, log: '息切れする身体に鞭打ち、刀を振り続けた。衰えは力でねじ伏せる！' + (s.flags.sukanpin ? '棍棒一本で生き抜いてきた身には、この程度の衰えは屁でもない。' : '') }; } },
+                    { text: '無理をせず、養生に努めて長生きを目指す', condition: () => true, hint: '体力回復', effect: (s) => { s.flags.aging40 = true; recordChronology("四十を迎え、養生を心がけるようになる"); return { hp: 20, log: '薬草と休息を欠かさず、穏やかな日々で身体を労わった。これからは長生きが第一だ。' + (s.flags.sukanpin ? '粗食と野山の暮らしが、思いがけず身体に合っているようだ。' : '') }; } }
                 ] },
             { id: 'inherit_50', mode: ['normal'], weight: 100, condition: (s) => s.age >= 50 && s.flags.hasChild && !s.flags.inherit50,
                 title: '【家督】次世代への継承', text: '立派に成長した子供から「そろそろ家督を譲り、楽隠居されてはいかがか」と打診された。ここで一線を退けば、安全に大往生を迎えられるかもしれないが…。',
@@ -1017,6 +1054,20 @@
                         return { hp: -999, log: 'すべてを後進に託し、戦乱の世から完全に身を引いた。縁側で茶をすする平和な余生が始まった……。' }; 
                     } },
                     { text: '「儂はまだやれる！」と突っぱねる', condition: () => true, hint: '現役続行・寿命限界に挑む', effect: (s) => { s.flags.inherit50 = true; s.valor += 10; return { hp: -10, log: '子供を一喝し、まだまだ現役として血の海を泳ぎ続ける修羅の道を選んだ。' }; } }
+                ] },
+            { id: 'first_grandchild', mode: ['normal'], weight: 100, condition: (s) => s.age >= 55 && s.flags.hasChild && !s.flags.firstGrandchild,
+                title: '【初孫】血脈の実り', text: '子が子を産んだ。皺だらけの小さな手が、あなたの指をぎゅっと握る。戦乱の中で紡いできた血脈が、確かに次へと受け継がれていく。',
+                choices: [
+                    { text: '孫にすべてを注ぎ、穏やかに過ごす', condition: () => true, hint: '体力回復・人徳上昇', effect: (s) => { s.flags.firstGrandchild = true; s.virtue += 15; recordChronology("初孫が誕生する"); return { hp: 25, log: '孫の笑顔に目尻を下げっぱなしだ。こんなにも平和な時間があろうとは。' }; } },
+                    { text: '「まだまだ若い者には」と鍛錬を続ける', condition: () => true, hint: '武功上昇・体力小減少', effect: (s) => { s.flags.firstGrandchild = true; s.valor += 15; recordChronology("孫に負けじと鍛錬を続ける"); return { hp: -10, log: '孫に格好いい祖父母の姿を見せるため、ますます精を出すのだった。' }; } },
+                    { text: '孫に己の武勇伝を語り継ぐ', condition: () => true, hint: '運上昇', effect: (s) => { s.flags.firstGrandchild = true; s.luck += 15; recordChronology("孫に自らの武勇伝を語り聞かせる"); return { hp: 5, log: '目を輝かせて聞き入る孫に、何割増しもの武勇伝を夜な夜な語り聞かせた。' }; } }
+                ] },
+            { id: 'jisei_58', mode: ['normal'], weight: 100, condition: (s) => s.age >= 58 && !s.flags.jisei58,
+                title: '【辞世】筆を取る刻', text: '大往生の認定を目前に控えた歳。多くの者が静かに辞世の句をしたため始める年頃である。あなたの胸にも、生涯を締めくくる言葉が浮かび始めていた。',
+                choices: [
+                    { text: '静かに筆を取り、辞世の句を詠む', condition: () => true, hint: '運上昇', effect: (s) => { s.flags.jisei58 = true; s.luck += 20; recordChronology("辞世の句を詠む"); return { hp: 0, log: '震える手で筆を執り、生涯のすべてを一句に込めた。心が澄み渡っていく。' }; } },
+                    { text: '生涯を振り返り、家訓を残す', condition: () => true, hint: '人徳上昇', effect: (s) => { s.flags.jisei58 = true; s.virtue += 15; recordChronology("子孫のために家訓を残す"); return { hp: 0, log: '己の成功も失敗も余さず書き記し、子孫への戒めとした。' }; } },
+                    { text: '「まだ死なん！」と筆をへし折る', condition: () => true, hint: '武功上昇・体力小減少', effect: (s) => { s.flags.jisei58 = true; s.valor += 15; recordChronology("辞世を拒み、現役にこだわる"); return { hp: -10, log: '縁起でもないと筆をへし折った。老いてなお盛んな気力に、周囲は呆れつつも舌を巻いた。' }; } }
                 ] }
         ];
 
@@ -1037,6 +1088,17 @@
                 choices: [
                     { text: '民のため、新しい国を作る', condition: () => true, hint: '大名へ昇格', effect: (s) => { s.flags.petition=true; s.classInfo=CLASSES.find(c=>c.id==='daimyo'); s.faction = { id: 'custom', name: '民衆勢力', color: '#B8860B' }; recordChronology("民衆に推戴され大名となる"); return { hp: 0, log: '血を流さずして、民の力のみで一国を築き上げた。歴史に残る偉業だ！' }; } },
                     { text: '分不相応だと優しく諭して帰す', condition: () => true, hint: '人徳・運上昇', effect: (s) => { s.flags.petition=true; s.luck+=20; return { hp: 0, log: '野心を捨てたその無欲な姿に、民衆はあなたを生き神としてさらに深く崇拝した。' }; } }
+                ] },
+            { id: 'wandering_swordsman', mode: ['normal', 'battle'], weight: 20, condition: (s) => s.valor >= 60 && !s.flags.metSwordsman,
+                title: '【邂逅】流れの剣豪', text: '街道で、異様なまでの剣気を放つ流れの剣豪と行き会った。互いの実力を見抜いた者同士、言葉より先に視線が交錯する。',
+                choices: [
+                    { text: '果たし合いを申し込む', condition: () => true, hint: '勝てば武功大幅上昇・負ければ重傷', effect: (s) => {
+                        s.flags.metSwordsman = true;
+                        if (Math.random() < 0.4 + (s.valor * 0.003)) { s.valor += 40; recordChronology("流れの剣豪との果たし合いに勝利する"); return { hp: -15, log: '凄絶な斬り合いの末、剣豪の刀を紙一重でかわし、見事に打ち勝った！その名は諸国に轟く。' }; }
+                        else { s.deathCause = 'battle'; return { hp: -50, log: '剣豪の神速の一閃に敗れ、深い傷を負った。だが、この敗北こそが最高の稽古となった。' }; }
+                    } },
+                    { text: '教えを乞いて頭を下げる', condition: () => true, hint: '武功・知略上昇', effect: (s) => { s.flags.metSwordsman = true; s.valor += 10; s.strategy += 15; return { hp: 0, log: '謙虚に教えを請う姿に剣豪は頷き、奥義の一端を授けて去っていった。' }; } },
+                    { text: '戦わず、酒を酌み交わす', condition: () => true, hint: '人徳上昇・回復', effect: (s) => { s.flags.metSwordsman = true; s.virtue += 10; return { hp: 10, log: '焚き火を囲んで酒を酌み交わし、剣の道について夜通し語り明かした。心温まる一夜だった。' }; } }
                 ] }
         ];
 
@@ -1058,6 +1120,17 @@
                     { text: '【銭300文】大混乱に乗じて物資を買い占める', condition: (s) => s.money >= 300, hint: '大儲け', effect: (s) => { s.flags.honnoji=true; s.karma+=20; recordChronology("本能寺の変の混乱で巨万の富を築く"); return { money: 500, hp: 0, log: '相場の乱れを逆手にとり、莫大な利益を叩き出した。' }; } },
                     { text: '【知略40】いち早く次の覇者となる軍勢に合流する', condition: (s) => s.strategy >= 40, hint: '出世', effect: (s) => { s.flags.honnoji=true; s.strategy+=30; recordChronology("時流を読み次の天下人に取り入る"); return { money: 100, hp: 0, log: '秀吉の軍に誼を通じ、立身出世の足がかりを得た。' }; } },
                     { text: '嵐が過ぎ去るのをただ静観する', condition: () => true, hint: '影響なし', effect: (s) => { s.flags.honnoji=true; return { hp: 0, log: '戸板を固く閉ざし、血の雨が止むのをじっと待ち続けた。' }; } }
+                ] },
+            { id: 'sekigahara', mode: ['normal', 'battle'], weight: 5, condition: (s) => s.age >= 45 && !s.flags.sekigahara,
+                title: '【決戦】関ヶ原の戦い', text: '天下分け目の大決戦が始まった。東軍か、西軍か。諸将の寝返り一つで勝敗が決する、まさに時代の転換点である。',
+                choices: [
+                    { text: '【知略40】勝ち馬を見極めて味方する', condition: (s) => s.strategy >= 40, hint: '大金・知略上昇', effect: (s) => {
+                        s.flags.sekigahara = true;
+                        if (Math.random() < 0.6 + (s.strategy * 0.003)) { s.strategy += 20; recordChronology("関ヶ原で勝ち馬を見極め、新時代の勝者となる"); return { money: 300, hp: 0, log: '寝返りの時機を完璧に見極め、新たな覇者の陣営で大きな地歩を築いた！' }; }
+                        else { s.deathCause = 'battle'; return { hp: -30, log: '読みが外れた！敗軍の将として追討を受け、深い傷を負いながら落ち延びた。' }; }
+                    } },
+                    { text: 'あえて劣勢の義に殉じる', condition: () => true, hint: '人徳上昇・負傷', effect: (s) => { s.flags.sekigahara = true; s.virtue += 30; recordChronology("関ヶ原で義に殉じ、その名を後世に残す"); return { hp: -20, log: '勝敗の見えた戦でも旗を降ろさなかった。その忠義と意地は、敵味方を超えて語り継がれる。' }; } },
+                    { text: '日和見を決め込み、一切動かない', condition: () => true, hint: '無事・人徳低下', effect: (s) => { s.flags.sekigahara = true; s.virtue -= 10; return { hp: 0, log: 'どちらの軍にも付かず嵐の過ぎるのを待った。命は助かったが、「日和見」の汚名は生涯ついて回る。' }; } }
                 ] }
         ];
 
@@ -1473,6 +1546,14 @@
                     if(type === 'money') scoreText = `所持金 <strong class="text-gold text-xl">${data.money}</strong> <span class="text-xs">文</span>`;
                     if(type === 'valor') scoreText = `武功 <strong class="text-red-400 text-xl">${data.valor}</strong>`;
 
+                    let dateHtml = '';
+                    try {
+                        if (data.timestamp && typeof data.timestamp.toDate === 'function') {
+                            const dateStr = data.timestamp.toDate().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit' });
+                            dateHtml = `<div class="text-right text-[9px] text-gray-500 mt-0.5">${dateStr} 達成</div>`;
+                        }
+                    } catch (dateErr) { dateHtml = ''; }
+
                     html += `
                     <div class="${bgStyle} border p-2.5 rounded-sm flex items-center gap-3 shadow-md mb-2 relative overflow-hidden">
                         <div class="font-black ${rankStyle} w-8 text-center flex-shrink-0 z-10">${rankIcon}</div>
@@ -1482,6 +1563,7 @@
                                 <span class="text-[9px] text-gray-400 bg-black/50 px-1 py-0.5 rounded">${data.title}</span>
                             </div>
                             <div class="text-right text-gray-300 mt-1">${scoreText}</div>
+                            ${dateHtml}
                         </div>
                     </div>`;
                     rank++;
@@ -1523,7 +1605,7 @@
 
         function resetAllStateAndUI() {
             stopAutoPlay(); isWaitingForChoice = false; isProcessing = false; state.isAlive = false;
-            if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+            stopSakuraParticles();
 
             const freeze = document.getElementById('freeze-overlay');
             if (freeze) freeze.classList.remove('freeze-active');
@@ -1760,7 +1842,7 @@
             const availableEvents = pool.filter(e => { if (e.condition && !e.condition(state)) return false; return true; });
             if (availableEvents.length === 0) availableEvents.push(EVENTS[0]);
 
-            const priorityEv = ['genpuku', 'aging_40', 'inherit_50'].map(id => availableEvents.find(e => e.id === id)).find(Boolean);
+            const priorityEv = ['genpuku', 'aging_40', 'inherit_50', 'jisei_58'].map(id => availableEvents.find(e => e.id === id)).find(Boolean);
             if (priorityEv) { presentEventChoices(priorityEv); saveCurrentRun(); return; }
 
             const totalW = availableEvents.reduce((s, e) => s + e.weight, 0);
@@ -2089,9 +2171,16 @@
 
         function startSakuraParticles() {
             const canvas = document.getElementById('particle-canvas'); if (!canvas) return;
-            const ctx = canvas.getContext('2d'); canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
-            const particles = Array.from({ length: 70 }, () => ({ x: Math.random() * canvas.width, y: Math.random() * canvas.height - canvas.height, size: Math.random() * 4 + 3, speedY: Math.random() * 2 + 1, speedX: Math.random() * 2 - 1, type: Math.random() > 0.5 ? 'gold' : 'sakura', angle: Math.random() * 360, spin: (Math.random() - 0.5) * 3, opacity: Math.random() * 0.7 + 0.3 }));
+            const screen = document.getElementById('premium-screen'); if (!screen || screen.classList.contains('hidden')) return;
+            if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+            const ctx = canvas.getContext('2d');
+            const fitCanvas = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; };
+            fitCanvas();
+            canvas.style.display = 'block';
+            const particleCount = Math.round(Math.min(120, Math.max(70, (canvas.width * canvas.height) / 12000)));
+            const particles = Array.from({ length: particleCount }, () => ({ x: Math.random() * canvas.width, y: Math.random() * canvas.height * 1.5 - canvas.height * 0.5, size: Math.random() * 4 + 3, speedY: Math.random() * 2 + 1, speedX: Math.random() * 2 - 1, type: Math.random() > 0.5 ? 'gold' : 'sakura', angle: Math.random() * 360, spin: (Math.random() - 0.5) * 3, opacity: Math.random() * 0.7 + 0.3 }));
             function loop() {
+                if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) fitCanvas();
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 particles.forEach(p => {
                     ctx.save(); ctx.translate(p.x, p.y); ctx.rotate((p.angle * Math.PI) / 180); ctx.globalAlpha = p.opacity;
@@ -2102,6 +2191,16 @@
                 animFrameId = requestAnimationFrame(loop);
             }
             loop();
+        }
+
+        function stopSakuraParticles() {
+            if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
+            const canvas = document.getElementById('particle-canvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+                canvas.style.display = 'none';
+            }
         }
 
         window.resetSaveData = function(e) {
@@ -2440,5 +2539,8 @@
             console.warn("Firebase initialization skipped:", initErr);
         }
     </script>
+
+    <!-- 大往生エフェクト用 全画面キャンバス（アプリ枠の外＝body直下に配置し、画面全体に花びらを散らす） -->
+    <canvas id="particle-canvas"></canvas>
 </body>
 </html>
