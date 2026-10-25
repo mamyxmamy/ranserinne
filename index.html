@@ -117,6 +117,8 @@
 </head>
 <body>
     <div id="app-container" class="w-full h-full sm:h-[95vh] sm:max-h-[850px] max-w-md mx-auto relative flex flex-col sm:border sm:border-[#3A322A] sm:rounded-lg overflow-hidden">
+        <!-- BGM ON/OFFボタン（v4追加・画面上部に常設） -->
+        <button id="bgm-toggle-btn" type="button" onclick="window.toggleBGM(event)" aria-label="BGM ON/OFF切替" class="absolute top-2 left-1/2 -translate-x-1/2 z-[80] w-9 h-9 flex items-center justify-center rounded-full bg-black/60 border border-[#3A322A] text-base shadow-md backdrop-blur-sm active:scale-95 transition-transform">🔊</button>
         
         <!-- スタート画面 -->
         <div id="start-screen" class="absolute inset-0 z-30 bg-[#161311] flex flex-col px-5 py-5 overflow-y-auto pb-8 scroll-smooth">
@@ -209,6 +211,10 @@
                 <button type="button" onclick="window.openSupport(event)" class="w-full bg-transparent text-gray-600 hover:text-gray-300 py-1.5 text-[10px] underline tracking-widest transition-colors">
                     作者への応援・投げ銭はこちら
                 </button>
+                <a href="https://mamyxmamy.itch.io/ranserinne" target="_blank" rel="noopener" class="block w-full text-center text-gray-600 hover:text-gray-300 py-1 text-[10px] underline tracking-widest transition-colors">
+                    itch.ioでも公開中（投げ銭はこちら）
+                </a>
+                <p class="w-full text-center text-gray-700 text-[9px] tracking-widest pb-1">♪ BGMつき ― 音量にご注意ください</p>
             </div>
         </div>
 
@@ -481,6 +487,9 @@
                 <div class="w-full max-w-xs space-y-3">
                     <a href="https://www.amazon.jp/hz/wishlist/ls/92FAL8ZA3MU2?ref_=wl_share" target="_blank" class="block w-full bg-yellow-600 hover:bg-yellow-500 text-white py-3 rounded font-bold text-sm shadow-md transition-colors">
                         🎁 Amazonほしい物リストで支援
+                    </a>
+                    <a href="https://mamyxmamy.itch.io/ranserinne" target="_blank" rel="noopener" class="block w-full bg-[#FA5C5C] hover:bg-[#FF7070] text-white py-3 rounded font-bold text-sm shadow-md transition-colors">
+                        🎮 itch.ioでも公開中（投げ銭はこちら）
                     </a>
                 </div>
                 <p class="text-gray-500 text-[10px] mt-6">※上記ボタンを押すと外部サイトへ移動します。</p>
@@ -1541,6 +1550,7 @@
 
         window.resetGame = function(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
+            setSceneBGM('title');
             resetAllStateAndUI(); window.updateStartScreenUI();
             if (startScreen) startScreen.classList.remove('hidden');
         };
@@ -1553,6 +1563,7 @@
             try { state = JSON.parse(savedStateStr); } catch(err) { return; }
 
             resetAllStateAndUI(); state.isAlive = true; isWaitingForChoice = false; isProcessing = false;
+            setSceneBGM('main');
             if (startScreen) startScreen.classList.add('hidden');
             if (gameScreen) gameScreen.classList.remove('hidden');
             
@@ -1570,6 +1581,7 @@
             localStorage.setItem('sengoku_player_name', finalName);
 
             resetAllStateAndUI(); localStorage.removeItem('sengoku_current_run');
+            setSceneBGM('main');
 
             const baseClasses = CLASSES.filter(c => c.weight > 0);
             const totalWeight = baseClasses.reduce((sum, c) => sum + c.weight, 0);
@@ -2022,6 +2034,7 @@
         }
 
         function showGameOver(reason, title, nextHeirloom, deathCause, earnedMeisen, lostHeirlooms = []) {
+            setSceneBGM('death');
             const screen = document.getElementById('gameover-screen'); const mainTitle = document.getElementById('go-main-title'); const subTitle = document.getElementById('go-sub-title');
             screen.className = 'hidden absolute inset-0 z-50 flex flex-col items-center justify-center p-5 text-white text-center backdrop-blur-md overflow-y-auto pointer-events-auto transition-colors duration-700'; mainTitle.className = 'text-5xl sm:text-6xl font-black mb-1 mt-2 tracking-[0.25em]';
 
@@ -2054,6 +2067,7 @@
         }
 
         function showPremiumEnding(title, nextHeirloom, earnedMeisen) {
+            setSceneBGM('daioujou');
             if (gameScreen) gameScreen.classList.add('hidden');
             const screen = document.getElementById('premium-screen'); const content = document.getElementById('premium-content');
             screen.classList.remove('hidden'); content.classList.remove('opacity-100'); content.classList.add('opacity-0');
@@ -2209,8 +2223,119 @@
             }
         };
 
+
+        // ================= BGMシステム（v4追加） =================
+        // シーン別ファイル定義。bgm-main.mp3 / bgm-death.mp3 / bgm-daioujou.mp3 が
+        // index.html と同じ階層に置かれた場合はそちらを優先し、存在しない場合は
+        // タイトル曲（bgm-title.mp3）を継続再生する。読み込みエラーでもゲームは止まらない。
+        const BGM_FILES = { title: 'bgm-title.mp3', main: 'bgm-main.mp3', death: 'bgm-death.mp3', daioujou: 'bgm-daioujou.mp3' };
+        const BGM_FALLBACK_SRC = 'bgm-title.mp3';
+        const BGM_VOLUME = 0.7;
+        let bgmAudio = null;        // 現在再生中のAudioオブジェクト
+        let bgmScene = 'title';     // 現在のシーン
+        let bgmStarted = false;     // 初回インタラクションで開始済みか
+        let bgmMuted = false;
+        try { bgmMuted = localStorage.getItem('sengoku_bgm_muted') === '1'; } catch (e) {}
+        const bgmAvailability = {}; // ファイル存在チェックのキャッシュ {src: true/false}
+
+        function bgmUpdateButton() {
+            const btn = document.getElementById('bgm-toggle-btn');
+            if (btn) btn.textContent = bgmMuted ? '🔇' : '🔊';
+        }
+
+        window.toggleBGM = function(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            bgmMuted = !bgmMuted;
+            try { localStorage.setItem('sengoku_bgm_muted', bgmMuted ? '1' : '0'); } catch (err) {}
+            if (bgmAudio) bgmAudio.muted = bgmMuted;
+            bgmUpdateButton();
+            if (!bgmMuted) bgmEnsureStarted();
+        };
+
+        // ファイルの有無をHEADリクエストで確認（失敗時は「ある」ものとして扱い、最終的にはAudioのerrorで救済）
+        // キャッシュするのは「存在する」場合のみ。存在しない場合を固定すると、後から曲ファイルが
+        // 追加・差し替えされた構成を取りこぼすため、無い場合はシーン切替のたびに再確認する。
+        function bgmCheckExists(src) {
+            if (bgmAvailability[src] !== undefined) return Promise.resolve(bgmAvailability[src]);
+            return fetch(src, { method: 'HEAD' }).then(function(res) {
+                if (res.ok) bgmAvailability[src] = true;
+                return !!res.ok;
+            }).catch(function() { return true; });
+        }
+
+        function bgmFadeTo(audio, target, dur) {
+            if (!audio) return;
+            if (audio._bgmFadeTimer) clearInterval(audio._bgmFadeTimer);
+            const stepMs = 50;
+            const steps = Math.max(1, Math.round(dur / stepMs));
+            const start = audio.volume;
+            const diff = target - start;
+            let i = 0;
+            audio._bgmFadeTimer = setInterval(function() {
+                i++;
+                try { audio.volume = Math.min(1, Math.max(0, start + diff * (i / steps))); } catch (e) {}
+                if (i >= steps) { clearInterval(audio._bgmFadeTimer); audio._bgmFadeTimer = null; }
+            }, stepMs);
+        }
+
+        function bgmFadeOutAndPause(audio) {
+            if (!audio) return;
+            bgmFadeTo(audio, 0, 600);
+            setTimeout(function() { try { audio.pause(); } catch (e) {} }, 700);
+        }
+
+        function bgmPlay(src) {
+            if (bgmAudio && bgmAudio.dataset && bgmAudio.dataset.src === src && !bgmAudio.paused) return; // 同じ曲が再生中なら継続
+            const old = bgmAudio;
+            const audio = new Audio();
+            audio.loop = true;
+            audio.preload = 'auto';
+            if (audio.dataset) audio.dataset.src = src;
+            audio.muted = bgmMuted;
+            audio.volume = 0; // フェードイン開始値
+            audio.addEventListener('error', function() {
+                if (bgmAudio !== audio) return;
+                if (src !== BGM_FALLBACK_SRC) {
+                    bgmAvailability[src] = false;
+                    bgmAudio = null;
+                    bgmPlay(BGM_FALLBACK_SRC); // タイトル曲へフォールバック
+                }
+                // タイトル曲自体が読めない場合は無音のままゲームを継続
+            });
+            audio.src = src;
+            bgmAudio = audio;
+            const p = audio.play();
+            if (p && typeof p.catch === 'function') {
+                p.catch(function() { bgmStarted = false; }); // 自動再生制限など。次のタップで再試行させる
+            }
+            bgmFadeTo(audio, BGM_VOLUME, 1200);
+            if (old && old !== audio) bgmFadeOutAndPause(old);
+        }
+
+        // シーン切替フック：setSceneBGM('title' | 'main' | 'death' | 'daioujou')
+        window.setSceneBGM = function(scene) {
+            bgmScene = BGM_FILES[scene] ? scene : 'title';
+            if (!bgmStarted) return; // 初回タップまでは鳴らさない
+            const file = BGM_FILES[bgmScene];
+            if (file === BGM_FALLBACK_SRC) { bgmPlay(BGM_FALLBACK_SRC); return; }
+            const requestedScene = bgmScene;
+            bgmCheckExists(file).then(function(ok) {
+                if (bgmScene !== requestedScene) return; // 途中でシーンが変わっていたら破棄
+                bgmPlay(ok ? file : BGM_FALLBACK_SRC);
+            });
+        };
+
+        function bgmEnsureStarted() {
+            if (bgmStarted) return;
+            bgmStarted = true;
+            window.setSceneBGM(bgmScene);
+        }
+
         function initApp() { 
-            cacheElements(); 
+            cacheElements();
+            bgmUpdateButton();
+            document.addEventListener('pointerdown', bgmEnsureStarted);
+            document.addEventListener('keydown', bgmEnsureStarted);
             const savedName = localStorage.getItem('sengoku_player_name');
             if (savedName && playerNameInput) {
                 playerNameInput.value = savedName;
