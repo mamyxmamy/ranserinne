@@ -1807,10 +1807,13 @@
             const deathText = isPremium ? "大往生" : document.getElementById('go-main-title').innerText;
 
             let text = `【${pName}】は [${fName}] ${cName} として生き、享年${age}歳で [${deathText}] した。\n`;
-            text += `称号：${title}\n\n`;
+            text += `称号：『${title}』\n`;
+            const zukanCount = (window.unlockedTitles || []).length;
+            const zukanTotal = (typeof TITLES_DB !== 'undefined') ? TITLES_DB.length : 50;
+            text += `二つ名図鑑：${zukanCount}/${zukanTotal}種${window.__lastTitleNew ? '（新記録！）' : ''}\n\n`;
             text += `天下の番付に挑戦せよ！\n`;
-            text += `#乱世の輪廻\n`;
-            text += `https://mamyxmamy.github.io/ransesrinne/`;
+            text += `#乱世の輪廻 #二つ名図鑑\n`;
+            text += `https://mamyxmamy.github.io/ranserinne/`;
 
             const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
             window.open(url, '_blank');
@@ -2311,7 +2314,8 @@
                 
                 // 追加：称号の保存
                 if (!window.unlockedTitles) window.unlockedTitles = [];
-                if (!window.unlockedTitles.includes(finalTitle)) window.unlockedTitles.push(finalTitle);
+                window.__lastTitleNew = !window.unlockedTitles.includes(finalTitle);
+                if (window.__lastTitleNew) window.unlockedTitles.push(finalTitle);
 
                 saveMetaProgress();
 
