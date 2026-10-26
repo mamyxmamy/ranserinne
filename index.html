@@ -423,7 +423,7 @@
                     <p class="mb-1">15歳を迎えると必ず【元服の儀】が発生し、自らの生き様（伸ばす能力）を選択できます。</p>
                     <ul class="list-disc pl-4 space-y-1 text-gray-400">
                         <li><strong class="text-white">能力特化:</strong> 武力・知略・人徳・野心・強運を選び、能力を大幅強化して生き抜く。</li>
-                        <li><strong class="text-yellow-400">素寒貧（縛り道）:</strong> 全財産を捨て、拾った木の棍棒1本で挑む極限モード。この状態で60歳の大往生を果たすと、専用の二つ名と伝説の家宝が刻まれます。</li>
+                        <li><strong class="text-yellow-400">素寒貧（縛り道）:</strong> 全財産を捨て、拾った木の棍棒1本で挑む極限モード。選んだ時点で身分そのものが「素寒貧」となり、以後は出世や身分の変更が一切できず、最後まで素寒貧として生き抜くことになります。この状態で60歳の大往生を果たすと、専用の二つ名と伝説の家宝が刻まれます。</li>
                     </ul>
                 </section>
 
@@ -575,7 +575,8 @@
             { id: 'kuge', name: '公家', weight: 2, initHealth: 60, initMoney: 100, intro: '古き良き雅な都の血を引く公卿の末裔。実権はとうの昔に失われたが、権威と誇りだけを武器に泥沼の政争を泳ぎ切る。' },
             { id: 'daimyo', name: '大名', weight: 0, initHealth: 100, initMoney: 1000, intro: '幾万の領民と兵を束ねる一国一城の主。己の才覚と野心のみで天下に覇を唱え、歴史に名を刻む戦いが今始まる。' },
             { id: 'bandit', name: '野盗', weight: 0, initHealth: 80, initMoney: 0, intro: '人の情けを捨て、力で他者のすべてを奪い取って生きる修羅の道を選んだ。山河の影で牙を剥く凶星となる。' },
-            { id: 'ronin', name: '浪人', weight: 0, initHealth: 90, initMoney: 0, intro: '仕えるべき主君を持たず、己の剣の腕一つで血生臭い乱世を渡り歩く。明日をも知れぬ、孤独で自由な風来坊。' }
+            { id: 'ronin', name: '浪人', weight: 0, initHealth: 90, initMoney: 0, intro: '仕えるべき主君を持たず、己の剣の腕一つで血生臭い乱世を渡り歩く。明日をも知れぬ、孤独で自由な風来坊。' },
+            { id: 'sukanpin', name: '素寒貧', weight: 0, initHealth: 80, initMoney: 0, intro: 'すべてを捨て去り、拾った木の棍棒一本で乱世に放り出された。家も名も金もない。出世の道は永遠に閉ざされたが、持たざる者が天寿を全うした時、その名は伝説となる。' }
         ];
 
         const FACTIONS = [
@@ -857,16 +858,16 @@
             { id: 'escape_survival', mode: ['fugitive'], weight: 80, condition: () => true,
                 title: '【流浪】落武者狩りの包囲', text: '飢えと疲労で重くなる足を引きずり歩く中、血走った目をした農民たちの落武者狩り部隊に完全に囲まれた。',
                 choices: [
-                    { text: '【人徳15】かつて助けた里人に助けを求める', condition: (s) => s.virtue >= 15, hint: '農民へ復帰・回復', effect: (s) => { s.mode = 'normal'; s.classInfo = CLASSES.find(c=>c.id==='peasant'); recordChronology("農民として生き直す"); return { hp: 35, log: '村の長が匿ってくれた。再び「農民」となり土に生きる道を選ぶ。' }; } },
-                    { text: '【銭80文】頭を金で買収し見逃させる', condition: (s) => s.money >= 80, hint: '浪人へ復帰', effect: (s) => { s.mode = 'normal'; s.classInfo = CLASSES.find(c=>c.id==='ronin'); recordChronology("浪人へと復帰する"); return { money: -80, hp: 10, log: '農民どもに有り金を叩きつけ、その隙に「浪人」として他国へ逃れた。' }; } },
-                    { text: '腹をくくり、山賊の群れに加わって野盗に堕ちる', condition: () => true, hint: '野盗へ転身・悪逆上昇', effect: (s) => { s.mode = 'normal'; s.classInfo = CLASSES.find(c=>c.id==='bandit'); s.karma += 25; recordChronology("野盗に堕ちる"); return { hp: 15, money: 40, log: '農民を返り討ちにし、付近を荒らし回る野盗に仲間入りを果たした。' }; } }
+                    { text: '【人徳15】かつて助けた里人に助けを求める', condition: (s) => s.virtue >= 15, hint: '農民へ復帰・回復', effect: (s) => { s.mode = 'normal'; if (s.flags.sukanpin) { recordChronology("匿われ、素寒貧として生き直す"); return { hp: 35, log: '村の長が匿ってくれた。捨てた身分は取り戻さない。素寒貧のまま、土に生きる道を選ぶ。' }; } s.classInfo = CLASSES.find(c=>c.id==='peasant'); recordChronology("農民として生き直す"); return { hp: 35, log: '村の長が匿ってくれた。再び「農民」となり土に生きる道を選ぶ。' }; } },
+                    { text: '【銭80文】頭を金で買収し見逃させる', condition: (s) => s.money >= 80, hint: '浪人へ復帰', effect: (s) => { s.mode = 'normal'; if (s.flags.sukanpin) { recordChronology("追手の手を逃れ、素寒貧として生き直す"); return { money: -80, hp: 10, log: '農民どもに有り金を叩きつけ、その隙に他国へ逃れた。身分を捨てた素寒貧のまま、風の吹くままに生きていく。' }; } s.classInfo = CLASSES.find(c=>c.id==='ronin'); recordChronology("浪人へと復帰する"); return { money: -80, hp: 10, log: '農民どもに有り金を叩きつけ、その隙に「浪人」として他国へ逃れた。' }; } },
+                    { text: '腹をくくり、山賊の群れに加わって野盗に堕ちる', condition: () => true, hint: '野盗へ転身・悪逆上昇', effect: (s) => { s.mode = 'normal'; s.karma += 25; if (s.flags.sukanpin) { recordChronology("追手を退け、素寒貧のまま山に潜む"); return { hp: 15, money: 40, log: '農民を返り討ちにし、その金品を奪った。だが捨てた身分を取り戻す気はない。盗賊の仲間入りはせず、素寒貧のまま山の影に潜む道を選んだ。' }; } s.classInfo = CLASSES.find(c=>c.id==='bandit'); recordChronology("野盗に堕ちる"); return { hp: 15, money: 40, log: '農民を返り討ちにし、付近を荒らし回る野盗に仲間入りを果たした。' }; } }
                 ] },
             { id: 'checkpoint_break', mode: ['fugitive'], weight: 40, condition: () => true,
                 title: '【関所】追手の関門', text: '街道の先に関所が見えた。厳重な検問が行われており、素通りはできそうにない。追手の手が迫る中、どう切り抜けるか。',
                 choices: [
                     { text: '【銭50文】関守に賄賂を握らせ、見逃してもらう', condition: (s) => s.money >= 50, hint: '逃亡継続・小回復', effect: (s) => { return { money: -50, hp: 5, log: '関守は黙って金を受け取り、知らぬ顔で関門を開けた。冷や汗がようやく引いていく。' }; } },
                     { text: '夜陰に紛れて強行突破する', condition: () => true, hint: '成功で通常生活へ・失敗で大ダメージ', effect: (s) => {
-                        if (Math.random() < 0.45 + (s.luck * 0.003)) { s.mode = 'normal'; s.classInfo = CLASSES.find(c=>c.id==='ronin'); recordChronology("関所を突破し、追手の手を逃れる"); return { hp: -5, log: '闇に紛れて関所を突破！追手の声が遠ざかり、ようやく人並みの生活を取り戻した。' }; }
+                        if (Math.random() < 0.45 + (s.luck * 0.003)) { s.mode = 'normal'; if (!s.flags.sukanpin) s.classInfo = CLASSES.find(c=>c.id==='ronin'); recordChronology("関所を突破し、追手の手を逃れる"); return { hp: -5, log: '闇に紛れて関所を突破！追手の声が遠ざかり、ようやく人並みの生活を取り戻した。' }; }
                         else { s.deathCause = 'battle'; return { hp: -40, log: '見つかった！乱闘の末に深手を負い、命からがら藪の中へ転がり込んだ……。' }; }
                     } },
                     { text: '山中に潜伏し、ほとぼりが冷めるのを待つ', condition: () => true, hint: '体力減少・逃亡継続', effect: (s) => { return { hp: -15, log: '息を殺して山中に潜む日々。寒さと飢えに耐え、検問が緩むのをじっと待ち続けた。' }; } }
@@ -989,6 +990,102 @@
                     { text: '【銭200文】南蛮商人から鉄砲を買い集め、鉄砲隊を編む', condition: (s) => s.money >= 200, hint: '武功大幅上昇', effect: (s) => { s.flags.teppoUnit = true; s.valor += 25; recordChronology("鉄砲隊を編制し、軍備を近代化する"); return { money: -200, hp: 0, log: '轟音と共に一斉射撃を行う鉄砲隊が完成した。敵は近づくことすらできまい！' }; } },
                     { text: '「武士の戦は刀槍でこそ」と旧来の戦法を守る', condition: () => true, hint: '人徳・武功上昇', effect: (s) => { s.flags.teppoUnit = true; s.virtue += 15; s.valor += 5; return { hp: 0, log: '古き良き武士の誇りを貫いた。兵たちの結束はより強固なものとなった。' }; } },
                     { text: '鉄砲は卑劣な武器と禁じる', condition: () => true, hint: '人徳上昇・悪逆低下', effect: (s) => { s.flags.teppoUnit = true; s.virtue += 20; s.karma = Math.max(0, s.karma - 10); return { hp: 0, log: '「卑怯者の武器に頼らぬ」と領内に鉄砲禁止令を布いた。その高潔さは領民に称えられた。' }; } }
+                ] },
+            { id: 'sukanpin_takuhotsu', mode: ['normal'], weight: 30, condition: (s) => s.classInfo.id === 'sukanpin',
+                title: '【行脚】托鉢の旅', text: '破れた笠を被り、木の鉢を手に村から村へと歩く。施しを受けることは、持たざる者の正当な糧であると同時に、誇りとの戦いでもある。',
+                choices: [
+                    { text: '素直に頭を下げ、施しを受ける', condition: () => true, hint: '銭・人徳小アップ', effect: (s) => { s.virtue += 5; return { money: 30, hp: 0, log: '村人たちが握り飯や小銭を鉢に入れてくれた。僅かな施しが、今日の命を繋ぐ。' }; } },
+                    { text: '誇りを貫き、施しを断って立ち去る', condition: () => true, hint: '運上昇・体力小減少', effect: (s) => { s.luck += 10; return { hp: -5, log: '空の鉢を抱えたまま歩き去った。腹は減るが、不思議と足取りは軽い。天は見ているはずだ。' }; } }
+                ] },
+            { id: 'sukanpin_nojuku', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'sukanpin',
+                title: '【野宿】凍える夜', text: '宿賃などあるはずもなく、今夜も野宿である。季節の風は容赦なく体温を奪い、軒先の明かりがひどく眩しい。',
+                choices: [
+                    { text: '木陰で震えながら夜を明かす', condition: () => true, hint: '体力減少', effect: (s) => { return { hp: -12, log: '歯の根も合わぬ寒さに震え、浅い眠りを繰り返した。生き延びただけ儲けものだ。' }; } },
+                    { text: '【人徳10】軒先を借りられないか頼み込む', condition: (s) => s.virtue >= 10, hint: '回復・人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 15, log: '気のいい家の主が軒先と温かい汁を分けてくれた。人の情けが身に染みる夜だった。' }; } }
+                ] },
+            { id: 'sukanpin_training', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'sukanpin',
+                title: '【修行】棍棒一筋', text: '武器らしい武器は、この木の棍棒だけである。だが一筋に打ち込めば、木の棒とて名刀に劣らぬ牙となるはずだ。',
+                choices: [
+                    { text: '岩に向かって素振り千回に打ち込む', condition: () => true, hint: '武功上昇・体力小減少', effect: (s) => { s.valor += 15; return { hp: -5, log: '掌の皮が剥け、血豆が潰れた。それでも振り続けた棍棒の冴えは、確かに増している。' }; } },
+                    { text: '川に潜り、魚を棍棒で突いて糧にする', condition: () => true, hint: '回復・武功小アップ', effect: (s) => { s.valor += 5; return { hp: 10, log: '清流の魚を次々と仕留め、焚き火で焼いて腹を満たした。生きるための技が、また一つ身についた。' }; } }
+                ] },
+            { id: 'sukanpin_traveler', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'sukanpin',
+                title: '【路傍】行き倒れの旅人', text: '街道の脇に、旅人がうずくまって動かなくなっている。自分の食料とて、明日の分すら心許ない。それでも、このまま見過ごせるか。',
+                choices: [
+                    { text: '乏しい食料を分け与え、介抱する', condition: () => true, hint: '人徳大幅上昇・体力減少', effect: (s) => { s.virtue += 20; return { hp: -10, log: '最後の握り飯を分けると、旅人は涙ながらに何度も頭を下げた。自分の腹は鳴るが、心は不思議と満たされた。' }; } },
+                    { text: '己の命こそ大事と、見捨てて去る', condition: () => true, hint: '悪逆上昇', effect: (s) => { s.karma += 15; return { hp: 0, log: '背中に弱々しい声が貼り付く。持たざる者が生き延びるには、心を殺すことも必要なのだ。' }; } }
+                ] },
+            { id: 'sukanpin_children', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'sukanpin',
+                title: '【村里】子供たちの喝采', text: '村の子供たちが、あなたの棍棒さばきを見て目を輝かせている。「おじちゃん、もっと見せて！」無邪気な声援が、胸の奥をくすぐる。',
+                choices: [
+                    { text: '棍棒芸を披露して喝采を浴びる', condition: () => true, hint: '銭・人徳小アップ', effect: (s) => { s.virtue += 10; return { money: 20, hp: 0, log: '棍棒を風車のように回し、飛び跳ねて見せると、子供たちは大歓声。親たちから小銭や団子のお礼が集まった。' }; } },
+                    { text: '若き日の武勇伝を語って聞かせる', condition: () => true, hint: '運上昇・小回復', effect: (s) => { s.luck += 10; return { hp: 5, log: '何割も盛った武勇伝に子供たちは大興奮。語るうちに、自分の心まで若返ったような気がした。' }; } }
+                ] },
+            { id: 'sukanpin_storm', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'sukanpin',
+                title: '【天候】大嵐', text: '黒雲が空を覆い、横殴りの雨と突風が襲いかかってきた。傘も蓑も持たぬ身には、天の怒りはそのまま命の危機である。',
+                choices: [
+                    { text: '近くの洞窟に逃げ込み、やり過ごす', condition: () => true, hint: '体力小減少', effect: (s) => { return { hp: -5, log: '岩陰に身を寄せ、嵐の過ぎるのをじっと待った。冷え切った身体に、己の心細さが沁みる。' }; } },
+                    { text: '濡れるのも構わず、嵐の中を突き進む', condition: () => true, hint: '体力減少・運上昇', effect: (s) => { s.luck += 10; return { hp: -18, log: '叩きつける雨に歯を食いしばって歩き通した。嵐にすら負けぬ意地が、運を引き寄せるのかもしれない。' }; } }
+                ] },
+            { id: 'sukanpin_dogs', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'sukanpin',
+                title: '【獣害】野犬の群れ', text: '唸り声と共に、痩せこけた野犬の群れが取り囲んできた。飢えた獣の目に、こちらは恰好の獲物に映っているらしい。',
+                choices: [
+                    { text: '棍棒を振り回し、群れを追い払う', condition: () => true, hint: '武功次第で成否が分かれる', effect: (s) => {
+                        if (Math.random() < 0.4 + (s.valor * 0.004)) { s.valor += 10; return { hp: 0, log: '渾身の一振りが先頭の野犬を吹き飛ばし、群れは尾を巻いて逃げ散った。棍棒の腕、ますます冴え渡る。' }; }
+                        return { hp: -20, log: '数に押されて組み伏せられ、腕や脚を噛み千切られそうになった。何とか振り解いて逃げたが、傷は深い。' };
+                    } },
+                    { text: '乏しい食料を投げつけ、その隙に逃げる', condition: () => true, hint: '体力小減少', effect: (s) => { return { hp: -5, log: '明日の命綱だった握り飯を投げると、野犬たちは我先にと群がった。腹は減るが、命あっての物種だ。' }; } }
+                ] },
+            { id: 'sukanpin_shrine', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'sukanpin',
+                title: '【信仰】山中の古い祠', text: '山道の外れに、苔むした小さな祠を見つけた。誰が供えたのか、賽銭箱には僅かな小銭が溜まっている。',
+                choices: [
+                    { text: '静かに手を合わせ、無事を祈る', condition: () => true, hint: '運上昇', effect: (s) => { s.luck += 15; return { hp: 0, log: '名も知らぬ神に頭を垂れた。見返りを求めぬ祈りが、静かに胸を満たしていく。' }; } },
+                    { text: '喉の渇きに負け、供え銭に手を伸ばす', condition: () => true, hint: '銭獲得・悪逆上昇・運低下', effect: (s) => { s.karma += 10; s.luck -= 5; return { money: 40, hp: 0, log: '神の銭で握り飯を買った。腹は膨れたが、背筋に冷たいものが走る。罰当たりの報いは、いつか来るのかもしれない。' }; } }
+                ] },
+            { id: 'sukanpin_mushrooms', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'sukanpin',
+                title: '【山菜】恵みと毒', text: '山道のほとりに、見事なキノコと山菜が生い茂っている。長年の野山の暮らしで、見分ける目には自信があるが…。',
+                choices: [
+                    { text: '慎重に見分け、確かなものだけ摘む', condition: () => true, hint: '小回復', effect: (s) => { return { hp: 10, log: '毒のあるものを丁寧に除き、山の恵みを鍋にした。慎ましいが、身体に染みる味だった。' }; } },
+                    { text: '構わず腹いっぱい頬張る', condition: () => true, hint: '大回復か中毒かは運次第', effect: (s) => {
+                        if (Math.random() < 0.5) { return { hp: 25, log: 'これぞ山のご馳走！腹も心も満たされ、活力が漲ってきた。野山の神に感謝だ。' }; }
+                        return { hp: -25, log: '…やはり毒キノコが混じっていた。腹を抱えて転げ回り、死ぬかと思った。命あっての物種とはこのことだ。' };
+                    } }
+                ] },
+            { id: 'sukanpin_broken_club', mode: ['normal'], weight: 30, condition: (s) => s.classInfo.id === 'sukanpin' && !s.flags.brokenClub,
+                title: '【相棒】棍棒が折れる', text: '長年連れ添った木の棍棒が、ついに真っ二つに折れてしまった。元服の日から命を預けてきた、唯一の相棒だったのに。',
+                choices: [
+                    { text: '山に入り、丹念に新しい枝を探す', condition: () => true, hint: '武功・運小アップ', effect: (s) => { s.flags.brokenClub = true; s.valor += 10; s.luck += 5; recordChronology("折れた棍棒に代わる、新たな相棒を得る"); return { hp: 0, log: '手に馴染む一本を選び抜き、幾日もかけて削り上げた。新たな相棒は、前のものより少しだけ重く、少しだけ頼もしい。' }; } },
+                    { text: 'もう道具には頼らぬと、拳で生きる覚悟を決める', condition: () => true, hint: '武功大幅上昇・体力減少', effect: (s) => { s.flags.brokenClub = true; s.valor += 20; recordChronology("棍棒を失い、拳ひとつで生きる覚悟を決める"); return { hp: -10, log: '折れた棍棒を土に埋め、拳を握り締めた。失うものを減らすほど、人は強くなるのだ。' }; } }
+                ] },
+            { id: 'sukanpin_festival', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'sukanpin',
+                title: '【祭礼】村祭り', text: '通りかかった村で、年に一度の祭りが開かれている。笛や太鼓の音、屋台の匂い。持たざる身には眩しすぎる賑わいだ。',
+                choices: [
+                    { text: '広場で棍棒芸を披露し、投げ銭を集める', condition: () => true, hint: '銭・人徳小アップ', effect: (s) => { s.virtue += 10; return { money: 35, hp: 0, log: '観衆の真ん中で棍棒を舞わせると、喝采と共に小銭が舞った。祭りの夜の、ささやかな晴れ舞台だった。' }; } },
+                    { text: '隅に座り、静かに祭りを眺めている', condition: () => true, hint: '運上昇・小回復', effect: (s) => { s.luck += 10; return { hp: 5, log: '賑わいの外側で提灯の灯りを見つめていると、名も知らぬ老婆が団子を分けてくれた。祭りの情けは、身に染みる。' }; } }
+                ] },
+            { id: 'sukanpin_fallen_samurai', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'sukanpin' && !s.flags.fallenSamurai,
+                title: '【路傍】落ちぶれた武士', text: '街道の脇に、見る影もなく落ちぶれた武士が倒れている。傍らには、まだ立派な刀が一振り。介抱するか、否か。',
+                choices: [
+                    { text: '水を与え、傷の手当てをして介抱する', condition: () => true, hint: '人徳大幅上昇', effect: (s) => { s.flags.fallenSamurai = true; s.virtue += 20; recordChronology("落ちぶれた武士を介抱する"); return { hp: 0, log: '武士は弱々しく目を開け、「この御恩、いつか必ず」と掠れた声で言った。返礼など当てにしていないが、悪くない気分だ。' }; } },
+                    { text: '刀に目が眩み、そっと持ち去る', condition: () => true, hint: '悪逆・武功上昇', effect: (s) => { s.flags.fallenSamurai = true; s.karma += 15; s.valor += 10; recordChronology("倒れた武士の刀を持ち去る"); return { hp: 0, log: '名刀の重みが手に馴染む。棍棒より遥かに頼もしいが…この業は、一生消えないだろう。' }; } }
+                ] },
+            { id: 'sukanpin_winter', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'sukanpin',
+                title: '【厳冬】凍てつく季節', text: '底冷えのする厳しい冬がやってきた。着る物も乏しく、野宿の身には一年で最も死に近い季節である。',
+                choices: [
+                    { text: '雪の小さな掘っ立て小屋で、じっと耐え忍ぶ', condition: () => true, hint: '体力減少・運上昇', effect: (s) => { s.luck += 10; return { hp: -20, log: '歯を鳴らしながら幾夜も寒さに耐えた。春の光を見た時、天に拾われた命だと心から思った。' }; } },
+                    { text: '【人徳30】村人に頭を下げ、施しを請う', condition: (s) => s.virtue >= 30, hint: '小回復', effect: (s) => { return { hp: 10, log: 'これまでの行いを知る村人たちが、囲炉裏と粕汁でもてなしてくれた。徳とは、こういう時に効くものらしい。' }; } }
+                ] },
+            { id: 'sukanpin_disciple', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'sukanpin' && s.age >= 35 && !s.flags.disciple,
+                title: '【弟子】弟子志願の少年', text: 'あなたの棍棒さばきを見た村の少年が、目を輝かせてついてくる。「おいらも強くなりたい！弟子にしてください！」まっすぐな瞳が胸を刺す。',
+                choices: [
+                    { text: '少年を弟子に取り、生きる術を教える', condition: () => true, hint: '人徳・運上昇', effect: (s) => { s.flags.disciple = true; s.virtue += 15; s.luck += 10; recordChronology("弟子志願の少年を受け入れる"); return { hp: 0, log: '棍棒の握り方から山での生き方まで、知るすべてを教えた。持たざる者の技が、こうして受け継がれていく。' }; } },
+                    { text: '「この道は茨だ」と冷たく追い返す', condition: () => true, hint: '悪逆・武功小アップ', effect: (s) => { s.flags.disciple = true; s.karma += 5; s.valor += 5; recordChronology("弟子志願の少年を追い返す"); return { hp: 0, log: '少年の背中が小さくなっていくのを見送った。優しさだけが正解ではない。この生き方は、自分ひとりで背負えばいい。' }; } }
+                ] },
+            { id: 'sukanpin_hometown', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'sukanpin' && s.age >= 45,
+                title: '【夢枕】夢の中の故郷', text: '野宿の夢の中で、遠い昔に捨てたはずの故郷の景色を見た。夕餉の匂い、母の声。目覚めた頬には、涙の跡が残っていた。',
+                choices: [
+                    { text: '温もりを胸にしまい、今日も歩き続ける', condition: () => true, hint: '運上昇・小回復', effect: (s) => { s.luck += 15; return { hp: 5, log: '帰れぬ場所の温もりが、逆に足を前へ進ませる。捨てたのではなく、抱えたまま歩くのだ。' }; } },
+                    { text: '未練を断ち切り、冷徹に前だけを見る', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 15; return { hp: 0, log: '夢の残り香を振り払い、鋭く研ぎ澄まされた頭で今日の糧と寝床を計算する。感傷に浸る暇など、持たざる者にはない。' }; } }
                 ] }
         ];
 
@@ -1016,12 +1113,14 @@
                         s.flags.genpuku = true; s.luck += 20; recordChronology("元服し、天命に身を委ねる誓いを立てる");
                         return { hp: 10, log: 'なるようにしかならないのが乱世。天の導きを信じ、飄々と風の吹くままに歩み出した。' }; 
                     } },
-                    { text: '【素寒貧】己の裸一貫と、拾った木の棍棒だけで世界へ飛び出す！', condition: () => true, hint: '全能力+1 / 所持金0（縛りプレイ用）', effect: (s) => { 
+                    { text: '【素寒貧】己の裸一貫と、拾った木の棍棒だけで世界へ飛び出す！', condition: () => true, hint: '全能力+1 / 所持金0 / 身分も「素寒貧」に（縛りプレイ用）', effect: (s) => { 
                         s.flags.genpuku = true; s.flags.sukanpin = true;
                         s.valor += 1; s.strategy += 1; s.virtue += 1; s.karma += 1; s.luck += 1;
                         let lostMoney = s.money; s.money = 0; 
-                        recordChronology("素寒貧として、木の棍棒一本で乱世に放り出される");
-                        return { hp: 0, money: -lostMoney, log: '身につけていたものをすべて投げ捨て、拾った木の棍棒だけを握りしめて歩み出した。地獄のような縛りプレイの始まりだ！' }; 
+                        const oldClassName = s.classInfo ? s.classInfo.name : '不明';
+                        s.classInfo = CLASSES.find(c => c.id === 'sukanpin');
+                        recordChronology(`${oldClassName}の身分を捨て、素寒貧として生きる`);
+                        return { hp: 0, money: -lostMoney, log: '身につけていたものをすべて投げ捨て、拾った木の棍棒だけを握りしめて歩み出した。身分そのものまで捨て去ったのだ。これより先、出世の道は永遠に閉ざされる。地獄のような縛りプレイの始まりだ！' }; 
                     } }
                 ] },
             { id: 'marriage', mode: ['normal'], weight: 15, condition: (s) => s.age >= 18 && !s.flags.married,
@@ -1044,7 +1143,7 @@
                     { text: '衰えを認めず、若い頃と同じ鍛錬を続ける', condition: () => true, hint: '武功上昇・体力小減少', effect: (s) => { s.flags.aging40 = true; s.valor += 15; recordChronology("四十を迎え、なお武の鍛錬を続ける"); return { hp: -5, log: '息切れする身体に鞭打ち、刀を振り続けた。衰えは力でねじ伏せる！' + (s.flags.sukanpin ? '棍棒一本で生き抜いてきた身には、この程度の衰えは屁でもない。' : '') }; } },
                     { text: '無理をせず、養生に努めて長生きを目指す', condition: () => true, hint: '体力回復', effect: (s) => { s.flags.aging40 = true; recordChronology("四十を迎え、養生を心がけるようになる"); return { hp: 20, log: '薬草と休息を欠かさず、穏やかな日々で身体を労わった。これからは長生きが第一だ。' + (s.flags.sukanpin ? '粗食と野山の暮らしが、思いがけず身体に合っているようだ。' : '') }; } }
                 ] },
-            { id: 'inherit_50', mode: ['normal'], weight: 100, condition: (s) => s.age >= 50 && s.flags.hasChild && !s.flags.inherit50,
+            { id: 'inherit_50', mode: ['normal'], weight: 100, condition: (s) => s.age >= 50 && s.flags.hasChild && !s.flags.inherit50 && !s.flags.sukanpin,
                 title: '【家督】次世代への継承', text: '立派に成長した子供から「そろそろ家督を譲り、楽隠居されてはいかがか」と打診された。ここで一線を退けば、安全に大往生を迎えられるかもしれないが…。',
                 choices: [
                     { text: '家督を譲り、現役を退く', condition: () => true, hint: '即座に大往生クリア', effect: (s) => { 
@@ -1054,6 +1153,13 @@
                         return { hp: -999, log: 'すべてを後進に託し、戦乱の世から完全に身を引いた。縁側で茶をすする平和な余生が始まった……。' }; 
                     } },
                     { text: '「儂はまだやれる！」と突っぱねる', condition: () => true, hint: '現役続行・寿命限界に挑む', effect: (s) => { s.flags.inherit50 = true; s.valor += 10; return { hp: -10, log: '子供を一喝し、まだまだ現役として血の海を泳ぎ続ける修羅の道を選んだ。' }; } }
+                ] },
+            { id: 'sukanpin_50', mode: ['normal'], weight: 100, condition: (s) => s.age >= 50 && s.flags.hasChild && s.flags.sukanpin && !s.flags.sukanpin50,
+                title: '【継承】棍棒を継ぐ者', text: '立派に育った子が、あなたのボロボロの棍棒をじっと見つめている。「親父、その粗末な棒の何がそんなに大事なんだ」。家督も財産もない。だが、託すべきものは確かにある。',
+                choices: [
+                    { text: '棍棒と共に、持たざる者の生き様を説く', condition: () => true, hint: '人徳上昇', effect: (s) => { s.flags.sukanpin50 = true; s.virtue += 20; recordChronology("子に棍棒と生き様を託す"); return { hp: 5, log: '「金も身分も、いつかは失せる。だが生き抜く知恵と意地は誰にも奪えん」。子は深く頷き、棍棒を両手で受け取った。' }; } },
+                    { text: '「まだ渡さん」と笑い、背中を見せ続ける', condition: () => true, hint: '武功上昇・体力小減少', effect: (s) => { s.flags.sukanpin50 = true; s.valor += 15; recordChronology("子に背中で生き様を示し続ける"); return { hp: -5, log: '「儂の背中をよく見ておけ。それが何よりの家宝だ」。衰えぬ棍棒さばきに、子は畏敬の目を向けた。' }; } },
+                    { text: '「お前はお前の道を行け」と自由にさせる', condition: () => true, hint: '運上昇', effect: (s) => { s.flags.sukanpin50 = true; s.luck += 15; recordChronology("子を自由の道へ送り出す"); return { hp: 0, log: '縛られざる生き方は、子にも強要しない。子は己の道を歩み始めた。それでいい、それがいい。' }; } }
                 ] },
             { id: 'first_grandchild', mode: ['normal'], weight: 100, condition: (s) => s.age >= 55 && s.flags.hasChild && !s.flags.firstGrandchild,
                 title: '【初孫】血脈の実り', text: '子が子を産んだ。皺だらけの小さな手が、あなたの指をぎゅっと握る。戦乱の中で紡いできた血脈が、確かに次へと受け継がれていく。',
@@ -1086,7 +1192,7 @@
             { id: 'people_petition', mode: ['normal'], weight: 20, condition: (s) => s.virtue >= 80 && !s.flags.petition,
                 title: '【人望】民衆の嘆願', text: 'あなたの海より深い人徳を慕い、近隣の村々から数千人の民衆が集まり、「どうか我らの新たな領主になってくだされ！」と涙ながらに嘆願してきた。',
                 choices: [
-                    { text: '民のため、新しい国を作る', condition: () => true, hint: '大名へ昇格', effect: (s) => { s.flags.petition=true; s.classInfo=CLASSES.find(c=>c.id==='daimyo'); s.faction = { id: 'custom', name: '民衆勢力', color: '#B8860B' }; recordChronology("民衆に推戴され大名となる"); return { hp: 0, log: '血を流さずして、民の力のみで一国を築き上げた。歴史に残る偉業だ！' }; } },
+                    { text: '民のため、新しい国を作る', condition: (s) => !s.flags.sukanpin, hint: '大名へ昇格', effect: (s) => { s.flags.petition=true; s.classInfo=CLASSES.find(c=>c.id==='daimyo'); s.faction = { id: 'custom', name: '民衆勢力', color: '#B8860B' }; recordChronology("民衆に推戴され大名となる"); return { hp: 0, log: '血を流さずして、民の力のみで一国を築き上げた。歴史に残る偉業だ！' }; } },
                     { text: '分不相応だと優しく諭して帰す', condition: () => true, hint: '人徳・運上昇', effect: (s) => { s.flags.petition=true; s.luck+=20; return { hp: 0, log: '野心を捨てたその無欲な姿に、民衆はあなたを生き神としてさらに深く崇拝した。' }; } }
                 ] },
             { id: 'wandering_swordsman', mode: ['normal', 'battle'], weight: 20, condition: (s) => s.valor >= 60 && !s.flags.metSwordsman,
@@ -1223,6 +1329,13 @@
         }
 
         function determineHeirloom(s) {
+            // 素寒貧の大往生特典：「古びた木の棍棒」は抽選ではなく確定入手（未所持の場合のみ）。
+            // 所持済みの場合は下の通常抽選にフォールバックする（棍棒は候補にも入れない）。
+            if (s.flags && s.flags.sukanpin && s.age >= 60) {
+                const clubOwned = (window.unlockedHeirlooms || []).some(h => h.id === 'hl_club');
+                if (!clubOwned) return { id: 'hl_club', name: "古びた木の棍棒", type: "luck", value: 50, desc: "初期運 +50（伝説の素寒貧の証）" };
+            }
+
             let candidates = [];
             
             if (s.valor >= 150) candidates.push({ id: 'hl_dojigiri', name: "天下五剣・童子切安綱", type: "valor", value: 50, desc: "初期武功 +50" });
@@ -1255,8 +1368,6 @@
             if (s.age >= 60) candidates.push({ id: 'hl_furo', name: "南蛮不老薬", type: "health", value: 30, desc: "初期体力 +30" });
             if (s.luck >= 60) candidates.push({ id: 'hl_yohen', name: "曜変天目茶碗", type: "luck", value: 20, desc: "初期運 +20" });
             if (s.luck >= 40) candidates.push({ id: 'hl_aoi', name: "四葉の葵紋", type: "luck", value: 10, desc: "初期運 +10" });
-            
-            if (s.flags.sukanpin && s.age >= 60) candidates.push({ id: 'hl_club', name: "古びた木の棍棒", type: "luck", value: 50, desc: "初期運 +50（伝説の素寒貧の証）" });
             
             if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
             return null;
@@ -1546,10 +1657,12 @@
                     if(type === 'money') scoreText = `所持金 <strong class="text-gold text-xl">${data.money}</strong> <span class="text-xs">文</span>`;
                     if(type === 'valor') scoreText = `武功 <strong class="text-red-400 text-xl">${data.valor}</strong>`;
 
+                    const sukanpinBadge = data.sukanpin ? '<span class="text-[9px] font-bold text-amber-300 bg-amber-900/60 border border-amber-600/50 px-1 py-0.5 rounded ml-1 align-middle">素寒貧</span>' : '';
+
                     let dateHtml = '';
                     try {
                         if (data.timestamp && typeof data.timestamp.toDate === 'function') {
-                            const dateStr = data.timestamp.toDate().toLocaleDateString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit' });
+                            const dateStr = data.timestamp.toDate().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
                             dateHtml = `<div class="text-right text-[9px] text-gray-500 mt-0.5">${dateStr} 達成</div>`;
                         }
                     } catch (dateErr) { dateHtml = ''; }
@@ -1559,7 +1672,7 @@
                         <div class="font-black ${rankStyle} w-8 text-center flex-shrink-0 z-10">${rankIcon}</div>
                         <div class="flex-grow z-10">
                             <div class="flex justify-between items-end mb-0.5">
-                                <span class="text-sm font-bold text-white tracking-widest">${data.playerName || '名無し'}</span>
+                                <span class="text-sm font-bold text-white tracking-widest">${data.playerName || '名無し'}${sukanpinBadge}</span>
                                 <span class="text-[9px] text-gray-400 bg-black/50 px-1 py-0.5 rounded">${data.title}</span>
                             </div>
                             <div class="text-right text-gray-300 mt-1">${scoreText}</div>
@@ -1842,7 +1955,7 @@
             const availableEvents = pool.filter(e => { if (e.condition && !e.condition(state)) return false; return true; });
             if (availableEvents.length === 0) availableEvents.push(EVENTS[0]);
 
-            const priorityEv = ['genpuku', 'aging_40', 'inherit_50', 'jisei_58'].map(id => availableEvents.find(e => e.id === id)).find(Boolean);
+            const priorityEv = ['genpuku', 'aging_40', 'inherit_50', 'sukanpin_50', 'jisei_58'].map(id => availableEvents.find(e => e.id === id)).find(Boolean);
             if (priorityEv) { presentEventChoices(priorityEv); saveCurrentRun(); return; }
 
             const totalW = availableEvents.reduce((s, e) => s + e.weight, 0);
@@ -1867,6 +1980,7 @@
                     case 'monk': pool = [ { text: '破れた笠を被り、雨の日も風の日も諸国を托鉢して回って民の平穏を祈り続けた。', virtue: 5, money: 10 }, { text: '悪臭漂う病に苦しむ者を熱心に看病し、涙を流して深く感謝された。', virtue: 4, hp: -1 }, { text: '静寂の寺でただひたすらに経典を書き写し、己の波立つ心と向き合った。', strategy: 2, hp: 4 } ]; break;
                     case 'bandit': pool = [ { text: '暗い街道を通りかかる丸腰の商人を容赦なく襲い、荷をすべて奪い取った。', money: 15, karma: 3, hp: -2 }, { text: '血塗られた盗品を怪しげな闇市で売り捌き、手軽に日銭を得た。', money: 10, karma: 2 }, { text: '薄暗いアジトで下品な手下たちと豪快に酒盛りをし、英気を養った。', hp: 5, money: -5 } ]; break;
                     case 'ronin': pool = [ { text: '雨漏りのする長屋で傘張りなどのみすぼらしい内職をし、細々と日銭を稼いだ。', money: 3, hp: -1 }, { text: '町道場の師範代として剣術を教え、幾ばくかのありがたい謝礼を得た。', money: 5, valor: 1 }, { text: '町を荒らす辻斬りを一刀の元に退治し、奉行所から褒美をもらったが、返り血を浴びた。', money: 10, valor: 3, virtue: 2, hp: -5 } ]; break;
+                    case 'sukanpin': pool = [ { text: '軒先で夜露を凌ぎ、施しの握り飯で静かに腹を満たした。持たざる者の一日は、今日も慎ましく過ぎていく。', hp: 1 }, { text: '野山を歩き回り、木の実や山菜を採って細々と糧を得た。', hp: 2 }, { text: '行き倒れそうになっていた旅人を助け、別れ際に小さな礼の品を受け取った。', virtue: 2, money: 3 } ]; break;
                     default: pool = [{ text: '特に何も起こらない、静かで平穏な一年だった。', money: 1 }];
                 }
             } else if (state.mode === 'battle') {
@@ -2511,6 +2625,7 @@
                         money: finalState.money,
                         valor: finalState.valor,
                         title: title,
+                        sukanpin: (finalState.flags && finalState.flags.sukanpin) ? true : false,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
