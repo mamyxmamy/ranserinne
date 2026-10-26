@@ -224,6 +224,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 13</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -402,7 +403,7 @@
                 <span class="text-[10px] text-gold font-bold mb-0.5">【次世への家宝】を感得！</span><span id="new-heirloom-text" class="text-white text-[11px] font-bold"></span>
             </div>
             
-            <button type="button" onclick="window.shareToX(false)" class="mb-3 action-button-main w-full max-w-sm bg-black border border-gray-600 text-white hover:bg-gray-900 py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all flex items-center justify-center gap-2 z-50">
+            <button type="button" onclick="window.shareResult(false)" class="mb-3 action-button-main w-full max-w-sm bg-black border border-gray-600 text-white hover:bg-gray-900 py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all flex items-center justify-center gap-2 z-50">
                 𝕏 己の生き様を刻む
             </button>
             <button type="button" onclick="window.resetGame(event)" class="action-button-main w-full max-w-sm border-2 border-red-700 bg-red-950/80 hover:bg-red-900 text-white py-3.5 text-base font-bold tracking-widest rounded-sm transition-all active:scale-95 shadow-[0_0_15px_rgba(139,0,0,0.6)] z-50">次なる輪廻へ</button>
@@ -432,7 +433,7 @@
                     <span class="text-[11px] text-gold font-bold block">名家宝を授与: <span id="premium-heirloom-text" class="text-white"></span></span>
                 </div>
                 
-                <button type="button" onclick="window.shareToX(true)" class="anim-slide-up mb-2 action-button-main w-full max-w-sm bg-black border border-gray-600 text-white hover:bg-gray-900 py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all flex items-center justify-center gap-2 z-30" style="animation-delay: 3.8s;">
+                <button type="button" onclick="window.shareResult(true)" class="anim-slide-up mb-2 action-button-main w-full max-w-sm bg-black border border-gray-600 text-white hover:bg-gray-900 py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all flex items-center justify-center gap-2 z-30" style="animation-delay: 3.8s;">
                     𝕏 己の生き様を刻む
                 </button>
                 <button type="button" onclick="window.resetGame(event)" class="action-button-main w-full max-w-sm anim-slide-up border-2 border-gold bg-black text-gold hover:bg-gold hover:text-black py-3 text-base font-bold tracking-widest rounded-sm shadow-[0_0_20px_rgba(197,160,89,0.5)] active:scale-95 transition-all z-30" style="animation-delay: 4.0s;">新時代へ輪廻する</button>
@@ -671,7 +672,7 @@
         ];
 
         const CONSUMABLES_DB = [
-            { id: 'migawari', name: '身代わり地蔵', price: 50, desc: '致死ダメージを受けた際、自動で消費されてHP1で生き残る最強の保険。', type: 'migawari' },
+            { id: 'migawari', name: '身代わり地蔵', price: 50, desc: '致死ダメージを受けた際、自動で消費されて体力50で生き残る最強の保険。', type: 'migawari' },
             { id: 'kizugusuri', name: '秘伝の傷薬', price: 20, desc: '体力が30以下になるか致死ダメージを受けた際、自動で消費され体力を50回復する。', type: 'auto_heal', value: 50 },
             { id: 'tegata', name: '豪商の紹介状', price: 30, desc: '初期所持金 +150文 でスタート。', type: 'money', value: 150 },
             { id: 'ganyaku', name: '鬼神の丸薬', price: 30, desc: '初期武功 +30 でスタート。', type: 'valor', value: 30 },
@@ -1819,6 +1820,92 @@
             window.open(url, '_blank');
         };
 
+        // 結果カード画像（1080x1350）を生成する
+        window.buildResultCard = function(isPremium) {
+            return new Promise((resolve) => {
+                try {
+                    const pName = state.playerName || "名無しの権兵衛";
+                    const fName = state.faction ? state.faction.name : "浪人";
+                    const cName = state.classInfo ? state.classInfo.name : "不明";
+                    const titleEl = document.getElementById(isPremium ? 'premium-title' : 'go-title');
+                    const title = titleEl ? titleEl.innerText.replace('【称号】\n', '').trim() : '';
+                    const deathText = isPremium ? "大往生" : (document.getElementById('go-main-title') ? document.getElementById('go-main-title').innerText : "討死");
+                    const zukanCount = (window.unlockedTitles || []).length;
+                    const zukanTotal = (typeof TITLES_DB !== 'undefined') ? TITLES_DB.length : 50;
+
+                    const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1350;
+                    const ctx = cv.getContext('2d');
+                    ctx.fillStyle = '#161311'; ctx.fillRect(0, 0, 1080, 1350);
+                    ctx.strokeStyle = isPremium ? '#C9A227' : '#7A1F1F'; ctx.lineWidth = 10; ctx.strokeRect(24, 24, 1032, 1302);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 2; ctx.strokeRect(44, 44, 992, 1262);
+                    ctx.textAlign = 'center';
+                    const mincho = '"Hiragino Mincho ProN","YuMincho","Yu Mincho","Noto Serif JP",serif';
+
+                    ctx.fillStyle = '#9b8f83'; ctx.font = `42px ${mincho}`;
+                    ctx.fillText('戦国人生絵巻 - 乱世の輪廻 -', 540, 140);
+
+                    ctx.fillStyle = isPremium ? '#E9C767' : '#E8E3D9'; ctx.font = `900 150px ${mincho}`;
+                    ctx.fillText(deathText, 540, 330);
+
+                    ctx.fillStyle = '#C9A227'; ctx.font = `900 92px ${mincho}`;
+                    ctx.fillText(`『${title}』`, 540, 500);
+                    if (window.__lastTitleNew) { ctx.fillStyle = '#E86A6A'; ctx.font = `bold 44px ${mincho}`; ctx.fillText('― 新記録 ―', 540, 580); }
+
+                    ctx.fillStyle = '#E8E3D9'; ctx.font = `56px ${mincho}`;
+                    ctx.fillText(`【${pName}】`, 540, 700);
+                    ctx.fillStyle = '#B9AFA2'; ctx.font = `46px ${mincho}`;
+                    ctx.fillText(`[${fName}] ${cName}`, 540, 775);
+
+                    ctx.fillStyle = '#FFFFFF'; ctx.font = `900 120px ${mincho}`;
+                    ctx.fillText(`享年 ${state.age} 歳`, 540, 940);
+
+                    ctx.fillStyle = '#B9AFA2'; ctx.font = `44px ${mincho}`;
+                    ctx.fillText(`武功 ${state.valor}　悪逆 ${state.karma}　運 ${state.luck}`, 540, 1045);
+                    ctx.fillText(`知略 ${state.strategy}　人徳 ${state.virtue}　銭 ${state.money}文`, 540, 1115);
+
+                    ctx.fillStyle = '#9b8f83'; ctx.font = `42px ${mincho}`;
+                    ctx.fillText(`二つ名図鑑：${zukanCount}/${zukanTotal}種`, 540, 1215);
+                    ctx.fillStyle = '#6E655B'; ctx.font = `34px ${mincho}`;
+                    ctx.fillText('https://mamyxmamy.github.io/ranserinne/', 540, 1275);
+
+                    // 桜の花びら（控えめな装飾）
+                    ctx.fillStyle = 'rgba(240,170,190,0.5)';
+                    const petals = [[120,220],[950,180],[880,1150],[160,1080],[990,700],[90,760],[520,90],[760,250]];
+                    petals.forEach(([x,y]) => { ctx.beginPath(); ctx.ellipse(x, y, 16, 9, 0.6, 0, Math.PI * 2); ctx.fill(); });
+
+                    cv.toBlob((b) => resolve(b), 'image/png');
+                } catch (e) { resolve(null); }
+            });
+        };
+
+        // 画像つき共有（対応環境では共有シート、非対応では画像保存＋従来の投稿画面）
+        window.shareResult = async function(isPremium) {
+            const blob = await window.buildResultCard(isPremium);
+            if (blob) {
+                try {
+                    const file = new File([blob], 'ranserinne-result.png', { type: 'image/png' });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        const pName = state.playerName || "名無しの権兵衛";
+                        const titleEl = document.getElementById(isPremium ? 'premium-title' : 'go-title');
+                        const title = titleEl ? titleEl.innerText.replace('【称号】\n', '').trim() : '';
+                        const zukanCount = (window.unlockedTitles || []).length;
+                        const zukanTotal = (typeof TITLES_DB !== 'undefined') ? TITLES_DB.length : 50;
+                        const shareText = `【${pName}】享年${state.age}歳、二つ名は『${title}』。二つ名図鑑：${zukanCount}/${zukanTotal}種\n#乱世の輪廻 #二つ名図鑑\nhttps://mamyxmamy.github.io/ranserinne/`;
+                        await navigator.share({ files: [file], text: shareText });
+                        return;
+                    }
+                } catch (e) { if (e && e.name === 'AbortError') return; }
+                // フォールバック：画像を保存してから従来の投稿画面を開く
+                try {
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob); a.download = 'ranserinne-result.png';
+                    document.body.appendChild(a); a.click(); a.remove();
+                    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+                } catch (e) {}
+            }
+            window.shareToX(isPremium);
+        };
+
         function resetAllStateAndUI() {
             stopAutoPlay(); isWaitingForChoice = false; isProcessing = false; state.isAlive = false;
             stopSakuraParticles();
@@ -2272,8 +2359,8 @@
             }
 
             if (state.health <= 0 && state.flags.migawari && state.deathCause !== 'oldage') {
-                state.health = 1; state.flags.migawari = false; state.deathCause = '';
-                addLog(`<span class="text-purple-300 font-bold">【身代わり地蔵】懐に忍ばせていた地蔵が砕け散った！冥府の力により、死の淵から奇跡的に生還する……！</span>`);
+                state.health = 50; state.flags.migawari = false; state.deathCause = '';
+                addLog(`<span class="text-purple-300 font-bold">【身代わり地蔵】懐に忍ばせていた地蔵が砕け散った！冥府の力により体力を50回復し、死の淵から奇跡的に生還する……！</span>`);
                 updateUI(); return true;
             }
 
