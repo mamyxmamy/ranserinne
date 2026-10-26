@@ -6,6 +6,7 @@
     <title>戦国人生絵巻 - 乱世の輪廻 -</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Yuji+Syuku&display=swap" rel="stylesheet">
     <style>
         :root {
             --wafu-bg: #090807;
@@ -116,9 +117,93 @@
         .chronology-age { color: var(--wafu-gold); font-weight: bold; min-width: 2.2rem; flex-shrink: 0; }
         .chronology-text { color: #D1D5DB; line-height: 1.3; }
         .fade-text { transition: opacity 1.5s ease-in-out; }
+
+        /* ===== オープニング・スプラッシュ（v10追加：タイトル画面の前に表示） ===== */
+        #splash-screen {
+            position: fixed; inset: 0; z-index: 200;
+            background: radial-gradient(circle at center, #191410 0%, #0C0A09 62%, #050404 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; -webkit-tap-highlight-color: transparent;
+            transition: opacity 0.6s ease;
+        }
+        #splash-screen.splash-done { opacity: 0; pointer-events: none; }
+        #splash-title {
+            font-family: 'Yuji Syuku', 'Noto Serif JP', 'Hiragino Mincho ProN', 'Hiragino Mincho Pro', 'Yu Mincho', 'YuMincho', serif;
+            font-size: clamp(2.5rem, 12.5vw, 4.1rem); line-height: 1.15;
+            color: #E9DCC0; white-space: nowrap; letter-spacing: 0.06em;
+            text-shadow: 0 0 22px rgba(197, 160, 89, 0.28), 0 2px 6px rgba(0, 0, 0, 0.8);
+        }
+        #splash-title .splash-char {
+            display: inline-block; opacity: 0;
+            filter: blur(10px); transform: scale(1.28);
+            animation: splashBrushIn 0.7s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+        }
+        @keyframes splashBrushIn {
+            0% { opacity: 0; filter: blur(10px); transform: scale(1.3); }
+            55% { opacity: 1; filter: blur(2.5px); transform: scale(1.04); }
+            100% { opacity: 1; filter: blur(0); transform: scale(1); }
+        }
+        #splash-sub {
+            margin-top: 1.15rem; font-family: 'Noto Serif JP', serif;
+            font-size: clamp(0.92rem, 4.4vw, 1.22rem); letter-spacing: 0.42em; text-indent: 0.42em;
+            color: var(--wafu-gold); opacity: 0;
+            animation: splashFadeUp 0.9s ease 1.5s forwards;
+        }
+        #splash-hint {
+            position: absolute; left: 0; right: 0; text-align: center;
+            bottom: calc(1.8rem + env(safe-area-inset-bottom));
+            font-size: 0.68rem; letter-spacing: 0.32em; text-indent: 0.32em;
+            color: rgba(216, 209, 199, 0.42); opacity: 0;
+            animation: splashFadeUp 0.8s ease 0.9s forwards;
+        }
+        @keyframes splashFadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) {
+            #splash-screen { transition-duration: 0.1s; }
+            #splash-title .splash-char, #splash-sub, #splash-hint { animation-duration: 0.01s; animation-delay: 0s; }
+        }
     </style>
 </head>
 <body>
+    <!-- オープニング・スプラッシュ（v10追加：タイトル画面の前に筆文字タイトルを表示。独立スクリプトで自己完結） -->
+    <div id="splash-screen" aria-hidden="true">
+        <div id="splash-title"><span class="splash-char" style="animation-delay:0.00s">戦</span><span class="splash-char" style="animation-delay:0.18s">国</span><span class="splash-char" style="animation-delay:0.36s">人</span><span class="splash-char" style="animation-delay:0.54s">生</span><span class="splash-char" style="animation-delay:0.72s">絵</span><span class="splash-char" style="animation-delay:0.90s">巻</span></div>
+        <div id="splash-sub">- 乱世の輪廻 -</div>
+        <div id="splash-hint">タップでスキップ</div>
+    </div>
+    <script>
+    (function () {
+        var splash = document.getElementById('splash-screen');
+        if (!splash) return;
+        var finished = false;
+        var reduceMotion = false;
+        try { reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+        var SHOW_MS = reduceMotion ? 150 : 2600; /* 表示時間（約2.6秒。reduced-motion時はほぼ即時） */
+        var FADE_MS = 650; /* フェードアウト時間（CSSのtransition 0.6sより少し長く取る） */
+        function finishSplash() {
+            if (finished) return;
+            finished = true;
+            splash.classList.add('splash-done');
+            setTimeout(function () {
+                if (splash.parentNode) splash.parentNode.removeChild(splash);
+            }, FADE_MS);
+        }
+        var timer = setTimeout(finishSplash, SHOW_MS);
+        setTimeout(finishSplash, 5000); /* 保険：何があっても5秒以内に必ず消す */
+        function onSkip(e) {
+            if (e) {
+                if (typeof e.preventDefault === 'function') e.preventDefault();
+                if (typeof e.stopPropagation === 'function') e.stopPropagation();
+            }
+            clearTimeout(timer);
+            finishSplash();
+        }
+        /* captureで最優先に受け、stopPropagation で本体の「初回タップでBGM開始」等
+           documentレベルのリスナーへ伝播させない（スキップタップでBGMが始まらないように）。 */
+        splash.addEventListener('pointerdown', onSkip, true);
+        splash.addEventListener('touchstart', onSkip, { capture: true, passive: false });
+        splash.addEventListener('click', onSkip, true);
+    })();
+    </script>
     <div id="app-container" class="w-full h-full sm:h-[95vh] sm:max-h-[850px] max-w-md mx-auto relative flex flex-col sm:border sm:border-[#3A322A] sm:rounded-lg overflow-hidden">
         <!-- BGM ON/OFFボタン（v4追加・画面上部に常設） -->
         <button id="bgm-toggle-btn" type="button" onclick="window.toggleBGM(event)" aria-label="BGM ON/OFF切替" class="absolute top-2 left-1/2 -translate-x-1/2 z-[80] w-9 h-9 flex items-center justify-center rounded-full bg-black/60 border border-[#3A322A] text-base shadow-md backdrop-blur-sm active:scale-95 transition-transform">🔊</button>
