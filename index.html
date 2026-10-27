@@ -112,6 +112,55 @@
         .death-text-oldage { color: #B0B0B0; text-shadow: 0 0 10px rgba(255,255,255,0.3); }
         .death-text-plague { color: #8FBC8F; text-shadow: 0 0 15px rgba(143,188,143,0.6); }
         
+        /* ===== 総合ランク（表示専用）の判子風バッジ ===== */
+        .life-rank-badge {
+            position: relative; flex: 0 0 auto; width: 5.25rem; height: 5.25rem;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            border-radius: 0.45rem; transform: rotate(-5deg); user-select: none;
+            font-family: 'Noto Serif JP', serif; text-align: center; overflow: hidden;
+        }
+        .life-rank-badge::after {
+            content: ''; position: absolute; inset: 5px; border: 1px solid currentColor;
+            border-radius: 0.25rem; opacity: 0.5; pointer-events: none;
+        }
+        .life-rank-label { font-size: 0.56rem; font-weight: 700; letter-spacing: 0.22em; text-indent: 0.22em; line-height: 1.1; opacity: 0.88; }
+        .life-rank-value { font-size: 2.25rem; font-weight: 900; line-height: 1; letter-spacing: 0.02em; }
+        .life-rank-badge.rank-e, .life-rank-badge.rank-d {
+            background: linear-gradient(145deg, #716457 0%, #574c41 58%, #463d34 100%);
+            color: rgba(226, 216, 198, 0.78); border: 2px dashed rgba(226, 216, 198, 0.58);
+            box-shadow: inset 0 0 14px rgba(0,0,0,0.35); filter: saturate(0.55);
+        }
+        .life-rank-badge.rank-e::after, .life-rank-badge.rank-d::after { display: none; }
+        .life-rank-badge.rank-c, .life-rank-badge.rank-b {
+            background: #EFE3CB; color: #A92318; border: 3px solid #A92318;
+            box-shadow: inset 0 0 0 2px #EFE3CB, inset 0 0 0 4px rgba(169,35,24,0.75), 0 3px 8px rgba(0,0,0,0.35);
+        }
+        .life-rank-badge.rank-a {
+            background: linear-gradient(160deg, #2A211B 0%, #120D0A 70%); color: #E04424;
+            border: 4px solid #050403; box-shadow: inset 0 0 0 2px rgba(160,35,20,0.8), inset 0 0 18px rgba(0,0,0,0.8), 0 4px 10px rgba(0,0,0,0.5);
+        }
+        .life-rank-badge.rank-s {
+            background: radial-gradient(circle at 35% 25%, #8E1420 0%, #5D0710 58%, #38040A 100%); color: #F7D774;
+            border: 3px solid #E7C568; box-shadow: inset 0 0 0 2px rgba(231,197,104,0.55), inset 0 0 20px rgba(0,0,0,0.45), 0 0 14px rgba(197,160,89,0.3);
+        }
+        .life-rank-badge.rank-ss {
+            background: linear-gradient(135deg, #8A6512 0%, #F6D873 30%, #FFF0A6 50%, #CAA12E 72%, #F9E07E 100%);
+            color: #3A2503; border: 3px solid #7A5608;
+            box-shadow: inset 0 0 0 2px rgba(255,248,196,0.75), inset 0 0 18px rgba(122,86,8,0.28), 0 0 20px rgba(245,211,137,0.6);
+        }
+        .life-rank-badge.rank-sss {
+            background: linear-gradient(135deg, #8A6512 0%, #F6D873 28%, #FFF6BC 50%, #CAA12E 74%, #FFE98A 100%);
+            color: #2F1D02; border: 4px double #8A6512;
+            box-shadow: 0 0 0 3px rgba(94,67,5,0.95), 0 0 0 5px rgba(255,233,138,0.95), inset 0 0 0 2px rgba(255,248,196,0.9), inset 0 0 22px rgba(122,86,8,0.3), 0 0 30px rgba(245,211,137,0.9);
+            animation: lifeRankPulse 1.6s ease-in-out infinite alternate;
+        }
+        .life-rank-badge.rank-sss::after { border-width: 2px; opacity: 0.72; }
+        @keyframes lifeRankPulse {
+            from { transform: rotate(-5deg) scale(1); filter: brightness(1); }
+            to { transform: rotate(-5deg) scale(1.045); filter: brightness(1.16); }
+        }
+        @media (prefers-reduced-motion: reduce) { .life-rank-badge.rank-sss { animation: none; } }
+
         .chronology-list { max-height: 120px; overflow-y: auto; border-top: 1px solid rgba(150, 150, 150, 0.2); padding-top: 0.5rem; margin-top: 0.5rem; }
         .chronology-item { display: flex; gap: 0.5rem; margin-bottom: 0.25rem; font-size: 0.65rem; }
         .chronology-age { color: var(--wafu-gold); font-weight: bold; min-width: 2.2rem; flex-shrink: 0; }
@@ -224,7 +273,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 14</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 18</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -385,7 +434,13 @@
                 <div class="text-center mb-2 pb-2 border-b border-gray-800"><span id="go-player-name" class="text-sm font-bold text-gray-300 tracking-[0.2em]"></span></div>
                 <div class="flex justify-between items-end mb-1.5"><span class="text-xs text-gray-400">享年</span><span class="text-3xl font-black text-white"><span id="go-age">--</span><span class="text-sm font-normal text-gray-400 ml-1">歳</span></span></div>
                 <div class="flex justify-between items-end mb-1"><span class="text-xs text-gray-400">身分</span><span class="text-base font-bold text-white"><span id="go-faction" class="text-xs text-gray-400 mr-1.5"></span><span id="go-class">--</span></span></div>
-                <div class="flex justify-between items-end mb-2"><span class="text-xs text-gray-400">二つ名</span><span id="go-title" class="text-sm font-black text-gold">--</span></div>
+                <div class="flex justify-between items-center gap-3 mb-2">
+                    <span class="text-xs text-gray-400 shrink-0">二つ名</span>
+                    <div class="flex items-center justify-end gap-3 min-w-0">
+                        <span id="go-title" class="text-sm font-black text-gold text-right">--</span>
+                        <div id="go-rank" class="life-rank-badge rank-e" aria-label="総合ランク"><span class="life-rank-label">総合ランク</span><strong id="go-rank-value" class="life-rank-value">E</strong></div>
+                    </div>
+                </div>
                 <div class="bg-black/70 p-2 border border-gray-800 rounded-sm mb-2">
                     <div class="grid grid-cols-3 gap-y-1 text-[10px] text-gray-400 text-center">
                         <div>武功: <span id="go-valor" class="font-bold text-white">0</span></div><div>悪逆: <span id="go-karma" class="font-bold text-white">0</span></div><div>運: <span id="go-luck" class="font-bold text-white">0</span></div>
@@ -416,8 +471,13 @@
                 <h2 class="text-5xl sm:text-6xl font-black text-golden mb-2 tracking-widest anim-slide-up" style="animation-delay: 2.6s;">大往生</h2>
                 <div class="w-full max-w-sm border-y border-gold/70 py-3 px-4 mb-3 bg-black/80 anim-slide-up backdrop-blur-md" style="animation-delay: 3.2s;">
                     <div class="text-center mb-2 pb-1.5 border-b border-gray-700"><span id="premium-player-name" class="text-sm font-bold text-gray-200 tracking-[0.2em]"></span></div>
-                    <p class="text-gold text-[11px] mb-1 font-bold tracking-widest" id="premium-title-label">【称号】</p>
-                    <p class="text-gold text-[16px] mb-2 font-black" id="premium-title">称号名</p>
+                    <div class="flex items-center justify-center gap-3 mb-2">
+                        <div class="min-w-0">
+                            <p class="text-gold text-[11px] mb-1 font-bold tracking-widest" id="premium-title-label">【称号】</p>
+                            <p class="text-gold text-[16px] font-black" id="premium-title">称号名</p>
+                        </div>
+                        <div id="premium-rank" class="life-rank-badge rank-e" aria-label="総合ランク"><span class="life-rank-label">総合ランク</span><strong id="premium-rank-value" class="life-rank-value">E</strong></div>
+                    </div>
                     <div class="flex justify-between items-end border-b border-gray-800 pb-2 mb-2">
                         <div class="text-left"><span class="block text-[9px] text-gold">最終身分</span><span class="text-sm font-bold text-white"><span id="premium-faction" class="text-[10px] text-gray-400 mr-1"></span><span id="premium-class">--</span></span></div>
                         <div class="text-right"><span class="block text-[9px] text-gold">享年</span><span class="text-3xl font-black text-white"><span id="premium-age">--</span></span> <span class="text-[10px] text-gray-400">歳</span></div>
@@ -509,7 +569,7 @@
                     <p class="mb-1">15歳を迎えると必ず【元服の儀】が発生し、自らの生き様（伸ばす能力）を選択できます。</p>
                     <ul class="list-disc pl-4 space-y-1 text-gray-400">
                         <li><strong class="text-white">能力特化:</strong> 武力・知略・人徳・野心・強運を選び、能力を大幅強化して生き抜く。</li>
-                        <li><strong class="text-yellow-400">素寒貧（縛り道）:</strong> 全財産を捨て、拾った木の棍棒1本で挑む極限モード。選んだ時点で身分そのものが「素寒貧」となり、以後は出世や身分の変更が一切できず、最後まで素寒貧として生き抜くことになります。この状態で60歳の大往生を果たすと、専用の二つ名と伝説の家宝が刻まれます。</li>
+                        <li><strong class="text-yellow-400">素寒貧（縛り道）:</strong> 全財産を捨て、拾った木の棍棒1本で挑む極限モード。選んだ時点で身分そのものが「素寒貧」となり、以後は出世や身分の変更が一切できず、最後まで素寒貧として生き抜くことになります。さらに、家宝・持込道具の加護は受けられず、元服の時点でその人生に与えられていた加護はすべて失われます。この状態で60歳の大往生を果たすと、専用の二つ名と伝説の家宝が刻まれます。</li>
                     </ul>
                 </section>
 
@@ -865,7 +925,7 @@
             { id: 'tea_appraisal', mode: ['normal'], weight: 20, condition: (s) => s.money >= 50,
                 title: '【散財】怪しげな骨董商', text: '胡散臭い商人が「これは天下の名物になり得る茶器だ」と薄汚れた茶碗を差し出してきた。真贋は全く不明だ。',
                 choices: [
-                    { text: '【銭50文】一攫千金を夢見て買い取る', condition: () => true, hint: 'ランダムでステータス変化', effect: (s) => { 
+                    { text: '【銭50文】一攫千金を夢見て買い取る', condition: (s) => s.money >= 50, hint: 'ランダムでステータス変化', effect: (s) => { 
                         if (Math.random() < 0.4 + (s.luck * 0.005)) { s.virtue += 20; s.strategy += 10; recordChronology("掘り出し物の茶器を見つけ、名声を高める"); return { money: -50, hp: 0, log: '大当たり！汚れを落とすと見事な名物であり、武将たちの間であなたの審美眼が絶賛された！' }; }
                         else { s.strategy -= 5; return { money: -50, hp: 0, log: '大ハズレ！ただの便器の欠片を掴まされ、周囲の笑い者になってしまった…。' }; }
                     } },
@@ -1049,7 +1109,7 @@
             { id: 'loan_to_daimyo', mode: ['normal'], weight: 30, condition: (s) => s.classInfo.id === 'merchant' && s.money >= 300,
                 title: '【御用】大名への大名貸し', text: '戦費に行き詰まった地元の大名から「金を貸してくれ」と直接の要請（という名の恐喝）が来た。',
                 choices: [
-                    { text: '【銭300文】ニコニコ笑って快く貸し付ける', condition: () => true, hint: '大成功で大儲け、失敗で大損', effect: (s) => {
+                    { text: '【銭300文】ニコニコ笑って快く貸し付ける', condition: (s) => s.money >= 300, hint: '大成功で大儲け、失敗で大損', effect: (s) => {
                         if (Math.random() < 0.6) { recordChronology("大名への貸付で莫大な利息を得る"); return { money: 100, hp: 0, log: '大名が戦に大勝！約束通り、莫大な利息をつけて銭が返ってきた！' }; }
                         else { s.strategy-=10; return { money: -300, hp: 0, log: '大名が戦に大敗！貸した金は完全に踏み倒され、泣き寝入りする羽目に…。' }; }
                     } },
@@ -1128,6 +1188,7 @@
                 choices: [
                     { text: '【人徳50】重臣たちに取り成してもらう', condition: (s) => s.virtue >= 50, hint: '回避', effect: (s) => { s.virtue -= 15; return { hp: 0, log: '日頃の人望により重臣が弁護し、主君の疑いは見事に晴れた。' }; } },
                     { text: '【銭400文】名品を献上し忠誠を誓う', condition: (s) => s.money >= 400, hint: '金で命を買う', effect: (s) => { return { money: -400, hp: 0, log: '土下座して茶器を献上し、辛くも粛清の嵐から逃れきった。' }; } },
+                    { text: '偽情報を流し、疑いの目を逸らす', condition: () => true, hint: '知略で判定', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.strategy * 0.005))) { s.strategy += 10; return { hp: 0, log: '刺客の背後にいる者へ偽の証文を掴ませた。疑いの目はあらぬ方向へ向き、主君の不信は霧散した。' }; } else { return { hp: -30, log: '策は見抜かれた！間一髪、刺客の刃をかわしたが深手を負った。疑いは晴れぬまま、傷だけが残った。' }; } } },
                     { text: '城を脱出し、浪人に身をやつす', condition: () => true, hint: '浪人へ転落', effect: (s) => { s.classInfo = CLASSES.find(c=>c.id==='ronin'); s.karma += 20; s.mode = 'normal'; return { hp: -10, log: '迫りくる刺客の手を逃れ、夜陰に紛れて出奔した。' }; } }
                 ] },
             { id: 'tactician', mode: ['normal', 'battle'], weight: 30, condition: (s) => s.strategy >= 40 && !s.flags.tactician && (s.classInfo.id === 'ronin' || s.classInfo.id === 'ashigaru' || s.classInfo.id === 'peasant'),
@@ -1259,7 +1320,7 @@
                             if (Math.random() < 0.5 + (s.luck * 0.003)) { recordChronology("検地を誤魔化し、隠し米を確保する"); return { money: 80, hp: 0, log: '検地役人の目を盗み、隠し田の収穫を山小屋へ運び込んだ。この米が冬を越す命綱になる。'};}
                             else { s.karma += 10; return { hp: -25, log: '隠し田が見つかった！鞭打たれ、村中の晒し者となった。痛みと屈辱が骨身に染みる。'};}
                     }},
-                    { text: '正直にすべてを申告し、情けにすがる', condition: () => true, hint: '人徳上昇・銭減少', effect: (s) => { s.flags.kenchi = true; s.virtue += 15; return { money: -50, hp: 0, log: '正直に収穫を申告した。検地役人は正直さに免じて、幾らか年貢を負けてくれた。'};}},
+                    { text: '【銭50文】正直にすべてを申告し、情けにすがる', condition: (s) => s.money >= 50, hint: '銭50消費・人徳上昇', effect: (s) => { s.flags.kenchi = true; s.virtue += 15; return { money: -50, hp: 0, log: '正直に収穫を申告した。検地役人は正直さに免じて、幾らか年貢を負けてくれた。'};}},
                     { text: '検地の測り方の裏をかき、田を狭く見せる', condition: (s) => s.strategy >= 30, hint: '知略・銭獲得', effect: (s) => { s.flags.kenchi = true; s.strategy += 15; recordChronology("検地の裏をかき、年貢を軽くする"); return { money: 60, hp: 0, log: '縄の結び目と歩幅の癖を見抜き、田を実測より狭く申告させた。役人は終ぞ気づかなかった。'};}}
             ]},
             { id: 'peasant_water', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'peasant',
@@ -1284,7 +1345,7 @@
                 choices: [
                     { text: '身を挺して蔵へ飛び込み、品々を運び出す', condition: () => true, hint: '体力大減少・銭を守る', effect: (s) => { return { money: 100, hp: -25, log: '煙に巻かれながらも、高価な品々を運び出し続けた。火傷は負ったが、商いの元手は守り抜いた！'};}},
                     { text: '町衆に銭を配り、消火の手伝いを募る', condition: (s) => s.money >= 100, hint: '銭減少・人徳上昇', effect: (s) => { s.virtue += 20; return { money: -100, hp: 0, log: '銭の力で町衆総出の消火となった。蔵は半焼で済み、あなたの決断の速さが評判になった。'};}},
-                    { text: '命あっての物種と、蔵を諦めて見守る', condition: () => true, hint: '銭大減少', effect: (s) => { return { money: -250, hp: 0, log: '蔵は一夜で灰となった。蓄えた財産の大半を失ったが、命と家族は無事だった。それだけが救いだ。'};}}
+                    { text: '命あっての物種と、蔵を諦めて見守る', condition: () => true, hint: '所持金を最大250文失う', effect: (s) => { return { money: -Math.min(s.money, 250), hp: 0, log: '蔵は一夜で灰となった。蓄えた財産の大半を失ったが、命と家族は無事だった。それだけが救いだ。'};}}
             ]},
             { id: 'bandit_purge', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'bandit',
                 title: '【討伐】官軍の掃討作戦', text: 'あんた達野盗への風当たりが強くなり、領主の討伐隊が山へ入ったとの報が届いた。足軽を中心とした手勢は、山塞を包囲しつつある。',
@@ -1298,7 +1359,7 @@
                 choices: [
                     { text: '見せしめとして、疑わしい者を粛清する', condition: () => true, hint: '悪逆・武功上昇', effect: (s) => { s.karma += 20; s.valor += 15; return { hp: 0, log: '裏切り者は山の掟に従って処分された。手下たちの背筋が伸び、山塞に静けさが戻った。'};}},
                     { text: '内通の証拠を掴み、逆に討伐隊を罠にかける', condition: (s) => s.strategy >= 30, hint: '知略大幅上昇', effect: (s) => { s.strategy += 25; recordChronology("裏切り者を逆用し、討伐隊を罠にかける"); return { hp: 0, log: '内通者に偽の情報を流し続け、討伐隊を袋の鼠にした。裏切りは、最高の武器に変わった。'};}},
-                    { text: '銭を持たせて穏便に追放する', condition: () => true, hint: '銭減少・人徳上昇', effect: (s) => { s.virtue += 10; return { money: -80, hp: 0, log: '長年仕えた手下だ。銭を持たせ、山を下りさせた。二度と顔を見せるなと、それだけを言って。'};}}
+                    { text: '【銭80文】銭を持たせて穏便に追放する', condition: (s) => s.money >= 80, hint: '銭80消費・人徳上昇', effect: (s) => { s.virtue += 10; return { money: -80, hp: 0, log: '長年仕えた手下だ。銭を持たせ、山を下りさせた。二度と顔を見せるなと、それだけを言って。'};}}
             ]},
             { id: 'ronin_bodyguard', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'ronin',
                 title: '【用心棒】護衛の依頼', text: '旅の商人が、街道の賊を恐れて用心棒を探している。腕の立つ浪人と聞き、あなたの元へ護衛の依頼が舞い込んだ。',
@@ -1336,13 +1397,13 @@
                 choices: [
                     { text: '兆しの段階で粛清し、芽を摘み取る', condition: () => true, hint: '悪逆上昇・人徳減少', effect: (s) => { s.flags.rebellionSign = true; s.karma += 25; s.virtue -= 10; s.valor += 10; return { hp: 0, log: '密報の段階で重臣一族を粛清した。謀反は未然に防がれたが、家中には重い沈黙が残った。'};}},
                     { text: '証拠を固めてから、一網打尽にする', condition: (s) => s.strategy >= 40, hint: '知略・悪逆上昇', effect: (s) => { s.flags.rebellionSign = true; s.strategy += 25; s.karma += 10; recordChronology("家臣の謀反を未然に暴き、粛清する"); return { hp: 0, log: '内通の文まで押さえ、雷のような粛清を断行した。その手際は、家中への何よりの見せしめとなった。'};}},
-                    { text: '恩賞と領地で懐柔し、不満を解消する', condition: () => true, hint: '銭減少・人徳上昇', effect: (s) => { s.flags.rebellionSign = true; s.virtue += 20; return { money: -200, hp: 0, log: '重臣に新たな領地と恩賞を与えた。不満は水に流され、謀反の火種は静かに消えた。'};}}
+                    { text: '【銭200文】恩賞と領地で懐柔し、不満を解消する', condition: (s) => s.money >= 200, hint: '銭200消費・人徳上昇', effect: (s) => { s.flags.rebellionSign = true; s.virtue += 20; return { money: -200, hp: 0, log: '重臣に新たな領地と恩賞を与えた。不満は水に流され、謀反の火種は静かに消えた。'};}}
             ]},
             { id: 'daimyo_alliance', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'daimyo' && !s.flags.alliance,
                 title: '【領国】同盟の縁組', text: '隣国の大名から、娘を嫁がせたいとの申し出があった。縁組が成れば同盟は固くなるが、他国との関係は微妙になる。',
                 choices: [
                     { text: '縁組を受け入れ、同盟を固める', condition: () => true, hint: '人徳・銭・知略上昇', effect: (s) => { s.flags.alliance = true; s.virtue += 15; s.strategy += 10; recordChronology("隣国との縁組により同盟を結ぶ"); return { money: 150, hp: 0, log: '盛大な婚儀が執り行われ、両国の同盟は盤石となった。結納の品々が蔵を満たした。'};}},
-                    { text: '婚儀を領民総出の祭りとし、慶びを分け与える', condition: (s) => s.virtue >= 30, hint: '人徳大幅上昇・銭減少', effect: (s) => { s.flags.alliance = true; s.virtue += 25; return { money: -100, hp: 0, log: '婚儀の日、城下は祭りの賑わいに包まれた。領民の忠誠は深まり、同盟の使者も感嘆して帰った。'};}},
+                    { text: '【銭100文】婚儀を領民総出の祭りとし、慶びを分け与える', condition: (s) => s.virtue >= 30 && s.money >= 100, hint: '銭100消費・人徳大幅上昇', effect: (s) => { s.flags.alliance = true; s.virtue += 25; return { money: -100, hp: 0, log: '婚儀の日、城下は祭りの賑わいに包まれた。領民の忠誠は深まり、同盟の使者も感嘆して帰った。'};}},
                     { text: '縁組を断り、独立独歩を貫く', condition: () => true, hint: '武功・悪逆上昇', effect: (s) => { s.flags.alliance = true; s.valor += 20; s.karma += 10; return { hp: 0, log: '丁重に、しかし断固として縁組を断った。どの国にも与しない。その姿勢が、かえって諸国の警戒を招くかもしれない。'};}}
             ]},
             { id: 'ashigaru_credit', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'ashigaru',
@@ -1388,14 +1449,28 @@
                         s.flags.genpuku = true; s.luck += 20; recordChronology("元服し、天命に身を委ねる誓いを立てる");
                         return { hp: 10, log: 'なるようにしかならないのが乱世。天の導きを信じ、飄々と風の吹くままに歩み出した。' }; 
                     } },
-                    { text: '【素寒貧】己の裸一貫と、拾った木の棍棒だけで世界へ飛び出す！', condition: () => true, hint: '全能力+1 / 所持金0 / 身分も「素寒貧」に（縛りプレイ用）', effect: (s) => { 
+                    { text: '【素寒貧】己の裸一貫と、拾った木の棍棒だけで世界へ飛び出す！', condition: () => true, hint: '全能力+1 / 所持金0 / 家宝と持込道具の加護もすべて失う（縛りプレイ用）', effect: (s) => { 
                         s.flags.genpuku = true; s.flags.sukanpin = true;
+                        const birthBonuses = s.flags.birthBonuses || { valor: 0, karma: 0, luck: 0, strategy: 0, virtue: 0, money: 0, health: 0 };
+                        s.valor -= birthBonuses.valor || 0;
+                        s.karma -= birthBonuses.karma || 0;
+                        s.luck -= birthBonuses.luck || 0;
+                        s.strategy -= birthBonuses.strategy || 0;
+                        s.virtue -= birthBonuses.virtue || 0;
+                        s.health = Math.max(1, s.health - (birthBonuses.health || 0));
+                        s.money -= birthBonuses.money || 0;
+                        if (s.money < 0) s.money = 0;
+                        s.flags.migawari = false;
+                        s.flags.autoHeal = 0;
+                        window.activeConsumable = null;
+                        saveMetaProgress();
                         s.valor += 1; s.strategy += 1; s.virtue += 1; s.karma += 1; s.luck += 1;
                         let lostMoney = s.money; s.money = 0; 
                         const oldClassName = s.classInfo ? s.classInfo.name : '不明';
                         s.classInfo = CLASSES.find(c => c.id === 'sukanpin');
                         recordChronology(`${oldClassName}の身分を捨て、素寒貧として生きる`);
-                        return { hp: 0, money: -lostMoney, log: '身につけていたものをすべて投げ捨て、拾った木の棍棒だけを握りしめて歩み出した。身分そのものまで捨て去ったのだ。これより先、出世の道は永遠に閉ざされる。地獄のような縛りプレイの始まりだ！' }; 
+                        recordChronology("家宝の加護も持込の品も、すべて捨て去る");
+                        return { hp: 0, money: -lostMoney, log: '身につけていたものをすべて投げ捨て、拾った木の棍棒だけを握りしめて歩み出した。前世から受け継いだ家宝の加護も、冥府の商人から持ち込んだ品も、すべて捨て去った。身分そのものまで捨て去ったのだ。これより先、出世の道は永遠に閉ざされる。地獄のような縛りプレイの始まりだ！' }; 
                     } }
                 ] },
             { id: 'marriage', mode: ['normal'], weight: 15, condition: (s) => s.age >= 18 && !s.flags.married,
@@ -1526,6 +1601,19 @@
         ];
 
         // ==========================================
+
+        function calculateLifeRank(s) {
+            const score = (s.valor || 0) + (s.karma || 0) + (s.luck || 0) + (s.strategy || 0) + (s.virtue || 0) + (s.age || 0) + Math.floor((s.money || 0) / 20);
+            let rank = 'E';
+            if (score >= 1500) rank = 'SSS';
+            else if (score >= 1000) rank = 'SS';
+            else if (score >= 750) rank = 'S';
+            else if (score >= 500) rank = 'A';
+            else if (score >= 350) rank = 'B';
+            else if (score >= 200) rank = 'C';
+            else if (score >= 100) rank = 'D';
+            return { rank, score };
+        }
 
         function calculateTitle(s) {
             if (s.age >= 60 && s.flags.sukanpin) return "伝説の素寒貧";
@@ -2021,6 +2109,7 @@
                     const deathText = isPremium ? "大往生" : (document.getElementById('go-main-title') ? document.getElementById('go-main-title').innerText : "討死");
                     const zukanCount = (window.unlockedTitles || []).length;
                     const zukanTotal = (typeof TITLES_DB !== 'undefined') ? TITLES_DB.length : 50;
+                    const lifeRank = calculateLifeRank(state);
 
                     const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1350;
                     const ctx = cv.getContext('2d');
@@ -2061,6 +2150,55 @@
                     ctx.fillStyle = 'rgba(240,170,190,0.5)';
                     const petals = [[120,220],[950,180],[880,1150],[160,1080],[990,700],[90,760],[520,90],[760,250]];
                     petals.forEach(([x,y]) => { ctx.beginPath(); ctx.ellipse(x, y, 16, 9, 0.6, 0, Math.PI * 2); ctx.fill(); });
+
+                    // 総合ランクの判子（右上・表示専用）
+                    const rankPalettes = {
+                        E: { fill: '#574C41', stroke: '#D8CEC0', text: '#D9CFC0', inner: null, dashed: true },
+                        D: { fill: '#574C41', stroke: '#D8CEC0', text: '#D9CFC0', inner: null, dashed: true },
+                        C: { fill: '#EFE3CB', stroke: '#A92318', text: '#A92318', inner: '#A92318' },
+                        B: { fill: '#EFE3CB', stroke: '#A92318', text: '#A92318', inner: '#A92318' },
+                        A: { fill: '#120D0A', stroke: '#050403', text: '#E04424', inner: '#A02314' },
+                        S: { fill: '#5D0710', stroke: '#E7C568', text: '#F7D774', inner: '#E7C568' },
+                        SS: { gradient: true, stroke: '#7A5608', text: '#3A2503', inner: '#7A5608', glow: 'rgba(245,211,137,0.65)' },
+                        SSS: { gradient: true, stroke: '#FFE98A', text: '#2F1D02', inner: '#7A5608', outer: '#B8860B', glow: 'rgba(245,211,137,0.95)' }
+                    };
+                    const rp = rankPalettes[lifeRank.rank] || rankPalettes.E;
+                    ctx.save();
+                    ctx.translate(938, 178);
+                    ctx.rotate(-5 * Math.PI / 180);
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    if (rp.glow) { ctx.shadowColor = rp.glow; ctx.shadowBlur = lifeRank.rank === 'SSS' ? 34 : 24; }
+                    if (rp.outer) {
+                        ctx.strokeStyle = rp.outer; ctx.lineWidth = 4;
+                        ctx.strokeRect(-81, -81, 162, 162);
+                    }
+                    if (rp.gradient) {
+                        const grad = ctx.createLinearGradient(-69, -69, 69, 69);
+                        grad.addColorStop(0, '#8A6512'); grad.addColorStop(0.3, '#F6D873');
+                        grad.addColorStop(0.5, '#FFF0A6'); grad.addColorStop(0.74, '#CAA12E');
+                        grad.addColorStop(1, '#F9E07E');
+                        ctx.fillStyle = grad;
+                    } else {
+                        ctx.fillStyle = rp.fill;
+                    }
+                    ctx.fillRect(-69, -69, 138, 138);
+                    ctx.shadowBlur = 0;
+                    ctx.strokeStyle = rp.stroke;
+                    ctx.lineWidth = lifeRank.rank === 'A' ? 9 : 6;
+                    ctx.setLineDash(rp.dashed ? [10, 7] : []);
+                    ctx.strokeRect(-69, -69, 138, 138);
+                    ctx.setLineDash([]);
+                    if (rp.inner) {
+                        ctx.strokeStyle = rp.inner; ctx.lineWidth = 2;
+                        ctx.strokeRect(-57, -57, 114, 114);
+                    }
+                    ctx.fillStyle = rp.text;
+                    ctx.font = `700 20px ${mincho}`;
+                    ctx.fillText('総合ランク', 0, -34);
+                    ctx.font = `900 ${lifeRank.rank === 'SSS' ? 54 : 68}px ${mincho}`;
+                    ctx.fillText(lifeRank.rank, 0, 29);
+                    ctx.restore();
 
                     cv.toBlob((b) => resolve(b), 'image/png');
                 } catch (e) { resolve(null); }
@@ -2172,15 +2310,17 @@
             if (state.classInfo.id === 'ninja') { state.strategy += 20; state.luck += 20; }
             if (state.classInfo.id === 'kuge') { state.strategy += 20; state.virtue += 10; }
 
+            state.flags.birthBonuses = { valor: 0, karma: 0, luck: 0, strategy: 0, virtue: 0, money: 0, health: 0 };
+
             if (window.activeHeirlooms && window.activeHeirlooms.length > 0) {
                 window.activeHeirlooms.forEach(hl => {
-                    if (hl.type === 'money') state.money += hl.value;
-                    if (hl.type === 'valor') state.valor += hl.value;
-                    if (hl.type === 'luck') state.luck += hl.value;
-                    if (hl.type === 'karma') state.karma += hl.value;
-                    if (hl.type === 'strategy') state.strategy += hl.value;
-                    if (hl.type === 'virtue') state.virtue += hl.value;
-                    if (hl.type === 'health') state.health += hl.value;
+                    if (hl.type === 'money') { state.money += hl.value; state.flags.birthBonuses.money += hl.value; }
+                    if (hl.type === 'valor') { state.valor += hl.value; state.flags.birthBonuses.valor += hl.value; }
+                    if (hl.type === 'luck') { state.luck += hl.value; state.flags.birthBonuses.luck += hl.value; }
+                    if (hl.type === 'karma') { state.karma += hl.value; state.flags.birthBonuses.karma += hl.value; }
+                    if (hl.type === 'strategy') { state.strategy += hl.value; state.flags.birthBonuses.strategy += hl.value; }
+                    if (hl.type === 'virtue') { state.virtue += hl.value; state.flags.birthBonuses.virtue += hl.value; }
+                    if (hl.type === 'health') { state.health += hl.value; state.flags.birthBonuses.health += hl.value; }
                 });
             }
 
@@ -2188,12 +2328,12 @@
                 const cons = window.activeConsumable;
                 if (cons.type === 'migawari') state.flags.migawari = true;
                 else if (cons.type === 'auto_heal') state.flags.autoHeal = cons.value;
-                else if (cons.type === 'money') state.money += cons.value;
-                else if (cons.type === 'valor') state.valor += cons.value;
-                else if (cons.type === 'luck') state.luck += cons.value;
-                else if (cons.type === 'strategy') state.strategy += cons.value;
-                else if (cons.type === 'virtue') state.virtue += cons.value;
-                else if (cons.type === 'health') state.health += cons.value;
+                else if (cons.type === 'money') { state.money += cons.value; state.flags.birthBonuses.money += cons.value; }
+                else if (cons.type === 'valor') { state.valor += cons.value; state.flags.birthBonuses.valor += cons.value; }
+                else if (cons.type === 'luck') { state.luck += cons.value; state.flags.birthBonuses.luck += cons.value; }
+                else if (cons.type === 'strategy') { state.strategy += cons.value; state.flags.birthBonuses.strategy += cons.value; }
+                else if (cons.type === 'virtue') { state.virtue += cons.value; state.flags.birthBonuses.virtue += cons.value; }
+                else if (cons.type === 'health') { state.health += cons.value; state.flags.birthBonuses.health += cons.value; }
 
                 if (window.inventory[cons.id] > 0) window.inventory[cons.id] -= 1;
                 state.flags.consumedItemName = cons.name;
@@ -2311,7 +2451,7 @@
                     }
 
                     const isMilestone = (state.age % 5 === 0);
-                    const isRandomEvent = Math.random() < 0.35;
+                    const isRandomEvent = Math.random() < 0.45;
 
                     if (isMilestone || isRandomEvent) {
                         triggerEvent();
@@ -2345,10 +2485,23 @@
             const priorityEv = ['genpuku', 'aging_40', 'inherit_50', 'sukanpin_50', 'jisei_58'].map(id => availableEvents.find(e => e.id === id)).find(Boolean);
             if (priorityEv) { presentEventChoices(priorityEv); saveCurrentRun(); return; }
 
-            const totalW = availableEvents.reduce((s, e) => s + e.weight, 0);
+            // v16: 戦場ルート優遇。戦場専用イベント（BATTLE_EVENTS）の重みを1.5倍にし、
+            // 長期戦では「帰陣（battle_end）」の重みを段階的に上げて戦争が終わらない状態を救済する。
+            const effWeight = (e) => {
+                let w = e.weight;
+                if (state.mode === 'battle' && BATTLE_EVENTS.includes(e)) {
+                    w *= 1.5;
+                    if (e.id === 'battle_end') {
+                        if (state.modeTurn >= 24) w *= 3;
+                        else if (state.modeTurn >= 12) w *= 2;
+                    }
+                }
+                return w;
+            };
+            const totalW = availableEvents.reduce((s, e) => s + effWeight(e), 0);
             let r = Math.random() * totalW;
             let ev = availableEvents[0];
-            for (let e of availableEvents) { r -= e.weight; if (r <= 0) { ev = e; break; } }
+            for (let e of availableEvents) { r -= effWeight(e); if (r <= 0) { ev = e; break; } }
             presentEventChoices(ev); saveCurrentRun();
         }
 
@@ -2459,7 +2612,7 @@
 
                 let tags = [];
                 if (hpChg !== 0 && hpChg > -900) tags.push(`体力${hpChg > 0 ? '+' : ''}${hpChg}`);
-                if (moneyChg !== 0) tags.push(`銭${moneyChg > 0 ? '+' : ''}${moneyChg}`);
+                if (appliedMoneyChg !== 0) tags.push(`銭${appliedMoneyChg > 0 ? '+' : ''}${appliedMoneyChg}`);
                 [['valor','武功'],['karma','悪逆'],['strategy','知略'],['virtue','人徳'],['luck','運']].forEach(([k,label]) => { const d = state[k] - beforeStats[k]; if (d !== 0) tags.push(`${label}${d > 0 ? '+' : ''}${d}`); });
                 const statTag = tags.length > 0 ? `<span class="text-[10px] text-gray-500 ml-1">(${tags.join(', ')})</span>` : '';
 
@@ -2642,6 +2795,11 @@
 
             document.getElementById('go-age').innerText = state.age; document.getElementById('go-class').innerText = state.classInfo ? state.classInfo.name : '--'; document.getElementById('go-faction').innerText = state.faction ? `[${state.faction.name}]` : ''; document.getElementById('go-title').innerText = title;
             document.getElementById('go-valor').innerText = state.valor; document.getElementById('go-karma').innerText = state.karma; document.getElementById('go-luck').innerText = state.luck; document.getElementById('go-strategy').innerText = state.strategy; document.getElementById('go-virtue').innerText = state.virtue; document.getElementById('go-money').innerText = state.money; document.getElementById('go-reason').innerText = reason;
+            const goLifeRank = calculateLifeRank(state);
+            const goRankEl = document.getElementById('go-rank');
+            if (goRankEl) goRankEl.className = `life-rank-badge rank-${goLifeRank.rank.toLowerCase()}`;
+            const goRankValueEl = document.getElementById('go-rank-value');
+            if (goRankValueEl) goRankValueEl.innerText = goLifeRank.rank;
             const goMeisen = document.getElementById('go-meisen'); if (goMeisen) goMeisen.innerText = `+${earnedMeisen}`;
             renderChronologyToList('go-chronology-list');
 
@@ -2670,6 +2828,11 @@
 
             document.getElementById('premium-title').innerText = title; document.getElementById('premium-age').innerText = state.age; document.getElementById('premium-class').innerText = state.classInfo ? state.classInfo.name : '--'; document.getElementById('premium-faction').innerText = state.faction ? `[${state.faction.name}]` : '';
             document.getElementById('premium-valor').innerText = state.valor; document.getElementById('premium-karma').innerText = state.karma; document.getElementById('premium-luck').innerText = state.luck; document.getElementById('premium-strategy').innerText = state.strategy; document.getElementById('premium-virtue').innerText = state.virtue; document.getElementById('premium-money').innerText = state.money;
+            const premiumLifeRank = calculateLifeRank(state);
+            const premiumRankEl = document.getElementById('premium-rank');
+            if (premiumRankEl) premiumRankEl.className = `life-rank-badge rank-${premiumLifeRank.rank.toLowerCase()}`;
+            const premiumRankValueEl = document.getElementById('premium-rank-value');
+            if (premiumRankValueEl) premiumRankValueEl.innerText = premiumLifeRank.rank;
             const premMeisen = document.getElementById('premium-meisen'); if (premMeisen) premMeisen.innerText = `+${earnedMeisen} 冥銭`;
             renderChronologyToList('premium-chronology-list');
 
