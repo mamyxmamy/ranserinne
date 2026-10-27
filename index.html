@@ -224,7 +224,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 13</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 14</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -937,7 +937,85 @@
                         else { s.deathCause = 'battle'; return { hp: -999, log: '無謀にも突撃したが、無敵の赤備え騎馬隊に側面を突かれ凄絶な戦死を遂げた……。' }; }
                     }},
                     { text: '恐れをなして陣を引いて逃げ出す', condition: () => true, hint: '体力温存・悪逆上昇', effect: (s) => { s.flags.metShingen = true; s.karma+=15; s.valor-=10; return { hp: 0, log: '虎の放つ圧倒的な威圧感に足がすくみ、武士の誇りを投げ捨てて一目散に逃亡した。' }; } }
-                ] }
+                ] },
+            { id: 'battle_night_raid', mode: ['battle'], weight: 20, condition: () => true,
+                title: '【戦場】夜襲の影', text: '闇に紛れて敵の夜襲部隊が陣に忍び寄る気配がある。篝火の明かりが揺れ、草鞋の擦れる音が近づいてきた。',
+                choices: [
+                    { text: '鬨の声を上げ、真っ向から夜襲を迎え撃つ！', condition: () => true, hint: '武功上昇・負傷リスク', effect: (s) => {
+                            s.valor += 20; s.deathCause = 'battle';
+                            let isDodge = Math.random() < (s.luck * 0.005);
+                            let dmg = isDodge? 0: Math.max(5, 25 - Math.floor(s.valor * 0.2));
+                            return { hp: -dmg, log: isDodge? '闇討ちの刃を紙一重でかわし、返り討ちにした！夜襲は失敗に終わった。': '闇の中の乱戦を制し、夜襲部隊を撃退した。だが浅くない手傷を負った。'};
+                    }},
+                    { text: '伏兵として闇に潜み、敵の背後を突く', condition: (s) => s.strategy >= 30, hint: '知略・武功上昇', effect: (s) => { s.strategy += 15; s.valor += 15; recordChronology("夜襲を逆手に取り、敵部隊を壊滅させる"); return { hp: -5, log: '敵が陣に踏み込んだ瞬間、背後から襲いかかった。混乱した夜襲部隊は総崩れとなった！'};}},
+                    { text: '混乱に紛れて陣を離れ、身を隠す', condition: () => true, hint: '悪逆上昇・体力小減少', effect: (s) => { s.karma += 10; s.valor -= 10; return { hp: -10, log: '味方の混乱を横目に、闇へ紛れてその場を離れた。生き延びたが、武士としての誇りは闇に置いてきた。'};}}
+            ]},
+            { id: 'battle_supplies', mode: ['battle'], weight: 20, condition: () => true,
+                title: '【戦場】兵糧の底', text: '長引く合戦で陣の兵糧が底を突きかけている。兵たちの腹の虫が鳴り、士気は目に見えて落ちてきた。',
+                choices: [
+                    { text: '私財を投じて兵糧を買い集める', condition: (s) => s.money >= 100, hint: '銭減少・体力回復・人徳上昇', effect: (s) => { s.virtue += 10; return { money: -100, hp: 15, log: '近在の村から米を買い集め、兵たちに振る舞った。空腹が満たされ、陣に活気が戻った。'};}},
+                    { text: 'わずかな兵糧を分け合い、歯を食いしばって耐える', condition: () => true, hint: '体力減少・人徳上昇', effect: (s) => { s.virtue += 15; return { hp: -20, log: '最後の握り飯を仲間と半分ずつ分け合った。腹は満たされぬが、兵たちの結束は固くなった。'};}},
+                    { text: '近隣の村から兵糧を徴発する', condition: () => true, hint: '悪逆上昇・体力回復', effect: (s) => { s.karma += 20; return { hp: 20, log: '村人の恨み言を背に、蔵から米を運び出した。兵は飢えから救われたが、その名は悪名として残るだろう。'};}}
+            ]},
+            { id: 'battle_flag_bearer', mode: ['battle'], weight: 15, condition: () => true,
+                title: '【戦場】倒れた旗持', text: '味方の旗持が流れ矢に倒れた。大旗が泥にまみれて傾ぐ。このままでは全軍の士気が崩れかねない。',
+                choices: [
+                    { text: '自ら大旗を掴み、戦場の只中で高く掲げ続ける', condition: () => true, hint: '武功大幅上昇・負傷リスク', effect: (s) => { s.valor += 25; s.deathCause = 'battle'; let dmg = Math.random() < (s.luck * 0.005)? 0: 15; if (dmg === 0) { recordChronology("倒れた大旗を掲げ直し、全軍の士気を奮い立たせる");} return { hp: -dmg, log: dmg === 0? '矢の雨の中、大旗を掲げ続けた！味方の鬨の声が戦場に轟いた。': '矢の雨の中、大旗を掲げ続けた！味方は奮い立ったが、肩に一矢を受けた。'};}},
+                    { text: '倒れた旗持を背負い、後方へ運ぶ', condition: () => true, hint: '人徳上昇・小回復', effect: (s) => { s.virtue += 20; return { hp: 5, log: '旗持を背負って後方の陣まで運んだ。旗持は意識を取り戻し、震える手であなたの手を握った。'};}},
+                    { text: '旗は見捨て、目の前の敵との戦いに集中する', condition: () => true, hint: '武功・悪逆上昇', effect: (s) => { s.valor += 10; s.karma += 10; return { hp: 0, log: '傾いだ旗を一瞥し、槍を構え直した。生き残ることが先決だ。旗の行方は、もはや知らない。'};}}
+            ]},
+            { id: 'battle_duel', mode: ['battle'], weight: 15, condition: (s) => s.valor >= 20,
+                title: '【戦場】一騎打ちの誘い', text: '両軍の間に進み出た敵将が、名乗りを上げて一騎打ちを求めてきた。大軍の視線があなたに集まっている。',
+                choices: [
+                    { text: '誘いに応じ、敵将と一騎打ちに臨む！', condition: (s) => s.valor >= 40, hint: '大成功か即死', effect: (s) => {
+                            if (Math.random() < 0.35 + (s.valor * 0.004)) { s.valor += 50; recordChronology("敵将との一騎打ちに勝利し、名を轟かせる"); return { hp: -20, money: 150, log: '凄絶な打ち合いの末、敵将を討ち取った！その名が両軍に轟き、恩賞も約束された。'};}
+                            else { s.deathCause = 'battle'; return { hp: -999, log: '敵将の太刀筋は遥かに上だった。一閃のもと、戦場の土に伏した……。'};}
+                    }},
+                    { text: '弓隊に命じて敵将を射かける', condition: () => true, hint: '知略・悪逆上昇', effect: (s) => { s.strategy += 10; s.karma += 15; return { hp: -5, log: '一騎打ちなどという古い作法に付き合う義理はない。矢の雨が敵将を馬から落とした。'};}},
+                    { text: '誘いを無視し、陣形を固く守る', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 15; return { hp: 0, log: '挑発には乗らず、堅い陣形を保ち続けた。敵将は舌打ちをして自陣へ戻っていった。'};}}
+            ]},
+            { id: 'battle_rain', mode: ['battle'], weight: 20, condition: () => true,
+                title: '【戦場】雨中の合戦', text: '戦の最中に激しい雨が降り出した。地面は泥濘と化し、弓の弦も火縄も湿っていく。戦況は大きく揺らごうとしていた。',
+                choices: [
+                    { text: '濡れた火縄を守り、雨の切れ目に一斉射撃を浴びせる', condition: (s) => s.flags.teppo, hint: '知略・武功上昇', effect: (s) => { s.strategy += 20; s.valor += 15; recordChronology("雨中の合戦で鉄砲隊を巧みに運用する"); return { hp: -8, log: '火縄を懐で温め続け、雨脚が弱まった一瞬に一斉射撃！泥に足を取られた敵陣が崩れた。'};}},
+                    { text: '雨をものともせず、泥を蹴って槍で突撃する', condition: () => true, hint: '武功上昇・負傷リスク', effect: (s) => { s.valor += 20; s.deathCause = 'battle'; let dmg = Math.random() < (s.luck * 0.005)? 5: 18; return { hp: -dmg, log: '泥濘に足を取られながらも敵陣へ突入した。雨と血にまみれた姿は、味方の士気を奮い立たせた。'};}},
+                    { text: '味方を一段下げ、雨が止むまで体勢を立て直す', condition: () => true, hint: '知略上昇・小回復', effect: (s) => { s.strategy += 15; return { hp: 5, log: '無理に攻めず、味方を高所へ退かせた。雨雲が去る頃、体勢はすっかり立て直されていた。'};}}
+            ]},
+            { id: 'battle_messenger', mode: ['battle'], weight: 20, condition: () => true,
+                title: '【戦場】決死の伝令', text: '味方の別働隊が敵に包囲されつつある。本陣への急報が届かなければ、彼らは全滅する。誰かが敵中を突破しなければならない。',
+                choices: [
+                    { text: '命がけで敵中を駆け抜け、本陣へ急報を届ける', condition: () => true, hint: '運と武功で判定・失敗で重傷', effect: (s) => {
+                            s.deathCause = 'battle';
+                            if (Math.random() < 0.4 + (s.luck * 0.003) + (s.valor * 0.001)) { s.valor += 30; s.strategy += 10; recordChronology("決死の伝令を果たし、味方の危機を救う"); return { hp: -10, log: '矢の雨をかいくぐり、本陣へ急報を届けた！援軍が間に合い、別働隊は救われた。'};}
+                            else { return { hp: -35, log: '敵の包囲に捕まり、深手を負って辛うじて這い戻った。急報は届かなかった……。'};}
+                    }},
+                    { text: '偽の伝令文を敵に掴ませ、包囲を欺く', condition: (s) => s.strategy >= 30, hint: '知略上昇', effect: (s) => { s.strategy += 25; recordChronology("偽の伝令文で敵の包囲を解かせる"); return { hp: 0, log: '偽の急報をわざと敵の手に渡した。援軍接近と誤認した敵は、包囲を解いて退いていった！'};}},
+                    { text: '危険すぎると判断し、伝令の役目を辞退する', condition: () => true, hint: '悪逆上昇', effect: (s) => { s.karma += 10; s.virtue -= 5; return { hp: 0, log: 'その役目は他の者に渡った。翌日、別働隊壊滅の報が届いた。胸の奥に重いものが残る。'};}}
+            ]},
+            { id: 'battle_fog', mode: ['battle'], weight: 20, condition: () => true,
+                title: '【戦場】深い霧の戦場', text: '朝霧が戦場を白く覆い尽くした。数歩先も見えず、味方の鬨の声さえ遠く曖昧に聞こえる。敵も味方も、互いの姿を見失っている。',
+                choices: [
+                    { text: '霧に紛れて敵陣へ接近し、奇襲をかける', condition: () => true, hint: '武功で判定・失敗で重傷', effect: (s) => {
+                            s.deathCause = 'battle';
+                            if (Math.random() < 0.45 + (s.valor * 0.002)) { s.valor += 30; recordChronology("霧中の奇襲を成功させる"); return { hp: -15, log: '霧の中から突然現れたあなたの槍が、敵の油断を突いた！奇襲は見事に決まった。'};}
+                            else { return { hp: -30, log: '霧の中で方角を見失い、敵陣の只中へ迷い込んだ。斬り結びながら、命からがら霧の中へ逃げ込んだ。'};}
+                    }},
+                    { text: 'その場に伏せ、霧が晴れるのをじっと待つ', condition: () => true, hint: '知略上昇・小回復', effect: (s) => { s.strategy += 10; return { hp: 5, log: '泥に伏して息を殺した。霧が晴れる頃には、戦況もはっきりと見通せるようになっていた。'};}},
+                    { text: '味方を探して霧の中を彷徨う', condition: () => true, hint: '運で判定', effect: (s) => {
+                            if (Math.random() < 0.3 + (s.luck * 0.004)) { return { money: 100, hp: 0, log: '霧の中で味方とはぐれたが、打ち捨てられた敵の輜重から、まだ使える物資と銭を見つけた。'};}
+                            else { s.deathCause = 'battle'; return { hp: -10, log: '霧の中を彷徨ううち、敵の斥候と鉢合わせた。斬り合いの末に逃れたが、手傷を負った。'};}
+                    }}
+            ]},
+            { id: 'battle_arson', mode: ['battle'], weight: 15, condition: () => true,
+                title: '【戦場】火攻めの潜入', text: '敵の兵糧庫の場所が判明した。夜陰に乗じて火を放てば、敵は飢えて戦えなくなる。だが、潜入は命がけの役目だ。',
+                choices: [
+                    { text: '夜陰に乗じて兵糧庫へ潜入し、火を放つ', condition: (s) => s.strategy >= 40, hint: '大成功か即死', effect: (s) => {
+                            if (Math.random() < 0.5 + (s.strategy * 0.002)) { s.strategy += 30; s.valor += 15; recordChronology("敵の兵糧庫への火攻めを成功させる"); return { hp: -10, log: '音もなく潜入し、兵糧庫に火を放った！天を焦がす炎を背に、無事に帰還した。'};}
+                            else { s.deathCause = 'battle'; return { hp: -999, log: '番兵に見つかり、炎に包まれる前に乱刀のもとに倒れた……。'};}
+                    }},
+                    { text: '風向きを見極め、遠方から火矢を放つ', condition: () => true, hint: '知略上昇・小ダメージ', effect: (s) => { s.strategy += 15; s.deathCause = 'battle'; return { hp: -5, log: '火矢は兵糧庫の屋根を焦がすに留まったが、敵陣は大混乱に陥り、夜通し火の番に追われた。'};}},
+                    { text: '危険な役目と見て断り、通常の警備に就く', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: 'その夜、志願した若い兵が潜入したきり戻らなかった。あなたは静かに、その名を胸に刻んだ。'};}}
+            ]}
         ];
 
         const FUGITIVE_EVENTS = [
@@ -1172,7 +1250,118 @@
                 choices: [
                     { text: '温もりを胸にしまい、今日も歩き続ける', condition: () => true, hint: '運上昇・小回復', effect: (s) => { s.luck += 12; return { hp: 3, log: '帰れぬ場所の温もりが、逆に足を前へ進ませる。捨てたのではなく、抱えたまま歩くのだ。' }; } },
                     { text: '未練を断ち切り、冷徹に前だけを見る', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 12; return { hp: 0, log: '夢の残り香を振り払い、鋭く研ぎ澄まされた頭で今日の糧と寝床を計算する。感傷に浸る暇など、持たざる者にはない。' }; } }
-                ] }
+                ] },
+            { id: 'peasant_kenchi', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'peasant' && !s.flags.kenchi,
+                title: '【農村】厳しい検地', text: '領主の代替わりに伴い、厳しい検地の一行が村へ入った。田の面積と収穫量を測り直し、年貢を決め直すという。村人たちは固唾を飲んで見守っている。',
+                choices: [
+                    { text: '収穫の一部を山に隠し、年貢を誤魔化す', condition: () => true, hint: '運で判定・失敗で体力減少', effect: (s) => {
+                            s.flags.kenchi = true;
+                            if (Math.random() < 0.5 + (s.luck * 0.003)) { recordChronology("検地を誤魔化し、隠し米を確保する"); return { money: 80, hp: 0, log: '検地役人の目を盗み、隠し田の収穫を山小屋へ運び込んだ。この米が冬を越す命綱になる。'};}
+                            else { s.karma += 10; return { hp: -25, log: '隠し田が見つかった！鞭打たれ、村中の晒し者となった。痛みと屈辱が骨身に染みる。'};}
+                    }},
+                    { text: '正直にすべてを申告し、情けにすがる', condition: () => true, hint: '人徳上昇・銭減少', effect: (s) => { s.flags.kenchi = true; s.virtue += 15; return { money: -50, hp: 0, log: '正直に収穫を申告した。検地役人は正直さに免じて、幾らか年貢を負けてくれた。'};}},
+                    { text: '検地の測り方の裏をかき、田を狭く見せる', condition: (s) => s.strategy >= 30, hint: '知略・銭獲得', effect: (s) => { s.flags.kenchi = true; s.strategy += 15; recordChronology("検地の裏をかき、年貢を軽くする"); return { money: 60, hp: 0, log: '縄の結び目と歩幅の癖を見抜き、田を実測より狭く申告させた。役人は終ぞ気づかなかった。'};}}
+            ]},
+            { id: 'peasant_water', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'peasant',
+                title: '【農村】用水路の争い', text: '日照りが続き、川上村と川下村の間で用水路の水を巡る争いが激しくなってきた。鍬を手にした男たちが、水門の前で睨み合っている。',
+                choices: [
+                    { text: '力ずくで水門を守り抜く', condition: () => true, hint: '武功上昇・負傷リスク', effect: (s) => { s.valor += 15; return { hp: -15, log: '乱闘の末、水門を守り抜いた。田に水が戻ったが、体中あざだらけになった。'};}},
+                    { text: '両村の間に入り、水を分け合う約定を結ぶ', condition: (s) => s.virtue >= 30, hint: '人徳大幅上昇', effect: (s) => { s.virtue += 25; recordChronology("用水路の争いを調停し、両村から感謝される"); return { hp: 0, log: '番ごとに水門を開ける約定を取り付けた。両村の長老が揃って頭を下げ、争いは収まった。'};}},
+                    { text: '夜陰に紛れて水路を自村へ掘り変える', condition: () => true, hint: '悪逆・銭獲得', effect: (s) => { s.karma += 15; return { money: 40, hp: 0, log: '一夜で水路を掘り変え、自村の田だけが潤った。川下村の恨み声は、聞かぬふりをした。'};}}
+            ]},
+            { id: 'merchant_rice_market', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'merchant' && s.money >= 100,
+                title: '【相場】米相場の大博打', text: '凶作の噂が広がり、米相場が乱高下している。今買い占めれば大儲けの好機だが、外せば蔵ひとつ分の損では済まない。',
+                choices: [
+                    { text: '全財産に近い銭を投じ、米を買い占める', condition: (s) => s.money >= 200, hint: '運で判定・大儲けか大損か', effect: (s) => {
+                            if (Math.random() < 0.45 + (s.luck * 0.003)) { recordChronology("米相場の大博打に勝利し、莫大な富を得る"); return { money: 300, hp: 0, log: '噂は真実だった！米価は跳ね上がり、買い占めた米は莫大な銭に化けた。大博打は大勝利に終わった！'};}
+                            else { return { money: -200, hp: -10, log: '豊作の報が届き、米価は暴落した。買い占めた米は二束三文。目の前が真っ暗になった……。'};}
+                    }},
+                    { text: '堅実に小口の取引を積み重ねる', condition: () => true, hint: '銭・知略上昇', effect: (s) => { s.strategy += 10; return { money: 80, hp: 0, log: '相場の波に乗りすぎず、小さな利を確実に積み上げた。商いは堅実さが身上である。'};}},
+                    { text: '相場には手を出さず、静観する', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '人の不幸につけ込む商いは好まぬと、手を引いた。同業の商人たちが、静かな敬意を寄せた。'};}}
+            ]},
+            { id: 'merchant_fire', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'merchant',
+                title: '【商い】蔵の火事', text: '深夜、店の蔵から火の手が上がった！商品と銭が詰まった蔵が燃えている。町衆が集まり始めたが、このままでは全焼しかねない。',
+                choices: [
+                    { text: '身を挺して蔵へ飛び込み、品々を運び出す', condition: () => true, hint: '体力大減少・銭を守る', effect: (s) => { return { money: 100, hp: -25, log: '煙に巻かれながらも、高価な品々を運び出し続けた。火傷は負ったが、商いの元手は守り抜いた！'};}},
+                    { text: '町衆に銭を配り、消火の手伝いを募る', condition: (s) => s.money >= 100, hint: '銭減少・人徳上昇', effect: (s) => { s.virtue += 20; return { money: -100, hp: 0, log: '銭の力で町衆総出の消火となった。蔵は半焼で済み、あなたの決断の速さが評判になった。'};}},
+                    { text: '命あっての物種と、蔵を諦めて見守る', condition: () => true, hint: '銭大減少', effect: (s) => { return { money: -250, hp: 0, log: '蔵は一夜で灰となった。蓄えた財産の大半を失ったが、命と家族は無事だった。それだけが救いだ。'};}}
+            ]},
+            { id: 'bandit_purge', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'bandit',
+                title: '【討伐】官軍の掃討作戦', text: 'あんた達野盗への風当たりが強くなり、領主の討伐隊が山へ入ったとの報が届いた。足軽を中心とした手勢は、山塞を包囲しつつある。',
+                choices: [
+                    { text: '山塞に立てこもり、討伐隊を迎え撃つ', condition: () => true, hint: '武功上昇・負傷リスク', effect: (s) => { s.valor += 20; return { hp: -25, log: '地の利を活かして討伐隊を何度も退けた。山塞は守り切ったが、体は傷だらけになった。'};}},
+                    { text: '財宝を抱えて山を捨て、他国へ逃れる', condition: () => true, hint: '銭獲得・体力小減少', effect: (s) => { return { money: 60, hp: -10, log: '夜陰に乗じて山塞を抜け出した。蓄えた財は抱えたが、縄張りは失った。根無し草の逃避行が始まる。'};}},
+                    { text: '裏の抜け道から討伐隊の背後を襲う', condition: (s) => s.karma >= 40, hint: '悪逆・武功上昇', effect: (s) => { s.karma += 15; s.valor += 20; recordChronology("討伐隊を返り討ちにし、悪名を轟かせる"); return { hp: -20, log: '油断した討伐隊の背後から襲いかかった！壊滅した討伐隊の生き残りが、あなたの悪名を国中へ広めるだろう。'};}}
+            ]},
+            { id: 'bandit_betrayal', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'bandit',
+                title: '【裏山】手下の裏切り', text: '手下の一人が討伐隊と内通し、山塞の内情を売ったらしい。証拠はまだ掴めていないが、山塞の空気は疑心暗鬼に満ちている。',
+                choices: [
+                    { text: '見せしめとして、疑わしい者を粛清する', condition: () => true, hint: '悪逆・武功上昇', effect: (s) => { s.karma += 20; s.valor += 15; return { hp: 0, log: '裏切り者は山の掟に従って処分された。手下たちの背筋が伸び、山塞に静けさが戻った。'};}},
+                    { text: '内通の証拠を掴み、逆に討伐隊を罠にかける', condition: (s) => s.strategy >= 30, hint: '知略大幅上昇', effect: (s) => { s.strategy += 25; recordChronology("裏切り者を逆用し、討伐隊を罠にかける"); return { hp: 0, log: '内通者に偽の情報を流し続け、討伐隊を袋の鼠にした。裏切りは、最高の武器に変わった。'};}},
+                    { text: '銭を持たせて穏便に追放する', condition: () => true, hint: '銭減少・人徳上昇', effect: (s) => { s.virtue += 10; return { money: -80, hp: 0, log: '長年仕えた手下だ。銭を持たせ、山を下りさせた。二度と顔を見せるなと、それだけを言って。'};}}
+            ]},
+            { id: 'ronin_bodyguard', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'ronin',
+                title: '【用心棒】護衛の依頼', text: '旅の商人が、街道の賊を恐れて用心棒を探している。腕の立つ浪人と聞き、あなたの元へ護衛の依頼が舞い込んだ。',
+                choices: [
+                    { text: '護衛を引き受け、街道の賊を退ける', condition: (s) => s.valor >= 30, hint: '武功・銭獲得', effect: (s) => { s.valor += 20; recordChronology("商人の護衛を果たし、街道に名を残す"); return { money: 120, hp: -10, log: '案の定、賊が襲ってきたが、ことごとく斬り伏せた。商人は感謝し、約束以上の謝礼を置いていった。'};}},
+                    { text: '前金だけ受け取り、途中で姿を消す', condition: () => true, hint: '悪逆・銭獲得', effect: (s) => { s.karma += 20; return { money: 60, hp: 0, log: '前金を懐に入れ、夜のうちに宿を抜け出した。商人のその後は知らない。浪人の自由とは、そういうものだ。'};}},
+                    { text: '危険と見て、依頼を丁重に断る', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '勝てぬ喧嘩は買わぬが流儀だ。商人には別の腕利きを紹介し、静かにその場を辞した。'};}}
+            ]},
+            { id: 'ronin_dojo', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'ronin',
+                title: '【浪人】道場破りの挑戦', text: '町の剣術道場に、腕自慢の道場破りが現れた。師範が負傷して不在の中、若い門弟たちが震えている。流れ者のあなたに、白羽の矢が立った。',
+                choices: [
+                    { text: '代稽古として道場破りの挑戦を受ける', condition: (s) => s.valor >= 40, hint: '武功で判定', effect: (s) => {
+                            if (Math.random() < 0.5 + (s.valor * 0.002)) { s.valor += 35; recordChronology("道場破りを打ち破り、町に武勇を轟かせる"); return { money: 100, hp: -10, log: '真剣勝負の末、道場破りを打ち破った！道場から手厚い礼を受け、その武勇は町中の噂となった。'};}
+                            else { return { hp: -25, log: '道場破りの腕は本物だった。打ちのめされ、道場の土に伏した。屈辱が傷より痛む……。'};}
+                    }},
+                    { text: '試合を見物し、道場破りの技を盗む', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 20; return { hp: 0, log: '一歩引いて勝負の全てを見届けた。道場破りの太刀筋の癖は、余すことなく頭に刻まれた。'};}},
+                    { text: '道場主と語らい、門弟たちに剣の道を説く', condition: () => true, hint: '人徳・知略上昇', effect: (s) => { s.virtue += 15; s.strategy += 10; return { hp: 0, log: '勝負より大切なものを説いた。門弟たちの目に光が宿り、道場破りも静かに頭を下げて去っていった。'};}}
+            ]},
+            { id: 'kuge_kemari', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'kuge',
+                title: '【宮中】蹴鞠の宴', text: '宮中では帝も臨席される蹴鞠の宴が開かれる。鞠の腕前はそのまま公家としての評価に繋がる、雅にして苛烈な舞台だ。',
+                choices: [
+                    { text: '華麗な鞠さばきで帝の目に留まる', condition: () => true, hint: '人徳上昇・褒美', effect: (s) => { s.virtue += 25; recordChronology("蹴鞠の宴で帝の目に留まる"); return { money: 50, hp: 0, log: '鞠は一度も地に落ちることなく舞い続けた。帝から直々に褒美を賜り、宮中での株は大きく上がった。'};}},
+                    { text: '実力者の顔を立てる見事な連携を見せる', condition: (s) => s.strategy >= 30, hint: '知略・人徳上昇', effect: (s) => { s.strategy += 20; s.virtue += 10; return { hp: 0, log: '自分の見せ場を抑え、要の公卿へ見事な鞠を繋いだ。その心配りは、しかと目に留まったようだ。'};}},
+                    { text: '雅な遊びに興じ、日が暮れるまで鞠を蹴る', condition: () => true, hint: '小回復・人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 10, log: '戦乱を忘れ、雅な一日に心身が解れた。たまにはこういう日も悪くない。'};}}
+            ]},
+            { id: 'kuge_seating', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'kuge',
+                title: '【宮中】席次争いの雅な戦い', text: '朝廷の儀式を前に、公家同士の席次を巡る静かな争いが水面下で激しくなっている。席の上下は、そのまま家の格を決めるのだ。',
+                choices: [
+                    { text: '家の格を毅然と主張し、上席を勝ち取る', condition: () => true, hint: '人徳・知略上昇', effect: (s) => { s.virtue += 15; s.strategy += 10; return { hp: -5, log: '微笑を崩さぬまま、言葉の剣で相手を退けた。宮中の戦いは、血こそ流れぬが容赦がない。'};}},
+                    { text: '席を譲り、円満に収める雅量を見せる', condition: (s) => s.virtue >= 40, hint: '人徳大幅上昇', effect: (s) => { s.virtue += 25; recordChronology("席次争いを雅量で収め、宮中の評判を得る"); return { hp: 0, log: '席を譲るあなたの雅量に、居並ぶ公家たちは感嘆した。失った席以上に、得た評判は大きい。'};}},
+                    { text: '根回しを重ね、裏から席次を操作する', condition: () => true, hint: '悪逆・知略上昇', effect: (s) => { s.karma += 15; s.strategy += 20; return { hp: 0, log: '儀式の当日、席次表は何者かの手で書き換えられていた。あなたの席は、上座の真ん中だった。'};}}
+            ]},
+            { id: 'daimyo_rebellion', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'daimyo' && !s.flags.rebellionSign,
+                title: '【内憂】家臣の謀反の兆し', text: '信頼していたはずの重臣の一人が、他国と密かに通じているとの密報が入った。証拠はまだ薄いが、火種は確かにくすぶっている。',
+                choices: [
+                    { text: '兆しの段階で粛清し、芽を摘み取る', condition: () => true, hint: '悪逆上昇・人徳減少', effect: (s) => { s.flags.rebellionSign = true; s.karma += 25; s.virtue -= 10; s.valor += 10; return { hp: 0, log: '密報の段階で重臣一族を粛清した。謀反は未然に防がれたが、家中には重い沈黙が残った。'};}},
+                    { text: '証拠を固めてから、一網打尽にする', condition: (s) => s.strategy >= 40, hint: '知略・悪逆上昇', effect: (s) => { s.flags.rebellionSign = true; s.strategy += 25; s.karma += 10; recordChronology("家臣の謀反を未然に暴き、粛清する"); return { hp: 0, log: '内通の文まで押さえ、雷のような粛清を断行した。その手際は、家中への何よりの見せしめとなった。'};}},
+                    { text: '恩賞と領地で懐柔し、不満を解消する', condition: () => true, hint: '銭減少・人徳上昇', effect: (s) => { s.flags.rebellionSign = true; s.virtue += 20; return { money: -200, hp: 0, log: '重臣に新たな領地と恩賞を与えた。不満は水に流され、謀反の火種は静かに消えた。'};}}
+            ]},
+            { id: 'daimyo_alliance', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'daimyo' && !s.flags.alliance,
+                title: '【領国】同盟の縁組', text: '隣国の大名から、娘を嫁がせたいとの申し出があった。縁組が成れば同盟は固くなるが、他国との関係は微妙になる。',
+                choices: [
+                    { text: '縁組を受け入れ、同盟を固める', condition: () => true, hint: '人徳・銭・知略上昇', effect: (s) => { s.flags.alliance = true; s.virtue += 15; s.strategy += 10; recordChronology("隣国との縁組により同盟を結ぶ"); return { money: 150, hp: 0, log: '盛大な婚儀が執り行われ、両国の同盟は盤石となった。結納の品々が蔵を満たした。'};}},
+                    { text: '婚儀を領民総出の祭りとし、慶びを分け与える', condition: (s) => s.virtue >= 30, hint: '人徳大幅上昇・銭減少', effect: (s) => { s.flags.alliance = true; s.virtue += 25; return { money: -100, hp: 0, log: '婚儀の日、城下は祭りの賑わいに包まれた。領民の忠誠は深まり、同盟の使者も感嘆して帰った。'};}},
+                    { text: '縁組を断り、独立独歩を貫く', condition: () => true, hint: '武功・悪逆上昇', effect: (s) => { s.flags.alliance = true; s.valor += 20; s.karma += 10; return { hp: 0, log: '丁重に、しかし断固として縁組を断った。どの国にも与しない。その姿勢が、かえって諸国の警戒を招くかもしれない。'};}}
+            ]},
+            { id: 'ashigaru_credit', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'ashigaru',
+                title: '【陣中】手柄の横取り', text: '合戦で討ち取ったはずの敵の首を、組頭が自分の手柄として報告してしまった。恩賞は目前で他人へ渡ろうとしている。',
+                choices: [
+                    { text: '自分の手柄だと、声を上げて主張する', condition: () => true, hint: '武功上昇・人徳減少', effect: (s) => { s.valor += 20; s.virtue -= 10; return { hp: 0, log: '首実検の場で堂々と主張し、手柄を取り戻した。だが組頭との溝は、深く残った。'};}},
+                    { text: '手柄を譲り、組頭の覚えを良くする', condition: (s) => s.virtue >= 20, hint: '人徳・銭獲得', effect: (s) => { s.virtue += 20; return { money: 30, hp: 0, log: '手柄は譲った。だが組頭は借りを忘れず、後日こっそりと礼の銭を握らせてきた。出世の道は、意外なところに開ける。'};}},
+                    { text: '証人を集め、事実を明らかにする', condition: () => true, hint: '知略・武功上昇', effect: (s) => { s.strategy += 15; s.valor += 10; return { hp: 0, log: '共に戦った兵たちを証人に立てた。事実は明らかとなり、手柄も恩賞も正しく戻ってきた。'};}}
+            ]},
+            { id: 'ashigaru_appeal', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'ashigaru',
+                title: '【陣中】恩賞の直訴', text: '度重なる戦働きにもかかわらず、恩賞の沙汰が一向にない。このままでは、命を懸けた日々が報われないままだ。',
+                choices: [
+                    { text: '主君への目通りを願い出て、直訴する', condition: () => true, hint: '運で判定', effect: (s) => {
+                            if (Math.random() < 0.4 + (s.luck * 0.003)) { s.valor += 10; recordChronology("恩賞の直訴が認められ、名が知られる"); return { money: 150, hp: 0, log: '直訴は聞き届けられた！思わぬ厚い恩賞と共に、主君に名を覚えられる栄誉まで得た。'};}
+                            else { s.karma += 5; return { hp: -15, log: '身の程知らずと叱責され、門前で打ち据えられた。理不尽だが、これが足軽の現実だった……。'};}
+                    }},
+                    { text: '組頭を通じて、正式に恩賞を申請する', condition: () => true, hint: '銭獲得', effect: (s) => { return { money: 60, hp: 0, log: '順を追った申請は滞りなく通り、相応の恩賞が下された。派手さはないが、確実な実りだ。'};}},
+                    { text: '恩賞など当てにせず、次の戦に備えて腕を磨く', condition: () => true, hint: '武功上昇・小回復', effect: (s) => { s.valor += 15; return { hp: 5, log: '不満は胸にしまい、槍を研いだ。いずれ、この腕が正当に評価される日が来るはずだ。'};}}
+            ]}
         ];
 
         const AGE_EVENTS = [
@@ -2097,6 +2286,14 @@
             stopAutoPlay(); advanceGame();
         };
 
+        // 戦場の経過表示：13ヶ月目→「1年1ヶ月目」のように年＋月で表す
+        function formatBattlePeriod(turn) {
+            const t = Math.max(1, turn || 1);
+            const y = Math.floor((t - 1) / 12);
+            const m = ((t - 1) % 12) + 1;
+            return y > 0 ? `${y}年${m}ヶ月` : `${m}ヶ月`;
+        }
+
         function advanceGame() {
             if (!state.isAlive || isWaitingForChoice || isProcessing) return;
             isProcessing = true;
@@ -2124,7 +2321,7 @@
                     }
                 } else {
                     state.modeTurn++;
-                    const isRandomEvent = Math.random() < 0.5;
+                    const isRandomEvent = Math.random() < 0.65;
                     
                     if (isRandomEvent) {
                         triggerEvent();
@@ -2179,7 +2376,12 @@
                 pool = [ { text: '遠くに見える追手の松明の灯りを避け、冷たく湿った洞窟でガタガタと震えながら一夜を明かした。', hp: -3 }, { text: '獣のように這いつくばって野イチゴや木の根を掘り、泥ごと食べて空腹を紛らわせた。', hp: 1 }, { text: '足の裏が破れて血が滲むのも構わず、人里離れた険しい山道をひたすら歩き続けた。', hp: -2 } ];
             }
 
-            const item = pool[Math.floor(Math.random() * pool.length)];
+            let item = pool[Math.floor(Math.random() * pool.length)];
+            if (pool.length > 1 && state.flags.lastAmbientText === item.text) {
+                const alt = pool.filter(x => x.text !== item.text);
+                if (alt.length > 0) item = alt[Math.floor(Math.random() * alt.length)];
+            }
+            state.flags.lastAmbientText = item.text;
             const hpDiff = item.hp || 0; let moneyDiff = item.money || 0;
             // v11: yearly small expenses never push money below 0 (rewrite to effective diff so tags match)
             if (moneyDiff < 0) moneyDiff = -Math.min(state.money, -moneyDiff);
@@ -2197,7 +2399,7 @@
             const statStr = tag.length > 0 ? `<span class="text-[10px] text-gray-500 ml-1">(${tag.join(', ')})</span>` : '';
             
             let tagHeader = `<span class="font-bold text-gray-500">【${state.age}歳】</span>`;
-            if (state.mode === 'battle') tagHeader = `<span class="font-bold text-red-400">【${state.age}歳: 戦場 ${state.modeTurn}ヶ月目】</span>`;
+            if (state.mode === 'battle') tagHeader = `<span class="font-bold text-red-400">【${state.age}歳: 戦場 ${formatBattlePeriod(state.modeTurn)}目】</span>`;
             else if (state.mode === 'fugitive') tagHeader = `<span class="font-bold text-gray-400">【${state.age}歳: 逃亡 ${state.modeTurn}日目】</span>`;
 
             addLog(`${tagHeader} ${item.text}${statStr}`);
@@ -2209,7 +2411,7 @@
             const textContent = typeof ev.text === 'function' ? ev.text(state) : ev.text;
 
             let ageText = `【${state.age}歳】`;
-            if (state.mode === 'battle') ageText = `【${state.age}歳: 戦場 ${state.modeTurn || 1}ヶ月目】`;
+            if (state.mode === 'battle') ageText = `【${state.age}歳: 戦場 ${formatBattlePeriod(state.modeTurn)}目】`;
             else if (state.mode === 'fugitive') ageText = `【${state.age}歳: 逃亡 ${state.modeTurn || 1}日目】`;
 
             const card = document.createElement('div'); card.className = 'event-active-card';
