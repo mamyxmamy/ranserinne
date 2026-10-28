@@ -273,7 +273,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 22</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 26</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -339,6 +339,13 @@
                     </button>
                     <button type="button" onclick="window.openHistory(event)" class="action-button-main bg-black/50 text-gray-400 hover:text-white border border-[#3A322A] py-2.5 text-xs font-bold tracking-widest rounded-sm transition-all">
                         輪廻の回想
+                    </button>
+
+                    <button type="button" onclick="window.openMemoryExport(event)" class="action-button-main bg-black/50 text-gray-400 hover:text-white border border-[#3A322A] py-2.5 text-xs font-bold tracking-widest rounded-sm transition-all">
+                        キオク書き出し
+                    </button>
+                    <button type="button" onclick="window.openMemoryImport(event)" class="action-button-main bg-black/50 text-gray-400 hover:text-white border border-[#3A322A] py-2.5 text-xs font-bold tracking-widest rounded-sm transition-all">
+                        キオク読み込み
                     </button>
 
                     <button type="button" onclick="window.openRanking(event)" class="col-span-2 action-button-main bg-gradient-to-b from-[#2A1F10] to-[#1A1308] text-yellow-500 hover:text-white border border-yellow-700/60 py-3 mt-1 text-xs font-bold tracking-widest rounded-sm transition-all shadow-md flex items-center justify-center gap-2">
@@ -461,6 +468,9 @@
             <button type="button" onclick="window.shareResult(false)" class="mb-3 action-button-main w-full max-w-sm bg-black border border-gray-600 text-white hover:bg-gray-900 py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all flex items-center justify-center gap-2 z-50">
                 𝕏 己の生き様を刻む
             </button>
+            <button type="button" onclick="window.openMemoryExport(event)" class="mb-3 action-button-main w-full max-w-sm bg-[#211C18] text-gold border border-gold/40 hover:bg-[#2A231D] py-2 text-xs font-bold tracking-widest rounded-sm shadow-md transition-all z-50">
+                キオクをコードに控える
+            </button>
             <button type="button" onclick="window.resetGame(event)" class="action-button-main w-full max-w-sm border-2 border-red-700 bg-red-950/80 hover:bg-red-900 text-white py-3.5 text-base font-bold tracking-widest rounded-sm transition-all active:scale-95 shadow-[0_0_15px_rgba(139,0,0,0.6)] z-50">次なる輪廻へ</button>
         </div>
 
@@ -495,6 +505,9 @@
                 
                 <button type="button" onclick="window.shareResult(true)" class="anim-slide-up mb-2 action-button-main w-full max-w-sm bg-black border border-gray-600 text-white hover:bg-gray-900 py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all flex items-center justify-center gap-2 z-30" style="animation-delay: 3.8s;">
                     𝕏 己の生き様を刻む
+                </button>
+                <button type="button" onclick="window.openMemoryExport(event)" class="anim-slide-up mb-2 action-button-main w-full max-w-sm bg-[#211C18]/90 text-gold border border-gold/40 hover:bg-[#2A231D] py-2 text-xs font-bold tracking-widest rounded-sm shadow-md transition-all z-30" style="animation-delay: 3.9s;">
+                    キオクをコードに控える
                 </button>
                 <button type="button" onclick="window.resetGame(event)" class="action-button-main w-full max-w-sm anim-slide-up border-2 border-gold bg-black text-gold hover:bg-gold hover:text-black py-3 text-base font-bold tracking-widest rounded-sm shadow-[0_0_20px_rgba(197,160,89,0.5)] active:scale-95 transition-all z-30" style="animation-delay: 4.0s;">新時代へ輪廻する</button>
             </div>
@@ -585,6 +598,25 @@
                 </section>
 
                 <section>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 身分と初期能力</h3>
+                    <p class="mb-1">五大能力値はどの身分でも0から始まります。身分によって異なるのは初期の体力と所持金のみです。ただし、忍者は知略+20・運+20、僧侶は人徳+30、公家は知略+20・人徳+10の加護を持って生まれます。</p>
+                    <ul class="list-disc pl-4 space-y-1 text-gray-400">
+                        <li>農民: 体力80／所持金5文</li>
+                        <li>足軽: 体力90／所持金15文</li>
+                        <li>商人: 体力70／所持金300文</li>
+                        <li>武将: 体力90／所持金150文</li>
+                        <li>忍者: 体力70／所持金30文</li>
+                        <li>僧侶: 体力80／所持金20文</li>
+                        <li>公家: 体力60／所持金100文</li>
+                        <li>大名: 体力100／所持金1000文</li>
+                        <li>野盗: 体力80／所持金0文</li>
+                        <li>浪人: 体力90／所持金0文</li>
+                        <li>素寒貧: 体力80／所持金0文</li>
+                    </ul>
+                    <p class="mt-1 text-gray-400">※大名・野盗・浪人・素寒貧は誕生時の抽選には含まれず、生涯の中での昇進・転落・選択によってのみなれる身分です。</p>
+                </section>
+
+                <section>
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 冥銭・商人・家宝ロスト</h3>
                     <ul class="list-disc pl-4 space-y-1">
                         <li><span class="text-purple-400 font-bold">冥銭と道具</span>: 死後に業に応じて獲得する通貨。冥府の商人で「身代わり地蔵」やステータス強化札などの持込道具（1回使い切り）と交換できます。</li>
@@ -596,14 +628,31 @@
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 絵巻図鑑と天下の番付</h3>
                     <ul class="list-disc pl-4 space-y-1">
                         <li><span class="text-gold font-bold">絵巻図鑑</span>: これまで集めた「家宝」、迎えた「死因」、そして人生の生き様によって授かる「二つ名（全50種）」がコレクションされます。</li>
-                        <li><span class="text-yellow-400 font-bold">天下の番付</span>: 全国のプレイヤーと「長寿」「富国」「武功」を競い合うオンラインランキングです。</li>
+                        <li><span class="text-gold font-bold">家宝の見方</span>: 所持中の家宝は名前と効果がそのまま表示されます。過去に手に入れたものの今は所持していない家宝は、名前と取得条件に加えて、ブロンズ色の「取得済」バッジと「（現在は未所持）」の注記が付きます。一度も手に入れていない家宝は、名前が「？？？」と伏せられ、取得条件のみが表示されます。</li>
+                        <li><span class="text-yellow-400 font-bold">天下の番付</span>: 全国のプレイヤーと「長寿」「富国」「武功」を競い合うオンラインランキングです。さらに、全能力値と享年・所持金から算出する総合成績で競う「総合」番付もあります。番付に表示されるのは、名前ごとに最も優れた記録だけです。</li>
                     </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 総合ランク</h3>
+                    <p>命を終えると、その一生の締めくくりとして「総合ランク」が二つ名の傍らに判子風の意匠で押されます。ランクはE・D・C・B・A・S・SS・SSSの8段階で、全能力値の合計に享年と所持金の一部を加えて算出されます。ランクは表示専用であり、冥銭や家宝といった報酬には一切影響しません。</p>
                 </section>
 
                 <section>
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 大往生と時間の流れ</h3>
                     <p>享年60歳に達すると「大往生」となります。大往生を10回達成するごとに寿命限界が「+5歳」延長されます。</p>
+                    <p class="mt-1">合戦モードへは、農民・足軽は【動員令】、武将は【出陣】主君の命のイベントで赴くことになります（いずれも60歳未満のときのみ）。</p>
                     <p class="text-red-300 font-bold mt-1">※合戦中や逃亡中は月・日単位で濃密に時間が流れます。</p>
+                </section>
+
+                <section>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ キオクコード（記録の引き継ぎ）</h3>
+                    <p class="mb-1">記録はお使いのブラウザの中に保存されます。ブラウザを変えたり機種変更をしたりすると、そのままでは引き継げません。タイトル画面の「キオク書き出し」で記録をコード化して控えておけば、別のブラウザで「キオク読み込み」から復元できます。死亡・大往生の結果画面からも書き出しが可能です。</p>
+                    <ul class="list-disc pl-4 space-y-1 text-gray-400">
+                        <li><strong class="text-white">コードに含まれる記録:</strong> 輪廻回数、大往生回数、所持・装備中の家宝とその取得履歴、死因図鑑、二つ名図鑑、冥銭、持込道具。</li>
+                        <li><strong class="text-white">含まれないもの:</strong> 進行中の人生そのものと、プレイヤー名。</li>
+                        <li><strong class="text-red-400">注意:</strong> 読み込むと現在のキオクはコードの内容で上書きされ、記録はコードを控えた時点の状態に戻ります。また、コードは実質的にパスワードのようなものです。他人に見せたり公開したりしないでください。</li>
+                    </ul>
                 </section>
             </div>
         </div>
@@ -614,7 +663,8 @@
                 <button type="button" onclick="window.closeRanking(event)" class="action-button-main text-gray-400 hover:text-white text-3xl px-2 leading-none">&times;</button>
             </div>
             <div class="flex border-b border-[#3A322A] bg-[#1A1613] shrink-0">
-                <button type="button" onclick="window.switchRankTab('age')" id="tab-rank-age" class="flex-1 py-3 text-xs font-bold text-gold border-b-2 border-gold transition-colors">長寿番付</button>
+                <button type="button" onclick="window.switchRankTab('total')" id="tab-rank-total" class="flex-1 py-3 text-xs font-bold text-gold border-b-2 border-gold transition-colors">総合</button>
+                <button type="button" onclick="window.switchRankTab('age')" id="tab-rank-age" class="flex-1 py-3 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">長寿番付</button>
                 <button type="button" onclick="window.switchRankTab('money')" id="tab-rank-money" class="flex-1 py-3 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">富国長者</button>
                 <button type="button" onclick="window.switchRankTab('valor')" id="tab-rank-valor" class="flex-1 py-3 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">修羅の道</button>
             </div>
@@ -641,6 +691,28 @@
                     </a>
                 </div>
                 <p class="text-gray-500 text-[10px] mt-6">※上記ボタンを押すと外部サイトへ移動します。</p>
+            </div>
+        </div>
+
+        <div id="memory-screen" class="hidden absolute inset-0 z-50 bg-[#0C0A09] flex flex-col pointer-events-auto">
+            <div class="p-3 border-b border-[#3A322A] bg-[#14110F] flex justify-between items-center shrink-0">
+                <div><h2 class="text-base font-bold text-gold tracking-widest">キオクコード</h2><p class="text-[10px] text-gray-400 mt-1">輪廻の記録をコード化して、別のブラウザへ受け継ぐための仕組み。</p></div>
+                <button type="button" onclick="window.closeMemory(event)" class="action-button-main text-gray-400 hover:text-white text-3xl px-2 leading-none">&times;</button>
+            </div>
+            <div class="flex-grow overflow-y-auto p-4 space-y-5 pb-8">
+                <section>
+                    <h3 class="text-gold font-bold text-xs mb-1.5 tracking-widest">◆ コードに書き出す</h3>
+                    <p class="text-[11px] text-gray-400 leading-relaxed mb-2">輪廻回数・大往生回数・家宝・図鑑・冥銭などの記録を1つのコードにします。メモ帳や自分のメール等に控えておけば、ブラウザを変えても読み込んで復元できます。※進行中の人生そのものは含まれません。コードは実質パスワードです。他人に見せないでください。</p>
+                    <textarea id="memory-export-text" readonly rows="4" onclick="this.select()" class="w-full bg-[#0D0B0A] border border-[#3A322A] text-gray-200 text-[10px] p-2 rounded-sm focus:outline-none focus:border-gold break-all"></textarea>
+                    <button type="button" onclick="window.copyMemoryCode(event)" class="action-button-main w-full mt-2 bg-[#211C18] hover:bg-[#2A231D] text-gold border border-gold/40 py-2.5 text-xs font-bold tracking-widest rounded-sm transition-all">コードをコピーする</button>
+                </section>
+                <section>
+                    <h3 class="text-gold font-bold text-xs mb-1.5 tracking-widest">◆ コードを読み込む</h3>
+                    <p class="text-[11px] text-gray-400 leading-relaxed mb-2">控えておいたコードを貼り付けてください。現在のキオクはコードの内容で上書きされます。</p>
+                    <textarea id="memory-import-text" rows="4" placeholder="RINNE1: から始まるコードを貼り付け" class="w-full bg-[#0D0B0A] border border-[#3A322A] text-gray-200 text-[10px] p-2 rounded-sm focus:outline-none focus:border-gold break-all placeholder-gray-600"></textarea>
+                    <button type="button" onclick="window.importMemoryCode(event)" class="action-button-main w-full mt-2 bg-[#6B1717] hover:bg-[#8B0000] text-white border border-[#A32020] py-2.5 text-xs font-bold tracking-widest rounded-sm transition-all">このコードでキオクを上書きする</button>
+                </section>
+                <p id="memory-msg" class="text-[11px] leading-relaxed"></p>
             </div>
         </div>
 
@@ -889,6 +961,13 @@
                     { text: '【銭50文】役人に賄賂を握らせ兵籍を削る', condition: (s) => s.money >= 50, hint: '安全に回避', effect: (s) => { return { money: -50, hp: 0, log: '夜の闇に乗じて役人に袖の下を渡し、徴兵を逃れた。' }; } },
                     { text: '【知略30】重病を装い、巧みに徴兵を逃れる', condition: (s) => s.strategy >= 30, hint: '無傷回避', effect: (s) => { s.strategy += 5; return { hp: 0, log: '迫真の名演技で代官を完全に信じ込ませた。' }; } },
                     { text: 'すべてを捨てて深い山中へ逃走する', condition: () => true, hint: '逃亡者になる・カルマ上昇', effect: (s) => { s.mode = 'fugitive'; s.karma += 10; s.virtue -= 10; recordChronology("兵役を逃れ逃亡生活を始める"); return { hp: -10, log: '家も土地もすべて捨て、追っ手の矢を避けながら姿を消した。' }; } }
+                ] },
+            { id: 'bushou_draft', mode: ['normal'], weight: 30, condition: (s) => s.classInfo.id === 'bushou' && s.age < 60,
+                title: '【出陣】主君の命', text: '主君からの使者が馬を飛ばしてやって来た。「隣国との合戦が近い。直ちに支度を整え、陣に加われ」――武将の本分が試される時が来た。',
+                choices: [
+                    { text: '命を受け、手勢を率いて戦場へ向かう', condition: () => true, hint: '戦場へ移行・武功獲得', effect: (s) => { s.mode = 'battle'; s.valor += 10; recordChronology("主君の命を受け出陣する"); return { hp: 0, log: '鎧を纏い手勢を率いて戦場へと馬を進めた。今こそ武功を立てる時だ！' }; } },
+                    { text: '城の留守を預かり、守りを固める', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 5; return { hp: 0, log: '出陣する同輩を見送り、城の修繕と兵糧の備蓄に精を出した。城を守り抜くこともまた武士の務めである。' }; } },
+                    { text: '【知略30】病と偽って出陣を辞退する', condition: (s) => s.strategy >= 30, hint: '知略で判定・発覚すれば主君の不興', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.strategy * 0.007))) { s.strategy += 5; return { hp: 0, log: '重い病に倒れたと装い、使者を完全に信じ込ませた。出陣は免れたが、胸の奥に小さな疼きが残る。' }; } s.virtue -= 10; s.karma += 5; recordChronology("偽病で出陣を逃れ主君の不興を買う"); return { hp: 0, log: '仮病はたちまち見抜かれた。主君の不興を買い、家中での立場を悪くしてしまった。' }; } }
                 ] },
             { id: 'famine', mode: ['normal', 'fugitive'], weight: 20, condition: () => true,
                 title: '【飢饉】天変地異の飢餓', text: '残酷なまでの日照りと長雨が続き、今年の作物は完全に根腐れを起こした。',
@@ -1987,10 +2066,119 @@
         window.openHelp = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } document.getElementById('help-screen').classList.remove('hidden'); };
         window.closeHelp = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } document.getElementById('help-screen').classList.add('hidden'); };
 
+        // ===== v23: キオクコード（メタ進行のみをコード化して別ブラウザへ受け継ぐ） =====
+        const MEMORY_CODE_KEYS = [
+            'sengoku_rinne_count', 'sengoku_great_death_count',
+            'sengoku_unlocked_heirlooms', 'sengoku_heirloom_history', 'sengoku_equipped_heirlooms',
+            'sengoku_unlocked_deaths', 'sengoku_unlocked_titles',
+            'sengoku_meisen', 'sengoku_inventory', 'sengoku_active_consumable'
+        ];
+        const MEMORY_CODE_NUM_KEYS = ['sengoku_rinne_count', 'sengoku_great_death_count', 'sengoku_meisen'];
+        const MEMORY_CODE_JSON_KEYS = ['sengoku_unlocked_heirlooms', 'sengoku_heirloom_history', 'sengoku_equipped_heirlooms', 'sengoku_unlocked_deaths', 'sengoku_unlocked_titles', 'sengoku_inventory', 'sengoku_active_consumable'];
+
+        function memoryCodeChecksum(s) {
+            let h = 5381;
+            for (let i = 0; i < s.length; i++) { h = ((h * 33) + s.charCodeAt(i)) >>> 0; }
+            return (s.length % 997).toString(36) + '-' + h.toString(36);
+        }
+        function memoryCodeB64Encode(str) {
+            const bytes = new TextEncoder().encode(str);
+            let bin = '';
+            const CHUNK = 0x8000;
+            for (let i = 0; i < bytes.length; i += CHUNK) { bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK)); }
+            return btoa(bin);
+        }
+        function memoryCodeB64Decode(b64) {
+            const bin = atob(b64);
+            const bytes = new Uint8Array(bin.length);
+            for (let i = 0; i < bin.length; i++) { bytes[i] = bin.charCodeAt(i); }
+            return new TextDecoder().decode(bytes);
+        }
+        window.buildMemoryCode = function() {
+            const data = {};
+            MEMORY_CODE_KEYS.forEach(k => { data[k] = localStorage.getItem(k); });
+            const b64 = memoryCodeB64Encode(JSON.stringify({ app: 'ranserinne-memory', v: 1, data: data }));
+            return 'RINNE1:' + b64 + ':' + memoryCodeChecksum(b64);
+        };
+        window.parseMemoryCode = function(code) {
+            if (typeof code !== 'string') return null;
+            const parts = code.replace(/\s+/g, '').split(':');
+            if (parts.length !== 3 || parts[0] !== 'RINNE1') return null;
+            const b64 = parts[1];
+            if (!/^[A-Za-z0-9+/=]+$/.test(b64)) return null;
+            if (memoryCodeChecksum(b64) !== parts[2]) return null;
+            let obj = null;
+            try { obj = JSON.parse(memoryCodeB64Decode(b64)); } catch (e) { return null; }
+            if (!obj || obj.app !== 'ranserinne-memory' || obj.v !== 1 || !obj.data || typeof obj.data !== 'object') return null;
+            const data = obj.data;
+            for (const k of Object.keys(data)) { if (MEMORY_CODE_KEYS.indexOf(k) === -1) return null; }
+            for (const k of MEMORY_CODE_KEYS) {
+                const v = data[k];
+                if (v === undefined || v === null) continue;
+                if (typeof v !== 'string') return null;
+                if (MEMORY_CODE_NUM_KEYS.indexOf(k) !== -1 && !/^\d+$/.test(v)) return null;
+                if (MEMORY_CODE_JSON_KEYS.indexOf(k) !== -1) { try { JSON.parse(v); } catch (e) { return null; } }
+            }
+            return data;
+        };
+        window.openMemoryExport = function(e) {
+            if(e){ e.preventDefault(); e.stopPropagation(); }
+            document.getElementById('memory-screen').classList.remove('hidden');
+            const ta = document.getElementById('memory-export-text');
+            ta.value = window.buildMemoryCode();
+            const msg = document.getElementById('memory-msg');
+            msg.textContent = ''; msg.className = 'text-[11px] leading-relaxed';
+            setTimeout(function() { try { ta.focus(); ta.select(); } catch (err) {} }, 50);
+        };
+        window.openMemoryImport = function(e) {
+            if(e){ e.preventDefault(); e.stopPropagation(); }
+            document.getElementById('memory-screen').classList.remove('hidden');
+            document.getElementById('memory-export-text').value = window.buildMemoryCode();
+            const msg = document.getElementById('memory-msg');
+            msg.textContent = ''; msg.className = 'text-[11px] leading-relaxed';
+            const imp = document.getElementById('memory-import-text');
+            setTimeout(function() { try { imp.focus(); imp.scrollIntoView({ block: 'center' }); } catch (err) {} }, 50);
+        };
+        window.closeMemory = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } document.getElementById('memory-screen').classList.add('hidden'); };
+        window.copyMemoryCode = async function(e) {
+            if(e){ e.preventDefault(); e.stopPropagation(); }
+            const ta = document.getElementById('memory-export-text');
+            const msg = document.getElementById('memory-msg');
+            try { ta.focus(); ta.select(); } catch (err) {}
+            let ok = false;
+            try { await navigator.clipboard.writeText(ta.value); ok = true; } catch (err) {}
+            if (!ok) { try { ok = document.execCommand('copy'); } catch (err) {} }
+            msg.textContent = ok ? 'コードをコピーしました。メモ帳や自分のメールなどに大切に保管してください。' : 'コピーできませんでした。コード全体を長押しで選択してコピーしてください。';
+            msg.className = ok ? 'text-[11px] leading-relaxed text-green-400' : 'text-[11px] leading-relaxed text-red-400';
+        };
+        window.importMemoryCode = function(e) {
+            if(e){ e.preventDefault(); e.stopPropagation(); }
+            const msg = document.getElementById('memory-msg');
+            const data = window.parseMemoryCode(document.getElementById('memory-import-text').value);
+            if (!data) {
+                msg.textContent = 'コードが正しくありません。欠けや改変がないか確認してください。（現在のキオクは変更されていません）';
+                msg.className = 'text-[11px] leading-relaxed text-red-400';
+                return;
+            }
+            if (!window.confirm('このコードで現在のキオク（輪廻回数・大往生回数・家宝・図鑑・冥銭など）を上書きします。よろしいですか？')) return;
+            try {
+                MEMORY_CODE_KEYS.forEach(k => {
+                    const v = data[k];
+                    if (v === undefined || v === null) localStorage.removeItem(k);
+                    else localStorage.setItem(k, v);
+                });
+            } catch (err) {
+                msg.textContent = '書き込みに失敗しました。ブラウザの空き容量や設定を確認してください。（キオクは変更されていない可能性があります）';
+                msg.className = 'text-[11px] leading-relaxed text-red-400';
+                return;
+            }
+            location.reload();
+        };
+
         window.openRanking = function(e) {
             if(e){ e.preventDefault(); e.stopPropagation(); }
             document.getElementById('ranking-screen').classList.remove('hidden');
-            window.switchRankTab('age');
+            window.switchRankTab('total');
         };
         window.closeRanking = function(e) {
             if(e){ e.preventDefault(); e.stopPropagation(); }
@@ -1998,7 +2186,7 @@
         };
 
         window.switchRankTab = async function(type) {
-            ['age', 'money', 'valor'].forEach(t => {
+            ['total', 'age', 'money', 'valor'].forEach(t => {
                 const el = document.getElementById(`tab-rank-${t}`);
                 if(t === type) { el.className = "flex-1 py-3 text-xs font-bold text-gold border-b-2 border-gold transition-colors"; } 
                 else { el.className = "flex-1 py-3 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors"; }
@@ -2012,21 +2200,33 @@
                 const appId = 'sengoku-life-app';
                 const boardRef = db.collection('artifacts').doc(appId).collection('leaderboard');
                 // v12: 番付の独占対策。取得件数を多めに取り（プレイヤー名ごとの重複を排除した後でも上位30件を確保するため）、
-                // プレイヤー名ごとに現在のタブ指標（age/money/valor）での最良記録だけを残してから上位30件を表示する。
+                // プレイヤー名ごとに現在のタブ指標での最良記録だけを残してから上位30件を表示する。
                 // データ自体は変更しない、表示側だけの処理。同名の記録は同一プレイヤーとして扱う。
-                const snapshot = await boardRef.orderBy(type, 'desc').limit(150).get();
+                // v26: 総合タブの指標は calculateLifeRank のスコア（サーバー側で並べ替えできないため新着順に取得し表示側で算出）。
+                // karma/luck/strategy/virtue をすべて持つ記録だけを総合の対象とし、旧記録は総合に出さない（他タブには影響しない）。
+                const isTotal = (type === 'total');
+                const metricOf = (data) => {
+                    if (!isTotal) return Number(data[type]) || 0;
+                    if (typeof data.karma !== 'number' || typeof data.luck !== 'number' || typeof data.strategy !== 'number' || typeof data.virtue !== 'number') return null;
+                    return calculateLifeRank(data).score;
+                };
+                const snapshot = isTotal
+                    ? await boardRef.orderBy('timestamp', 'desc').limit(150).get()
+                    : await boardRef.orderBy(type, 'desc').limit(150).get();
 
                 const allRecords = [];
                 snapshot.forEach(doc => { allRecords.push(doc.data()); });
                 const bestByName = new Map();
                 allRecords.forEach(data => {
+                    const metric = metricOf(data);
+                    if (metric === null) return;
                     const nameKey = data.playerName || '名無し';
-                    if (!bestByName.has(nameKey) || (Number(data[type]) || 0) > (Number(bestByName.get(nameKey)[type]) || 0)) {
+                    if (!bestByName.has(nameKey) || metric > metricOf(bestByName.get(nameKey))) {
                         bestByName.set(nameKey, data);
                     }
                 });
                 const records = Array.from(bestByName.values())
-                    .sort((a, b) => (Number(b[type]) || 0) - (Number(a[type]) || 0))
+                    .sort((a, b) => metricOf(b) - metricOf(a))
                     .slice(0, 30);
 
                 let html = '';
@@ -2041,6 +2241,7 @@
                     else if(rank === 3) { rankStyle = 'text-orange-400 text-lg'; rankIcon = '🥉'; bgStyle = 'bg-gradient-to-r from-orange-900/30 to-[#181513] border-orange-800/50'; }
 
                     let scoreText = '';
+                    if(type === 'total') { const lr = calculateLifeRank(data); scoreText = `総合 <strong class="text-gold text-xl">${lr.score}</strong> <span class="text-xs">点</span> <span class="text-[10px] font-bold text-yellow-200 bg-yellow-900/50 border border-yellow-700/50 px-1 py-0.5 rounded align-middle">${lr.rank}ランク</span>`; }
                     if(type === 'age') scoreText = `享年 <strong class="text-blood text-xl">${data.age}</strong> <span class="text-xs">歳</span>`;
                     if(type === 'money') scoreText = `所持金 <strong class="text-gold text-xl">${data.money}</strong> <span class="text-xs">文</span>`;
                     if(type === 'valor') scoreText = `武功 <strong class="text-red-400 text-xl">${data.valor}</strong>`;
@@ -2070,7 +2271,9 @@
                     rank++;
                 });
                 
-                if(html === '') { html = '<div class="text-center text-gray-500 mt-10 text-xs">まだ記録がありません。</div>'; }
+                if(html === '') { html = (type === 'total')
+                    ? '<div class="text-center text-gray-500 mt-10 text-xs">まだ総合の記録がありません。<br>これからの人生の記録が、ここに刻まれます。</div>'
+                    : '<div class="text-center text-gray-500 mt-10 text-xs">まだ記録がありません。</div>'; }
                 content.innerHTML = html;
             } catch(err) {
                 content.innerHTML = `<div class="text-center text-red-500 mt-10 text-xs">通信に失敗しました。<br>${err.message}</div>`;
@@ -3209,6 +3412,10 @@
                         age: age,
                         money: finalState.money,
                         valor: finalState.valor,
+                        karma: finalState.karma,
+                        luck: finalState.luck,
+                        strategy: finalState.strategy,
+                        virtue: finalState.virtue,
                         title: title,
                         sukanpin: (finalState.flags && finalState.flags.sukanpin) ? true : false,
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
