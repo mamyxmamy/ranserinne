@@ -273,7 +273,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 26</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 27</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -340,14 +340,6 @@
                     <button type="button" onclick="window.openHistory(event)" class="action-button-main bg-black/50 text-gray-400 hover:text-white border border-[#3A322A] py-2.5 text-xs font-bold tracking-widest rounded-sm transition-all">
                         輪廻の回想
                     </button>
-
-                    <button type="button" onclick="window.openMemoryExport(event)" class="action-button-main bg-black/50 text-gray-400 hover:text-white border border-[#3A322A] py-2.5 text-xs font-bold tracking-widest rounded-sm transition-all">
-                        キオク書き出し
-                    </button>
-                    <button type="button" onclick="window.openMemoryImport(event)" class="action-button-main bg-black/50 text-gray-400 hover:text-white border border-[#3A322A] py-2.5 text-xs font-bold tracking-widest rounded-sm transition-all">
-                        キオク読み込み
-                    </button>
-
                     <button type="button" onclick="window.openRanking(event)" class="col-span-2 action-button-main bg-gradient-to-b from-[#2A1F10] to-[#1A1308] text-yellow-500 hover:text-white border border-yellow-700/60 py-3 mt-1 text-xs font-bold tracking-widest rounded-sm transition-all shadow-md flex items-center justify-center gap-2">
                         <span class="text-base leading-none">🏆</span> 天下の番付 <span class="text-[10px] font-normal text-yellow-600/80">(オンライン)</span> <span class="text-base leading-none">🏆</span>
                     </button>
@@ -468,9 +460,6 @@
             <button type="button" onclick="window.shareResult(false)" class="mb-3 action-button-main w-full max-w-sm bg-black border border-gray-600 text-white hover:bg-gray-900 py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all flex items-center justify-center gap-2 z-50">
                 𝕏 己の生き様を刻む
             </button>
-            <button type="button" onclick="window.openMemoryExport(event)" class="mb-3 action-button-main w-full max-w-sm bg-[#211C18] text-gold border border-gold/40 hover:bg-[#2A231D] py-2 text-xs font-bold tracking-widest rounded-sm shadow-md transition-all z-50">
-                キオクをコードに控える
-            </button>
             <button type="button" onclick="window.resetGame(event)" class="action-button-main w-full max-w-sm border-2 border-red-700 bg-red-950/80 hover:bg-red-900 text-white py-3.5 text-base font-bold tracking-widest rounded-sm transition-all active:scale-95 shadow-[0_0_15px_rgba(139,0,0,0.6)] z-50">次なる輪廻へ</button>
         </div>
 
@@ -505,9 +494,6 @@
                 
                 <button type="button" onclick="window.shareResult(true)" class="anim-slide-up mb-2 action-button-main w-full max-w-sm bg-black border border-gray-600 text-white hover:bg-gray-900 py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all flex items-center justify-center gap-2 z-30" style="animation-delay: 3.8s;">
                     𝕏 己の生き様を刻む
-                </button>
-                <button type="button" onclick="window.openMemoryExport(event)" class="anim-slide-up mb-2 action-button-main w-full max-w-sm bg-[#211C18]/90 text-gold border border-gold/40 hover:bg-[#2A231D] py-2 text-xs font-bold tracking-widest rounded-sm shadow-md transition-all z-30" style="animation-delay: 3.9s;">
-                    キオクをコードに控える
                 </button>
                 <button type="button" onclick="window.resetGame(event)" class="action-button-main w-full max-w-sm anim-slide-up border-2 border-gold bg-black text-gold hover:bg-gold hover:text-black py-3 text-base font-bold tracking-widest rounded-sm shadow-[0_0_20px_rgba(197,160,89,0.5)] active:scale-95 transition-all z-30" style="animation-delay: 4.0s;">新時代へ輪廻する</button>
             </div>
@@ -644,16 +630,6 @@
                     <p class="mt-1">合戦モードへは、農民・足軽は【動員令】、武将は【出陣】主君の命のイベントで赴くことになります（いずれも60歳未満のときのみ）。</p>
                     <p class="text-red-300 font-bold mt-1">※合戦中や逃亡中は月・日単位で濃密に時間が流れます。</p>
                 </section>
-
-                <section>
-                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ キオクコード（記録の引き継ぎ）</h3>
-                    <p class="mb-1">記録はお使いのブラウザの中に保存されます。ブラウザを変えたり機種変更をしたりすると、そのままでは引き継げません。タイトル画面の「キオク書き出し」で記録をコード化して控えておけば、別のブラウザで「キオク読み込み」から復元できます。死亡・大往生の結果画面からも書き出しが可能です。</p>
-                    <ul class="list-disc pl-4 space-y-1 text-gray-400">
-                        <li><strong class="text-white">コードに含まれる記録:</strong> 輪廻回数、大往生回数、所持・装備中の家宝とその取得履歴、死因図鑑、二つ名図鑑、冥銭、持込道具。</li>
-                        <li><strong class="text-white">含まれないもの:</strong> 進行中の人生そのものと、プレイヤー名。</li>
-                        <li><strong class="text-red-400">注意:</strong> 読み込むと現在のキオクはコードの内容で上書きされ、記録はコードを控えた時点の状態に戻ります。また、コードは実質的にパスワードのようなものです。他人に見せたり公開したりしないでください。</li>
-                    </ul>
-                </section>
             </div>
         </div>
 
@@ -691,28 +667,6 @@
                     </a>
                 </div>
                 <p class="text-gray-500 text-[10px] mt-6">※上記ボタンを押すと外部サイトへ移動します。</p>
-            </div>
-        </div>
-
-        <div id="memory-screen" class="hidden absolute inset-0 z-50 bg-[#0C0A09] flex flex-col pointer-events-auto">
-            <div class="p-3 border-b border-[#3A322A] bg-[#14110F] flex justify-between items-center shrink-0">
-                <div><h2 class="text-base font-bold text-gold tracking-widest">キオクコード</h2><p class="text-[10px] text-gray-400 mt-1">輪廻の記録をコード化して、別のブラウザへ受け継ぐための仕組み。</p></div>
-                <button type="button" onclick="window.closeMemory(event)" class="action-button-main text-gray-400 hover:text-white text-3xl px-2 leading-none">&times;</button>
-            </div>
-            <div class="flex-grow overflow-y-auto p-4 space-y-5 pb-8">
-                <section>
-                    <h3 class="text-gold font-bold text-xs mb-1.5 tracking-widest">◆ コードに書き出す</h3>
-                    <p class="text-[11px] text-gray-400 leading-relaxed mb-2">輪廻回数・大往生回数・家宝・図鑑・冥銭などの記録を1つのコードにします。メモ帳や自分のメール等に控えておけば、ブラウザを変えても読み込んで復元できます。※進行中の人生そのものは含まれません。コードは実質パスワードです。他人に見せないでください。</p>
-                    <textarea id="memory-export-text" readonly rows="4" onclick="this.select()" class="w-full bg-[#0D0B0A] border border-[#3A322A] text-gray-200 text-[10px] p-2 rounded-sm focus:outline-none focus:border-gold break-all"></textarea>
-                    <button type="button" onclick="window.copyMemoryCode(event)" class="action-button-main w-full mt-2 bg-[#211C18] hover:bg-[#2A231D] text-gold border border-gold/40 py-2.5 text-xs font-bold tracking-widest rounded-sm transition-all">コードをコピーする</button>
-                </section>
-                <section>
-                    <h3 class="text-gold font-bold text-xs mb-1.5 tracking-widest">◆ コードを読み込む</h3>
-                    <p class="text-[11px] text-gray-400 leading-relaxed mb-2">控えておいたコードを貼り付けてください。現在のキオクはコードの内容で上書きされます。</p>
-                    <textarea id="memory-import-text" rows="4" placeholder="RINNE1: から始まるコードを貼り付け" class="w-full bg-[#0D0B0A] border border-[#3A322A] text-gray-200 text-[10px] p-2 rounded-sm focus:outline-none focus:border-gold break-all placeholder-gray-600"></textarea>
-                    <button type="button" onclick="window.importMemoryCode(event)" class="action-button-main w-full mt-2 bg-[#6B1717] hover:bg-[#8B0000] text-white border border-[#A32020] py-2.5 text-xs font-bold tracking-widest rounded-sm transition-all">このコードでキオクを上書きする</button>
-                </section>
-                <p id="memory-msg" class="text-[11px] leading-relaxed"></p>
             </div>
         </div>
 
@@ -2065,115 +2019,6 @@
 
         window.openHelp = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } document.getElementById('help-screen').classList.remove('hidden'); };
         window.closeHelp = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } document.getElementById('help-screen').classList.add('hidden'); };
-
-        // ===== v23: キオクコード（メタ進行のみをコード化して別ブラウザへ受け継ぐ） =====
-        const MEMORY_CODE_KEYS = [
-            'sengoku_rinne_count', 'sengoku_great_death_count',
-            'sengoku_unlocked_heirlooms', 'sengoku_heirloom_history', 'sengoku_equipped_heirlooms',
-            'sengoku_unlocked_deaths', 'sengoku_unlocked_titles',
-            'sengoku_meisen', 'sengoku_inventory', 'sengoku_active_consumable'
-        ];
-        const MEMORY_CODE_NUM_KEYS = ['sengoku_rinne_count', 'sengoku_great_death_count', 'sengoku_meisen'];
-        const MEMORY_CODE_JSON_KEYS = ['sengoku_unlocked_heirlooms', 'sengoku_heirloom_history', 'sengoku_equipped_heirlooms', 'sengoku_unlocked_deaths', 'sengoku_unlocked_titles', 'sengoku_inventory', 'sengoku_active_consumable'];
-
-        function memoryCodeChecksum(s) {
-            let h = 5381;
-            for (let i = 0; i < s.length; i++) { h = ((h * 33) + s.charCodeAt(i)) >>> 0; }
-            return (s.length % 997).toString(36) + '-' + h.toString(36);
-        }
-        function memoryCodeB64Encode(str) {
-            const bytes = new TextEncoder().encode(str);
-            let bin = '';
-            const CHUNK = 0x8000;
-            for (let i = 0; i < bytes.length; i += CHUNK) { bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK)); }
-            return btoa(bin);
-        }
-        function memoryCodeB64Decode(b64) {
-            const bin = atob(b64);
-            const bytes = new Uint8Array(bin.length);
-            for (let i = 0; i < bin.length; i++) { bytes[i] = bin.charCodeAt(i); }
-            return new TextDecoder().decode(bytes);
-        }
-        window.buildMemoryCode = function() {
-            const data = {};
-            MEMORY_CODE_KEYS.forEach(k => { data[k] = localStorage.getItem(k); });
-            const b64 = memoryCodeB64Encode(JSON.stringify({ app: 'ranserinne-memory', v: 1, data: data }));
-            return 'RINNE1:' + b64 + ':' + memoryCodeChecksum(b64);
-        };
-        window.parseMemoryCode = function(code) {
-            if (typeof code !== 'string') return null;
-            const parts = code.replace(/\s+/g, '').split(':');
-            if (parts.length !== 3 || parts[0] !== 'RINNE1') return null;
-            const b64 = parts[1];
-            if (!/^[A-Za-z0-9+/=]+$/.test(b64)) return null;
-            if (memoryCodeChecksum(b64) !== parts[2]) return null;
-            let obj = null;
-            try { obj = JSON.parse(memoryCodeB64Decode(b64)); } catch (e) { return null; }
-            if (!obj || obj.app !== 'ranserinne-memory' || obj.v !== 1 || !obj.data || typeof obj.data !== 'object') return null;
-            const data = obj.data;
-            for (const k of Object.keys(data)) { if (MEMORY_CODE_KEYS.indexOf(k) === -1) return null; }
-            for (const k of MEMORY_CODE_KEYS) {
-                const v = data[k];
-                if (v === undefined || v === null) continue;
-                if (typeof v !== 'string') return null;
-                if (MEMORY_CODE_NUM_KEYS.indexOf(k) !== -1 && !/^\d+$/.test(v)) return null;
-                if (MEMORY_CODE_JSON_KEYS.indexOf(k) !== -1) { try { JSON.parse(v); } catch (e) { return null; } }
-            }
-            return data;
-        };
-        window.openMemoryExport = function(e) {
-            if(e){ e.preventDefault(); e.stopPropagation(); }
-            document.getElementById('memory-screen').classList.remove('hidden');
-            const ta = document.getElementById('memory-export-text');
-            ta.value = window.buildMemoryCode();
-            const msg = document.getElementById('memory-msg');
-            msg.textContent = ''; msg.className = 'text-[11px] leading-relaxed';
-            setTimeout(function() { try { ta.focus(); ta.select(); } catch (err) {} }, 50);
-        };
-        window.openMemoryImport = function(e) {
-            if(e){ e.preventDefault(); e.stopPropagation(); }
-            document.getElementById('memory-screen').classList.remove('hidden');
-            document.getElementById('memory-export-text').value = window.buildMemoryCode();
-            const msg = document.getElementById('memory-msg');
-            msg.textContent = ''; msg.className = 'text-[11px] leading-relaxed';
-            const imp = document.getElementById('memory-import-text');
-            setTimeout(function() { try { imp.focus(); imp.scrollIntoView({ block: 'center' }); } catch (err) {} }, 50);
-        };
-        window.closeMemory = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } document.getElementById('memory-screen').classList.add('hidden'); };
-        window.copyMemoryCode = async function(e) {
-            if(e){ e.preventDefault(); e.stopPropagation(); }
-            const ta = document.getElementById('memory-export-text');
-            const msg = document.getElementById('memory-msg');
-            try { ta.focus(); ta.select(); } catch (err) {}
-            let ok = false;
-            try { await navigator.clipboard.writeText(ta.value); ok = true; } catch (err) {}
-            if (!ok) { try { ok = document.execCommand('copy'); } catch (err) {} }
-            msg.textContent = ok ? 'コードをコピーしました。メモ帳や自分のメールなどに大切に保管してください。' : 'コピーできませんでした。コード全体を長押しで選択してコピーしてください。';
-            msg.className = ok ? 'text-[11px] leading-relaxed text-green-400' : 'text-[11px] leading-relaxed text-red-400';
-        };
-        window.importMemoryCode = function(e) {
-            if(e){ e.preventDefault(); e.stopPropagation(); }
-            const msg = document.getElementById('memory-msg');
-            const data = window.parseMemoryCode(document.getElementById('memory-import-text').value);
-            if (!data) {
-                msg.textContent = 'コードが正しくありません。欠けや改変がないか確認してください。（現在のキオクは変更されていません）';
-                msg.className = 'text-[11px] leading-relaxed text-red-400';
-                return;
-            }
-            if (!window.confirm('このコードで現在のキオク（輪廻回数・大往生回数・家宝・図鑑・冥銭など）を上書きします。よろしいですか？')) return;
-            try {
-                MEMORY_CODE_KEYS.forEach(k => {
-                    const v = data[k];
-                    if (v === undefined || v === null) localStorage.removeItem(k);
-                    else localStorage.setItem(k, v);
-                });
-            } catch (err) {
-                msg.textContent = '書き込みに失敗しました。ブラウザの空き容量や設定を確認してください。（キオクは変更されていない可能性があります）';
-                msg.className = 'text-[11px] leading-relaxed text-red-400';
-                return;
-            }
-            location.reload();
-        };
 
         window.openRanking = function(e) {
             if(e){ e.preventDefault(); e.stopPropagation(); }
