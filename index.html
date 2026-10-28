@@ -273,7 +273,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 21</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 22</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -651,6 +651,7 @@
         window.currentReincarnationCount = 0;
         window.greatDeathCount = 0;
         window.unlockedHeirlooms = [];
+        window.heirloomHistory = []; // v22: 過去に取得した家宝の永続記録（id一覧。ロストしても消えない）
         window.activeHeirlooms = [];
         window.unlockedDeaths = [];
         window.unlockedTitles = []; // 追加：称号の保存用
@@ -678,6 +679,7 @@
                 localStorage.setItem('sengoku_rinne_count', window.currentReincarnationCount);
                 localStorage.setItem('sengoku_great_death_count', window.greatDeathCount);
                 localStorage.setItem('sengoku_unlocked_heirlooms', JSON.stringify(window.unlockedHeirlooms));
+                localStorage.setItem('sengoku_heirloom_history', JSON.stringify(window.heirloomHistory || [])); // v22
                 localStorage.setItem('sengoku_equipped_heirlooms', JSON.stringify(window.activeHeirlooms));
                 localStorage.setItem('sengoku_unlocked_deaths', JSON.stringify(window.unlockedDeaths));
                 localStorage.setItem('sengoku_unlocked_titles', JSON.stringify(window.unlockedTitles)); // 追加：称号セーブ
@@ -695,6 +697,11 @@
             if (savedGD) window.greatDeathCount = parseInt(savedGD, 10) || 0;
             const savedHeirlooms = localStorage.getItem('sengoku_unlocked_heirlooms');
             if (savedHeirlooms) window.unlockedHeirlooms = JSON.parse(savedHeirlooms);
+            // v22: 過去取得の永続記録をロード。既存プレイヤー移行として、現在所持中の家宝は取得済みに含める
+            const savedHlHistory = localStorage.getItem('sengoku_heirloom_history');
+            if (savedHlHistory) { try { window.heirloomHistory = JSON.parse(savedHlHistory); } catch(e) {} }
+            if (!Array.isArray(window.heirloomHistory)) window.heirloomHistory = [];
+            (window.unlockedHeirlooms || []).forEach(h => { if (h && h.id && !window.heirloomHistory.includes(h.id)) window.heirloomHistory.push(h.id); });
             const savedEquipped = localStorage.getItem('sengoku_equipped_heirlooms');
             if (savedEquipped) window.activeHeirlooms = JSON.parse(savedEquipped);
             const maxSlots = window.getMaxHeirloomSlots();
@@ -1934,12 +1941,15 @@
 
             if(tabName === 'heirloom') {
                 tabH.className = "flex-1 py-3 text-xs font-bold text-gold border-b-2 border-gold transition-colors";
-                let html = '<div class="text-[10px] text-gray-400 mb-2">※未取得の家宝はヒントのみ表示されます</div>';
+                let html = '<div class="text-[10px] text-gray-400 mb-2">※未取得の家宝は名前が伏せて表示されます。過去に取得した家宝には「取得済」バッジが付きます</div>';
                 HEIRLOOMS_DB.forEach(hl => {
                     const isUnlocked = window.unlockedHeirlooms.some(u => u.id === hl.id);
+                    const isObtainedBefore = !isUnlocked && (window.heirloomHistory || []).includes(hl.id); // v22: 過去に取得したが現在は未所持
                     if(isUnlocked) {
                         const actual = window.unlockedHeirlooms.find(u => u.id === hl.id) || hl;
                         html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-center gap-3 shadow-md"><div class="w-10 h-10 bg-gold/20 border border-gold flex items-center justify-center rounded text-lg flex-shrink-0">✨</div><div><div class="font-bold text-gold text-sm">${actual.name || hl.name}</div><div class="text-xs text-gray-300 mt-0.5">${actual.desc || '取得済み'}</div></div></div>`;
+                    } else if(isObtainedBefore) {
+                        html += `<div class="bg-[#15120E] border border-[#4A3F2E] p-3 rounded-sm flex items-center gap-3"><div class="w-10 h-10 bg-[#2A2118] border border-[#8A6D3B] flex items-center justify-center rounded text-[#C9B48A] text-sm font-bold flex-shrink-0">宝</div><div><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[#C9B48A] text-sm">${hl.name}</span><span class="text-[9px] font-bold text-black bg-[#C9B48A] px-1.5 py-0.5 rounded-sm tracking-widest">取得済</span><span class="text-[9px] text-gray-500">（現在は未所持）</span></div><div class="text-[10px] text-gray-400 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
                     } else {
                         html += `<div class="bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60"><div class="w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-lg flex-shrink-0">？</div><div><div class="font-bold text-gray-500 text-sm">？？？</div><div class="text-[10px] text-gray-600 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
                     }
@@ -2756,6 +2766,11 @@
                     const exists = window.unlockedHeirlooms.find(h => h.id === nextHeirloom.id);
                     if (!exists) window.unlockedHeirlooms.push(nextHeirloom);
                 }
+                // v22: 取得履歴に記録（この後の saveMetaProgress で永続化される。家宝ロスト時も履歴は消さない）
+                if (nextHeirloom) {
+                    if (!window.heirloomHistory) window.heirloomHistory = [];
+                    if (!window.heirloomHistory.includes(nextHeirloom.id)) window.heirloomHistory.push(nextHeirloom.id);
+                }
                 
                 // 追加：称号の保存
                 if (!window.unlockedTitles) window.unlockedTitles = [];
@@ -2888,9 +2903,9 @@
             if (e) { e.preventDefault(); e.stopPropagation(); }
             if (confirm("これまでの輪廻の記録と獲得した家宝蔵をすべて完全に消去します。\nよろしいですか？")) {
                 localStorage.removeItem('sengoku_rinne_count'); localStorage.removeItem('sengoku_heirloom'); localStorage.removeItem('sengoku_equipped_heirlooms'); localStorage.removeItem('sengoku_unlocked_heirlooms'); localStorage.removeItem('sengoku_unlocked_deaths'); localStorage.removeItem('sengoku_unlocked_titles'); localStorage.removeItem('sengoku_past_lives'); localStorage.removeItem('sengoku_current_run'); localStorage.removeItem('sengoku_meisen'); localStorage.removeItem('sengoku_inventory'); localStorage.removeItem('sengoku_active_consumable');
-                localStorage.removeItem('sengoku_great_death_count'); 
+                localStorage.removeItem('sengoku_great_death_count'); localStorage.removeItem('sengoku_heirloom_history'); 
                 
-                window.currentReincarnationCount = 0; window.greatDeathCount = 0; window.unlockedHeirlooms = []; window.activeHeirlooms = []; window.unlockedDeaths = []; window.unlockedTitles = []; window.meisen = 0; window.inventory = {}; window.activeConsumable = null;
+                window.currentReincarnationCount = 0; window.greatDeathCount = 0; window.unlockedHeirlooms = []; window.heirloomHistory = []; window.activeHeirlooms = []; window.unlockedDeaths = []; window.unlockedTitles = []; window.meisen = 0; window.inventory = {}; window.activeConsumable = null;
                 window.updateStartScreenUI(); alert("すべての記録を初期化しました。");
             }
         };
@@ -2963,12 +2978,15 @@
 
             if(tabName === 'heirloom') {
                 tabH.className = "flex-1 py-3 text-xs font-bold text-gold border-b-2 border-gold transition-colors";
-                let html = '<div class="text-[10px] text-gray-400 mb-2">※未取得の家宝はヒントのみ表示されます</div>';
+                let html = '<div class="text-[10px] text-gray-400 mb-2">※未取得の家宝は名前が伏せて表示されます。過去に取得した家宝には「取得済」バッジが付きます</div>';
                 HEIRLOOMS_DB.forEach(hl => {
                     const isUnlocked = window.unlockedHeirlooms.some(u => u.id === hl.id);
+                    const isObtainedBefore = !isUnlocked && (window.heirloomHistory || []).includes(hl.id); // v22: 過去に取得したが現在は未所持
                     if(isUnlocked) {
                         const actual = window.unlockedHeirlooms.find(u => u.id === hl.id) || hl;
                         html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-center gap-3 shadow-md"><div class="w-10 h-10 bg-gold/20 border border-gold flex items-center justify-center rounded text-lg flex-shrink-0">✨</div><div><div class="font-bold text-gold text-sm">${actual.name || hl.name}</div><div class="text-xs text-gray-300 mt-0.5">${actual.desc || '取得済み'}</div></div></div>`;
+                    } else if(isObtainedBefore) {
+                        html += `<div class="bg-[#15120E] border border-[#4A3F2E] p-3 rounded-sm flex items-center gap-3"><div class="w-10 h-10 bg-[#2A2118] border border-[#8A6D3B] flex items-center justify-center rounded text-[#C9B48A] text-sm font-bold flex-shrink-0">宝</div><div><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[#C9B48A] text-sm">${hl.name}</span><span class="text-[9px] font-bold text-black bg-[#C9B48A] px-1.5 py-0.5 rounded-sm tracking-widest">取得済</span><span class="text-[9px] text-gray-500">（現在は未所持）</span></div><div class="text-[10px] text-gray-400 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
                     } else {
                         html += `<div class="bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60"><div class="w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-lg flex-shrink-0">？</div><div><div class="font-bold text-gray-500 text-sm">？？？</div><div class="text-[10px] text-gray-600 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
                     }
