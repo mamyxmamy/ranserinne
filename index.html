@@ -273,7 +273,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 38</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 39</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -316,8 +316,9 @@
             </div>
 
             <div class="w-full flex-shrink-0 space-y-2 mt-auto">
-                <div class="w-full px-1 mb-2">
-                    <input type="text" id="player-name-input" placeholder="御主の名（最大8文字）" maxlength="8" class="w-full bg-[#0D0B0A] border border-[#3A322A] text-white text-center py-2.5 rounded-sm focus:outline-none focus:border-gold transition-colors placeholder-gray-600 font-bold tracking-[0.2em] shadow-inner text-sm">
+                <div id="title-name-row" class="hidden w-full px-1 mb-2 text-center">
+                    <span class="text-[11px] text-gray-400 tracking-widest">名乗り：<span id="title-name-value" class="text-gold font-bold"></span></span>
+                    <button type="button" onclick="window.openNameEntry('change')" class="ml-1 text-[10px] text-gray-500 hover:text-gray-300 underline tracking-widest transition-colors">変更</button>
                 </div>
 
                 <button id="resume-btn" type="button" onclick="window.resumeGame(event)" class="hidden action-button-main w-full bg-[#1A331A] hover:bg-[#204020] text-green-200 border border-green-800 py-3 text-sm sm:text-base font-bold active:scale-95 transition-all shadow-[0_0_15px_rgba(0,100,0,0.4)] tracking-[0.2em] rounded-sm mb-2">
@@ -373,6 +374,18 @@
         <div id="intro-screen" class="hidden absolute inset-0 z-40 bg-black flex flex-col items-center justify-center p-6 cursor-pointer" onclick="window.finishIntro()">
             <div id="intro-text" class="text-white text-[13px] sm:text-sm leading-[2.2] font-bold tracking-[0.15em] text-center space-y-5 fade-text opacity-0 w-full"></div>
             <div id="intro-tap-prompt" class="absolute bottom-10 text-gray-500 text-xs tracking-widest animate-pulse fade-text opacity-0">画面をタップして進む</div>
+        </div>
+
+        <!-- v39: 名前入力ステップ（未登録のときだけ「乱世に堕ちる」を押した直後に表示。登録済みの名前変更もここで行う） -->
+        <div id="name-entry-screen" class="hidden absolute inset-0 z-50 bg-black/85 backdrop-blur-sm flex flex-col items-center justify-center p-6 pointer-events-auto">
+            <div class="w-full max-w-sm bg-[#161311] border border-[#3A322A] rounded-sm p-5 shadow-2xl">
+                <p class="text-center text-gold font-black tracking-[0.4em] text-xl mb-2">名乗り</p>
+                <p class="text-center text-[11px] text-gray-400 leading-relaxed mb-4">乱世に生を受ける者よ、名を刻め。<br>この名は「天下の番付」に載り、諸国に轟く。</p>
+                <input type="text" id="player-name-input" placeholder="御主の名（最大8文字）" maxlength="8" class="w-full bg-[#0D0B0A] border border-[#3A322A] text-white text-center py-2.5 rounded-sm focus:outline-none focus:border-gold transition-colors placeholder-gray-600 font-bold tracking-[0.2em] shadow-inner text-sm">
+                <button id="name-entry-confirm-btn" type="button" onclick="window.confirmNameEntry()" class="action-button-main w-full bg-[#6B1717] hover:bg-[#8B0000] text-white border border-[#A32020] py-3 mt-4 text-base font-bold active:scale-95 transition-all shadow-[0_0_20px_rgba(139,0,0,0.5)] tracking-[0.2em] rounded-sm">この名前で生まれる</button>
+                <button id="name-entry-skip-btn" type="button" onclick="window.skipNameEntry()" class="w-full bg-transparent text-gray-500 hover:text-gray-300 py-2 mt-1 text-[11px] underline tracking-widest transition-colors">名前を決めずに生まれる</button>
+                <button id="name-entry-cancel-btn" type="button" onclick="window.closeNameEntry()" class="hidden w-full bg-transparent text-gray-500 hover:text-gray-300 py-2 mt-1 text-[11px] underline tracking-widest transition-colors">やめる</button>
+            </div>
         </div>
 
         <!-- ゲーム画面 -->
@@ -447,7 +460,7 @@
                     </div>
                 </div>
                 <div class="flex justify-between items-end border-t border-gray-800 pt-1.5 mt-2"><span class="text-[10px] text-gray-400">獲得冥銭</span><span class="text-sm font-bold text-purple-300"><span id="go-meisen">+0</span></span></div>
-                <div id="go-board-rank" class="hidden justify-between items-end border-t border-gray-800 pt-1.5 mt-2"><span class="text-[10px] text-gray-400">天下の番付・総合</span><span class="text-sm font-bold text-yellow-300"><span id="go-board-rank-value">--</span> 位</span></div>
+                <div id="go-board-rank" class="hidden justify-between items-end border-t border-gray-800 pt-1.5 mt-2"><span class="text-[10px] text-gray-400">今回の記録・総合</span><span class="text-sm font-bold text-yellow-300"><span id="go-board-rank-value">--</span> 位相当</span></div>
                 <div class="chronology-list" id="go-chronology-list"></div>
             </div>
             <div class="w-full max-w-sm mb-3"><p id="go-reason" class="text-[11px] leading-relaxed text-gray-300 text-left border-l-2 border-red-900 pl-2.5 py-1"></p></div>
@@ -490,7 +503,7 @@
                         <div>人徳<br><span id="premium-virtue" class="text-white font-bold">0</span></div><div>運<br><span id="premium-luck" class="text-white font-bold">0</span></div><div>銭<br><span id="premium-money" class="text-gold font-bold">0</span></div>
                     </div>
                     <div class="flex justify-between items-end border-t border-gray-800 pt-1.5 mt-2 text-left"><span class="text-[10px] text-gray-400">獲得冥銭</span><span class="text-sm font-bold text-purple-300"><span id="premium-meisen">+0</span></span></div>
-                    <div id="premium-board-rank" class="hidden justify-between items-end border-t border-gray-800 pt-1.5 mt-2 text-left"><span class="text-[10px] text-gray-400">天下の番付・総合</span><span class="text-sm font-bold text-yellow-300"><span id="premium-board-rank-value">--</span> 位</span></div>
+                    <div id="premium-board-rank" class="hidden justify-between items-end border-t border-gray-800 pt-1.5 mt-2 text-left"><span class="text-[10px] text-gray-400">今回の記録・総合</span><span class="text-sm font-bold text-yellow-300"><span id="premium-board-rank-value">--</span> 位相当</span></div>
                     <p id="premium-reason" class="text-[11px] leading-relaxed text-yellow-100/90 text-left border-l-2 border-gold pl-2.5 py-1 mt-2"></p>
                     <div class="chronology-list text-left" id="premium-chronology-list"></div>
                 </div>
@@ -627,7 +640,7 @@
                     <ul class="list-disc pl-4 space-y-1">
                         <li><span class="text-gold font-bold">絵巻図鑑</span>: これまで集めた「家宝」、迎えた「死因」、そして人生の生き様によって授かる「二つ名（全50種）」がコレクションされます。</li>
                         <li><span class="text-gold font-bold">家宝の見方</span>: 所持中の家宝は名前・効果・来歴（フレーバー）がそのまま表示されます。過去に手に入れたものの今は所持していない家宝は、名前・効果・来歴と取得条件に加えて、ブロンズ色の「取得済」バッジと「輪廻の流れの中で失われた」の注記が付きます。一度も手に入れていない家宝は、名前が「？？？」と伏せられ、取得条件のみが表示されます。</li>
-                        <li><span class="text-yellow-400 font-bold">天下の番付</span>: 全国のプレイヤーと「長寿」「富国」「武功」を競い合うオンラインランキングです。さらに、全能力値と享年・所持金から算出する総合成績で競う「総合」番付もあります。「最高記録」では名前ごとに最も優れた記録だけが表示され、「最近の記録」では新しい順にすべての記録が流れます。自分の名前の記録には「自分」の目印が付き、死亡時の結果画面では総合順位も知らされます。番付の記録をタップすると、登録時の能力値と生涯年表が見られます（年表は新しい記録のみ）。</li>
+                        <li><span class="text-yellow-400 font-bold">天下の番付</span>: 全国のプレイヤーと「長寿」「富国」「武功」を競い合うオンラインランキングです。さらに、全能力値と享年・所持金から算出する総合成績で競う「総合」番付もあります。「最高記録」では名前ごとに最も優れた記録だけが表示され、「最近の記録」では新しい順にすべての記録が流れます。自分の名前の記録には「自分」の目印が付き、死亡時の結果画面では今回の記録が総合で何位に相当するかも知らされます。番付に載る名前は、初めて「乱世に堕ちる」を押したときに決める画面が出ます（決めた名前はタイトル画面からいつでも変更できます）。番付の記録をタップすると、登録時の能力値と生涯年表が見られます（年表は新しい記録のみ）。</li>
                     </ul>
                 </section>
 
@@ -1903,6 +1916,7 @@
         }
 
         window.updateStartScreenUI = function() {
+            if (typeof window.updateTitleNameRow === 'function') window.updateTitleNameRow();
             const rinneElem = document.getElementById('ui-reincarnations');
             if (rinneElem) rinneElem.innerText = window.currentReincarnationCount || 0;
             
@@ -2219,12 +2233,13 @@
             window.switchRankTab(window.__rankTab || 'total');
         };
 
-        // v38: 死亡時の結果画面に出す「総合◯位」を、番付登録後のデータから算出する。
-        // 集計方法は総合タブ（v36の合算取得＋拡張4項目フィルタ＋名前ごと最良＋calculateLifeRank）と同一にそろえ、番付表示と順位が一致するようにする。
+        // v39: 死亡時の結果画面に出す「今回の記録の総合順位（相当）」を、番付登録後のデータから算出する。
+        // 母集団の作り方は総合タブと同一（v36の合算取得＋拡張4項目フィルタ＋名前ごと最良＋calculateLifeRank）だが、
+        // v38の「自分の最良記録の順位」ではなく、今回の人生のスコアを母集団に当てはめて順位相当を出す。
         // 取得できない場合は null を返し、結果画面では表示自体を省略する（エラーにはしない）。
-        window.__calcMyTotalRank = async function(myName) {
+        window.__calcMyTotalRank = async function(myName, myScore) {
             try {
-                if (!myName) return null;
+                if (!myName || typeof myScore !== 'number') return null;
                 const db = firebase.firestore();
                 const boardRef = db.collection('artifacts').doc('sengoku-life-app').collection('leaderboard');
                 const snaps = await Promise.all([
@@ -2244,14 +2259,17 @@
                     const key = data.playerName || '名無し';
                     if (!bestScoreByName.has(key) || score > bestScoreByName.get(key)) bestScoreByName.set(key, score);
                 }));
-                if (!bestScoreByName.has(myName)) return null;
-                const myScore = bestScoreByName.get(myName);
-                const sortedScores = Array.from(bestScoreByName.values()).sort((a, b) => b - a);
-                return sortedScores.indexOf(myScore) + 1;
+                if (bestScoreByName.size === 0) return null;
+                // 今回のスコアより高い「名前ごと最良記録」の人数＋1 が、今回の記録の順位（相当）。
+                // 今回が自己ベスト更新なら、登録直後の集合には今回の記録自身が自分の名前の最良として含まれ、
+                // 自分自身は「より高い」に数えられないため、番付上の実際の順位と一致する。
+                let higherCount = 0;
+                bestScoreByName.forEach(score => { if (score > myScore) higherCount++; });
+                return higherCount + 1;
             } catch (rankErr) { return null; }
         };
 
-        // v38: 結果画面の「天下の番付・総合 ○位」行を、順位が届いた時点で差し込む（届かなければ行は隠れたまま）
+        // v39: 結果画面の「今回の記録・総合 ○位相当」行を、順位が届いた時点で差し込む（届かなければ行は隠れたまま）
         function applyBoardRankToEnding(rowId, valueId) {
             const row = document.getElementById(rowId);
             if (row) { row.classList.add('hidden'); row.classList.remove('flex'); }
@@ -2434,9 +2452,10 @@
                         else if(rank === 2) { rankStyle = 'text-gray-300 text-lg'; rankIcon = '🥈'; bgStyle = 'bg-gradient-to-r from-gray-700/30 to-[#181513] border-gray-600/50'; }
                         else if(rank === 3) { rankStyle = 'text-orange-400 text-lg'; rankIcon = '🥉'; bgStyle = 'bg-gradient-to-r from-orange-900/30 to-[#181513] border-orange-800/50'; }
                     } else {
-                        // v38: 最近の記録は順位ではなく新しい順の通し番号として表示する
-                        rankStyle = 'text-gray-500 text-xs';
-                        rankIcon = `${rank}`;
+                        // v39: 最近の記録は順位・通し番号を出さない（新しい順の番号が「順位」に見えてしまうため）。
+                        // 代わりに新しい記録（先頭3件）にだけ「NEW」バッジを付ける。
+                        rankStyle = '';
+                        rankIcon = (rank <= 3) ? '<span class="inline-block text-[9px] font-black text-white bg-red-700 border border-red-400 px-1 py-0.5 rounded-sm tracking-wider shadow">NEW</span>' : '';
                     }
 
                     // v38: 自分の記録は「自分」バッジ＋紫の色付けでハイライトする（最高・最近の両表示共通）
@@ -2478,7 +2497,7 @@
                 if (records.length === 0) { content.innerHTML = (type === 'total')
                     ? '<div class="text-center text-gray-500 mt-10 text-xs">まだ総合の記録がありません。<br>これからの人生の記録が、ここに刻まれます。</div>'
                     : '<div class="text-center text-gray-500 mt-10 text-xs">まだ記録がありません。</div>'; }
-                else if (isRecentMode) { content.innerHTML = '<div class="text-center text-[10px] text-gray-500 mb-3">※新しい順に表示しています（同じ名前の記録もすべて表示されます）<br>※記録をタップすると、登録時の能力と生涯年表が見られます</div>' + html; }
+                else if (isRecentMode) { content.innerHTML = '<div class="text-center text-[10px] text-gray-500 mb-3">※新しい順に表示しています（同じ名前の記録もすべて表示されます）<br>※新しい記録には「NEW」の目印が付きます<br>※記録をタップすると、登録時の能力と生涯年表が見られます</div>' + html; }
                 else { content.innerHTML = '<div class="text-center text-[10px] text-gray-500 mb-3">※記録をタップすると、登録時の能力と生涯年表が見られます</div>' + html; }
             } catch(err) {
                 content.innerHTML = `<div class="text-center text-red-500 mt-10 text-xs">通信に失敗しました。<br>${err.message}</div>`;
@@ -2702,13 +2721,78 @@
             scheduleNextAutoPlay(800);
         };
 
+        // v39: 名前入力ステップ。タイトル画面に常設していた名前入力を廃し、「乱世に堕ちる」を押した直後、
+        // 名前が未登録のときだけこのステップを挟む。一度登録すれば次回以降は尋ねず、変更はタイトル画面の「変更」から行う。
+        window.__nameEntryMode = 'start';
+        window.__nameStepPassed = false;
+        window.getRegisteredPlayerName = function() {
+            try { return (localStorage.getItem('sengoku_player_name') || '').trim(); } catch (e) { return ''; }
+        };
+        window.openNameEntry = function(mode) {
+            window.__nameEntryMode = (mode === 'change') ? 'change' : 'start';
+            const screen = document.getElementById('name-entry-screen');
+            if (!screen) return;
+            const isChange = window.__nameEntryMode === 'change';
+            const input = document.getElementById('player-name-input');
+            if (input && isChange) input.value = window.getRegisteredPlayerName();
+            const confirmBtn = document.getElementById('name-entry-confirm-btn');
+            if (confirmBtn) confirmBtn.innerText = isChange ? 'この名前に変更する' : 'この名前で生まれる';
+            const skipBtn = document.getElementById('name-entry-skip-btn');
+            if (skipBtn) skipBtn.classList.toggle('hidden', isChange);
+            const cancelBtn = document.getElementById('name-entry-cancel-btn');
+            if (cancelBtn) cancelBtn.classList.toggle('hidden', !isChange);
+            screen.classList.remove('hidden');
+        };
+        window.closeNameEntry = function() {
+            const screen = document.getElementById('name-entry-screen');
+            if (screen) screen.classList.add('hidden');
+        };
+        window.confirmNameEntry = function() {
+            const input = document.getElementById('player-name-input');
+            const val = input ? input.value.trim() : '';
+            // 名前が入力された場合のみ登録名として保存する。空欄で決定した場合はデフォルト名のまま進み、未登録状態も維持される
+            if (val) { try { localStorage.setItem('sengoku_player_name', val); } catch (e) {} }
+            const mode = window.__nameEntryMode;
+            window.closeNameEntry();
+            if (typeof window.updateTitleNameRow === 'function') window.updateTitleNameRow();
+            if (mode === 'start') {
+                window.__nameStepPassed = true;
+                window.startGame();
+            }
+        };
+        window.skipNameEntry = function() {
+            // 「名前を決めずに生まれる」：入力途中の文字列は登録せず、今回の人生はデフォルト名で進める（未登録のままなので、次回の開始時にもう一度尋ねる）
+            const input = document.getElementById('player-name-input');
+            if (input) input.value = '';
+            window.closeNameEntry();
+            window.__nameStepPassed = true;
+            window.startGame();
+        };
+        window.updateTitleNameRow = function() {
+            const row = document.getElementById('title-name-row');
+            const valEl = document.getElementById('title-name-value');
+            const name = window.getRegisteredPlayerName();
+            if (row) row.classList.toggle('hidden', !name);
+            if (valEl && name) valEl.innerText = name;
+        };
+
         window.startGame = function(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
             if (isProcessing) return;
 
-            const nameInputVal = document.getElementById('player-name-input').value.trim();
-            const finalName = nameInputVal || '名無しの権兵衛';
-            localStorage.setItem('sengoku_player_name', finalName);
+            // v39: 名前が未登録なら、開始直後に名前入力ステップを挟む（決定・スキップで戻ってきた場合はそのまま開始）
+            if (!window.__nameStepPassed && !window.getRegisteredPlayerName()) {
+                window.openNameEntry('start');
+                return;
+            }
+            window.__nameStepPassed = false;
+
+            const savedName = window.getRegisteredPlayerName();
+            const nameInputEl = document.getElementById('player-name-input');
+            const nameInputVal = nameInputEl ? nameInputEl.value.trim() : '';
+            const finalName = savedName || nameInputVal || '名無しの権兵衛';
+            // 入力された名前だけを登録名として保存する。デフォルト名（名無しの権兵衛）は保存しない＝未登録のまま次回も尋ねる
+            if (nameInputVal) { try { localStorage.setItem('sengoku_player_name', nameInputVal); } catch (saveErr) {} }
 
             resetAllStateAndUI(); localStorage.removeItem('sengoku_current_run');
             setSceneBGM('main');
@@ -3229,9 +3313,9 @@
                 window.__pendingBoardRank = null;
                 if (typeof window.__saveDeathData === 'function') {
                     const savePromise = window.__saveDeathData(state.age, state.classInfo ? state.classInfo.name : '', state.faction ? state.faction.name : '', finalTitle, reason, state, nextHeirloom);
-                    // v38: 番付登録が完了してから総合順位を算出する。取得できない場合は null のままにし、結果画面では順位表示を省略する
+                    // v39: 番付登録が完了してから、今回の記録の総合順位（相当）を算出する。取得できない場合は null のままにし、結果画面では順位表示を省略する
                     window.__pendingBoardRank = Promise.resolve(savePromise)
-                        .then(() => (typeof window.__calcMyTotalRank === 'function') ? window.__calcMyTotalRank(state.playerName || '名無しの権兵衛') : null)
+                        .then(() => (typeof window.__calcMyTotalRank === 'function') ? window.__calcMyTotalRank(state.playerName || '名無しの権兵衛', calculateLifeRank(state).score) : null)
                         .catch(() => null);
                 }
 
