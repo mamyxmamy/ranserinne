@@ -210,6 +210,57 @@
             #splash-screen { transition-duration: 0.1s; }
             #splash-title .splash-char, #splash-sub, #splash-hint { animation-duration: 0.01s; animation-delay: 0s; }
         }
+
+        /* ===== 冥府の宝籤の演出（v40追加：籤筒の溜め／金の閃光／桜吹雪／結果カード） ===== */
+        #gacha-fx { background: rgba(5, 4, 3, 0.88); }
+        .gacha-tube { position: relative; width: 96px; height: 138px; margin: 0 auto; transform-origin: 50% 82%; }
+        .gacha-tube.shaking { animation: gachaShake 0.16s ease-in-out infinite; }
+        @keyframes gachaShake {
+            0% { transform: rotate(0deg) translate(0, 0); }
+            25% { transform: rotate(-5.5deg) translate(-3px, -2px); }
+            55% { transform: rotate(4.5deg) translate(3px, 1px); }
+            80% { transform: rotate(-3deg) translate(-2px, 0); }
+            100% { transform: rotate(0deg) translate(0, 0); }
+        }
+        .gacha-stick { position: absolute; bottom: 92px; width: 7px; height: 54px; border-radius: 3px 3px 1px 1px; background: linear-gradient(180deg, #EFE0B4 0%, #C9A86A 100%); box-shadow: 0 0 3px rgba(0,0,0,0.55); transform-origin: 50% 100%; }
+        .gacha-tube-body {
+            position: absolute; left: 0; right: 0; bottom: 0; height: 100px;
+            background: linear-gradient(90deg, #33200E 0%, #6B4420 28%, #96702F 50%, #6B4420 72%, #2A190A 100%);
+            border: 2px solid var(--wafu-gold); border-radius: 12px 12px 16px 16px;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.75), inset 0 0 18px rgba(0,0,0,0.55);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .gacha-tube-label { writing-mode: vertical-rl; font-weight: 900; font-size: 1.3rem; letter-spacing: 0.3em; color: #F5D389; text-shadow: 0 0 10px rgba(0,0,0,0.8); }
+        .gacha-flash {
+            position: absolute; inset: 0; pointer-events: none; opacity: 0;
+            background: radial-gradient(circle at 50% 42%, rgba(255, 240, 190, 0.95) 0%, rgba(245, 211, 137, 0.55) 38%, rgba(245, 211, 137, 0) 72%);
+        }
+        .gacha-flash.go { animation: gachaFlashAnim 0.95s ease-out forwards; }
+        @keyframes gachaFlashAnim { 0% { opacity: 0; transform: scale(0.72); } 16% { opacity: 1; } 100% { opacity: 0; transform: scale(1.28); } }
+        .gacha-petal {
+            position: absolute; top: -26px; pointer-events: none;
+            border-radius: 90% 0 90% 0;
+            background: linear-gradient(135deg, #FFDCE5 0%, #FF9FB6 100%);
+            box-shadow: 0 0 4px rgba(255, 159, 182, 0.45);
+            animation-name: gachaPetalFall; animation-timing-function: linear; animation-fill-mode: forwards;
+        }
+        @keyframes gachaPetalFall {
+            0% { transform: translate(0, -30px) rotate(0deg); opacity: 0; }
+            10% { opacity: 1; }
+            50% { transform: translate(var(--gx-drift, 24px), 52vh) rotate(280deg); }
+            100% { transform: translate(0, 108vh) rotate(560deg); opacity: 0.85; }
+        }
+        .gacha-result-card { animation: gachaCardIn 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        @keyframes gachaCardIn { 0% { opacity: 0; transform: scale(0.84) translateY(16px); } 100% { opacity: 1; transform: scale(1) translateY(0); } }
+        .gacha-result-card.special { animation: gachaCardIn 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, gachaSpecialGlow 1.5s ease-in-out 0.5s infinite alternate; }
+        @keyframes gachaSpecialGlow {
+            from { box-shadow: 0 0 16px rgba(245, 211, 137, 0.35), inset 0 0 12px rgba(197, 160, 89, 0.14); }
+            to { box-shadow: 0 0 42px rgba(245, 211, 137, 0.75), inset 0 0 26px rgba(197, 160, 89, 0.3); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .gacha-tube.shaking { animation-duration: 0.01s; }
+            .gacha-result-card, .gacha-result-card.special { animation-duration: 0.01s; }
+        }
     </style>
 </head>
 <body>
@@ -273,7 +324,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 39</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 40</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -565,6 +616,33 @@
                 <span class="text-xs text-gray-300">所持冥銭:</span><span class="text-lg font-bold text-purple-300" id="shop-meisen">0</span>
             </div>
             <div id="shop-list" class="flex-grow overflow-y-auto p-4 space-y-3 pb-8"></div>
+            <!-- v40: 冥府の宝籤の演出オーバーレイ（籤筒の溜め→専用結果表示） -->
+            <div id="gacha-fx" class="hidden absolute inset-0 z-30 flex-col items-center justify-center p-6" style="display:none;">
+                <div id="gacha-fx-flash" class="gacha-flash"></div>
+                <div id="gacha-fx-petals" class="absolute inset-0 overflow-hidden pointer-events-none"></div>
+                <div id="gacha-fx-shake" class="relative z-10 text-center">
+                    <div id="gacha-tube" class="gacha-tube">
+                        <div class="gacha-stick" style="left:16px; transform: rotate(-12deg);"></div>
+                        <div class="gacha-stick" style="left:30px; transform: rotate(-5deg); height:60px;"></div>
+                        <div class="gacha-stick" style="left:45px; transform: rotate(1deg); height:57px;"></div>
+                        <div class="gacha-stick" style="left:59px; transform: rotate(7deg); height:61px;"></div>
+                        <div class="gacha-stick" style="left:72px; transform: rotate(13deg);"></div>
+                        <div class="gacha-tube-body"><div class="gacha-tube-label">宝籤</div></div>
+                    </div>
+                    <div class="mt-7 text-sm font-black text-gold tracking-[0.4em]" style="text-indent:0.4em;">宝 籤 を 引 く</div>
+                    <div class="mt-2 text-[10px] text-gray-400 tracking-[0.25em]" style="text-indent:0.25em;">冥府の風が運命を揺らしている…</div>
+                </div>
+                <div id="gacha-fx-result" class="relative z-10 w-full max-w-xs hidden">
+                    <div id="gacha-result-card" class="gacha-result-card border border-gold/60 bg-[#14100B] p-5 rounded-sm text-center shadow-2xl">
+                        <div id="gacha-result-kind" class="text-[10px] text-gold font-bold tracking-[0.3em] mb-2">【 家 宝 授 与 】</div>
+                        <div><span id="gacha-result-grade" class="inline-block text-[10px] font-bold border border-gold/70 text-yellow-200 px-2 py-0.5 rounded-full">格・中</span></div>
+                        <div id="gacha-result-name" class="text-xl font-black text-white leading-snug mt-2"></div>
+                        <div id="gacha-result-main" class="text-xs text-yellow-200/90 mt-2 leading-relaxed"></div>
+                        <div id="gacha-result-flavor" class="text-[11px] text-gray-300 leading-relaxed mt-3 border-t border-[#3A322A] pt-3 text-left"></div>
+                        <button id="gacha-result-close" type="button" class="action-button-main mt-4 w-full bg-yellow-700 hover:bg-yellow-600 text-white border border-yellow-500 px-3 py-2 rounded text-sm font-bold transition-colors">受け取る</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div id="item-screen" class="hidden absolute inset-0 z-50 bg-[#0C0A09] flex flex-col pointer-events-auto">
@@ -1870,6 +1948,111 @@
             return result;
         };
 
+        // v40: 冥府の宝籤の演出（籤筒の溜め→専用結果表示→上位格のみ特別演出）。
+        // 抽選・価格・解放条件・還元は drawHeirloomGacha が従来通り担い、ここは見せ方だけを担う。
+        const GACHA_SHAKE_MS = 1500;
+        window.__gachaDrawing = false;
+        window.__gachaIsSpecialGrade = function(grade) { return grade === '上' || grade === '最上'; };
+        window.__gachaFlavorExcerpt = function(id) {
+            const def = HEIRLOOMS_DB.find(c => c.id === id);
+            if (!def || !def.flavor) return '';
+            const f = String(def.flavor);
+            const cut = f.indexOf('。');
+            return cut >= 0 ? f.slice(0, cut + 1) : f;
+        };
+        window.__spawnGachaPetals = function() {
+            const box = document.getElementById('gacha-fx-petals');
+            if (!box) return 0;
+            box.innerHTML = '';
+            const count = 26;
+            for (let i = 0; i < count; i++) {
+                const p = document.createElement('div');
+                p.className = 'gacha-petal';
+                const size = 8 + Math.random() * 8;
+                p.style.width = size.toFixed(1) + 'px';
+                p.style.height = (size * 0.82).toFixed(1) + 'px';
+                p.style.left = (Math.random() * 100).toFixed(2) + '%';
+                p.style.setProperty('--gx-drift', ((Math.random() * 90) - 45).toFixed(1) + 'px');
+                p.style.animationDuration = (2.6 + Math.random() * 2.2).toFixed(2) + 's';
+                p.style.animationDelay = (Math.random() * 1.1).toFixed(2) + 's';
+                box.appendChild(p);
+            }
+            return count;
+        };
+        window.startGachaDraw = function() {
+            if (window.__gachaDrawing) return; // 演出中の連打・多重抽選を防ぐ
+            const res = window.drawHeirloomGacha(); // 抽選は先に確定させる（冥銭・所持・履歴はこの時点で保存済み）
+            if (!res) return; // 未解放・冥銭不足などは従来通り何も起きない
+            const fx = document.getElementById('gacha-fx');
+            if (!fx) { window.openShop(); return; } // 演出要素が無い場合は商人の再描画のみ（結果は保存済み）
+            window.__gachaDrawing = true;
+            const btn = document.getElementById('gacha-draw-btn');
+            if (btn) btn.disabled = true;
+            const shakeBox = document.getElementById('gacha-fx-shake');
+            const resultBox = document.getElementById('gacha-fx-result');
+            const tube = document.getElementById('gacha-tube');
+            const petals = document.getElementById('gacha-fx-petals');
+            const flash = document.getElementById('gacha-fx-flash');
+            if (petals) petals.innerHTML = '';
+            if (flash) flash.classList.remove('go');
+            if (resultBox) resultBox.classList.add('hidden');
+            if (shakeBox) shakeBox.classList.remove('hidden');
+            if (tube) tube.classList.add('shaking');
+            fx.classList.remove('hidden');
+            fx.style.display = 'flex';
+            setTimeout(() => { window.__showGachaResult(res); }, GACHA_SHAKE_MS);
+        };
+        window.__showGachaResult = function(res) {
+            const fx = document.getElementById('gacha-fx');
+            if (!fx || !res) { window.__gachaDrawing = false; return; }
+            const shakeBox = document.getElementById('gacha-fx-shake');
+            const resultBox = document.getElementById('gacha-fx-result');
+            const tube = document.getElementById('gacha-tube');
+            if (tube) tube.classList.remove('shaking');
+            if (shakeBox) shakeBox.classList.add('hidden');
+            const special = window.__gachaIsSpecialGrade(res.grade);
+            const kindEl = document.getElementById('gacha-result-kind');
+            const gradeEl = document.getElementById('gacha-result-grade');
+            const nameEl = document.getElementById('gacha-result-name');
+            const mainEl = document.getElementById('gacha-result-main');
+            const flavorEl = document.getElementById('gacha-result-flavor');
+            const card = document.getElementById('gacha-result-card');
+            if (kindEl) kindEl.textContent = (res.kind === 'new') ? '【 家 宝 授 与 】' : '【 還 元 】';
+            if (gradeEl) gradeEl.textContent = '格・' + res.grade + (special ? ' ― 上位の籤' : '');
+            if (nameEl) nameEl.textContent = '『' + res.name + '』';
+            if (mainEl) mainEl.innerHTML = (res.kind === 'new')
+                ? `${res.desc || ''}<br><span class="text-[10px] text-gray-400">家宝蔵に収められた</span>`
+                : `既に所持していたため、冥銭 <span class="text-base font-black text-purple-300">${res.amount}</span> に還元された`;
+            const excerpt = window.__gachaFlavorExcerpt(res.id);
+            if (flavorEl) {
+                flavorEl.textContent = excerpt;
+                flavorEl.style.display = excerpt ? '' : 'none';
+            }
+            if (card) {
+                card.classList.remove('gacha-result-card', 'special');
+                void card.offsetWidth; // 表示アニメーションを最初から再生させる
+                card.classList.add('gacha-result-card');
+                if (special) card.classList.add('special');
+            }
+            if (resultBox) resultBox.classList.remove('hidden');
+            if (special) {
+                const flash = document.getElementById('gacha-fx-flash');
+                if (flash) { flash.classList.remove('go'); void flash.offsetWidth; flash.classList.add('go'); }
+                window.__spawnGachaPetals();
+                if (typeof window.playFanfareSE === 'function') window.playFanfareSE();
+            }
+            const closeBtn = document.getElementById('gacha-result-close');
+            if (closeBtn) closeBtn.onclick = () => { window.closeGachaFx(); };
+        };
+        window.closeGachaFx = function() {
+            const fx = document.getElementById('gacha-fx');
+            if (fx) { fx.classList.add('hidden'); fx.style.display = 'none'; }
+            const petals = document.getElementById('gacha-fx-petals');
+            if (petals) petals.innerHTML = '';
+            window.__gachaDrawing = false;
+            window.openShop(); // 所持冥銭・宝籤カードの状態を最新に再描画する
+        };
+
         function determineHeirloom(s) {
             // 素寒貧の大往生特典：「古びた木の棍棒」は抽選ではなく確定入手（未所持の場合のみ）。
             // 所持済みの場合は下の通常抽選にフォールバックする（棍棒は候補にも入れない）。
@@ -2023,22 +2206,18 @@
 
         window.openShop = function(e) {
             if(e){ e.preventDefault(); e.stopPropagation(); }
+            // v40: 演出オーバーレイが閉じているのに描画中フラグだけ残った場合は復旧する（固着防止）
+            if (window.__gachaDrawing) {
+                const fxEl = document.getElementById('gacha-fx');
+                if (!fxEl || fxEl.style.display === 'none') window.__gachaDrawing = false;
+            }
             const sScreen = document.getElementById('shop-screen');
             const sList = document.getElementById('shop-list');
             document.getElementById('shop-meisen').innerText = window.meisen;
             sScreen.classList.remove('hidden');
             sList.innerHTML = '';
 
-            // v38: 冥府の宝籤の結果バナー（直前に引いた場合のみ、家宝授与の流儀で表示）
-            if (window.__gachaResult) {
-                const gr = window.__gachaResult; window.__gachaResult = null;
-                const banner = document.createElement('div');
-                banner.className = 'border border-gold bg-yellow-950/30 p-3 rounded-sm text-center shadow-md';
-                banner.innerHTML = (gr.kind === 'new')
-                    ? `<div class="text-[10px] text-gold font-bold tracking-[0.3em] mb-1">【 家 宝 授 与 】</div><div class="text-sm font-bold text-white">『${gr.name}』を授かった！</div><div class="text-[10px] text-yellow-200/80 mt-1">格・${gr.grade} ― ${gr.desc}</div>`
-                    : `<div class="text-[10px] text-gold font-bold tracking-[0.3em] mb-1">【 還 元 】</div><div class="text-xs text-gray-200">『${gr.name}』は既に所持していたため、冥銭${gr.amount}に還元された</div><div class="text-[10px] text-yellow-200/80 mt-1">格・${gr.grade}</div>`;
-                sList.appendChild(banner);
-            }
+            // v40: 宝籤の結果表示は専用演出（startGachaDraw→__showGachaResult）に移行したため、v38の結果バナーは廃止
 
             // v38: 冥府の宝籤（家宝ガチャ）カード。未解放時はロック表示で存在を示す
             const gachaCard = document.createElement('div');
@@ -2062,14 +2241,11 @@
                             <div class="font-bold text-gold text-sm">冥府の宝籤 <span class="text-[10px] text-gray-400 ml-1">家宝ガチャ</span></div>
                             <div class="text-xs text-gray-400 mt-1 pr-2">冥銭と引き換えに、運命の家宝を1つ授かる。既に所持している家宝が出た場合は、格に応じた冥銭へ自動で還元される。</div>
                         </div>
-                        <button class="shrink-0 bg-${canDraw ? 'yellow-700 hover:bg-yellow-600' : 'gray-800 text-gray-500'} text-white border border-${canDraw ? 'yellow-500' : 'gray-700'} px-3 py-1.5 rounded text-xs font-bold transition-colors" ${!canDraw ? 'disabled' : ''}>引く・300 冥銭</button>
+                        <button id="gacha-draw-btn" class="shrink-0 bg-${canDraw ? 'yellow-700 hover:bg-yellow-600' : 'gray-800 text-gray-500'} text-white border border-${canDraw ? 'yellow-500' : 'gray-700'} px-3 py-1.5 rounded text-xs font-bold transition-colors" ${!canDraw ? 'disabled' : ''}>引く・300 冥銭</button>
                     </div>
                 `;
                 const gachaBtn = gachaCard.querySelector('button');
-                if (gachaBtn) gachaBtn.onclick = () => {
-                    const res = window.drawHeirloomGacha();
-                    if (res) { window.__gachaResult = res; window.openShop(); }
-                };
+                if (gachaBtn) gachaBtn.onclick = () => { window.startGachaDraw(); };
             }
             sList.appendChild(gachaCard);
 
@@ -3601,6 +3777,7 @@
             bgmMuted = !bgmMuted;
             try { localStorage.setItem('sengoku_bgm_muted', bgmMuted ? '1' : '0'); } catch (err) {}
             if (bgmAudio) bgmAudio.muted = bgmMuted;
+            if (fanfareAudio) fanfareAudio.muted = bgmMuted;
             bgmUpdateButton();
             if (!bgmMuted) bgmEnsureStarted();
         };
@@ -3676,6 +3853,37 @@
                 if (bgmScene !== requestedScene) return; // 途中でシーンが変わっていたら破棄
                 bgmPlay(ok ? file : BGM_FALLBACK_SRC);
             });
+        };
+
+        // v40: 冥府の宝籤の上位格（上・最上）でのみ鳴らす一回限りのファンファーレ。
+        // 大往生曲（bgm-daioujou.mp3）を流用し、シーンBGMは切り替えず別Audioで重ねて鳴らす。
+        // 数秒でフェードアウトして止める。ミュート設定（bgmMuted）に従い、ミュート時は鳴らさない。
+        let fanfareAudio = null;
+        window.playFanfareSE = function() {
+            if (bgmMuted) return false;
+            try {
+                if (fanfareAudio) { try { fanfareAudio.pause(); } catch (e) {} fanfareAudio = null; }
+                const begin = function(src) {
+                    const audio = new Audio();
+                    audio.loop = false;
+                    audio.preload = 'auto';
+                    if (audio.dataset) audio.dataset.src = src;
+                    audio.muted = bgmMuted;
+                    audio.volume = BGM_VOLUME;
+                    audio.addEventListener('error', function() { if (fanfareAudio === audio) fanfareAudio = null; });
+                    audio.src = src;
+                    fanfareAudio = audio;
+                    const p = audio.play();
+                    if (p && typeof p.catch === 'function') p.catch(function() {});
+                    setTimeout(function() {
+                        if (fanfareAudio !== audio) return;
+                        bgmFadeTo(audio, 0, 900);
+                        setTimeout(function() { try { audio.pause(); } catch (e) {} if (fanfareAudio === audio) fanfareAudio = null; }, 1000);
+                    }, 5200);
+                };
+                bgmCheckExists(BGM_FILES.daioujou).then(function(ok) { begin(ok ? BGM_FILES.daioujou : BGM_FALLBACK_SRC); });
+                return true;
+            } catch (e) { return false; }
         };
 
         function bgmEnsureStarted() {
