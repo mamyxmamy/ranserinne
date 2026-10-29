@@ -273,7 +273,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 37</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 38</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -447,6 +447,7 @@
                     </div>
                 </div>
                 <div class="flex justify-between items-end border-t border-gray-800 pt-1.5 mt-2"><span class="text-[10px] text-gray-400">獲得冥銭</span><span class="text-sm font-bold text-purple-300"><span id="go-meisen">+0</span></span></div>
+                <div id="go-board-rank" class="hidden justify-between items-end border-t border-gray-800 pt-1.5 mt-2"><span class="text-[10px] text-gray-400">天下の番付・総合</span><span class="text-sm font-bold text-yellow-300"><span id="go-board-rank-value">--</span> 位</span></div>
                 <div class="chronology-list" id="go-chronology-list"></div>
             </div>
             <div class="w-full max-w-sm mb-3"><p id="go-reason" class="text-[11px] leading-relaxed text-gray-300 text-left border-l-2 border-red-900 pl-2.5 py-1"></p></div>
@@ -489,6 +490,7 @@
                         <div>人徳<br><span id="premium-virtue" class="text-white font-bold">0</span></div><div>運<br><span id="premium-luck" class="text-white font-bold">0</span></div><div>銭<br><span id="premium-money" class="text-gold font-bold">0</span></div>
                     </div>
                     <div class="flex justify-between items-end border-t border-gray-800 pt-1.5 mt-2 text-left"><span class="text-[10px] text-gray-400">獲得冥銭</span><span class="text-sm font-bold text-purple-300"><span id="premium-meisen">+0</span></span></div>
+                    <div id="premium-board-rank" class="hidden justify-between items-end border-t border-gray-800 pt-1.5 mt-2 text-left"><span class="text-[10px] text-gray-400">天下の番付・総合</span><span class="text-sm font-bold text-yellow-300"><span id="premium-board-rank-value">--</span> 位</span></div>
                     <p id="premium-reason" class="text-[11px] leading-relaxed text-yellow-100/90 text-left border-l-2 border-gold pl-2.5 py-1 mt-2"></p>
                     <div class="chronology-list text-left" id="premium-chronology-list"></div>
                 </div>
@@ -616,6 +618,7 @@
                         <li><span class="text-purple-400 font-bold">冥銭と道具</span>: 死後に業に応じて獲得する通貨。冥府の商人で「身代わり地蔵」やステータス強化札などの持込道具（1回使い切り）と交換できます。</li>
                         <li><span class="text-gold font-bold">継承家宝</span>: 特定条件で入手する永続強化品。<span class="text-red-400 font-bold">大往生（60歳到達）できずに非業の死を遂げると完全にロストします。</span></li>
                         <li><span class="text-gold font-bold">家宝の被りと還元</span>: 既に所持している家宝が再び授けられた場合、所持数は増えず、代わりにその家宝の格に応じた冥銭へと還元されます。</li>
+                        <li><span class="text-purple-400 font-bold">冥府の宝籤（ガチャ）</span>: 輪廻を30回重ねると、冥府の商人のもとで「冥府の宝籤」が解放されます。1回300冥銭で家宝が1つ授けられ、既に所持している家宝が出た場合は格に応じた冥銭に還元されます。</li>
                     </ul>
                 </section>
 
@@ -624,7 +627,7 @@
                     <ul class="list-disc pl-4 space-y-1">
                         <li><span class="text-gold font-bold">絵巻図鑑</span>: これまで集めた「家宝」、迎えた「死因」、そして人生の生き様によって授かる「二つ名（全50種）」がコレクションされます。</li>
                         <li><span class="text-gold font-bold">家宝の見方</span>: 所持中の家宝は名前・効果・来歴（フレーバー）がそのまま表示されます。過去に手に入れたものの今は所持していない家宝は、名前・効果・来歴と取得条件に加えて、ブロンズ色の「取得済」バッジと「輪廻の流れの中で失われた」の注記が付きます。一度も手に入れていない家宝は、名前が「？？？」と伏せられ、取得条件のみが表示されます。</li>
-                        <li><span class="text-yellow-400 font-bold">天下の番付</span>: 全国のプレイヤーと「長寿」「富国」「武功」を競い合うオンラインランキングです。さらに、全能力値と享年・所持金から算出する総合成績で競う「総合」番付もあります。番付に表示されるのは、名前ごとに最も優れた記録だけです。番付の記録をタップすると、登録時の能力値と生涯年表が見られます（年表は新しい記録のみ）。</li>
+                        <li><span class="text-yellow-400 font-bold">天下の番付</span>: 全国のプレイヤーと「長寿」「富国」「武功」を競い合うオンラインランキングです。さらに、全能力値と享年・所持金から算出する総合成績で競う「総合」番付もあります。「最高記録」では名前ごとに最も優れた記録だけが表示され、「最近の記録」では新しい順にすべての記録が流れます。自分の名前の記録には「自分」の目印が付き、死亡時の結果画面では総合順位も知らされます。番付の記録をタップすると、登録時の能力値と生涯年表が見られます（年表は新しい記録のみ）。</li>
                     </ul>
                 </section>
 
@@ -652,6 +655,10 @@
                 <button type="button" onclick="window.switchRankTab('age')" id="tab-rank-age" class="flex-1 py-3 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">長寿番付</button>
                 <button type="button" onclick="window.switchRankTab('money')" id="tab-rank-money" class="flex-1 py-3 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">富国長者</button>
                 <button type="button" onclick="window.switchRankTab('valor')" id="tab-rank-valor" class="flex-1 py-3 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">修羅の道</button>
+            </div>
+            <div class="flex border-b border-[#3A322A] bg-[#14110F] shrink-0">
+                <button type="button" onclick="window.switchRankMode('best')" id="rank-mode-best" class="flex-1 py-2 text-[11px] font-bold text-gold border-b-2 border-gold transition-colors">🏆 最高記録</button>
+                <button type="button" onclick="window.switchRankMode('recent')" id="rank-mode-recent" class="flex-1 py-2 text-[11px] font-bold text-gray-500 border-b-2 border-transparent transition-colors">🕐 最近の記録</button>
             </div>
             <div id="rank-content" class="flex-grow overflow-y-auto p-4 pb-8 bg-[#090807]"></div>
         </div>
@@ -1799,6 +1806,57 @@
             return 20;
         }
 
+        // v38: 冥府の宝籤（家宝ガチャ）。1回300冥銭、輪廻30回で解放。
+        // 排出プールは家宝29種（hl_club は対象外）。格は還元額の区分（heirloomConvertMeisen）と同一基準で決め、格ごとに重みを付ける。
+        const GACHA_PRICE = 300;
+        const GACHA_UNLOCK_COUNT = 30;
+        const GACHA_GRADE_WEIGHTS = { '末': 10, '下': 5, '中': 3, '上': 2, '最上': 1 };
+        function heirloomGradeName(hl) {
+            const amt = heirloomConvertMeisen(hl);
+            if (amt >= 100) return '最上';
+            if (amt >= 70) return '上';
+            if (amt >= 50) return '中';
+            if (amt >= 30) return '下';
+            return '末';
+        }
+        window.__gachaPool = function() {
+            return HEIRLOOMS_DB.filter(c => c.id !== 'hl_club').map(c => {
+                const inst = heirloomInstance(c.id);
+                if (!inst) return null;
+                const grade = heirloomGradeName(inst);
+                return { inst: inst, grade: grade, weight: GACHA_GRADE_WEIGHTS[grade] };
+            }).filter(x => x !== null);
+        };
+        window.drawHeirloomGacha = function() {
+            if ((window.currentReincarnationCount || 0) < GACHA_UNLOCK_COUNT) return null;
+            if ((window.meisen || 0) < GACHA_PRICE) return null;
+            const pool = window.__gachaPool();
+            if (pool.length === 0) return null;
+            const totalWeight = pool.reduce((sum, x) => sum + x.weight, 0);
+            let r = Math.random() * totalWeight;
+            let picked = pool[pool.length - 1];
+            for (const x of pool) { r -= x.weight; if (r <= 0) { picked = x; break; } }
+
+            window.meisen -= GACHA_PRICE;
+            const hl = picked.inst;
+            let result;
+            if (!window.unlockedHeirlooms) window.unlockedHeirlooms = [];
+            const exists = window.unlockedHeirlooms.find(h => h.id === hl.id);
+            if (!exists) {
+                window.unlockedHeirlooms.push(hl);
+                if (!window.heirloomHistory) window.heirloomHistory = [];
+                if (!window.heirloomHistory.includes(hl.id)) window.heirloomHistory.push(hl.id);
+                result = { kind: 'new', id: hl.id, name: hl.name, grade: picked.grade, desc: hl.desc };
+            } else {
+                const amount = heirloomConvertMeisen(hl);
+                window.meisen += amount;
+                result = { kind: 'convert', id: hl.id, name: hl.name, grade: picked.grade, amount: amount };
+            }
+            saveMetaProgress();
+            window.updateStartScreenUI();
+            return result;
+        };
+
         function determineHeirloom(s) {
             // 素寒貧の大往生特典：「古びた木の棍棒」は抽選ではなく確定入手（未所持の場合のみ）。
             // 所持済みの場合は下の通常抽選にフォールバックする（棍棒は候補にも入れない）。
@@ -1957,6 +2015,50 @@
             sScreen.classList.remove('hidden');
             sList.innerHTML = '';
 
+            // v38: 冥府の宝籤の結果バナー（直前に引いた場合のみ、家宝授与の流儀で表示）
+            if (window.__gachaResult) {
+                const gr = window.__gachaResult; window.__gachaResult = null;
+                const banner = document.createElement('div');
+                banner.className = 'border border-gold bg-yellow-950/30 p-3 rounded-sm text-center shadow-md';
+                banner.innerHTML = (gr.kind === 'new')
+                    ? `<div class="text-[10px] text-gold font-bold tracking-[0.3em] mb-1">【 家 宝 授 与 】</div><div class="text-sm font-bold text-white">『${gr.name}』を授かった！</div><div class="text-[10px] text-yellow-200/80 mt-1">格・${gr.grade} ― ${gr.desc}</div>`
+                    : `<div class="text-[10px] text-gold font-bold tracking-[0.3em] mb-1">【 還 元 】</div><div class="text-xs text-gray-200">『${gr.name}』は既に所持していたため、冥銭${gr.amount}に還元された</div><div class="text-[10px] text-yellow-200/80 mt-1">格・${gr.grade}</div>`;
+                sList.appendChild(banner);
+            }
+
+            // v38: 冥府の宝籤（家宝ガチャ）カード。未解放時はロック表示で存在を示す
+            const gachaCard = document.createElement('div');
+            if ((window.currentReincarnationCount || 0) < 30) {
+                gachaCard.className = 'border p-3 rounded-sm bg-[#12100E] border-[#221E19] opacity-70';
+                gachaCard.innerHTML = `
+                    <div class="flex justify-between items-start mb-1">
+                        <div>
+                            <div class="font-bold text-gray-400 text-sm">🔒 冥府の宝籤 <span class="text-[10px] text-gray-500 ml-1">未解放</span></div>
+                            <div class="text-xs text-gray-500 mt-1 pr-2">輪廻を30回重ねた魂にのみ、宝籤を引く資格が与えられる。（現在 ${window.currentReincarnationCount || 0} 回）</div>
+                        </div>
+                        <span class="shrink-0 bg-gray-800 text-gray-500 border border-gray-700 px-3 py-1.5 rounded text-xs font-bold">300 冥銭</span>
+                    </div>
+                `;
+            } else {
+                const canDraw = window.meisen >= 300;
+                gachaCard.className = 'border p-3 rounded-sm bg-[#1C1503] border-gold/50 shadow-[0_0_12px_rgba(197,160,89,0.15)]';
+                gachaCard.innerHTML = `
+                    <div class="flex justify-between items-start mb-1">
+                        <div>
+                            <div class="font-bold text-gold text-sm">冥府の宝籤 <span class="text-[10px] text-gray-400 ml-1">家宝ガチャ</span></div>
+                            <div class="text-xs text-gray-400 mt-1 pr-2">冥銭と引き換えに、運命の家宝を1つ授かる。既に所持している家宝が出た場合は、格に応じた冥銭へ自動で還元される。</div>
+                        </div>
+                        <button class="shrink-0 bg-${canDraw ? 'yellow-700 hover:bg-yellow-600' : 'gray-800 text-gray-500'} text-white border border-${canDraw ? 'yellow-500' : 'gray-700'} px-3 py-1.5 rounded text-xs font-bold transition-colors" ${!canDraw ? 'disabled' : ''}>引く・300 冥銭</button>
+                    </div>
+                `;
+                const gachaBtn = gachaCard.querySelector('button');
+                if (gachaBtn) gachaBtn.onclick = () => {
+                    const res = window.drawHeirloomGacha();
+                    if (res) { window.__gachaResult = res; window.openShop(); }
+                };
+            }
+            sList.appendChild(gachaCard);
+
             CONSUMABLES_DB.forEach(item => {
                 const count = window.inventory[item.id] || 0;
                 const canAfford = window.meisen >= item.price;
@@ -2093,11 +2195,74 @@
         window.openRanking = function(e) {
             if(e){ e.preventDefault(); e.stopPropagation(); }
             document.getElementById('ranking-screen').classList.remove('hidden');
+            window.__rankMode = 'best';
+            window.__rankTab = 'total';
             window.switchRankTab('total');
         };
         window.closeRanking = function(e) {
             if(e){ e.preventDefault(); e.stopPropagation(); }
             document.getElementById('ranking-screen').classList.add('hidden');
+        };
+
+        // v38: 番付の表示モード（最高記録＝名前ごと最良のみ／最近の記録＝新しい順にすべて）と現在のタブを保持する
+        window.__rankMode = 'best';
+        window.__rankTab = 'total';
+        // v38: 自分の登録名（番付の自分の記録ハイライト判定用）
+        window.__myBoardName = function() {
+            let n = '';
+            try { n = localStorage.getItem('sengoku_player_name') || ''; } catch (e) {}
+            if (!n && typeof state !== 'undefined' && state && state.playerName) n = state.playerName;
+            return n;
+        };
+        window.switchRankMode = function(mode) {
+            window.__rankMode = (mode === 'recent') ? 'recent' : 'best';
+            window.switchRankTab(window.__rankTab || 'total');
+        };
+
+        // v38: 死亡時の結果画面に出す「総合◯位」を、番付登録後のデータから算出する。
+        // 集計方法は総合タブ（v36の合算取得＋拡張4項目フィルタ＋名前ごと最良＋calculateLifeRank）と同一にそろえ、番付表示と順位が一致するようにする。
+        // 取得できない場合は null を返し、結果画面では表示自体を省略する（エラーにはしない）。
+        window.__calcMyTotalRank = async function(myName) {
+            try {
+                if (!myName) return null;
+                const db = firebase.firestore();
+                const boardRef = db.collection('artifacts').doc('sengoku-life-app').collection('leaderboard');
+                const snaps = await Promise.all([
+                    boardRef.orderBy('timestamp', 'desc').limit(300).get(),
+                    boardRef.orderBy('valor', 'desc').limit(100).get(),
+                    boardRef.orderBy('age', 'desc').limit(100).get(),
+                    boardRef.orderBy('money', 'desc').limit(100).get()
+                ]);
+                const seenIds = new Set();
+                const bestScoreByName = new Map();
+                snaps.forEach(snap => snap.forEach(doc => {
+                    if (seenIds.has(doc.id)) return;
+                    seenIds.add(doc.id);
+                    const data = doc.data();
+                    if (typeof data.karma !== 'number' || typeof data.luck !== 'number' || typeof data.strategy !== 'number' || typeof data.virtue !== 'number') return;
+                    const score = calculateLifeRank(data).score;
+                    const key = data.playerName || '名無し';
+                    if (!bestScoreByName.has(key) || score > bestScoreByName.get(key)) bestScoreByName.set(key, score);
+                }));
+                if (!bestScoreByName.has(myName)) return null;
+                const myScore = bestScoreByName.get(myName);
+                const sortedScores = Array.from(bestScoreByName.values()).sort((a, b) => b - a);
+                return sortedScores.indexOf(myScore) + 1;
+            } catch (rankErr) { return null; }
+        };
+
+        // v38: 結果画面の「天下の番付・総合 ○位」行を、順位が届いた時点で差し込む（届かなければ行は隠れたまま）
+        function applyBoardRankToEnding(rowId, valueId) {
+            const row = document.getElementById(rowId);
+            if (row) { row.classList.add('hidden'); row.classList.remove('flex'); }
+            if (window.__pendingBoardRank && typeof window.__pendingBoardRank.then === 'function') {
+                window.__pendingBoardRank.then(rank => {
+                    if (!rank) return;
+                    const r = document.getElementById(rowId);
+                    const v = document.getElementById(valueId);
+                    if (r && v) { v.innerText = rank; r.classList.remove('hidden'); r.classList.add('flex'); }
+                }).catch(() => {});
+            }
         };
 
         // v31: 番付の行タップで開く詳細モーダル。年表は該当IDのみ遅延読み込みする
@@ -2178,11 +2343,18 @@
         };
 
         window.switchRankTab = async function(type) {
+            window.__rankTab = type;
             ['total', 'age', 'money', 'valor'].forEach(t => {
                 const el = document.getElementById(`tab-rank-${t}`);
                 if(t === type) { el.className = "flex-1 py-3 text-xs font-bold text-gold border-b-2 border-gold transition-colors"; } 
                 else { el.className = "flex-1 py-3 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors"; }
             });
+            // v38: 最高記録／最近の記録 の切替ボタンの選択中スタイル
+            const isRecentMode = (window.__rankMode === 'recent');
+            const modeBestBtn = document.getElementById('rank-mode-best');
+            const modeRecentBtn = document.getElementById('rank-mode-recent');
+            if (modeBestBtn) modeBestBtn.className = "flex-1 py-2 text-[11px] font-bold transition-colors " + (!isRecentMode ? "text-gold border-b-2 border-gold" : "text-gray-500 border-b-2 border-transparent");
+            if (modeRecentBtn) modeRecentBtn.className = "flex-1 py-2 text-[11px] font-bold transition-colors " + (isRecentMode ? "text-gold border-b-2 border-gold" : "text-gray-500 border-b-2 border-transparent");
 
             const content = document.getElementById('rank-content');
             content.innerHTML = '<div class="text-center text-gray-500 mt-10 text-xs animate-pulse">飛脚が日本中の記録を集めております...</div>';
@@ -2211,31 +2383,39 @@
                         const d = doc.data(); d._docId = doc.id; allRecords.push(d);
                     });
                 };
-                if (isTotal) {
-                    // v36: 投稿が増えると、古いが優秀な記録が「新しい順150件」の枠から押し出されて総合から消えてしまう問題への対処。
-                    // 新しい順の最新300件に、valor / age / money それぞれの歴代上位100件を合算し、ドキュメントIDで重複を除いてから集計する。
-                    const totalSnaps = await Promise.all([
-                        boardRef.orderBy('timestamp', 'desc').limit(300).get(),
-                        boardRef.orderBy('valor', 'desc').limit(100).get(),
-                        boardRef.orderBy('age', 'desc').limit(100).get(),
-                        boardRef.orderBy('money', 'desc').limit(100).get()
-                    ]);
-                    totalSnaps.forEach(collectDocs);
+                let records;
+                if (isRecentMode) {
+                    // v38: 最近の記録。投稿日時の新しい順に取得し、名前ごとの集約はせずそのまま並べる（同一人物の複数表示OK、上限50件）。
+                    // 総合タブでは、拡張4項目を持たない旧記録はスコアを算出できないため対象外とする（最高記録と同じ基準）。
+                    collectDocs(await boardRef.orderBy('timestamp', 'desc').limit(50).get());
+                    records = allRecords.filter(d => metricOf(d) !== null).slice(0, 50);
                 } else {
-                    collectDocs(await boardRef.orderBy(type, 'desc').limit(150).get());
-                }
-                const bestByName = new Map();
-                allRecords.forEach(data => {
-                    const metric = metricOf(data);
-                    if (metric === null) return;
-                    const nameKey = data.playerName || '名無し';
-                    if (!bestByName.has(nameKey) || metric > metricOf(bestByName.get(nameKey))) {
-                        bestByName.set(nameKey, data);
+                    if (isTotal) {
+                        // v36: 投稿が増えると、古いが優秀な記録が「新しい順150件」の枠から押し出されて総合から消えてしまう問題への対処。
+                        // 新しい順の最新300件に、valor / age / money それぞれの歴代上位100件を合算し、ドキュメントIDで重複を除いてから集計する。
+                        const totalSnaps = await Promise.all([
+                            boardRef.orderBy('timestamp', 'desc').limit(300).get(),
+                            boardRef.orderBy('valor', 'desc').limit(100).get(),
+                            boardRef.orderBy('age', 'desc').limit(100).get(),
+                            boardRef.orderBy('money', 'desc').limit(100).get()
+                        ]);
+                        totalSnaps.forEach(collectDocs);
+                    } else {
+                        collectDocs(await boardRef.orderBy(type, 'desc').limit(150).get());
                     }
-                });
-                const records = Array.from(bestByName.values())
-                    .sort((a, b) => metricOf(b) - metricOf(a))
-                    .slice(0, 30);
+                    const bestByName = new Map();
+                    allRecords.forEach(data => {
+                        const metric = metricOf(data);
+                        if (metric === null) return;
+                        const nameKey = data.playerName || '名無し';
+                        if (!bestByName.has(nameKey) || metric > metricOf(bestByName.get(nameKey))) {
+                            bestByName.set(nameKey, data);
+                        }
+                    });
+                    records = Array.from(bestByName.values())
+                        .sort((a, b) => metricOf(b) - metricOf(a))
+                        .slice(0, 30);
+                }
 
                 // v31: 詳細モーダル用に、表示中の記録をドキュメントIDで引けるよう控える
                 window.__rankDetailCtx = { type: type, records: {} };
@@ -2243,14 +2423,26 @@
 
                 let html = '';
                 let rank = 1;
+                const myBoardName = window.__myBoardName();
                 records.forEach(data => {
                     let rankStyle = 'text-gray-400 text-sm';
                     let rankIcon = `${rank}位`;
                     let bgStyle = 'bg-[#181513] border-[#3A322A]';
 
-                    if(rank === 1) { rankStyle = 'text-yellow-400 text-xl drop-shadow-[0_0_5px_rgba(250,204,21,0.8)]'; rankIcon = '🥇'; bgStyle = 'bg-gradient-to-r from-yellow-900/30 to-[#181513] border-yellow-700/50'; }
-                    else if(rank === 2) { rankStyle = 'text-gray-300 text-lg'; rankIcon = '🥈'; bgStyle = 'bg-gradient-to-r from-gray-700/30 to-[#181513] border-gray-600/50'; }
-                    else if(rank === 3) { rankStyle = 'text-orange-400 text-lg'; rankIcon = '🥉'; bgStyle = 'bg-gradient-to-r from-orange-900/30 to-[#181513] border-orange-800/50'; }
+                    if (!isRecentMode) {
+                        if(rank === 1) { rankStyle = 'text-yellow-400 text-xl drop-shadow-[0_0_5px_rgba(250,204,21,0.8)]'; rankIcon = '🥇'; bgStyle = 'bg-gradient-to-r from-yellow-900/30 to-[#181513] border-yellow-700/50'; }
+                        else if(rank === 2) { rankStyle = 'text-gray-300 text-lg'; rankIcon = '🥈'; bgStyle = 'bg-gradient-to-r from-gray-700/30 to-[#181513] border-gray-600/50'; }
+                        else if(rank === 3) { rankStyle = 'text-orange-400 text-lg'; rankIcon = '🥉'; bgStyle = 'bg-gradient-to-r from-orange-900/30 to-[#181513] border-orange-800/50'; }
+                    } else {
+                        // v38: 最近の記録は順位ではなく新しい順の通し番号として表示する
+                        rankStyle = 'text-gray-500 text-xs';
+                        rankIcon = `${rank}`;
+                    }
+
+                    // v38: 自分の記録は「自分」バッジ＋紫の色付けでハイライトする（最高・最近の両表示共通）
+                    const isMine = !!myBoardName && (data.playerName || '') === myBoardName;
+                    const mineBadge = isMine ? '<span class="text-[9px] font-bold text-black bg-purple-400 px-1 py-0.5 rounded ml-1 align-middle">自分</span>' : '';
+                    if (isMine && (isRecentMode || rank > 3)) { bgStyle = 'bg-gradient-to-r from-purple-900/40 to-[#181513] border-purple-400/70'; }
 
                     let scoreText = '';
                     if(type === 'total') { const lr = calculateLifeRank(data); scoreText = `総合 <strong class="text-gold text-xl">${lr.score}</strong> <span class="text-xs">点</span> <span class="text-[10px] font-bold text-yellow-200 bg-yellow-900/50 border border-yellow-700/50 px-1 py-0.5 rounded align-middle">${lr.rank}ランク</span>`; }
@@ -2273,7 +2465,7 @@
                         <div class="font-black ${rankStyle} w-8 text-center flex-shrink-0 z-10">${rankIcon}</div>
                         <div class="flex-grow z-10">
                             <div class="flex justify-between items-end mb-0.5">
-                                <span class="text-sm font-bold text-white tracking-widest">${data.playerName || '名無し'}${sukanpinBadge}</span>
+                                <span class="text-sm font-bold ${isMine ? 'text-purple-200' : 'text-white'} tracking-widest">${data.playerName || '名無し'}${sukanpinBadge}${mineBadge}</span>
                                 <span class="text-[9px] text-gray-400 bg-black/50 px-1 py-0.5 rounded">${data.title}</span>
                             </div>
                             <div class="text-right text-gray-300 mt-1">${scoreText}</div>
@@ -2286,6 +2478,7 @@
                 if (records.length === 0) { content.innerHTML = (type === 'total')
                     ? '<div class="text-center text-gray-500 mt-10 text-xs">まだ総合の記録がありません。<br>これからの人生の記録が、ここに刻まれます。</div>'
                     : '<div class="text-center text-gray-500 mt-10 text-xs">まだ記録がありません。</div>'; }
+                else if (isRecentMode) { content.innerHTML = '<div class="text-center text-[10px] text-gray-500 mb-3">※新しい順に表示しています（同じ名前の記録もすべて表示されます）<br>※記録をタップすると、登録時の能力と生涯年表が見られます</div>' + html; }
                 else { content.innerHTML = '<div class="text-center text-[10px] text-gray-500 mb-3">※記録をタップすると、登録時の能力と生涯年表が見られます</div>' + html; }
             } catch(err) {
                 content.innerHTML = `<div class="text-center text-red-500 mt-10 text-xs">通信に失敗しました。<br>${err.message}</div>`;
@@ -3033,8 +3226,13 @@
                     localStorage.setItem('sengoku_past_lives', JSON.stringify(past.slice(0, 30)));
                 } catch (e) {}
 
+                window.__pendingBoardRank = null;
                 if (typeof window.__saveDeathData === 'function') {
-                    window.__saveDeathData(state.age, state.classInfo ? state.classInfo.name : '', state.faction ? state.faction.name : '', finalTitle, reason, state, nextHeirloom);
+                    const savePromise = window.__saveDeathData(state.age, state.classInfo ? state.classInfo.name : '', state.faction ? state.faction.name : '', finalTitle, reason, state, nextHeirloom);
+                    // v38: 番付登録が完了してから総合順位を算出する。取得できない場合は null のままにし、結果画面では順位表示を省略する
+                    window.__pendingBoardRank = Promise.resolve(savePromise)
+                        .then(() => (typeof window.__calcMyTotalRank === 'function') ? window.__calcMyTotalRank(state.playerName || '名無しの権兵衛') : null)
+                        .catch(() => null);
                 }
 
                 // v21: 死亡・大往生が確定しても結果画面へ自動遷移しない。最期のログの画面で止め、
@@ -3071,6 +3269,7 @@
             const goRankValueEl = document.getElementById('go-rank-value');
             if (goRankValueEl) goRankValueEl.innerText = goLifeRank.rank;
             const goMeisen = document.getElementById('go-meisen'); if (goMeisen) goMeisen.innerText = `+${earnedMeisen}`;
+            applyBoardRankToEnding('go-board-rank', 'go-board-rank-value');
             renderChronologyToList('go-chronology-list');
 
             const lostNotice = document.getElementById('lost-heirloom-notice');
@@ -3112,6 +3311,7 @@
             const premiumRankValueEl = document.getElementById('premium-rank-value');
             if (premiumRankValueEl) premiumRankValueEl.innerText = premiumLifeRank.rank;
             const premMeisen = document.getElementById('premium-meisen'); if (premMeisen) premMeisen.innerText = `+${earnedMeisen} 冥銭`;
+            applyBoardRankToEnding('premium-board-rank', 'premium-board-rank-value');
             // v37: 大往生画面にも死因の文（reason）を表示する。老衰なら老衰専用文がそのまま届く
             const premReason = document.getElementById('premium-reason'); if (premReason) premReason.innerText = reason || '';
             renderChronologyToList('premium-chronology-list');
