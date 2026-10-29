@@ -273,7 +273,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 36</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 37</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -489,6 +489,7 @@
                         <div>人徳<br><span id="premium-virtue" class="text-white font-bold">0</span></div><div>運<br><span id="premium-luck" class="text-white font-bold">0</span></div><div>銭<br><span id="premium-money" class="text-gold font-bold">0</span></div>
                     </div>
                     <div class="flex justify-between items-end border-t border-gray-800 pt-1.5 mt-2 text-left"><span class="text-[10px] text-gray-400">獲得冥銭</span><span class="text-sm font-bold text-purple-300"><span id="premium-meisen">+0</span></span></div>
+                    <p id="premium-reason" class="text-[11px] leading-relaxed text-yellow-100/90 text-left border-l-2 border-gold pl-2.5 py-1 mt-2"></p>
                     <div class="chronology-list text-left" id="premium-chronology-list"></div>
                 </div>
                 <div id="premium-heirloom-notice" class="hidden anim-slide-up mb-3 border border-gold bg-yellow-950/40 px-5 py-1.5 rounded-sm" style="animation-delay: 3.6s;">
@@ -2099,7 +2100,8 @@
             document.getElementById('ranking-screen').classList.add('hidden');
         };
 
-        // v31: 番付の行タップで開く詳細モーダル。年表は別コレクションから該当IDのみ遅延読み込みする
+        // v31: 番付の行タップで開く詳細モーダル。年表は該当IDのみ遅延読み込みする
+        // v37: 年表は本体ドキュメント埋め込みを優先し、無ければ別コレクション（旧方式）を読む
         window.__rankDetailCtx = null;
         window.openRankDetail = async function(docId) {
             const ctx = window.__rankDetailCtx;
@@ -2147,17 +2149,26 @@
 
             const chronoBox = document.getElementById('rank-detail-chronology');
             const noChronicleHtml = '<div class="text-[10px] text-gray-500 py-1">この記録には年表がありません（年表は新しい記録から保存されます）</div>';
-            try {
-                const db = firebase.firestore();
-                const snap = await db.collection('artifacts').doc('sengoku-life-app').collection('leaderboard_chronicles').doc(docId).get();
-                const chronology = (snap && snap.exists) ? (snap.data().chronology || []) : [];
-                if (chronology.length > 0) {
-                    let ch = '<span class="text-[10px] text-gold font-bold mb-1 block">【生涯年表】</span>';
-                    chronology.forEach(c => { ch += `<div class="flex gap-2 text-[9px] mb-0.5"><span class="text-gold font-bold min-w-[2rem]">${c.age}歳</span><span class="text-gray-400">${c.text}</span></div>`; });
-                    if (chronoBox) chronoBox.innerHTML = ch;
-                } else if (chronoBox) { chronoBox.innerHTML = noChronicleHtml; }
-            } catch (err) {
-                if (chronoBox) chronoBox.innerHTML = noChronicleHtml;
+            const renderChronology = (chronology) => {
+                let ch = '<span class="text-[10px] text-gold font-bold mb-1 block">【生涯年表】</span>';
+                chronology.forEach(c => { ch += `<div class="flex gap-2 text-[9px] mb-0.5"><span class="text-gold font-bold min-w-[2rem]">${c.age}歳</span><span class="text-gray-400">${c.text}</span></div>`; });
+                if (chronoBox) chronoBox.innerHTML = ch;
+            };
+            // v37: まず本体ドキュメントに埋め込まれた年表（data.chronology）を見て、無ければ旧方式の別コレクションを読む
+            const embeddedChronology = Array.isArray(data.chronology) ? data.chronology : [];
+            if (embeddedChronology.length > 0) {
+                renderChronology(embeddedChronology);
+            } else {
+                try {
+                    const db = firebase.firestore();
+                    const snap = await db.collection('artifacts').doc('sengoku-life-app').collection('leaderboard_chronicles').doc(docId).get();
+                    const chronology = (snap && snap.exists) ? (snap.data().chronology || []) : [];
+                    if (chronology.length > 0) {
+                        renderChronology(chronology);
+                    } else if (chronoBox) { chronoBox.innerHTML = noChronicleHtml; }
+                } catch (err) {
+                    if (chronoBox) chronoBox.innerHTML = noChronicleHtml;
+                }
             }
         };
         window.closeRankDetail = function(e) {
@@ -2669,7 +2680,7 @@
                     }
 
                     const isMilestone = (state.age % 5 === 0);
-                    const isRandomEvent = Math.random() < 0.45;
+                    const isRandomEvent = Math.random() < 0.55;
 
                     if (isMilestone || isRandomEvent) {
                         triggerEvent();
@@ -2826,7 +2837,7 @@
                 state.health += hpChg; state.money += appliedMoneyChg;
                 if (state.money < 0) state.money = 0; // final guard against direct mutations inside effects
                 else if (hpChg <= -999) { state.health = 0; state.lastDamageEvent = state.flags.currentEventTitle || '重傷'; if (!state.deathCause) state.deathCause = state.mode === 'battle' ? 'battle' : 'execution'; }
-                else if (hpChg < 0) { state.lastDamageEvent = state.flags.currentEventTitle || '重傷'; if (state.health <= 0 && !state.deathCause) state.deathCause = state.mode === 'battle' ? 'battle' : 'oldage'; }
+                else if (hpChg < 0) { state.lastDamageEvent = state.flags.currentEventTitle || '重傷'; if (state.health <= 0 && !state.deathCause) state.deathCause = state.mode === 'battle' ? 'battle' : 'wound'; }
 
                 let tags = [];
                 if (hpChg !== 0 && hpChg > -900) tags.push(`体力${hpChg > 0 ? '+' : ''}${hpChg}`);
@@ -3028,7 +3039,7 @@
 
                 // v21: 死亡・大往生が確定しても結果画面へ自動遷移しない。最期のログの画面で止め、
                 // プレイヤーが「見届ける」ボタンを押して初めて結果画面へ進む。
-                window.__pendingEnding = () => { if (state.age >= 60) showPremiumEnding(finalTitle, nextHeirloom, earnedMeisen, endingHeirloomInfo); else showGameOver(reason, finalTitle, nextHeirloom, state.deathCause, earnedMeisen, lostHeirlooms, endingHeirloomInfo); };
+                window.__pendingEnding = () => { if (state.age >= 60) showPremiumEnding(reason, finalTitle, nextHeirloom, earnedMeisen, endingHeirloomInfo); else showGameOver(reason, finalTitle, nextHeirloom, state.deathCause, earnedMeisen, lostHeirlooms, endingHeirloomInfo); };
                 window.__pendingEndingLabel = state.age >= 60 ? '大 往 生 の 結 果 を 見 る' : '最 期 を 見 届 け る';
                 if (advanceBtn) advanceBtn.classList.remove('hidden');
                 if (advanceBtnText) advanceBtnText.innerText = window.__pendingEndingLabel;
@@ -3084,7 +3095,7 @@
             if (gameoverScreen) gameoverScreen.classList.remove('hidden');
         }
 
-        function showPremiumEnding(title, nextHeirloom, earnedMeisen, hlInfo = null) {
+        function showPremiumEnding(reason, title, nextHeirloom, earnedMeisen, hlInfo = null) {
             setSceneBGM('daioujou');
             if (gameScreen) gameScreen.classList.add('hidden');
             const screen = document.getElementById('premium-screen'); const content = document.getElementById('premium-content');
@@ -3101,6 +3112,8 @@
             const premiumRankValueEl = document.getElementById('premium-rank-value');
             if (premiumRankValueEl) premiumRankValueEl.innerText = premiumLifeRank.rank;
             const premMeisen = document.getElementById('premium-meisen'); if (premMeisen) premMeisen.innerText = `+${earnedMeisen} 冥銭`;
+            // v37: 大往生画面にも死因の文（reason）を表示する。老衰なら老衰専用文がそのまま届く
+            const premReason = document.getElementById('premium-reason'); if (premReason) premReason.innerText = reason || '';
             renderChronologyToList('premium-chronology-list');
 
             const hlNotice = document.getElementById('premium-heirloom-notice');
@@ -3475,17 +3488,13 @@
                         className: className,
                         factionName: factionName,
                         sukanpin: (finalState.flags && finalState.flags.sukanpin) ? true : false,
+                        chronology: finalState.chronology || [],
                         timestamp: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
-                    // v31: 年表は本体ドキュメントには入れず、別コレクションへ番付と同じIDで分離保存する。
-                    // 年表の保存が失敗しても番付登録自体は成功扱いにするため、ここで握りつぶす。
-                    try {
-                        const chronicleRef = db.collection('artifacts').doc(appId).collection('leaderboard_chronicles');
-                        await chronicleRef.doc(boardDocRef.id).set({ chronology: finalState.chronology || [] });
-                    } catch (chronErr) {
-                        console.warn("Chronicle save error:", chronErr);
-                    }
+                    // v37: 年表は本体ドキュメントに埋め込んで同じ書き込みで保存する。
+                    // （v31の別コレクション leaderboard_chronicles への分離保存は本番で全件失敗していたため廃止。
+                    //   読み込み側は埋め込み→別コレクションの順にフォールバックするので、旧方式で保存された記録も読める。）
 
                     await globalStatsRef.set({
                         totalReincarnations: firebase.firestore.FieldValue.increment(1)
