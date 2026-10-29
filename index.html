@@ -273,7 +273,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 33</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 36</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -629,7 +629,7 @@
 
                 <section>
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 総合ランク</h3>
-                    <p>命を終えると、その一生の締めくくりとして「総合ランク」が二つ名の傍らに判子風の意匠で押されます。ランクはE・D・C・B・A・S・SS・SSSの8段階で、全能力値の合計に享年と所持金の一部を加えて算出されます。ランクは表示専用であり、冥銭や家宝といった報酬には一切影響しません。</p>
+                    <p>命を終えると、その一生の締めくくりとして「総合ランク」が二つ名の傍らに判子風の意匠で押されます。ランクはE・D・C・B・A・S・SS・SSSの8段階で、全能力値の合計に、享年（2倍で加算）と所持金の一部（20文につき1点）を加えて算出されます。長く生き抜くほど総合ランクは高くなります。ランクは表示専用であり、冥銭や家宝といった報酬には一切影響しません。</p>
                 </section>
 
                 <section>
@@ -783,7 +783,7 @@
 
         const CONSUMABLES_DB = [
             { id: 'migawari', name: '身代わり地蔵', price: 80, desc: '致死ダメージを受けた際、自動で消費されて体力50で生き残る最強の保険。', type: 'migawari' },
-            { id: 'kizugusuri', name: '秘伝の傷薬', price: 20, desc: '体力が30以下になるか致死ダメージを受けた際、自動で消費され体力を50回復する。', type: 'auto_heal', value: 50 },
+            { id: 'kizugusuri', name: '秘伝の傷薬', price: 40, desc: '体力が30以下になるか致死ダメージを受けた際、自動で消費され体力を40回復する。', type: 'auto_heal', value: 40 },
             { id: 'tegata', name: '豪商の紹介状', price: 30, desc: '初期所持金 +150文 でスタート。', type: 'money', value: 150 },
             { id: 'ganyaku', name: '鬼神の丸薬', price: 30, desc: '初期武功 +30 でスタート。', type: 'valor', value: 30 },
             { id: 'heihou', name: '稀代の兵法書', price: 30, desc: '初期知略 +30 でスタート。', type: 'strategy', value: 30 },
@@ -844,6 +844,16 @@
             (window.activeHeirlooms || []).forEach(fix);
         }
         syncHeirloomStats();
+
+        // v34: 持込道具は localStorage にオブジェクトごと保存されるため、旧 value / desc を正本（CONSUMABLES_DB）へ同期する
+        function syncConsumableStats() {
+            const cons = window.activeConsumable;
+            if (!cons || !cons.id) return;
+            const c = CONSUMABLES_DB.find(x => x.id === cons.id);
+            if (!c) return;
+            cons.name = c.name; cons.price = c.price; cons.desc = c.desc; cons.type = c.type; cons.value = c.value;
+        }
+        syncConsumableStats();
 
         const DEATH_CAUSES_DB = [
             { id: 'battle', name: '討死', hint: '戦場で名誉ある、あるいは無残な最期を遂げる。' }, { id: 'starvation', name: '餓死', hint: '極限の飢えに苦しみ、泥を啜って命を落とす。' },
@@ -1684,7 +1694,7 @@
         // ==========================================
 
         function calculateLifeRank(s) {
-            const score = (s.valor || 0) + (s.karma || 0) + (s.luck || 0) + (s.strategy || 0) + (s.virtue || 0) + (s.age || 0) + Math.floor((s.money || 0) / 20);
+            const score = (s.valor || 0) + (s.karma || 0) + (s.luck || 0) + (s.strategy || 0) + (s.virtue || 0) + ((s.age || 0) * 2) + Math.floor((s.money || 0) / 20);
             let rank = 'E';
             if (score >= 1500) rank = 'SSS';
             else if (score >= 1000) rank = 'SS';
@@ -2181,12 +2191,28 @@
                     if (typeof data.karma !== 'number' || typeof data.luck !== 'number' || typeof data.strategy !== 'number' || typeof data.virtue !== 'number') return null;
                     return calculateLifeRank(data).score;
                 };
-                const snapshot = isTotal
-                    ? await boardRef.orderBy('timestamp', 'desc').limit(150).get()
-                    : await boardRef.orderBy(type, 'desc').limit(150).get();
-
                 const allRecords = [];
-                snapshot.forEach(doc => { const d = doc.data(); d._docId = doc.id; allRecords.push(d); });
+                const seenDocIds = new Set();
+                const collectDocs = (snap) => {
+                    snap.forEach(doc => {
+                        if (seenDocIds.has(doc.id)) return;
+                        seenDocIds.add(doc.id);
+                        const d = doc.data(); d._docId = doc.id; allRecords.push(d);
+                    });
+                };
+                if (isTotal) {
+                    // v36: 投稿が増えると、古いが優秀な記録が「新しい順150件」の枠から押し出されて総合から消えてしまう問題への対処。
+                    // 新しい順の最新300件に、valor / age / money それぞれの歴代上位100件を合算し、ドキュメントIDで重複を除いてから集計する。
+                    const totalSnaps = await Promise.all([
+                        boardRef.orderBy('timestamp', 'desc').limit(300).get(),
+                        boardRef.orderBy('valor', 'desc').limit(100).get(),
+                        boardRef.orderBy('age', 'desc').limit(100).get(),
+                        boardRef.orderBy('money', 'desc').limit(100).get()
+                    ]);
+                    totalSnaps.forEach(collectDocs);
+                } else {
+                    collectDocs(await boardRef.orderBy(type, 'desc').limit(150).get());
+                }
                 const bestByName = new Map();
                 allRecords.forEach(data => {
                     const metric = metricOf(data);
