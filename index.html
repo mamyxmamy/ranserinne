@@ -324,7 +324,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 40</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 41</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -1537,6 +1537,58 @@
                     { text: '町衆に銭を配り、消火の手伝いを募る', condition: (s) => s.money >= 100, hint: '銭減少・人徳上昇', effect: (s) => { s.virtue += 20; return { money: -100, hp: 0, log: '銭の力で町衆総出の消火となった。蔵は半焼で済み、あなたの決断の速さが評判になった。'};}},
                     { text: '命あっての物種と、蔵を諦めて見守る', condition: () => true, hint: '所持金を最大250文失う', effect: (s) => { return { money: -Math.min(s.money, 250), hp: 0, log: '蔵は一夜で灰となった。蓄えた財産の大半を失ったが、命と家族は無事だった。それだけが救いだ。'};}}
             ]},
+            { id: 'merchant_shuinsen', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'merchant' && s.money >= 500,
+                title: '【朱印船】朱印船交易', text: '異国との交易を許す朱印状の話が舞い込んだ。船を一艘仕立てれば、帰港する頃には蔵が銭で溢れるという。無論、海の藻屑となる覚悟も要る話だが。',
+                choices: [
+                    { text: '【銭500文】全財産を投じて朱印船を仕立てる', condition: (s) => s.money >= 500, hint: '運と知略で判定・大儲けか全損か', effect: (s) => {
+                        const p = Math.min(0.85, Math.max(0.35, 0.5 + (s.luck * 0.002) + (s.strategy * 0.001)));
+                        if (Math.random() < p) { recordChronology("朱印船交易で莫大な富を得る"); return { money: 1000, hp: 0, log: '朱印船が満載の舶来品と共に帰港した！元手は倍以上になって戻り、蔵は銭で溢れた！' }; }
+                        return { money: -500, hp: 0, log: '嵐に遭い、船は戻らなかった。投じた銭は海の底。数日、呆然と海を眺めて過ごした…。' };
+                    } },
+                    { text: '国内の堅実な取引に留まる', condition: () => true, hint: '銭・知略上昇', effect: (s) => { s.strategy += 5; return { money: 100, hp: 0, log: '夢は見ず、地道な商いに精を出した。それもまた商人の道である。' }; } }
+                ] },
+            { id: 'merchant_meikiki', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'merchant',
+                title: '【目利き】名物茶器の真贋', text: '行商人が「当代随一の名工が焼いた茶器」と称する品を持ち込んできた。言い値は破格だが、本物なら更に跳ね上がる。あなたの目利きが試されている。',
+                choices: [
+                    { text: '【知略40・銭150文】見極めた上で買い取る', condition: (s) => s.strategy >= 40 && s.money >= 150, hint: '知略で判定・転売益か贋作か', effect: (s) => {
+                        const p = Math.min(0.95, 0.35 + (s.strategy * 0.006));
+                        if (Math.random() < p) { return { money: 250, hp: 0, log: '紛れもない本物だった！すぐに好事家へ転売し、大きな利を得た。目利きの評判も上がった。' }; }
+                        return { money: -150, hp: 0, log: '手に取って分かった、よく出来た贋作だった…。授業料として高くついた。' };
+                    } },
+                    { text: '目利きなしで言い値買いする', condition: (s) => s.money >= 120, hint: '運で判定', effect: (s) => {
+                        const p = Math.min(0.9, 0.5 + (s.luck * 0.002));
+                        if (Math.random() < p) { return { money: 180, hp: 0, log: '勘が当たった！本物を掴み、転売で儲けた。' }; }
+                        return { money: -120, hp: 0, log: '贋作を掴まされた。勘だけの商いは身を滅ぼす…。' };
+                    } },
+                    { text: '怪しいと見て、丁重に断る', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 10; return { hp: 0, log: '出所の怪しい品には手を出さぬ。商いの鉄則を守った。' }; } }
+                ] },
+            { id: 'merchant_gunju', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'merchant' && s.age < 60,
+                title: '【軍需】合戦の御用', text: '近国で合戦の気配が濃くなり、武将から鉄砲と兵糧の調達依頼が来た。戦の商いは儲かるが、人の命を秤にかける商いでもある。',
+                choices: [
+                    { text: '戦時相場で高値に納入する', condition: () => true, hint: '銭獲得・悪逆上昇', effect: (s) => { s.karma += 15; return { money: 300, hp: 0, log: '足元を見た値で納入した。蔵は潤ったが、「死の商人」の陰口が耳に届く。' }; } },
+                    { text: '公正な値で納入する', condition: () => true, hint: '銭獲得・人徳上昇', effect: (s) => { s.virtue += 5; return { money: 120, hp: 0, log: '相場通りの公正な取引をした。武将から「義理堅い」と感謝された。' }; } },
+                    { text: '戦の商いは断る', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 10; return { hp: 0, log: '人の血で儲ける気はないと、丁重に断った。' }; } }
+                ] },
+            { id: 'merchant_ryougae', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'merchant' && s.money >= 200,
+                title: '【両替】銭の貸し借り', text: '店先の両替と貸付が軌道に乗り始めた。町衆の暮らし向きは様々で、銭の貸し方ひとつで店の評判は大きく変わる。',
+                choices: [
+                    { text: '小口の貸付を堅実に回す', condition: () => true, hint: '銭・知略上昇', effect: (s) => { s.strategy += 5; return { money: 60, hp: 0, log: '小さな貸付を確実に回収した。堅実な商いが店の信用を育てていく。' }; } },
+                    { text: '【人徳40】困窮者の利息を免除する', condition: (s) => s.virtue >= 40, hint: '人徳・評判上昇', effect: (s) => { s.virtue += 15; return { money: 20, hp: 0, log: '困った者の利息を免除した。儲けは薄いが、「情けのある店」の評判が町に広がった。' }; } },
+                    { text: '高利で貸し付ける', condition: () => true, hint: '銭獲得・悪逆上昇', effect: (s) => { s.karma += 10; return { money: 120, hp: 0, log: '法外な利息で貸し付けた。儲けは大きいが、恨みの声も聞こえ始めた。' }; } }
+                ] },
+            { id: 'merchant_za', mode: ['normal'], weight: 15, condition: (s) => s.classInfo.id === 'merchant' && s.money >= 800 && !s.flags.zaPrivilege,
+                title: '【特権】座の株と御用の誘い', text: '大名の家臣から内々の誘いがあった。献金をすれば、座の特権と御用商人の地位を与えるという。商家にとっては一代の転機である。',
+                choices: [
+                    { text: '【銭500文】献金して特権と御用を受ける', condition: (s) => s.money >= 500, hint: '御用商人へ・年表記録', effect: (s) => { s.flags.zaPrivilege = true; s.strategy += 10; recordChronology("御用商人となり、座の特権を得る"); return { money: 200, hp: 0, log: '献金は即座に数倍の取引となって返ってきた。御用商人の看板が、店に箔をつける。' }; } },
+                    { text: '断って、一商人のままでいる', condition: () => true, hint: '知略・人徳上昇', effect: (s) => { s.strategy += 10; s.virtue += 5; return { hp: 0, log: '権力に近づきすぎるのも危うい。一商人の自由を選んだ。' }; } }
+                ] },
+            { id: 'merchant_kikin', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'merchant' && s.money >= 150,
+                title: '【飢饉】凶作の米蔵', text: '大凶作で米価が高騰し、餓えた人々が町に溢れている。あなたの蔵には、去年買い置いた米がある。今売れば大儲けだが――。',
+                choices: [
+                    { text: '高値で一気に売り払う', condition: () => true, hint: '銭獲得・悪逆大幅上昇', effect: (s) => { s.karma += 25; return { money: 350, hp: 0, log: '米は飛ぶように売れた。蔵は空になり、財布は膨れた。だが人々の視線は冷たかった。' }; } },
+                    { text: '蔵を開き、安値で放出する', condition: () => true, hint: '人徳大幅上昇・小銭', effect: (s) => { s.virtue += 25; return { money: 50, hp: 0, log: '蔵を開くと、人々が涙を流して列をなした。「生き仏の店主」と呼ばれるようになった。' }; } },
+                    { text: '相場の成り行きを見守る', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '売り惜しみも放出もせず、静かに成り行きを見守った。' }; } }
+                ] },
             { id: 'bandit_purge', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'bandit',
                 title: '【討伐】官軍の掃討作戦', text: 'あんた達野盗への風当たりが強くなり、領主の討伐隊が山へ入ったとの報が届いた。足軽を中心とした手勢は、山塞を包囲しつつある。',
                 choices: [
@@ -3220,6 +3272,7 @@
             const hpDiff = item.hp || 0; let moneyDiff = item.money || 0;
             // v11: yearly small expenses never push money below 0 (rewrite to effective diff so tags match)
             if (moneyDiff < 0) moneyDiff = -Math.min(state.money, -moneyDiff);
+            else if (moneyDiff > 0 && state.classInfo && state.classInfo.id === 'merchant') moneyDiff = Math.floor(moneyDiff * 1.1);
             state.health += hpDiff; state.money += moneyDiff;
             if (state.money < 0) state.money = 0;
             if (item.valor) state.valor += item.valor;
@@ -3286,7 +3339,8 @@
                 const res = choice.effect(state);
                 const hpChg = res.hp || 0; const moneyChg = res.money || 0;
                 // v11: money never below 0; losses are clamped to current balance
-                const appliedMoneyChg = moneyChg < 0 ? -Math.min(state.money, -moneyChg) : moneyChg;
+                let appliedMoneyChg = moneyChg < 0 ? -Math.min(state.money, -moneyChg) : moneyChg;
+                if (appliedMoneyChg > 0 && state.classInfo && state.classInfo.id === 'merchant') appliedMoneyChg = Math.floor(appliedMoneyChg * 1.1);
                 state.health += hpChg; state.money += appliedMoneyChg;
                 if (state.money < 0) state.money = 0; // final guard against direct mutations inside effects
                 else if (hpChg <= -999) { state.health = 0; state.lastDamageEvent = state.flags.currentEventTitle || '重傷'; if (!state.deathCause) state.deathCause = state.mode === 'battle' ? 'battle' : 'execution'; }
