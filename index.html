@@ -324,7 +324,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 44</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 45</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -681,6 +681,15 @@
                         <li><span class="text-blue-300 font-bold">知略</span>: 策謀や危機回避、商売の成否に影響します。</li>
                         <li><span class="text-green-300 font-bold">人徳</span>: 人望の厚さ。高いと民や他者に窮地を救われることがあります。</li>
                         <li><span class="text-yellow-300 font-bold">運</span>: 生死を分ける確率や、不意の奇跡を引き寄せます。</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 大成功と超成功</h3>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li><span class="font-bold" style="color:#E03C31">大成功</span>: 能力を試される場面で、ひときわ冴えた働きをすると大成功となり、得られる銭や能力の伸びが大きくなります。</li>
+                        <li><span class="text-gold font-bold">超成功</span>: 能力を極限まで高め抜いた者にだけ開かれる、さらに上の境地。金色の文字で示され、その事跡は年表にも刻まれます。育て切った能力があってこそ届く領域です。</li>
+                        <li>人徳で大成功・超成功を収めると、人々との縁が深まっていきます。</li>
                     </ul>
                 </section>
 
@@ -1049,6 +1058,23 @@
         }
 
         function stopAutoPlay() { if (autoPlayTimer) { clearTimeout(autoPlayTimer); autoPlayTimer = null; } }
+        // v45: 大成功・超成功ティア判定。成功時は window.__tier (1=成功/2=大成功/3=超成功) と __tierStat を記録する
+        const TIER_SATURATION = { virtue: 93, strategy: 100, valor: 113, luck: 200 };
+        function critRoll(stat, p) {
+            const r = Math.random();
+            window.__tier = 0; window.__tierStat = null;
+            if (r >= p) return false;
+            window.__tier = 1; window.__tierStat = stat;
+            if (r < p / 3) {
+                window.__tier = 2;
+                const sat = TIER_SATURATION[stat];
+                if (sat !== undefined) {
+                    const excess = (state[stat] || 0) - sat;
+                    if (excess > 0 && Math.random() < Math.min(0.5, excess * 0.001)) window.__tier = 3;
+                }
+            }
+            return true;
+        }
         function recordChronology(text) { state.chronology.push({ age: state.age, text: text }); }
         // v31: 反復する出来事の年表文を複数用意し、記録時にランダムで1つ選ぶ
         function recordChronologyVariant(variants) { recordChronology(variants[Math.floor(Math.random() * variants.length)]); }
@@ -1071,14 +1097,14 @@
                 choices: [
                     { text: '命を受け、手勢を率いて戦場へ向かう', condition: () => true, hint: '戦場へ移行・武功獲得', effect: (s) => { s.mode = 'battle'; s.flags.battleValorStart = s.valor; s.valor += 10; recordChronology("主君の命を受け出陣する"); return { hp: 0, log: '鎧を纏い手勢を率いて戦場へと馬を進めた。今こそ武功を立てる時だ！' }; } },
                     { text: '城の留守を預かり、守りを固める', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 5; return { hp: 0, log: '出陣する同輩を見送り、城の修繕と兵糧の備蓄に精を出した。城を守り抜くこともまた武士の務めである。' }; } },
-                    { text: '【知略30】病と偽って出陣を辞退する', condition: (s) => s.strategy >= 30, hint: '知略で判定・発覚すれば主君の不興', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.strategy * 0.007))) { s.strategy += 5; return { hp: 0, log: '重い病に倒れたと装い、使者を完全に信じ込ませた。出陣は免れたが、胸の奥に小さな疼きが残る。' }; } s.virtue -= 10; s.karma += 5; recordChronology("偽病で出陣を逃れ主君の不興を買う"); return { hp: 0, log: '仮病はたちまち見抜かれた。主君の不興を買い、家中での立場を悪くしてしまった。' }; } }
+                    { text: '【知略30】病と偽って出陣を辞退する', condition: (s) => s.strategy >= 30, hint: '知略で判定・発覚すれば主君の不興', effect: (s) => { if (critRoll('strategy', Math.min(0.95, 0.3 + (s.strategy * 0.007)))) { s.strategy += 5; return { hp: 0, log: '重い病に倒れたと装い、使者を完全に信じ込ませた。出陣は免れたが、胸の奥に小さな疼きが残る。' }; } s.virtue -= 10; s.karma += 5; recordChronology("偽病で出陣を逃れ主君の不興を買う"); return { hp: 0, log: '仮病はたちまち見抜かれた。主君の不興を買い、家中での立場を悪くしてしまった。' }; } }
                 ] },
             { id: 'famine', mode: ['normal', 'fugitive'], weight: 20, condition: () => true,
                 title: '【飢饉】天変地異の飢餓', text: '残酷なまでの日照りと長雨が続き、今年の作物は完全に根腐れを起こした。',
                 choices: [
                     { text: '【銭120文】私財を投げ打ち、大量の粥を民に施す', condition: (s) => s.money >= 120, hint: '人徳特大アップ', effect: (s) => { s.virtue += 45; recordChronology("大飢饉で私財を投じ生き神と崇められる"); return { money: -120, hp: 5, log: '通りで大量の炊き出しを行い、領民たちは涙を流してあなたを崇めた。' }; } },
                     { text: '【銭50文】高騰した食糧を強引に買い占める', condition: (s) => s.money >= 50, hint: '知略で出費抑制', effect: (s) => { let cost = Math.max(10, 50 - Math.floor(s.strategy * 0.3)); return { money: -cost, hp: 15, log: '蓄えておいた銭に物を言わせて闇米を確保し、命を繋いだ。' }; } },
-                    { text: '托鉢と村々の施しで食い繋ぐ', condition: () => true, hint: '人徳で判定・被害軽減', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 5; return { hp: -10, log: '質素な粥を分け合い、施しと祈りで飢えの冬をなんとか凌いだ。' }; } return { hp: -25, log: '施しを乞うて村々を回ったが、飢えは村ごとに深く、分けてもらえたのはわずかな粥だけだった。' }; } },
+                    { text: '托鉢と村々の施しで食い繋ぐ', condition: () => true, hint: '人徳で判定・被害軽減', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 5; return { hp: -10, log: '質素な粥を分け合い、施しと祈りで飢えの冬をなんとか凌いだ。' }; } return { hp: -25, log: '施しを乞うて村々を回ったが、飢えは村ごとに深く、分けてもらえたのはわずかな粥だけだった。' }; } },
                     { text: '【銭20文】蓄えを切り崩し、粗末な糧を確保する', condition: (s) => s.money >= 20, hint: '出費を抑えて凌ぐ', effect: (s) => { return { money: -20, hp: -15, log: '乏しい蓄えをはたいて粗末な糧を確保し、飢えを凌いだ。' }; } },
                     { text: '草の根や泥を齧り、ただひたすらに耐え忍ぶ', condition: () => true, hint: '体力大ダメージ', effect: (s) => { s.deathCause = 'starvation'; return { hp: -40, log: '食べるものが何一つなくなり、最後は木の皮を煮て飢えを凌ぐ地獄の日々が続いた。' }; } }
                 ] },
@@ -1086,18 +1112,18 @@
                 title: '【疫病】死の病魔', text: '不吉な黒雲が空を覆う中、村々を死の病魔が舐め尽くしている。あなたにも高熱が走り始めた。',
                 choices: [
                     { text: '【銭100文】高価な南蛮の秘薬をすがる思いで買い求める', condition: (s) => s.money >= 100, hint: '安全に回復', effect: (s) => { return { money: -100, hp: 10, log: '宣教師から特効薬を手に入れ、嘘のように熱が引いた。' }; } },
-                    { text: '寺社に籠り、病に苦しむ民と共に祈祷を行う', condition: () => true, hint: '人徳で判定・人徳上昇', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 20; return { hp: -10, log: '不眠不休で祈り続け、奇跡的に病魔は去った。' }; } return { hp: -30, log: '祈祷の声は病の勢いに届かず、看病に当たった身にも熱が移った。' }; } },
+                    { text: '寺社に籠り、病に苦しむ民と共に祈祷を行う', condition: () => true, hint: '人徳で判定・人徳上昇', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 20; return { hp: -10, log: '不眠不休で祈り続け、奇跡的に病魔は去った。' }; } return { hp: -30, log: '祈祷の声は病の勢いに届かず、看病に当たった身にも熱が移った。' }; } },
                     { text: '己の気力と体力だけを頼りに病魔に耐え抜く', condition: () => true, hint: '運で被害軽減', effect: (s) => { s.deathCause = 'plague'; let dmg = Math.random() < (s.luck * 0.008) ? 5 : 55; return { hp: -dmg, log: '薬に頼る金もなく、高熱と吐血でのたうち回る三日三晩を過ごした。' }; } }
                 ] },
             { id: 'tournament', mode: ['normal'], weight: 25, condition: (s) => s.classInfo && (s.classInfo.id === 'ronin' || s.classInfo.id === 'ashigaru' || s.classInfo.id === 'bushou'),
                 title: '【御前試合】真剣勝負', text: '大名肝煎りの盛大な御前試合が開催された。勝者には莫大な報奨金が約束されるが、真剣による死合である。',
                 choices: [
                     { text: '【武功30】己の腕と刀だけを信じて闘技場に立つ', condition: (s) => s.valor >= 30, hint: '勝てば賞金・負ければ負傷', effect: (s) => {
-                        if (Math.random() < 0.6 + (s.valor * 0.002)) { s.valor += 30; recordChronology("御前試合で優勝し名声を得る"); return { money: 150 + Math.floor(s.valor*0.5), hp: -5, log: '見事な剣捌きで並み居る猛者を次々と打ち倒し、堂々の優勝を果たした！' }; }
+                        if (critRoll('valor', 0.6 + (s.valor * 0.002))) { s.valor += 30; recordChronology("御前試合で優勝し名声を得る"); return { money: 150 + Math.floor(s.valor*0.5), hp: -5, log: '見事な剣捌きで並み居る猛者を次々と打ち倒し、堂々の優勝を果たした！' }; }
                         else { return { hp: Math.min(-5, -30 + Math.floor(s.valor*0.2)), log: '準決勝で立ちはだかった無双の浪人に力負けし、無念の敗退となった。' }; }
                     } },
                     { text: '見物人として酒を飲みながら賭けを楽しむ（銭20文）', condition: (s) => s.money >= 20, hint: '運で配当増', effect: (s) => {
-                        if (Math.random() < 0.5 + (s.luck * 0.005) + (s.karma * 0.002)) { s.luck += 5; return { money: 40 + Math.floor(s.luck*0.8), hp: 0, log: '大穴狙いで賭けた剣客が見事に勝利し、懐が温かくなった！' }; }
+                        if (critRoll('luck', 0.5 + (s.luck * 0.005) + (s.karma * 0.002))) { s.luck += 5; return { money: 40 + Math.floor(s.luck*0.8), hp: 0, log: '大穴狙いで賭けた剣客が見事に勝利し、懐が温かくなった！' }; }
                         else { return { money: -20, hp: 0, log: '自信満々で賭けた剣客はあっさり負け、掛け銭をすってしまった。' }; }
                     } },
                     { text: '命を懸ける見世物など阿呆らしいと立ち去る', condition: () => true, hint: 'スルー', effect: () => ({ hp: 0, log: '熱狂する歓声を背に、日々の生活へと戻っていった。' }) }
@@ -1116,7 +1142,7 @@
                 title: '【散財】怪しげな骨董商', text: '胡散臭い商人が「これは天下の名物になり得る茶器だ」と薄汚れた茶碗を差し出してきた。真贋は全く不明だ。',
                 choices: [
                     { text: '【銭50文】一攫千金を夢見て買い取る', condition: (s) => s.money >= 50, hint: 'ランダムでステータス変化', effect: (s) => { 
-                        if (Math.random() < 0.4 + (s.luck * 0.005)) { s.virtue += 20; s.strategy += 10; recordChronology("掘り出し物の茶器を見つけ、名声を高める"); return { money: -50, hp: 0, log: '大当たり！汚れを落とすと見事な名物であり、武将たちの間であなたの審美眼が絶賛された！' }; }
+                        if (critRoll('luck', 0.4 + (s.luck * 0.005))) { s.virtue += 20; s.strategy += 10; recordChronology("掘り出し物の茶器を見つけ、名声を高める"); return { money: -50, hp: 0, log: '大当たり！汚れを落とすと見事な名物であり、武将たちの間であなたの審美眼が絶賛された！' }; }
                         else { s.strategy -= 5; return { money: -50, hp: 0, log: '大ハズレ！ただの便器の欠片を掴まされ、周囲の笑い者になってしまった…。' }; }
                     } },
                     { text: '【知略50】贋作であると論破し、商人を追い払う', condition: (s) => s.strategy >= 50, hint: '知略上昇', effect: (s) => { s.strategy += 10; return { hp: 0, log: '釉薬の不自然さを指摘すると、商人は逃げるように去っていった。' }; } },
@@ -1162,7 +1188,7 @@
                     } },
                     { text: '【知略】戦局を俯瞰し、有利な高所へ退避・布陣', condition: () => true, hint: '知略増・被ダメージ軽減（鉄砲伝来後は被弾増）', effect: (s) => { s.strategy += 15; s.deathCause = 'battle'; let dmg = s.flags.teppo ? 12 : 8; return { hp: -dmg, log: s.flags.teppo ? '高台へ移動し敵をいなしたが、遠方からの銃撃が絶えず、被害は以前より大きくなった。' : '高台へ移動し、味方への被害を最小限に抑えつつ敵をいなした。' }; } },
                     { text: '【乾坤一擲】血路を開き、敵本陣へ単騎突撃！（低確率）', condition: () => true, hint: '大逆転か即死', effect: (s) => {
-                        if (Math.random() < 0.25 + (s.valor * 0.001)) { s.valor += 90; recordChronologyVariant(["敵本陣へ単騎突撃し大戦果", "単騎で敵陣を突破し、敵将の首級を挙げる", "単騎突撃で敵本陣を打ち破り、大戦果を挙げる"]); return { hp: -25, money: 250, log: '敵将の首級を高く掲げ、莫大な報奨金を手にした！' }; }
+                        if (critRoll('valor', 0.25 + (s.valor * 0.001))) { s.valor += 90; recordChronologyVariant(["敵本陣へ単騎突撃し大戦果", "単騎で敵陣を突破し、敵将の首級を挙げる", "単騎突撃で敵本陣を打ち破り、大戦果を挙げる"]); return { hp: -25, money: 250, log: '敵将の首級を高く掲げ、莫大な報奨金を手にした！' }; }
                         else { s.deathCause = 'battle'; return { hp: -999, log: '待ち構えていた敵の鉄砲隊に蜂の巣にされ、凄惨な最期を遂げた……。' }; }
                     } }
                 ] },
@@ -1219,7 +1245,7 @@
                 title: '【戦場】一騎打ちの誘い', text: '両軍の間に進み出た敵将が、名乗りを上げて一騎打ちを求めてきた。大軍の視線があなたに集まっている。',
                 choices: [
                     { text: '誘いに応じ、敵将と一騎打ちに臨む！', condition: (s) => s.valor >= 40, hint: '大成功か即死', effect: (s) => {
-                            if (Math.random() < 0.35 + (s.valor * 0.004)) { s.valor += 50; recordChronologyVariant(["敵将との一騎打ちに勝利し、名を轟かせる", "両軍注視の中、敵将を討ち取り名を上げる", "一騎打ちで敵将の首を挙げ、諸国に名を轟かせる"]); return { hp: -20, money: 150, log: '凄絶な打ち合いの末、敵将を討ち取った！その名が両軍に轟き、恩賞も約束された。'};}
+                            if (critRoll('valor', 0.35 + (s.valor * 0.004))) { s.valor += 50; recordChronologyVariant(["敵将との一騎打ちに勝利し、名を轟かせる", "両軍注視の中、敵将を討ち取り名を上げる", "一騎打ちで敵将の首を挙げ、諸国に名を轟かせる"]); return { hp: -20, money: 150, log: '凄絶な打ち合いの末、敵将を討ち取った！その名が両軍に轟き、恩賞も約束された。'};}
                             else { s.deathCause = 'battle'; return { hp: -999, log: '敵将の太刀筋は遥かに上だった。一閃のもと、戦場の土に伏した……。'};}
                     }},
                     { text: '弓隊に命じて敵将を射かける', condition: () => true, hint: '知略・悪逆上昇', effect: (s) => { s.strategy += 10; s.karma += 15; return { hp: -5, log: '一騎打ちなどという古い作法に付き合う義理はない。矢の雨が敵将を馬から落とした。'};}},
@@ -1237,7 +1263,7 @@
                 choices: [
                     { text: '命がけで敵中を駆け抜け、本陣へ急報を届ける', condition: () => true, hint: '運と武功で判定・失敗で重傷', effect: (s) => {
                             s.deathCause = 'battle';
-                            if (Math.random() < 0.4 + (s.luck * 0.003) + (s.valor * 0.001)) { s.valor += 30; s.strategy += 10; recordChronologyVariant(["決死の伝令を果たし、味方の危機を救う", "矢の雨を駆け抜け、本陣へ急報を届ける", "敵中を突破して援軍を呼び、味方を救う"]); return { hp: -10, log: '矢の雨をかいくぐり、本陣へ急報を届けた！援軍が間に合い、別働隊は救われた。'};}
+                            if (critRoll('luck', 0.4 + (s.luck * 0.003) + (s.valor * 0.001))) { s.valor += 30; s.strategy += 10; recordChronologyVariant(["決死の伝令を果たし、味方の危機を救う", "矢の雨を駆け抜け、本陣へ急報を届ける", "敵中を突破して援軍を呼び、味方を救う"]); return { hp: -10, log: '矢の雨をかいくぐり、本陣へ急報を届けた！援軍が間に合い、別働隊は救われた。'};}
                             else { return { hp: -35, log: '敵の包囲に捕まり、深手を負って辛うじて這い戻った。急報は届かなかった……。'};}
                     }},
                     { text: '偽の伝令文を敵に掴ませ、包囲を欺く', condition: (s) => s.strategy >= 30, hint: '知略上昇', effect: (s) => { s.strategy += 25; recordChronology("偽の伝令文で敵の包囲を解かせる"); return { hp: 0, log: '偽の急報をわざと敵の手に渡した。援軍接近と誤認した敵は、包囲を解いて退いていった！'};}},
@@ -1248,12 +1274,12 @@
                 choices: [
                     { text: '霧に紛れて敵陣へ接近し、奇襲をかける', condition: () => true, hint: '武功で判定・失敗で重傷', effect: (s) => {
                             s.deathCause = 'battle';
-                            if (Math.random() < 0.45 + (s.valor * 0.002)) { s.valor += 30; recordChronologyVariant(["霧中の奇襲を成功させる", "深い霧に紛れ、敵陣の不意を突く", "霧が晴れる前に敵を討ち、霧の中へ消える"]); return { hp: -15, log: '霧の中から突然現れたあなたの槍が、敵の油断を突いた！奇襲は見事に決まった。'};}
+                            if (critRoll('valor', 0.45 + (s.valor * 0.002))) { s.valor += 30; recordChronologyVariant(["霧中の奇襲を成功させる", "深い霧に紛れ、敵陣の不意を突く", "霧が晴れる前に敵を討ち、霧の中へ消える"]); return { hp: -15, log: '霧の中から突然現れたあなたの槍が、敵の油断を突いた！奇襲は見事に決まった。'};}
                             else { return { hp: -30, log: '霧の中で方角を見失い、敵陣の只中へ迷い込んだ。斬り結びながら、命からがら霧の中へ逃げ込んだ。'};}
                     }},
                     { text: 'その場に伏せ、霧が晴れるのをじっと待つ', condition: () => true, hint: '知略上昇・小回復', effect: (s) => { s.strategy += 10; return { hp: 5, log: '泥に伏して息を殺した。霧が晴れる頃には、戦況もはっきりと見通せるようになっていた。'};}},
                     { text: '味方を探して霧の中を彷徨う', condition: () => true, hint: '運・悪逆で判定', effect: (s) => {
-                            if (Math.random() < 0.3 + (s.luck * 0.004) + (s.karma * 0.002)) { return { money: 100, hp: 0, log: '霧の中で味方とはぐれたが、打ち捨てられた敵の輜重から、まだ使える物資と銭を見つけた。'};}
+                            if (critRoll('luck', 0.3 + (s.luck * 0.004) + (s.karma * 0.002))) { return { money: 100, hp: 0, log: '霧の中で味方とはぐれたが、打ち捨てられた敵の輜重から、まだ使える物資と銭を見つけた。'};}
                             else { s.deathCause = 'battle'; return { hp: -10, log: '霧の中を彷徨ううち、敵の斥候と鉢合わせた。斬り合いの末に逃れたが、手傷を負った。'};}
                     }}
             ]},
@@ -1261,7 +1287,7 @@
                 title: '【戦場】火攻めの潜入', text: '敵の兵糧庫の場所が判明した。夜陰に乗じて火を放てば、敵は飢えて戦えなくなる。だが、潜入は命がけの役目だ。',
                 choices: [
                     { text: '夜陰に乗じて兵糧庫へ潜入し、火を放つ', condition: (s) => s.strategy >= 40, hint: '大成功か即死', effect: (s) => {
-                            if (Math.random() < 0.5 + (s.strategy * 0.002)) { s.strategy += 30; s.valor += 15; recordChronologyVariant(["敵の兵糧庫への火攻めを成功させる", "夜陰に乗じて兵糧庫に火を放ち、敵を飢えさせる", "天を焦がす炎で敵の兵糧を焼き払う"]); return { hp: -10, log: '音もなく潜入し、兵糧庫に火を放った！天を焦がす炎を背に、無事に帰還した。'};}
+                            if (critRoll('strategy', 0.5 + (s.strategy * 0.002))) { s.strategy += 30; s.valor += 15; recordChronologyVariant(["敵の兵糧庫への火攻めを成功させる", "夜陰に乗じて兵糧庫に火を放ち、敵を飢えさせる", "天を焦がす炎で敵の兵糧を焼き払う"]); return { hp: -10, log: '音もなく潜入し、兵糧庫に火を放った！天を焦がす炎を背に、無事に帰還した。'};}
                             else { s.deathCause = 'battle'; return { hp: -999, log: '番兵に見つかり、炎に包まれる前に乱刀のもとに倒れた……。'};}
                     }},
                     { text: '風向きを見極め、遠方から火矢を放つ', condition: () => true, hint: '知略上昇・小ダメージ', effect: (s) => { s.strategy += 15; s.deathCause = 'battle'; return { hp: -5, log: '火矢は兵糧庫の屋根を焦がすに留まったが、敵陣は大混乱に陥り、夜通し火の番に追われた。'};}},
@@ -1273,7 +1299,7 @@
             { id: 'escape_survival', mode: ['fugitive'], weight: 80, condition: () => true,
                 title: '【流浪】落武者狩りの包囲', text: '飢えと疲労で重くなる足を引きずり歩く中、血走った目をした農民たちの落武者狩り部隊に完全に囲まれた。',
                 choices: [
-                    { text: 'かつて助けた里人に助けを求める', condition: () => true, hint: '人徳で判定・農民へ復帰・回復', effect: (s) => { if (!(Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { return { hp: -20, log: '里人を訪ねたが、追手への恐れから戸は開かれなかった。夜露に濡れ、逃避行はなお続く。' }; } s.mode = 'normal'; if (s.flags.sukanpin) { recordChronology("匿われ、素寒貧として生き直す"); return { hp: 35, log: '村の長が匿ってくれた。捨てた身分は取り戻さない。素寒貧のまま、土に生きる道を選ぶ。' }; } s.classInfo = CLASSES.find(c=>c.id==='peasant'); recordChronology("農民として生き直す"); return { hp: 35, log: '村の長が匿ってくれた。再び「農民」となり土に生きる道を選ぶ。' }; } },
+                    { text: 'かつて助けた里人に助けを求める', condition: () => true, hint: '人徳で判定・農民へ復帰・回復', effect: (s) => { if (!(critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007))))) { return { hp: -20, log: '里人を訪ねたが、追手への恐れから戸は開かれなかった。夜露に濡れ、逃避行はなお続く。' }; } s.mode = 'normal'; if (s.flags.sukanpin) { recordChronology("匿われ、素寒貧として生き直す"); return { hp: 35, log: '村の長が匿ってくれた。捨てた身分は取り戻さない。素寒貧のまま、土に生きる道を選ぶ。' }; } s.classInfo = CLASSES.find(c=>c.id==='peasant'); recordChronology("農民として生き直す"); return { hp: 35, log: '村の長が匿ってくれた。再び「農民」となり土に生きる道を選ぶ。' }; } },
                     { text: '【銭80文】頭を金で買収し見逃させる', condition: (s) => s.money >= 80, hint: '浪人へ復帰', effect: (s) => { s.mode = 'normal'; if (s.flags.sukanpin) { recordChronology("追手の手を逃れ、素寒貧として生き直す"); return { money: -80, hp: 10, log: '農民どもに有り金を叩きつけ、その隙に他国へ逃れた。身分を捨てた素寒貧のまま、風の吹くままに生きていく。' }; } s.classInfo = CLASSES.find(c=>c.id==='ronin'); recordChronology("浪人へと復帰する"); return { money: -80, hp: 10, log: '農民どもに有り金を叩きつけ、その隙に「浪人」として他国へ逃れた。' }; } },
                     { text: '腹をくくり、山賊の群れに加わって野盗に堕ちる', condition: () => true, hint: '野盗へ転身・悪逆上昇', effect: (s) => { s.mode = 'normal'; s.karma += 25; if (s.flags.sukanpin) { recordChronology("追手を退け、素寒貧のまま山に潜む"); return { hp: 15, money: 40, log: '農民を返り討ちにし、その金品を奪った。だが捨てた身分を取り戻す気はない。盗賊の仲間入りはせず、素寒貧のまま山の影に潜む道を選んだ。' }; } s.classInfo = CLASSES.find(c=>c.id==='bandit'); recordChronology("野盗に堕ちる"); return { hp: 15, money: 40, log: '農民を返り討ちにし、付近を荒らし回る野盗に仲間入りを果たした。' }; } }
                 ] },
@@ -1282,7 +1308,7 @@
                 choices: [
                     { text: '【銭50文】関守に賄賂を握らせ、見逃してもらう', condition: (s) => s.money >= 50, hint: '逃亡継続・小回復', effect: (s) => { return { money: -50, hp: 5, log: '関守は黙って金を受け取り、知らぬ顔で関門を開けた。冷や汗がようやく引いていく。' }; } },
                     { text: '夜陰に紛れて強行突破する', condition: () => true, hint: '成功で通常生活へ・失敗で大ダメージ', effect: (s) => {
-                        if (Math.random() < 0.45 + (s.luck * 0.003)) { s.mode = 'normal'; if (!s.flags.sukanpin) s.classInfo = CLASSES.find(c=>c.id==='ronin'); recordChronology("関所を突破し、追手の手を逃れる"); return { hp: -5, log: '闇に紛れて関所を突破！追手の声が遠ざかり、ようやく人並みの生活を取り戻した。' }; }
+                        if (critRoll('luck', 0.45 + (s.luck * 0.003))) { s.mode = 'normal'; if (!s.flags.sukanpin) s.classInfo = CLASSES.find(c=>c.id==='ronin'); recordChronology("関所を突破し、追手の手を逃れる"); return { hp: -5, log: '闇に紛れて関所を突破！追手の声が遠ざかり、ようやく人並みの生活を取り戻した。' }; }
                         else { s.deathCause = 'battle'; return { hp: -40, log: '見つかった！乱闘の末に深手を負い、命からがら藪の中へ転がり込んだ……。' }; }
                     } },
                     { text: '山中に潜伏し、ほとぼりが冷めるのを待つ', condition: () => true, hint: '体力減少・逃亡継続', effect: (s) => { return { hp: -15, log: '息を殺して山中に潜む日々。寒さと飢えに耐え、検問が緩むのをじっと待ち続けた。' }; } }
@@ -1321,7 +1347,7 @@
             { id: 'temple_donation', mode: ['normal'], weight: 35, condition: (s) => s.classInfo.id === 'monk',
                 title: '【勧進】大伽藍の建立', text: '戦火で焼け落ちた大伽藍を再建するため、諸国を巡って多額の寄付（勧進）を集めなければならない。',
                 choices: [
-                    { text: '民衆の心を打つ説法で寄付を募る', condition: () => true, hint: '人徳で判定・銭獲得', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue+=20; recordChronology("見事な説法で大伽藍を再建する"); return { money: 200, hp: 0, log: 'あなたの慈愛に満ちた説法に数千の民が涙し、またたく間に再建の費用が集まった！' }; } s.virtue += 5; return { money: 30, hp: 0, log: '説法に頷く者は多かったが、財布の紐までは解けなかった。集まった浄財はささやかなものだった。' }; } },
+                    { text: '民衆の心を打つ説法で寄付を募る', condition: () => true, hint: '人徳で判定・銭獲得', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue+=20; recordChronology("見事な説法で大伽藍を再建する"); return { money: 200, hp: 0, log: 'あなたの慈愛に満ちた説法に数千の民が涙し、またたく間に再建の費用が集まった！' }; } s.virtue += 5; return { money: 30, hp: 0, log: '説法に頷く者は多かったが、財布の紐までは解けなかった。集まった浄財はささやかなものだった。' }; } },
                     { text: '裕福な武将に媚びへつらい、金を出させる', condition: () => true, hint: '銭獲得・人徳低下', effect: (s) => { s.virtue-=20; s.karma+=10; return { money: 150, hp: 0, log: '権力者にすり寄って金を得た。伽藍は建ったが、裏で「生臭坊主」と陰口を叩かれている。' }; } }
                 ] },
             { id: 'peasant_revolt', mode: ['normal'], weight: 30, condition: (s) => (s.classInfo.id === 'bushou' || s.classInfo.id === 'daimyo') && !s.flags.revolt,
@@ -1346,7 +1372,7 @@
                 choices: [
                     { text: '【知略50】毒を仕込み、気付かれず仕留める', condition: (s) => s.strategy >= 50, hint: '大成功', effect: (s) => { s.valor+=30; s.karma+=20; recordChronology("敵大名の暗殺を完璧に遂行"); return { money: 200, hp: -5, log: '誰一人影すら踏ませず暗殺を完遂。莫大な報奨金を得た。' }; } },
                     { text: '強行突破で寝所へ忍び込む', condition: () => true, hint: '悪逆で成功率上昇・失敗で即死', effect: (s) => {
-                        if (Math.random() < 0.5 + (s.karma * 0.003)) { s.valor += 40; recordChronology("敵大名の寝所へ忍び込み、首を討ち取る"); return { money: 150, hp: -15, log: '手傷を負いながらも、驚愕する大名の首を刎ね飛ばした！' }; }
+                        if (critRoll('karma', 0.5 + (s.karma * 0.003))) { s.valor += 40; recordChronology("敵大名の寝所へ忍び込み、首を討ち取る"); return { money: 150, hp: -15, log: '手傷を負いながらも、驚愕する大名の首を刎ね飛ばした！' }; }
                         else { s.deathCause = 'execution'; return { hp: -999, log: '隠し部屋の鉄砲隊に蜂の巣にされ、凄惨な最期を遂げた……。' }; }
                     } },
                     { text: '恐怖に抗えず、抜け忍となる', condition: () => true, hint: '逃亡者へ', effect: (s) => { s.mode = 'fugitive'; s.modeTurn = 0; s.karma += 10; recordChronology("任務を放棄し、抜け忍となる"); return { hp: 0, log: '任務から逃亡し、抜け忍狩りから逃げ続ける地獄の日々が始まる。' }; } }
@@ -1357,7 +1383,7 @@
                     { text: '【銭800文】豪族を買収し、無血開城で独立する', condition: (s) => s.money >= 800, hint: '「大名」へ昇格', effect: (s) => { s.flags.independence = true; s.classInfo = CLASSES.find(c => c.id === 'daimyo'); s.mode = 'normal'; s.faction = { id: 'custom', name: '独立勢力', color: '#B8860B' }; s.valor += 40; recordChronology("下剋上を果たし大名となる"); return { money: -800, hp: 0, log: '圧倒的な資金力で旧主を追い出し、己の城を持った大名の誕生だ！' }; } },
                     { text: '【武力蜂起】主家に反旗を翻す！（成功率50%）', condition: () => true, hint: '成功か即死', effect: (s) => {
                         s.flags.independence = true;
-                        if (Math.random() < 0.5 + (s.strategy * 0.005)) { s.classInfo = CLASSES.find(c => c.id === 'daimyo'); s.mode = 'normal'; s.faction = { id: 'custom', name: '独立勢力', color: '#B8860B' }; s.valor += 50; recordChronology("武力による下剋上を果たし大名となる"); return { money: 200, hp: -20, log: '激戦の末に主家の本陣を打ち破り、完全なる独立を成し遂げた！' }; }
+                        if (critRoll('strategy', 0.5 + (s.strategy * 0.005))) { s.classInfo = CLASSES.find(c => c.id === 'daimyo'); s.mode = 'normal'; s.faction = { id: 'custom', name: '独立勢力', color: '#B8860B' }; s.valor += 50; recordChronology("武力による下剋上を果たし大名となる"); return { money: 200, hp: -20, log: '激戦の末に主家の本陣を打ち破り、完全なる独立を成し遂げた！' }; }
                         else { s.deathCause = 'execution'; return { hp: -999, log: '謀反の計画は脆くも崩れ、捕縛ののち無惨に斬首された……。' }; }
                     } },
                     { text: '謀反を誘う者たちを一喝する', condition: () => true, hint: '忠義', effect: (s) => { s.virtue += 20; return { hp: 0, log: '見事な忠誠心は主君の耳にも入り、信望は不動のものとなった。' }; } }
@@ -1373,13 +1399,13 @@
                 choices: [
                     { text: '商人に化けて潜入する', condition: () => true, hint: '知略で判定', effect: (s) => {
                         const p = Math.min(0.95, 0.35 + (s.strategy * 0.006));
-                        if (Math.random() < p) { s.strategy += 15; return { money: 100, hp: 0, log: '商談の裏で城の内情を探り尽くした。得た情報は上首尾だった。' }; }
+                        if (critRoll('strategy', p)) { s.strategy += 15; return { money: 100, hp: 0, log: '商談の裏で城の内情を探り尽くした。得た情報は上首尾だった。' }; }
                         return { hp: -15, log: '怪しまれて追われた。屋根を伝い、辛くも逃げ切った。' };
                     } },
                     { text: '僧に化けて潜入する', condition: () => true, hint: '人徳・知略上昇', effect: (s) => { s.virtue += 5; s.strategy += 10; return { hp: 0, log: '読経の声に紛れ、城下の様子を余さず聞き取った。' }; } },
                     { text: '怪しまれて戦いになる', condition: () => true, hint: '武功で判定', effect: (s) => {
                         const p = Math.min(0.9, 0.4 + (s.valor * 0.004));
-                        if (Math.random() < p) { s.valor += 15; return { money: 60, hp: 0, log: '追手を斬って脱出した。奪った書状が思わぬ収穫となった。' }; }
+                        if (critRoll('valor', p)) { s.valor += 15; return { money: 60, hp: 0, log: '追手を斬って脱出した。奪った書状が思わぬ収穫となった。' }; }
                         return { hp: -25, log: '深手を負いながら、どうにか闇に紛れた。' };
                     } }
                 ] },
@@ -1388,7 +1414,7 @@
                 choices: [
                     { text: '密命を引き受ける', condition: () => true, hint: '運と武功で判定', effect: (s) => {
                         const p = Math.min(0.9, 0.35 + (s.valor * 0.003) + (s.luck * 0.002));
-                        if (Math.random() < p) { s.karma += 20; recordChronology("密命を果たし、敵重臣を闇に葬る"); return { money: 300, hp: 0, log: '標的は音もなく消えた。懐には大金、心には重さが残った。' }; }
+                        if (critRoll('valor', p)) { s.karma += 20; recordChronology("密命を果たし、敵重臣を闇に葬る"); return { money: 300, hp: 0, log: '標的は音もなく消えた。懐には大金、心には重さが残った。' }; }
                         return { hp: -30, log: '返り討ちに遭い、辛くも逃げ延びた。傷は深い。' };
                     } },
                     { text: '密命を断る', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 10; return { hp: 0, log: '人を消す仕事は断った。里の掟には背くが、自分の掟は守った。' }; } },
@@ -1406,7 +1432,7 @@
                 choices: [
                     { text: '最後まで聞き取る', condition: () => true, hint: '知略で判定', effect: (s) => {
                         const p = Math.min(0.95, 0.35 + (s.strategy * 0.006));
-                        if (Math.random() < p) { s.strategy += 20; return { money: 80, hp: 0, log: '密談の全容を聞き取った。情報は金に変わり、里の評価も上がった。' }; }
+                        if (critRoll('strategy', p)) { s.strategy += 20; return { money: 80, hp: 0, log: '密談の全容を聞き取った。情報は金に変わり、里の評価も上がった。' }; }
                         return { hp: -15, log: '物音を立てて気付かれた。屋根を破って逃げる羽目になった。' };
                     } },
                     { text: '途中で切り上げ、聞かなかったことにする', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '聞いてはいけない類の話だった。そっと屋根裏を離れた。' }; } }
@@ -1416,7 +1442,7 @@
                 choices: [
                     { text: '攻めた調合に挑む', condition: () => true, hint: '知略で判定', effect: (s) => {
                         const p = Math.min(0.95, 0.4 + (s.strategy * 0.005));
-                        if (Math.random() < p) { s.valor += 20; return { hp: 0, log: '強力な爆薬が完成した。敵城の門も、これで落ちる。' }; }
+                        if (critRoll('strategy', p)) { s.valor += 20; return { hp: 0, log: '強力な爆薬が完成した。敵城の門も、これで落ちる。' }; }
                         return { hp: -20, log: '調合中に爆発した。火傷を負ったが、命は拾った。' };
                     } },
                     { text: '基礎を堅実に固める', condition: () => true, hint: '武功・知略上昇', effect: (s) => { s.valor += 10; s.strategy += 5; return { hp: 0, log: '地道な積み重ねが、火術の腕を確かなものにした。' }; } }
@@ -1426,11 +1452,11 @@
                 choices: [
                     { text: '即座に斬りかかる', condition: () => true, hint: '武功で判定', effect: (s) => {
                         const p = Math.min(0.9, 0.4 + (s.valor * 0.004));
-                        if (Math.random() < p) { s.valor += 20; recordChronology("敵忍を討ち取り、名を上げる"); return { hp: 0, log: '一瞬の交錯で勝負がついた。相手の道具袋が転がった。' }; }
+                        if (critRoll('valor', p)) { s.valor += 20; recordChronology("敵忍を討ち取り、名を上げる"); return { hp: 0, log: '一瞬の交錯で勝負がついた。相手の道具袋が転がった。' }; }
                         return { hp: -25, log: '互角の相手だった。傷を負い、闇に紛れて退いた。' };
                     } },
                     { text: '闇に紛れて逃げる', condition: () => true, hint: '運で判定', effect: (s) => {
-                        if (Math.random() < 0.45 + (s.luck * 0.003)) { return { hp: 0, log: '煙幕と共に姿を消した。戦わないのも忍びの勝ちだ。' }; }
+                        if (critRoll('luck', 0.45 + (s.luck * 0.003))) { return { hp: 0, log: '煙幕と共に姿を消した。戦わないのも忍びの勝ちだ。' }; }
                         return { hp: -15, log: '逃げ切れず一太刀浴びたが、命は繋いだ。' };
                     } },
                     { text: '情報を交換して別れる', condition: () => true, hint: '知略・悪逆上昇', effect: (s) => { s.strategy += 15; s.karma += 5; return { hp: 0, log: '互いの雇い主の情報を少しずつ交換した。敵も使いよう、である。' }; } }
@@ -1458,14 +1484,14 @@
             { id: 'monk_takubatsu', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'monk',
                 title: '【托鉢】諸国行脚の托鉢', text: '托鉢の旅に出た。村から村へ鉦を鳴らして歩けば、施しも試練も、等しく巡ってくる。',
                 choices: [
-                    { text: '托鉢に精を出す', condition: () => true, hint: '人徳で判定・銭と人徳', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 15; return { money: 60, hp: 0, log: '施しの米と銭が集まった。人々の信仰の厚さに、頭が下がる。' }; } return { money: 15, hp: 0, log: '施しは僅かだったが、一椀の粥に心が温まった。' }; } },
+                    { text: '托鉢に精を出す', condition: () => true, hint: '人徳で判定・銭と人徳', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 15; return { money: 60, hp: 0, log: '施しの米と銭が集まった。人々の信仰の厚さに、頭が下がる。' }; } return { money: 15, hp: 0, log: '施しは僅かだったが、一椀の粥に心が温まった。' }; } },
                     { text: '行き倒れの病人を看護する', condition: () => true, hint: '人徳上昇・体力減少', effect: (s) => { s.virtue += 20; return { hp: -10, log: '三日三晩看護し、病人を救った。あなたの名は近隣の村々に広がった。' }; } },
                     { text: '山に籠って修行する', condition: () => true, hint: '回復・人徳上昇', effect: (s) => { s.virtue += 10; return { hp: 10, log: '誰もいない山中で座禅を組んだ。心が澄んでいく。' }; } }
                 ] },
             { id: 'monk_seppou', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'monk' && s.age < 60,
                 title: '【供養】戦場の無縁仏', text: '合戦の終わった野には、名もなき死骸が累々と転がっている。敵も味方も、死ねば等しく仏である。',
                 choices: [
-                    { text: '敵味方なく懇ろに供養する', condition: () => true, hint: '人徳で判定', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 30; recordChronology("戦場の無縁仏を供養し、人々を感動させる"); return { hp: -5, log: '何日もかけて死骸を葬り、経を唱え続けた。その姿に、両軍の兵たちまでもが手を合わせた。' }; } s.virtue += 15; return { hp: -5, log: '供養を終えた。名は残らなくとも、仏は見ているはずだ。' }; } },
+                    { text: '敵味方なく懇ろに供養する', condition: () => true, hint: '人徳で判定', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 30; recordChronology("戦場の無縁仏を供養し、人々を感動させる"); return { hp: -5, log: '何日もかけて死骸を葬り、経を唱え続けた。その姿に、両軍の兵たちまでもが手を合わせた。' }; } s.virtue += 15; return { hp: -5, log: '供養を終えた。名は残らなくとも、仏は見ているはずだ。' }; } },
                     { text: '大将の供養を懇ろに引き受ける', condition: () => true, hint: '銭獲得', effect: (s) => { return { money: 150, hp: 0, log: '大将の菩提を弔う法要を任され、相応の布施を受け取った。' }; } },
                     { text: '近寄らず通り過ぎる', condition: () => true, hint: '悪逆上昇', effect: (s) => { s.karma += 5; return { hp: 0, log: '袈裟が汚れるのを嫌い、野を避けて通った。後ろめたさが残る。' }; } }
                 ] },
@@ -1479,7 +1505,7 @@
             { id: 'monk_ekibyou', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'monk',
                 title: '【疫病】病の村', text: '疫病で村人が次々と倒れている村に行き当たった。逃げる旅人は多く、残る僧は少ない。',
                 choices: [
-                    { text: '村に残り看護に当たる', condition: () => true, hint: '人徳で判定', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 30; recordChronology("疫病の村に残り、人々を救う"); return { hp: -10, log: '疫病は収まり、あなたは村の恩人となった。' }; } s.virtue += 15; return { hp: -25, log: '自身も熱に倒れたが、村人たちが交代で看護してくれた。情けは巡る。' }; } },
+                    { text: '村に残り看護に当たる', condition: () => true, hint: '人徳で判定', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 30; recordChronology("疫病の村に残り、人々を救う"); return { hp: -10, log: '疫病は収まり、あなたは村の恩人となった。' }; } s.virtue += 15; return { hp: -25, log: '自身も熱に倒れたが、村人たちが交代で看護してくれた。情けは巡る。' }; } },
                     { text: '【銭50文】薬草だけ届けて去る', condition: (s) => s.money >= 50, hint: '人徳上昇・銭減少', effect: (s) => { s.virtue += 10; return { money: -50, hp: 0, log: '薬草と食料を置いて村を出た。できることは、ここまでだった。' }; } },
                     { text: '関わらずに迂回する', condition: () => true, hint: '悪逆上昇', effect: (s) => { s.karma += 5; return { hp: 0, log: '病を恐れ、村を大きく迂回した。鉦の音だけが遠くに消えた。' }; } }
                 ] },
@@ -1493,7 +1519,7 @@
             { id: 'monk_souhei', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'monk',
                 title: '【強訴】山門の騒乱', text: '寺の僧兵たちが、朝廷への強訴のために上洛すると騒いでいる。武力を背景にした訴えは、もはや戦国寺院の常套手段だ。',
                 choices: [
-                    { text: '双方の仲裁に入る', condition: () => true, hint: '人徳で判定', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 25; recordChronology("僧兵の強訴を仲裁し、騒乱を収める"); return { hp: 0, log: '神輿を担ぐ僧兵と朝廷の間を取り持ち、流血なく収めた。' }; } s.virtue += 5; return { hp: -15, log: '興奮した僧兵に押し倒され、怪我をした。仲裁は実らなかった。' }; } },
+                    { text: '双方の仲裁に入る', condition: () => true, hint: '人徳で判定', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 25; recordChronology("僧兵の強訴を仲裁し、騒乱を収める"); return { hp: 0, log: '神輿を担ぐ僧兵と朝廷の間を取り持ち、流血なく収めた。' }; } s.virtue += 5; return { hp: -15, log: '興奮した僧兵に押し倒され、怪我をした。仲裁は実らなかった。' }; } },
                     { text: '強訴の隊列に加わる', condition: () => true, hint: '武功・悪逆・銭', effect: (s) => { s.valor += 15; s.karma += 10; return { money: 100, hp: 0, log: '薙刀を担いで都へ押しかけた。訴えは通り、寺に新たな荘園が認められた。' }; } },
                     { text: '静観し、経を読む', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 10; return { hp: 0, log: '騒乱に背を向け、静かに経を読んだ。世の行く末を見極める目が養われた。' }; } }
                 ] },
@@ -1514,9 +1540,9 @@
             { id: 'suspicion', mode: ['normal', 'battle'], weight: 40, condition: (s) => s.classInfo.id === 'bushou' && s.strategy >= 60,
                 title: '【粛清】主君の疑心暗鬼', text: '冴え渡りすぎたあなたの知謀は味方からも畏怖され、主君が密かに暗殺の刺客を放ったという噂が届く。',
                 choices: [
-                    { text: '重臣たちに取り成してもらう', condition: () => true, hint: '人徳で判定・回避', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue -= 15; return { hp: 0, log: '日頃の人望により重臣が弁護し、主君の疑いは見事に晴れた。' }; } return { hp: -35, log: '重臣たちは目を逸らし、誰も主君の前に立とうとしなかった。その夜、刺客の刃を間一髪でかわしたが、深い傷を負った。' }; } },
+                    { text: '重臣たちに取り成してもらう', condition: () => true, hint: '人徳で判定・回避', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue -= 15; return { hp: 0, log: '日頃の人望により重臣が弁護し、主君の疑いは見事に晴れた。' }; } return { hp: -35, log: '重臣たちは目を逸らし、誰も主君の前に立とうとしなかった。その夜、刺客の刃を間一髪でかわしたが、深い傷を負った。' }; } },
                     { text: '【銭400文】名品を献上し忠誠を誓う', condition: (s) => s.money >= 400, hint: '金で命を買う', effect: (s) => { return { money: -400, hp: 0, log: '土下座して茶器を献上し、辛くも粛清の嵐から逃れきった。' }; } },
-                    { text: '偽情報を流し、疑いの目を逸らす', condition: () => true, hint: '知略で判定', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.strategy * 0.005))) { s.strategy += 10; return { hp: 0, log: '刺客の背後にいる者へ偽の証文を掴ませた。疑いの目はあらぬ方向へ向き、主君の不信は霧散した。' }; } else { return { hp: -30, log: '策は見抜かれた！間一髪、刺客の刃をかわしたが深手を負った。疑いは晴れぬまま、傷だけが残った。' }; } } },
+                    { text: '偽情報を流し、疑いの目を逸らす', condition: () => true, hint: '知略で判定', effect: (s) => { if (critRoll('strategy', Math.min(0.95, 0.3 + (s.strategy * 0.005)))) { s.strategy += 10; return { hp: 0, log: '刺客の背後にいる者へ偽の証文を掴ませた。疑いの目はあらぬ方向へ向き、主君の不信は霧散した。' }; } else { return { hp: -30, log: '策は見抜かれた！間一髪、刺客の刃をかわしたが深手を負った。疑いは晴れぬまま、傷だけが残った。' }; } } },
                     { text: '城を脱出し、浪人に身をやつす', condition: () => true, hint: '浪人へ転落', effect: (s) => { s.classInfo = CLASSES.find(c=>c.id==='ronin'); s.karma += 20; s.mode = 'normal'; recordChronology("主君の疑いを逃れ、浪人に身をやつす"); return { hp: -10, log: '迫りくる刺客の手を逃れ、夜陰に紛れて出奔した。' }; } }
                 ] },
             { id: 'tactician', mode: ['normal', 'battle'], weight: 30, condition: (s) => s.strategy >= 40 && !s.flags.tactician && (s.classInfo.id === 'ronin' || s.classInfo.id === 'ashigaru' || s.classInfo.id === 'peasant'),
@@ -1575,7 +1601,7 @@
                 title: '【野宿】凍える夜', text: '宿賃などあるはずもなく、今夜も野宿である。季節の風は容赦なく体温を奪い、軒先の明かりがひどく眩しい。',
                 choices: [
                     { text: '木陰で震えながら夜を明かす', condition: () => true, hint: '体力減少', effect: (s) => { return { hp: -18, log: '歯の根も合わぬ寒さに震え、浅い眠りを繰り返した。生き延びただけ儲けものだ。' }; } },
-                    { text: '軒先を借りられないか頼み込む', condition: () => true, hint: '人徳で判定・回復', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 4; return { hp: 8, log: '気のいい家の主が軒先と温かい汁を分けてくれた。人の情けが身に染みる夜だった。' }; } return { hp: -5, log: '軒先を借りたいと頭を下げたが、素性の知れぬ者と断られ、冷たい路傍で夜を明かした。' }; } }
+                    { text: '軒先を借りられないか頼み込む', condition: () => true, hint: '人徳で判定・回復', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 4; return { hp: 8, log: '気のいい家の主が軒先と温かい汁を分けてくれた。人の情けが身に染みる夜だった。' }; } return { hp: -5, log: '軒先を借りたいと頭を下げたが、素性の知れぬ者と断られ、冷たい路傍で夜を明かした。' }; } }
                 ] },
             { id: 'sukanpin_training', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'sukanpin',
                 title: '【修行】棍棒一筋', text: '武器らしい武器は、この木の棍棒だけである。だが一筋に打ち込めば、木の棒とて名刀に劣らぬ牙となるはずだ。',
@@ -1605,7 +1631,7 @@
                 title: '【獣害】野犬の群れ', text: '唸り声と共に、痩せこけた野犬の群れが取り囲んできた。飢えた獣の目に、こちらは恰好の獲物に映っているらしい。',
                 choices: [
                     { text: '棍棒を振り回し、群れを追い払う', condition: () => true, hint: '武功次第で成否が分かれる', effect: (s) => {
-                        if (Math.random() < 0.4 + (s.valor * 0.004)) { s.valor += 8; return { hp: 0, log: '渾身の一振りが先頭の野犬を吹き飛ばし、群れは尾を巻いて逃げ散った。棍棒の腕、ますます冴え渡る。' }; }
+                        if (critRoll('valor', 0.4 + (s.valor * 0.004))) { s.valor += 8; return { hp: 0, log: '渾身の一振りが先頭の野犬を吹き飛ばし、群れは尾を巻いて逃げ散った。棍棒の腕、ますます冴え渡る。' }; }
                         return { hp: -26, log: '数に押されて組み伏せられ、腕や脚を噛み千切られそうになった。何とか振り解いて逃げたが、傷は深い。' };
                     } },
                     { text: '乏しい食料を投げつけ、その隙に逃げる', condition: () => true, hint: '体力小減少', effect: (s) => { return { hp: -8, log: '明日の命綱だった握り飯を投げると、野犬たちは我先にと群がった。腹は減るが、命あっての物種だ。' }; } }
@@ -1647,7 +1673,7 @@
                 title: '【厳冬】凍てつく季節', text: '底冷えのする厳しい冬がやってきた。着る物も乏しく、野宿の身には一年で最も死に近い季節である。',
                 choices: [
                     { text: '雪の小さな掘っ立て小屋で、じっと耐え忍ぶ', condition: () => true, hint: '体力減少・運上昇', effect: (s) => { s.luck += 8; return { hp: -26, log: '歯を鳴らしながら幾夜も寒さに耐えた。春の光を見た時、天に拾われた命だと心から思った。' }; } },
-                    { text: '村人に頭を下げ、施しを請う', condition: () => true, hint: '人徳で判定・小回復', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { return { hp: 6, log: 'これまでの行いを知る村人たちが、囲炉裏と粕汁でもてなしてくれた。徳とは、こういう時に効くものらしい。' }; } return { hp: 2, log: '頭を下げて施しを請うたが、村人の暮らしも苦しく、わずかな芋を分けてもらうのが精一杯だった。' }; } }
+                    { text: '村人に頭を下げ、施しを請う', condition: () => true, hint: '人徳で判定・小回復', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { return { hp: 6, log: 'これまでの行いを知る村人たちが、囲炉裏と粕汁でもてなしてくれた。徳とは、こういう時に効くものらしい。' }; } return { hp: 2, log: '頭を下げて施しを請うたが、村人の暮らしも苦しく、わずかな芋を分けてもらうのが精一杯だった。' }; } }
                 ] },
             { id: 'sukanpin_disciple', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'sukanpin' && s.age >= 35 && !s.flags.disciple,
                 title: '【弟子】弟子志願の少年', text: 'あなたの棍棒さばきを見た村の少年が、目を輝かせてついてくる。「おいらも強くなりたい！弟子にしてください！」まっすぐな瞳が胸を刺す。',
@@ -1666,7 +1692,7 @@
                 choices: [
                     { text: '収穫の一部を山に隠し、年貢を誤魔化す', condition: () => true, hint: '運・悪逆で判定・失敗で体力減少', effect: (s) => {
                             s.flags.kenchi = true;
-                            if (Math.random() < 0.5 + (s.luck * 0.003) + (s.karma * 0.002)) { recordChronology("検地を誤魔化し、隠し米を確保する"); return { money: 80, hp: 0, log: '検地役人の目を盗み、隠し田の収穫を山小屋へ運び込んだ。この米が冬を越す命綱になる。'};}
+                            if (critRoll('luck', 0.5 + (s.luck * 0.003) + (s.karma * 0.002))) { recordChronology("検地を誤魔化し、隠し米を確保する"); return { money: 80, hp: 0, log: '検地役人の目を盗み、隠し田の収穫を山小屋へ運び込んだ。この米が冬を越す命綱になる。'};}
                             else { s.karma += 10; return { hp: -25, log: '隠し田が見つかった！鞭打たれ、村中の晒し者となった。痛みと屈辱が骨身に染みる。'};}
                     }},
                     { text: '【銭50文】正直にすべてを申告し、情けにすがる', condition: (s) => s.money >= 50, hint: '銭50消費・人徳上昇', effect: (s) => { s.flags.kenchi = true; s.virtue += 15; return { money: -50, hp: 0, log: '正直に収穫を申告した。検地役人は正直さに免じて、幾らか年貢を負けてくれた。'};}},
@@ -1676,7 +1702,7 @@
                 title: '【農村】用水路の争い', text: '日照りが続き、川上村と川下村の間で用水路の水を巡る争いが激しくなってきた。鍬を手にした男たちが、水門の前で睨み合っている。',
                 choices: [
                     { text: '力ずくで水門を守り抜く', condition: () => true, hint: '武功上昇・負傷リスク', effect: (s) => { s.valor += 15; return { hp: -15, log: '乱闘の末、水門を守り抜いた。田に水が戻ったが、体中あざだらけになった。'};}},
-                    { text: '両村の間に入り、水を分け合う約定を結ぶ', condition: () => true, hint: '人徳で判定・人徳大幅上昇', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 25; recordChronology("用水路の争いを調停し、両村から感謝される"); return { hp: 0, log: '番ごとに水門を開ける約定を取り付けた。両村の長老が揃って頭を下げ、争いは収まった。'}; } s.virtue += 5; return { hp: 0, log: '両村の言い分は最後まで折り合わず、約定には至らなかった。それでも歩き回った姿に、幾らかの感謝は残った。'}; } },
+                    { text: '両村の間に入り、水を分け合う約定を結ぶ', condition: () => true, hint: '人徳で判定・人徳大幅上昇', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 25; recordChronology("用水路の争いを調停し、両村から感謝される"); return { hp: 0, log: '番ごとに水門を開ける約定を取り付けた。両村の長老が揃って頭を下げ、争いは収まった。'}; } s.virtue += 5; return { hp: 0, log: '両村の言い分は最後まで折り合わず、約定には至らなかった。それでも歩き回った姿に、幾らかの感謝は残った。'}; } },
                     { text: '夜陰に紛れて水路を自村へ掘り変える', condition: () => true, hint: '悪逆・銭獲得', effect: (s) => { s.karma += 15; return { money: 40, hp: 0, log: '一夜で水路を掘り変え、自村の田だけが潤った。川下村の恨み声は、聞かぬふりをした。'};}}
             ]},
             { id: 'peasant_bumper', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'peasant',
@@ -1689,7 +1715,7 @@
             { id: 'peasant_tax', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'peasant',
                 title: '【年貢】代官への直訴', text: '今年の年貢は実りに対して重すぎる。村の存亡を懸け、代官へ直訴するかどうかの瀬戸際だ。',
                 choices: [
-                    { text: '村の代表として直訴する', condition: () => true, hint: '人徳で判定', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { recordChronology("年貢の直訴を実らせ、村を救う"); return { money: 80, hp: 0, log: '直訴は聞き届けられ、年貢は軽くなった。村人の喝采が耳に残る。' }; } return { hp: -15, log: '直訴は退けられ、鞭打たれた。それでも村人はあなたの勇気を忘れない。' }; } },
+                    { text: '村の代表として直訴する', condition: () => true, hint: '人徳で判定', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { recordChronology("年貢の直訴を実らせ、村を救う"); return { money: 80, hp: 0, log: '直訴は聞き届けられ、年貢は軽くなった。村人の喝采が耳に残る。' }; } return { hp: -15, log: '直訴は退けられ、鞭打たれた。それでも村人はあなたの勇気を忘れない。' }; } },
                     { text: '【知略30】帳簿の数字を誤魔化す', condition: (s) => s.strategy >= 30, hint: '悪逆・銭獲得', effect: (s) => { s.karma += 10; return { money: 70, hp: 0, log: '検地の帳簿を巧みに誤魔化した。見つかれば打ち首の綱渡りだった。' }; } },
                     { text: '言われた通りに納める', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '重い年貢を歯を食いしばって納めた。文句を言わぬのも、生きる知恵だ。' }; } }
                 ] },
@@ -1697,7 +1723,7 @@
                 title: '【用水】井戸掘りの相談', text: '日照りに備え、村に新しい井戸と用水を掘る相談が持ち上がった。大仕事だが、水は命だ。',
                 choices: [
                     { text: '村総出で掘る', condition: () => true, hint: '人徳上昇・体力減少', effect: (s) => { s.virtue += 20; return { hp: -10, money: 30, log: '汗と泥にまみれた大仕事の末、水が湧いた。村の悲願が実った。' }; } },
-                    { text: '湧く場所を勘で当てる', condition: () => true, hint: '運で判定', effect: (s) => { if (Math.random() < 0.45 + (s.luck * 0.003)) { recordChronology("名水を掘り当て、村の名泉となる"); return { money: 50, hp: 0, log: '勘が冴え渡り、一掘りで名水が湧いた。その井戸は村の自慢になった。' }; } return { hp: -10, log: 'いくら掘っても水は出なかった。肩を落として埋め戻した。' }; } },
+                    { text: '湧く場所を勘で当てる', condition: () => true, hint: '運で判定', effect: (s) => { if (critRoll('luck', 0.45 + (s.luck * 0.003))) { recordChronology("名水を掘り当て、村の名泉となる"); return { money: 50, hp: 0, log: '勘が冴え渡り、一掘りで名水が湧いた。その井戸は村の自慢になった。' }; } return { hp: -10, log: 'いくら掘っても水は出なかった。肩を落として埋め戻した。' }; } },
                     { text: '今年は見送る', condition: () => true, hint: '小回復', effect: (s) => { return { hp: 5, log: '無理はしないことにした。今の井戸で、もう一年凌ぐ。' }; } }
                 ] },
             { id: 'peasant_son', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'peasant' && s.flags.hasChild && s.age >= 30 && !s.flags.sonGrown,
@@ -1712,13 +1738,13 @@
                 choices: [
                     { text: '備蓄米を村人へ放出する約束をする', condition: () => true, hint: '人徳大幅上昇', effect: (s) => { s.virtue += 25; return { hp: 0, log: '「困った時は分け合う」と宣言した。村人の顔に、安心が広がった。' }; } },
                     { text: '備蓄を今のうちに高く売る', condition: () => true, hint: '銭獲得・悪逆上昇', effect: (s) => { s.karma += 15; return { money: 150, hp: 0, log: '備蓄米は高値で売れた。だが、蝗が来れば恨まれるのは必定だ。' }; } },
-                    { text: '神仏に祈り、畑を見回る', condition: () => true, hint: '運で判定', effect: (s) => { if (Math.random() < 0.45 + (s.luck * 0.003)) { s.virtue += 10; return { hp: 0, log: '蝗の群れは山に遮られ、村を避けて通った。神仏の加護としか思えない。' }; } return { hp: -10, log: '蝗は村の田を食い荒らした。呆然と立ち尽くすしかなかった。' }; } }
+                    { text: '神仏に祈り、畑を見回る', condition: () => true, hint: '運で判定', effect: (s) => { if (critRoll('luck', 0.45 + (s.luck * 0.003))) { s.virtue += 10; return { hp: 0, log: '蝗の群れは山に遮られ、村を避けて通った。神仏の加護としか思えない。' }; } return { hp: -10, log: '蝗は村の田を食い荒らした。呆然と立ち尽くすしかなかった。' }; } }
                 ] },
             { id: 'merchant_rice_market', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'merchant' && s.money >= 100,
                 title: '【相場】米相場の大博打', text: '凶作の噂が広がり、米相場が乱高下している。今買い占めれば大儲けの好機だが、外せば蔵ひとつ分の損では済まない。',
                 choices: [
                     { text: '全財産に近い銭を投じ、米を買い占める', condition: (s) => s.money >= 200, hint: '運で判定・大儲けか大損か', effect: (s) => {
-                            if (Math.random() < 0.45 + (s.luck * 0.003)) { recordChronology("米相場の大博打に勝利し、莫大な富を得る"); return { money: 300, hp: 0, log: '噂は真実だった！米価は跳ね上がり、買い占めた米は莫大な銭に化けた。大博打は大勝利に終わった！'};}
+                            if (critRoll('luck', 0.45 + (s.luck * 0.003))) { recordChronology("米相場の大博打に勝利し、莫大な富を得る"); return { money: 300, hp: 0, log: '噂は真実だった！米価は跳ね上がり、買い占めた米は莫大な銭に化けた。大博打は大勝利に終わった！'};}
                             else { return { money: -200, hp: -10, log: '豊作の報が届き、米価は暴落した。買い占めた米は二束三文。目の前が真っ暗になった……。'};}
                     }},
                     { text: '堅実に小口の取引を積み重ねる', condition: () => true, hint: '銭・知略上昇', effect: (s) => { s.strategy += 10; return { money: 80, hp: 0, log: '相場の波に乗りすぎず、小さな利を確実に積み上げた。商いは堅実さが身上である。'};}},
@@ -1736,7 +1762,7 @@
                 choices: [
                     { text: '【銭500文】全財産を投じて朱印船を仕立てる', condition: (s) => s.money >= 500, hint: '運と知略で判定・大儲けか全損か', effect: (s) => {
                         const p = Math.min(0.85, Math.max(0.35, 0.5 + (s.luck * 0.002) + (s.strategy * 0.001)));
-                        if (Math.random() < p) { recordChronology("朱印船交易で莫大な富を得る"); return { money: 1000, hp: 0, log: '朱印船が満載の舶来品と共に帰港した！元手は倍以上になって戻り、蔵は銭で溢れた！' }; }
+                        if (critRoll('luck', p)) { recordChronology("朱印船交易で莫大な富を得る"); return { money: 1000, hp: 0, log: '朱印船が満載の舶来品と共に帰港した！元手は倍以上になって戻り、蔵は銭で溢れた！' }; }
                         return { money: -500, hp: 0, log: '嵐に遭い、船は戻らなかった。投じた銭は海の底。数日、呆然と海を眺めて過ごした…。' };
                     } },
                     { text: '国内の堅実な取引に留まる', condition: () => true, hint: '銭・知略上昇', effect: (s) => { s.strategy += 5; return { money: 100, hp: 0, log: '夢は見ず、地道な商いに精を出した。それもまた商人の道である。' }; } }
@@ -1746,12 +1772,12 @@
                 choices: [
                     { text: '【知略40・銭150文】見極めた上で買い取る', condition: (s) => s.strategy >= 40 && s.money >= 150, hint: '知略で判定・転売益か贋作か', effect: (s) => {
                         const p = Math.min(0.95, 0.35 + (s.strategy * 0.006));
-                        if (Math.random() < p) { return { money: 250, hp: 0, log: '紛れもない本物だった！すぐに好事家へ転売し、大きな利を得た。目利きの評判も上がった。' }; }
+                        if (critRoll('strategy', p)) { return { money: 250, hp: 0, log: '紛れもない本物だった！すぐに好事家へ転売し、大きな利を得た。目利きの評判も上がった。' }; }
                         return { money: -150, hp: 0, log: '手に取って分かった、よく出来た贋作だった…。授業料として高くついた。' };
                     } },
                     { text: '目利きなしで言い値買いする', condition: (s) => s.money >= 120, hint: '運で判定', effect: (s) => {
                         const p = Math.min(0.9, 0.5 + (s.luck * 0.002));
-                        if (Math.random() < p) { return { money: 180, hp: 0, log: '勘が当たった！本物を掴み、転売で儲けた。' }; }
+                        if (critRoll('luck', p)) { return { money: 180, hp: 0, log: '勘が当たった！本物を掴み、転売で儲けた。' }; }
                         return { money: -120, hp: 0, log: '贋作を掴まされた。勘だけの商いは身を滅ぼす…。' };
                     } },
                     { text: '怪しいと見て、丁重に断る', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 10; return { hp: 0, log: '出所の怪しい品には手を出さぬ。商いの鉄則を守った。' }; } }
@@ -1807,7 +1833,7 @@
             { id: 'bandit_ambush_rich', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'bandit' && s.age < 60,
                 title: '【襲撃】大名行列の噂', text: '大名行列が峠を通るとの情報を掴んだ。大金が目の前を通るが、護衛も堅い。山賊の腕の見せ所だ。',
                 choices: [
-                    { text: '行列を襲う', condition: () => true, hint: '武功で判定', effect: (s) => { if (Math.random() < Math.min(0.9, 0.4 + (s.valor * 0.004))) { s.karma += 15; recordChronology("大名行列を襲い、大金を得る"); return { money: 300, hp: 0, log: '見事に急襲が決まった。奪った金銀で、山塞は大いに潤った。' }; } return { hp: -30, log: '護衛は堅かった。手下を失い、自身も深手を負って山へ逃げ帰った。' }; } },
+                    { text: '行列を襲う', condition: () => true, hint: '武功で判定', effect: (s) => { if (critRoll('valor', Math.min(0.9, 0.4 + (s.valor * 0.004)))) { s.karma += 15; recordChronology("大名行列を襲い、大金を得る"); return { money: 300, hp: 0, log: '見事に急襲が決まった。奪った金銀で、山塞は大いに潤った。' }; } return { hp: -30, log: '護衛は堅かった。手下を失い、自身も深手を負って山へ逃げ帰った。' }; } },
                     { text: '斥候だけ出して様子を見る', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 10; return { hp: 0, log: '護衛の布陣をじっくり観察した。今日ではない、と判断するのも頭領の仕事だ。' }; } },
                     { text: '見送って手を出さない', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '行列には手を出さなかった。なぜかは、自分でもよく分からない。' }; } }
                 ] },
@@ -1828,21 +1854,21 @@
             { id: 'bandit_fence', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'bandit',
                 title: '【盗品】捌き先の交渉', text: '奪った品々を金に変えるには、裏社会の捌き先が要る。足元を見られるか、見るかだ。',
                 choices: [
-                    { text: '闇市の元締めと交渉する', condition: () => true, hint: '知略で判定', effect: (s) => { if (Math.random() < Math.min(0.95, 0.35 + (s.strategy * 0.006))) { return { money: 180, hp: 0, log: '交渉は上首尾だった。盗品は思わぬ高値で捌けた。' }; } s.karma += 10; return { money: 60, hp: 0, log: '足元を見られて買い叩かれた。元締めへの恨みが残った。' }; } },
+                    { text: '闇市の元締めと交渉する', condition: () => true, hint: '知略で判定', effect: (s) => { if (critRoll('strategy', Math.min(0.95, 0.35 + (s.strategy * 0.006)))) { return { money: 180, hp: 0, log: '交渉は上首尾だった。盗品は思わぬ高値で捌けた。' }; } s.karma += 10; return { money: 60, hp: 0, log: '足元を見られて買い叩かれた。元締めへの恨みが残った。' }; } },
                     { text: '顔なじみの商人に直売する', condition: () => true, hint: '銭獲得', effect: (s) => { return { money: 120, hp: 0, log: '顔なじみの商人が、相場通りに買い取ってくれた。信用も金になる。' }; } },
                     { text: '足がつく品は川に捨てる', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 10; return { hp: 0, log: '危ない品は始末した。慎重さが、山賊の寿命を延ばす。' }; } }
                 ] },
             { id: 'bandit_rival', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'bandit',
                 title: '【縄張り】新参者の山賊', text: '近くの山に、新参の山賊団が挨拶もなく根城を作ったとの報せ。縄張りの掟は一つしかない。',
                 choices: [
-                    { text: '夜襲で潰す', condition: () => true, hint: '武功で判定', effect: (s) => { if (Math.random() < Math.min(0.9, 0.45 + (s.valor * 0.004))) { s.valor += 20; s.karma += 15; return { hp: 0, log: '寝込みを襲い、新参者を山から追い払った。縄張りは守られた。' }; } return { hp: -25, log: '返り討ちに遭った。新参者、侮れない。' }; } },
+                    { text: '夜襲で潰す', condition: () => true, hint: '武功で判定', effect: (s) => { if (critRoll('valor', Math.min(0.9, 0.45 + (s.valor * 0.004)))) { s.valor += 20; s.karma += 15; return { hp: 0, log: '寝込みを襲い、新参者を山から追い払った。縄張りは守られた。' }; } return { hp: -25, log: '返り討ちに遭った。新参者、侮れない。' }; } },
                     { text: '傘下に入れる', condition: () => true, hint: '武功・悪逆上昇', effect: (s) => { s.valor += 15; s.karma += 5; return { hp: 0, log: '話をつけ、新参者を傘下に収めた。山の勢力は大きく膨らんだ。' }; } },
                     { text: '山を分けて共存する', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 15; return { hp: 0, log: '話し合いで縄張りを分けた。争わぬのも、山賊の知恵である。' }; } }
                 ] },
             { id: 'bandit_treasure', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'bandit',
                 title: '【埋蔵金】山の言い伝え', text: 'この山には、昔の落武者が埋めた埋蔵金の言い伝えがある。手下たちの目が、期待に光っている。',
                 choices: [
-                    { text: '言い伝えの場所を掘る', condition: () => true, hint: '運で判定', effect: (s) => { if (Math.random() < 0.45 + (s.luck * 0.003)) { s.karma += 5; recordChronology("埋蔵金を掘り当てる"); return { money: 250, hp: 0, log: '鍬が硬いものに当たった！小判の詰まった壺が、土の中から姿を現した！' }; } return { hp: -10, log: '一日掘っても何も出なかった。手下たちの溜息が山に響いた。' }; } },
+                    { text: '言い伝えの場所を掘る', condition: () => true, hint: '運で判定', effect: (s) => { if (critRoll('luck', 0.45 + (s.luck * 0.003))) { s.karma += 5; recordChronology("埋蔵金を掘り当てる"); return { money: 250, hp: 0, log: '鍬が硬いものに当たった！小判の詰まった壺が、土の中から姿を現した！' }; } return { hp: -10, log: '一日掘っても何も出なかった。手下たちの溜息が山に響いた。' }; } },
                     { text: '手下に掘らせて分け前に与る', condition: () => true, hint: '銭獲得・悪逆上昇', effect: (s) => { s.karma += 5; return { money: 80, hp: 0, log: '「見つけた」と言う手下から分け前を受け取った。真偽は、野暮なことは聞かない。' }; } },
                     { text: '言い伝えは放っておく', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '夢は見ない。山賊の現金は、奪ってこそだ。' }; } }
                 ] },
@@ -1864,7 +1890,7 @@
                 title: '【浪人】道場破りの挑戦', text: '町の剣術道場に、腕自慢の道場破りが現れた。師範が負傷して不在の中、若い門弟たちが震えている。流れ者のあなたに、白羽の矢が立った。',
                 choices: [
                     { text: '代稽古として道場破りの挑戦を受ける', condition: (s) => s.valor >= 40, hint: '武功で判定', effect: (s) => {
-                            if (Math.random() < 0.5 + (s.valor * 0.002)) { s.valor += 35; recordChronology("道場破りを打ち破り、町に武勇を轟かせる"); return { money: 100, hp: -10, log: '真剣勝負の末、道場破りを打ち破った！道場から手厚い礼を受け、その武勇は町中の噂となった。'};}
+                            if (critRoll('valor', 0.5 + (s.valor * 0.002))) { s.valor += 35; recordChronology("道場破りを打ち破り、町に武勇を轟かせる"); return { money: 100, hp: -10, log: '真剣勝負の末、道場破りを打ち破った！道場から手厚い礼を受け、その武勇は町中の噂となった。'};}
                             else { return { hp: -25, log: '道場破りの腕は本物だった。打ちのめされ、道場の土に伏した。屈辱が傷より痛む……。'};}
                     }},
                     { text: '試合を見物し、道場破りの技を盗む', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 20; return { hp: 0, log: '一歩引いて勝負の全てを見届けた。道場破りの太刀筋の癖は、余すことなく頭に刻まれた。'};}},
@@ -1873,14 +1899,14 @@
             { id: 'ronin_wander', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'ronin',
                 title: '【流浪】流れ者の道', text: '当て所なく街道を歩く。流れ者にとって、道そのものが家であり、運命の相手だ。',
                 choices: [
-                    { text: '人に出会うことを期待して歩く', condition: () => true, hint: '運で判定', effect: (s) => { if (Math.random() < 0.45 + (s.luck * 0.003)) { s.virtue += 10; return { hp: 15, log: '茶屋で旅の僧と意気投合し、温かい飯にありついた。流れ歩くのも悪くない。' }; } return { hp: -5, log: '誰にも会わず、日が暮れた。腹を空かせて野に伏す。' }; } },
+                    { text: '人に出会うことを期待して歩く', condition: () => true, hint: '運で判定', effect: (s) => { if (critRoll('luck', 0.45 + (s.luck * 0.003))) { s.virtue += 10; return { hp: 15, log: '茶屋で旅の僧と意気投合し、温かい飯にありついた。流れ歩くのも悪くない。' }; } return { hp: -5, log: '誰にも会わず、日が暮れた。腹を空かせて野に伏す。' }; } },
                     { text: '野宿で英気を養う', condition: () => true, hint: '体力回復', effect: (s) => { return { hp: 10, log: '星空の下で眠った。冷えた体に、朝日が染みる。' }; } },
                     { text: '酒場で憂さを晴らす', condition: () => true, hint: '悪逆・武功上昇', effect: (s) => { s.karma += 10; s.valor += 5; return { hp: 0, log: '酒の席の喧嘩で憂さを晴らした。流れ者の日常だ。' }; } }
                 ] },
             { id: 'ronin_duel', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'ronin' && s.age < 60,
                 title: '【果たし合い】果たし状', text: 'かつて道場で争った剣客から、果たし状が届いた。逃げれば剣客の名折れ、受ければ命懸けだ。',
                 choices: [
-                    { text: '果たし合いを受ける', condition: () => true, hint: '武功で判定', effect: (s) => { if (Math.random() < Math.min(0.9, 0.45 + (s.valor * 0.004))) { s.valor += 30; recordChronology("果たし合いに勝利し、剣客として名を上げる"); return { money: 100, hp: 0, log: '一太刀で勝負がついた。観衆の武士が、あなたの腕を認めて礼を置いていった。' }; } return { hp: -30, log: '敗れた。だが命は拾った。傷と共に、再起の誓いが残った。' }; } },
+                    { text: '果たし合いを受ける', condition: () => true, hint: '武功で判定', effect: (s) => { if (critRoll('valor', Math.min(0.9, 0.45 + (s.valor * 0.004)))) { s.valor += 30; recordChronology("果たし合いに勝利し、剣客として名を上げる"); return { money: 100, hp: 0, log: '一太刀で勝負がついた。観衆の武士が、あなたの腕を認めて礼を置いていった。' }; } return { hp: -30, log: '敗れた。だが命は拾った。傷と共に、再起の誓いが残った。' }; } },
                     { text: '果たし状を丁重に断る', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '「命あっての物種」と断った。名折れと笑う者もいるが、生きていればこそだ。' }; } },
                     { text: '【知略40】仲介を立てて手打ちにする', condition: (s) => s.strategy >= 40, hint: '知略上昇・銭獲得', effect: (s) => { s.strategy += 15; return { money: 50, hp: 0, log: '酒席での手打ちとなった。剣を抜かずに勝つのも、剣客の器である。' }; } }
                 ] },
@@ -1888,7 +1914,7 @@
                 title: '【酒場】喧嘩と情報', text: '宿場の酒場は、情報と喧嘩の坩堝だ。流れ者の耳と腕が、両方試される場所でもある。',
                 choices: [
                     { text: '隅で静かに耳を澄ます', condition: () => true, hint: '知略上昇・銭消費', effect: (s) => { s.strategy += 15; return { money: -20, hp: 0, log: '酒代はかかったが、戦況と仕事の情報がたっぷり入った。' }; } },
-                    { text: '酔客同士の喧嘩を止める', condition: () => true, hint: '人徳で判定', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 20; return { hp: 0, log: '見事な仲裁だった。店主から「あんたがいて助かった」と酒を振る舞われた。' }; } return { hp: -10, log: '止めに入って巻き込まれた。酒場の仲裁は難しい。' }; } },
+                    { text: '酔客同士の喧嘩を止める', condition: () => true, hint: '人徳で判定', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 20; return { hp: 0, log: '見事な仲裁だった。店主から「あんたがいて助かった」と酒を振る舞われた。' }; } return { hp: -10, log: '止めに入って巻き込まれた。酒場の仲裁は難しい。' }; } },
                     { text: '喧嘩に加わって暴れる', condition: () => true, hint: '武功・悪逆上昇・体力減少', effect: (s) => { s.valor += 10; s.karma += 5; return { hp: -15, log: '大暴れして鬱憤を晴らした。出入り禁止になったが、後悔はない。' }; } }
                 ] },
             { id: 'ronin_oldfriend', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'ronin',
@@ -1916,7 +1942,7 @@
                 title: '【宮中】席次争いの雅な戦い', text: '朝廷の儀式を前に、公家同士の席次を巡る静かな争いが水面下で激しくなっている。席の上下は、そのまま家の格を決めるのだ。',
                 choices: [
                     { text: '家の格を毅然と主張し、上席を勝ち取る', condition: () => true, hint: '人徳・知略上昇', effect: (s) => { s.virtue += 15; s.strategy += 10; return { hp: -5, log: '微笑を崩さぬまま、言葉の剣で相手を退けた。宮中の戦いは、血こそ流れぬが容赦がない。'};}},
-                    { text: '席を譲り、円満に収める雅量を見せる', condition: () => true, hint: '人徳で判定・人徳大幅上昇', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 25; recordChronology("席次争いを雅量で収め、宮中の評判を得る"); return { hp: 0, log: '席を譲るあなたの雅量に、居並ぶ公家たちは感嘆した。失った席以上に、得た評判は大きい。'}; } s.virtue += 5; return { hp: 0, log: '席を譲ったものの、その雅量は弱さと受け取られ、宮中の評判はさほど広がらなかった。'}; } },
+                    { text: '席を譲り、円満に収める雅量を見せる', condition: () => true, hint: '人徳で判定・人徳大幅上昇', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 25; recordChronology("席次争いを雅量で収め、宮中の評判を得る"); return { hp: 0, log: '席を譲るあなたの雅量に、居並ぶ公家たちは感嘆した。失った席以上に、得た評判は大きい。'}; } s.virtue += 5; return { hp: 0, log: '席を譲ったものの、その雅量は弱さと受け取られ、宮中の評判はさほど広がらなかった。'}; } },
                     { text: '根回しを重ね、裏から席次を操作する', condition: () => true, hint: '悪逆・知略上昇', effect: (s) => { s.karma += 15; s.strategy += 20; return { hp: 0, log: '儀式の当日、席次表は何者かの手で書き換えられていた。あなたの席は、上座の真ん中だった。'};}}
             ]},
             { id: 'kuge_utaawase', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'kuge',
@@ -1924,7 +1950,7 @@
                 choices: [
                     { text: '渾身の一首を詠む', condition: () => true, hint: '知略で判定', effect: (s) => {
                         const p = Math.min(0.95, 0.35 + (s.strategy * 0.006));
-                        if (Math.random() < p) { s.virtue += 25; recordChronology("歌合で帝の感心を得る"); return { money: 60, hp: 0, log: '判者の声が高らかにあなたの歌を誉めた。宮中に名が轟いた。' }; }
+                        if (critRoll('strategy', p)) { s.virtue += 25; recordChronology("歌合で帝の感心を得る"); return { money: 60, hp: 0, log: '判者の声が高らかにあなたの歌を誉めた。宮中に名が轟いた。' }; }
                         s.virtue += 5; return { hp: 0, log: '歌は悪くなかったが、今日は他者の影に隠れた。' };
                     } },
                     { text: '古歌を下敷きに詠む', condition: () => true, hint: '知略・悪逆上昇', effect: (s) => { s.strategy += 15; s.karma += 5; return { hp: 0, log: '本歌取りの技で無難に乗り切った。ずるいが、宮中では知恵も実力だ。' }; } },
@@ -1940,7 +1966,7 @@
             { id: 'kuge_gyoukou', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'kuge',
                 title: '【行幸】帝のお出まし', text: '帝の行幸に供奉する栄誉を得た。行列の中での振る舞いひとつが、そのまま評価になる。',
                 choices: [
-                    { text: '堂々と供奉し、名を上げる', condition: () => true, hint: '人徳で判定', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 25; return { money: 80, hp: 0, log: '見事な供奉ぶりに、帝から直々の御言葉を賜った。' }; } s.virtue += 8; return { hp: -5, log: '緊張のあまり所作が乱れた。大きな失点にはならなかったが、疲労が残った。' }; } },
+                    { text: '堂々と供奉し、名を上げる', condition: () => true, hint: '人徳で判定', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 25; return { money: 80, hp: 0, log: '見事な供奉ぶりに、帝から直々の御言葉を賜った。' }; } s.virtue += 8; return { hp: -5, log: '緊張のあまり所作が乱れた。大きな失点にはならなかったが、疲労が残った。' }; } },
                     { text: '裏方に徹し、行列を取り仕切る', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 15; return { hp: 0, log: '目立たぬ仕事を完璧にこなした。宮中の実務家としての株が上がった。' }; } },
                     { text: '病と称して欠席する', condition: () => true, hint: '回復・人徳減少', effect: (s) => { s.virtue -= 5; return { hp: 10, log: '静養を優先した。だが宮中の評判は、水面下で静かに下がった。' }; } }
                 ] },
@@ -1949,7 +1975,7 @@
                 choices: [
                     { text: '真摯に見立てを述べる', condition: () => true, hint: '知略で判定', effect: (s) => {
                         const p = Math.min(0.95, 0.35 + (s.strategy * 0.006));
-                        if (Math.random() < p) { s.virtue += 10; return { money: 100, hp: 0, log: '見立てが当たり、厚い信頼を得た。礼も弾んだ。' }; }
+                        if (critRoll('strategy', p)) { s.virtue += 10; return { money: 100, hp: 0, log: '見立てが当たり、厚い信頼を得た。礼も弾んだ。' }; }
                         return { money: 30, hp: 0, log: '見立ては外れたが、誠実な対応が責めを免れさせた。' };
                     } },
                     { text: '相手の望む結果だけを告げる', condition: () => true, hint: '悪逆・銭', effect: (s) => { s.karma += 10; return { money: 180, hp: 0, log: '不安に付け込む商いは儲かる。だが心に小さな棘が刺さった。' }; } },
@@ -1965,7 +1991,7 @@
             { id: 'kuge_goryou', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'kuge',
                 title: '【御霊会】疫病と都の不安', text: '都に疫病が広がり、御霊の祟りと恐れられている。朝廷の祭祀を主導できるのは、由緒ある公家のあなただ。',
                 choices: [
-                    { text: '御霊会を主導する', condition: () => true, hint: '人徳で判定', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 30; recordChronology("御霊会を主導し、都の不安を鎮める"); return { hp: 0, log: '祭祀は厳かに執り行われ、都に平穏が戻った。あなたの徳が称えられた。' }; } s.virtue += 10; return { hp: -10, log: '祭祀の甲斐なく疫病は続いたが、尽力そのものは認められた。' }; } },
+                    { text: '御霊会を主導する', condition: () => true, hint: '人徳で判定', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 30; recordChronology("御霊会を主導し、都の不安を鎮める"); return { hp: 0, log: '祭祀は厳かに執り行われ、都に平穏が戻った。あなたの徳が称えられた。' }; } s.virtue += 10; return { hp: -10, log: '祭祀の甲斐なく疫病は続いたが、尽力そのものは認められた。' }; } },
                     { text: '【銭150文】私財を寄進する', condition: (s) => s.money >= 150, hint: '人徳上昇', effect: (s) => { s.virtue += 20; return { money: -150, hp: 0, log: '私財を投じて祭と施しを行った。人々は深く感謝した。' }; } },
                     { text: '関わらず静観する', condition: () => true, hint: '悪逆上昇', effect: (s) => { s.karma += 5; return { hp: 0, log: '騒ぎが収まるのを待った。都の不安は、よそ事のように過ぎていった。' }; } }
                 ] },
@@ -1987,20 +2013,20 @@
                 title: '【領国】同盟の縁組', text: '隣国の大名から、娘を嫁がせたいとの申し出があった。縁組が成れば同盟は固くなるが、他国との関係は微妙になる。',
                 choices: [
                     { text: '縁組を受け入れ、同盟を固める', condition: () => true, hint: '人徳・銭・知略上昇', effect: (s) => { s.flags.alliance = true; s.virtue += 15; s.strategy += 10; recordChronology("隣国との縁組により同盟を結ぶ"); return { money: 150, hp: 0, log: '盛大な婚儀が執り行われ、両国の同盟は盤石となった。結納の品々が蔵を満たした。'};}},
-                    { text: '【銭100文】婚儀を領民総出の祭りとし、慶びを分け与える', condition: (s) => s.money >= 100, hint: '人徳で判定・銭100消費・人徳上昇', effect: (s) => { s.flags.alliance = true; if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 25; return { money: -100, hp: 0, log: '婚儀の日、城下は祭りの賑わいに包まれた。領民の忠誠は深まり、同盟の使者も感嘆して帰った。'}; } s.virtue += 8; return { money: -100, hp: 0, log: '祭りは開かれたが、領民の心までは一つにならず、婚儀の慶びも今ひとつ広がらなかった。それでも縁組と同盟は成った。'}; } },
+                    { text: '【銭100文】婚儀を領民総出の祭りとし、慶びを分け与える', condition: (s) => s.money >= 100, hint: '人徳で判定・銭100消費・人徳上昇', effect: (s) => { s.flags.alliance = true; if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 25; return { money: -100, hp: 0, log: '婚儀の日、城下は祭りの賑わいに包まれた。領民の忠誠は深まり、同盟の使者も感嘆して帰った。'}; } s.virtue += 8; return { money: -100, hp: 0, log: '祭りは開かれたが、領民の心までは一つにならず、婚儀の慶びも今ひとつ広がらなかった。それでも縁組と同盟は成った。'}; } },
                     { text: '縁組を断り、独立独歩を貫く', condition: () => true, hint: '武功・悪逆上昇', effect: (s) => { s.flags.alliance = true; s.valor += 20; s.karma += 10; return { hp: 0, log: '丁重に、しかし断固として縁組を断った。どの国にも与しない。その姿勢が、かえって諸国の警戒を招くかもしれない。'};}}
             ]},
             { id: 'daimyo_council', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'daimyo',
                 title: '【評定】重臣の対立', text: '重臣二派が評定の席で激しく対立した。当主の一言が、家中の行く末を決める。',
                 choices: [
-                    { text: '双方をなだめ、丸く収める', condition: () => true, hint: '人徳で判定', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 25; recordChronology("重臣の対立を収め、家中を結束させる"); return { hp: 0, log: '当主の裁きに両派が頭を下げた。家中の結束は却って固くなった。' }; } s.virtue += 5; return { hp: -5, log: '対立は燻ったまま終わった。当主の心労が体に堪える。' }; } },
+                    { text: '双方をなだめ、丸く収める', condition: () => true, hint: '人徳で判定', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 25; recordChronology("重臣の対立を収め、家中を結束させる"); return { hp: 0, log: '当主の裁きに両派が頭を下げた。家中の結束は却って固くなった。' }; } s.virtue += 5; return { hp: -5, log: '対立は燻ったまま終わった。当主の心労が体に堪える。' }; } },
                     { text: '片方を退け、決断を示す', condition: () => true, hint: '悪逆・知略上昇', effect: (s) => { s.karma += 10; s.strategy += 10; return { hp: 0, log: '冷徹な決断だったが、家中に当主の威厳が示された。' }; } },
                     { text: '若手に評定を任せる', condition: () => true, hint: '人徳・武功上昇', effect: (s) => { s.virtue += 5; s.valor += 5; return { hp: 0, log: '若手の意見を積極的に取り入れた。家に新しい風が吹き始めた。' }; } }
                 ] },
             { id: 'daimyo_border', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'daimyo' && s.age < 60,
                 title: '【境目】隣国との境争い', text: '隣国との境の村を巡り、領有の争いが熱を帯びてきた。一触即発の空気が漂う。',
                 choices: [
-                    { text: '軍を進めて威圧する', condition: () => true, hint: '武功で判定', effect: (s) => { if (Math.random() < Math.min(0.9, 0.45 + (s.valor * 0.004))) { s.valor += 20; return { money: 100, hp: 0, log: '軍の威圧に隣国が退いた。境の村は安堵し、年貢も増えた。' }; } return { hp: -20, log: '小競り合いとなり、当主自らも傷を負った。決着は持ち越しだ。' }; } },
+                    { text: '軍を進めて威圧する', condition: () => true, hint: '武功で判定', effect: (s) => { if (critRoll('valor', Math.min(0.9, 0.45 + (s.valor * 0.004)))) { s.valor += 20; return { money: 100, hp: 0, log: '軍の威圧に隣国が退いた。境の村は安堵し、年貢も増えた。' }; } return { hp: -20, log: '小競り合いとなり、当主自らも傷を負った。決着は持ち越しだ。' }; } },
                     { text: '【知略50】外交で決着をつける', condition: (s) => s.strategy >= 50, hint: '知略上昇・年表', effect: (s) => { s.strategy += 10; recordChronology("境争いを外交で解決し、賢君と呼ばれる"); return { hp: 0, log: '互いの得になる線で合意した。血を流さぬ勝利に、家臣が畏敬の念を深めた。' }; } },
                     { text: '朝廷に裁定を訴える', condition: () => true, hint: '銭消費・人徳上昇', effect: (s) => { s.virtue += 10; return { money: -100, hp: 0, log: '朝廷への工作に金はかかったが、正式な裁定で境は確定した。' }; } }
                 ] },
@@ -2030,20 +2056,20 @@
                 choices: [
                     { text: '朝廷に忠誠を示し、献金する', condition: () => true, hint: '銭消費・人徳上昇', effect: (s) => { s.virtue += 20; return { money: -150, hp: 0, log: 'いち早く忠誠を示した。朝廷からの覚えは確かなものになった。' }; } },
                     { text: '情勢を見極めるまで様子見する', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 15; return { hp: 0, log: '動かず、しかし目も離さなかった。情報だけが着実に集まっていく。' }; } },
-                    { text: '混乱に乗じて版図を広げる', condition: () => true, hint: '悪逆上昇・武功で判定', effect: (s) => { s.karma += 20; if (Math.random() < Math.min(0.9, 0.4 + (s.valor * 0.004))) { s.valor += 20; return { money: 150, hp: 0, log: '混乱の中で隣領の一部を併せた。攻め時を見抜く目が実を結んだ。' }; } return { hp: -20, log: '出兵は裏目に出た。兵も金も失い、静けさだけが戻った。' }; } }
+                    { text: '混乱に乗じて版図を広げる', condition: () => true, hint: '悪逆上昇・武功で判定', effect: (s) => { s.karma += 20; if (critRoll('valor', Math.min(0.9, 0.4 + (s.valor * 0.004)))) { s.valor += 20; return { money: 150, hp: 0, log: '混乱の中で隣領の一部を併せた。攻め時を見抜く目が実を結んだ。' }; } return { hp: -20, log: '出兵は裏目に出た。兵も金も失い、静けさだけが戻った。' }; } }
                 ] },
             { id: 'ashigaru_credit', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'ashigaru',
                 title: '【陣中】手柄の横取り', text: '合戦で討ち取ったはずの敵の首を、組頭が自分の手柄として報告してしまった。恩賞は目前で他人へ渡ろうとしている。',
                 choices: [
                     { text: '自分の手柄だと、声を上げて主張する', condition: () => true, hint: '武功上昇・人徳減少', effect: (s) => { s.valor += 20; s.virtue -= 10; return { hp: 0, log: '首実検の場で堂々と主張し、手柄を取り戻した。だが組頭との溝は、深く残った。'};}},
-                    { text: '手柄を譲り、組頭の覚えを良くする', condition: () => true, hint: '人徳で判定・人徳・銭獲得', effect: (s) => { if (Math.random() < Math.min(0.95, 0.3 + (s.virtue * 0.007))) { s.virtue += 20; return { money: 30, hp: 0, log: '手柄は譲った。だが組頭は借りを忘れず、後日こっそりと礼の銭を握らせてきた。出世の道は、意外なところに開ける。'}; } s.virtue += 10; return { hp: 0, log: '手柄を譲ったが、組頭はそれを当然と受け取り、礼の言葉すらなかった。情けは残ったが、懐は温まらなかった。'}; } },
+                    { text: '手柄を譲り、組頭の覚えを良くする', condition: () => true, hint: '人徳で判定・人徳・銭獲得', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 20; return { money: 30, hp: 0, log: '手柄は譲った。だが組頭は借りを忘れず、後日こっそりと礼の銭を握らせてきた。出世の道は、意外なところに開ける。'}; } s.virtue += 10; return { hp: 0, log: '手柄を譲ったが、組頭はそれを当然と受け取り、礼の言葉すらなかった。情けは残ったが、懐は温まらなかった。'}; } },
                     { text: '証人を集め、事実を明らかにする', condition: () => true, hint: '知略・武功上昇', effect: (s) => { s.strategy += 15; s.valor += 10; return { hp: 0, log: '共に戦った兵たちを証人に立てた。事実は明らかとなり、手柄も恩賞も正しく戻ってきた。'};}}
             ]},
             { id: 'ashigaru_appeal', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'ashigaru',
                 title: '【陣中】恩賞の直訴', text: '度重なる戦働きにもかかわらず、恩賞の沙汰が一向にない。このままでは、命を懸けた日々が報われないままだ。',
                 choices: [
                     { text: '主君への目通りを願い出て、直訴する', condition: () => true, hint: '運で判定', effect: (s) => {
-                            if (Math.random() < 0.4 + (s.luck * 0.003)) { s.valor += 10; recordChronology("恩賞の直訴が認められ、名が知られる"); return { money: 150, hp: 0, log: '直訴は聞き届けられた！思わぬ厚い恩賞と共に、主君に名を覚えられる栄誉まで得た。'};}
+                            if (critRoll('luck', 0.4 + (s.luck * 0.003))) { s.valor += 10; recordChronology("恩賞の直訴が認められ、名が知られる"); return { money: 150, hp: 0, log: '直訴は聞き届けられた！思わぬ厚い恩賞と共に、主君に名を覚えられる栄誉まで得た。'};}
                             else { s.karma += 5; return { hp: -15, log: '身の程知らずと叱責され、門前で打ち据えられた。理不尽だが、これが足軽の現実だった……。'};}
                     }},
                     { text: '組頭を通じて、正式に恩賞を申請する', condition: () => true, hint: '銭獲得', effect: (s) => { return { money: 60, hp: 0, log: '順を追った申請は滞りなく通り、相応の恩賞が下された。派手さはないが、確実な実りだ。'};}},
@@ -2054,7 +2080,7 @@
                 choices: [
                     { text: '毎朝の稽古を積む', condition: () => true, hint: '武功上昇', effect: (s) => { s.valor += 15; return { hp: 0, log: '誰よりも早く起き、槍を振り続けた。腕は確実に上がっている。'};}},
                     { text: '【武功50】組頭に果たし合いを挑む', condition: (s) => s.valor >= 50, hint: '武功で判定', effect: (s) => {
-                            if (Math.random() < Math.min(0.9, 0.45 + (s.valor * 0.004))) { s.valor += 25; recordChronology("組頭を打ち破り、足軽頭に取り立てられる"); return { hp: 0, log: '果たし合いを制した！組の者たちが、新しい頭を認めた。'};}
+                            if (critRoll('valor', Math.min(0.9, 0.45 + (s.valor * 0.004)))) { s.valor += 25; recordChronology("組頭を打ち破り、足軽頭に取り立てられる"); return { hp: 0, log: '果たし合いを制した！組の者たちが、新しい頭を認めた。'};}
                             else { return { hp: -15, log: '組頭の老練な槍に敗れた。だが挑んだ勇気は買われた。'};}
                     }},
                     { text: '後輩の面倒を見る', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 15; return { hp: 0, log: '新入りの足軽たちを熱心に指導した。人望は少しずつ積み上がっている。'};}}
@@ -2062,7 +2088,7 @@
             { id: 'ashigaru_guard', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'ashigaru',
                 title: '【城門】番所の務め', text: '城門の番に就いた夜、荷を満載した商人の一行が「お目こぼしを」と袖の下を差し出してきた。',
                 choices: [
-                    { text: '荷を改めて密輸品を見つける', condition: () => true, hint: '知略で判定', effect: (s) => { if (Math.random() < Math.min(0.95, 0.35 + (s.strategy * 0.006))) { recordChronology("密輸を取り締まり、主君に評価される"); return { money: 80, hp: 0, log: '荷の底から禁制品が出てきた。褒美と共に、番所の評価が上がった。' }; } return { hp: -5, log: '荷は白だった。商人に平謝りし、恥をかいた。' }; } },
+                    { text: '荷を改めて密輸品を見つける', condition: () => true, hint: '知略で判定', effect: (s) => { if (critRoll('strategy', Math.min(0.95, 0.35 + (s.strategy * 0.006)))) { recordChronology("密輸を取り締まり、主君に評価される"); return { money: 80, hp: 0, log: '荷の底から禁制品が出てきた。褒美と共に、番所の評価が上がった。' }; } return { hp: -5, log: '荷は白だった。商人に平謝りし、恥をかいた。' }; } },
                     { text: '袖の下を受け取り見逃す', condition: () => true, hint: '悪逆・銭獲得', effect: (s) => { s.karma += 15; return { money: 100, hp: 0, log: '銭は懐に入った。だが、番の務めは少しずつ腐っていく。'};}},
                     { text: '職務を全うし、通す', condition: () => true, hint: '人徳・武功上昇', effect: (s) => { s.virtue += 10; s.valor += 5; return { hp: 0, log: '淡々と務めを果たした。当たり前の誠実さが、いつか報われる。'};}}
             ]},
@@ -2071,7 +2097,7 @@
                 choices: [
                     { text: '荷持ちを買って出る', condition: () => true, hint: '人徳上昇・体力減少', effect: (s) => { s.virtue += 15; return { hp: -5, log: '重い荷を代わって担いだ。仲間の感謝が疲れを癒す。'};}},
                     { text: '先頭で隊列を引っ張る', condition: () => true, hint: '武功上昇・体力減少', effect: (s) => { s.valor += 10; return { hp: -10, log: '声を張り上げて隊を鼓舞した。その働きは上役の目に留まった。'};}},
-                    { text: '近道を探す', condition: () => true, hint: '運で判定', effect: (s) => { if (Math.random() < 0.45 + (s.luck * 0.003)) { s.strategy += 10; return { hp: 5, log: '山勘が的中し、隊は半日も早く宿場に着いた。温かい飯にありつけた。' }; } return { hp: -15, log: '近道は獣道だった。余計に疲れ果て、本隊に追いつくのに苦労した。' }; } }
+                    { text: '近道を探す', condition: () => true, hint: '運で判定', effect: (s) => { if (critRoll('luck', 0.45 + (s.luck * 0.003))) { s.strategy += 10; return { hp: 5, log: '山勘が的中し、隊は半日も早く宿場に着いた。温かい飯にありつけた。' }; } return { hp: -15, log: '近道は獣道だった。余計に疲れ果て、本隊に追いつくのに苦労した。' }; } }
             ]}
         ];
 
@@ -2201,7 +2227,7 @@
                 choices: [
                     { text: '果たし合いを申し込む', condition: () => true, hint: '勝てば武功大幅上昇・負ければ重傷', effect: (s) => {
                         s.flags.metSwordsman = true;
-                        if (Math.random() < 0.4 + (s.valor * 0.003)) { s.valor += 40; recordChronology("流れの剣豪との果たし合いに勝利する"); return { hp: -15, log: '凄絶な斬り合いの末、剣豪の刀を紙一重でかわし、見事に打ち勝った！その名は諸国に轟く。' }; }
+                        if (critRoll('valor', 0.4 + (s.valor * 0.003))) { s.valor += 40; recordChronology("流れの剣豪との果たし合いに勝利する"); return { hp: -15, log: '凄絶な斬り合いの末、剣豪の刀を紙一重でかわし、見事に打ち勝った！その名は諸国に轟く。' }; }
                         else { s.deathCause = 'battle'; return { hp: -50, log: '剣豪の神速の一閃に敗れ、深い傷を負った。だが、この敗北こそが最高の稽古となった。' }; }
                     } },
                     { text: '教えを乞いて頭を下げる', condition: () => true, hint: '武功・知略上昇', effect: (s) => { s.flags.metSwordsman = true; s.valor += 10; s.strategy += 15; return { hp: 0, log: '謙虚に教えを請う姿に剣豪は頷き、奥義の一端を授けて去っていった。' }; } },
@@ -2233,7 +2259,7 @@
                 choices: [
                     { text: '【知略40】勝ち馬を見極めて味方する', condition: (s) => s.strategy >= 40, hint: '大金・知略上昇', effect: (s) => {
                         s.flags.sekigahara = true;
-                        if (Math.random() < 0.6 + (s.strategy * 0.003)) { s.strategy += 20; recordChronology("関ヶ原で勝ち馬を見極め、新時代の勝者となる"); return { money: 300, hp: 0, log: '寝返りの時機を完璧に見極め、新たな覇者の陣営で大きな地歩を築いた！' }; }
+                        if (critRoll('strategy', 0.6 + (s.strategy * 0.003))) { s.strategy += 20; recordChronology("関ヶ原で勝ち馬を見極め、新時代の勝者となる"); return { money: 300, hp: 0, log: '寝返りの時機を完璧に見極め、新たな覇者の陣営で大きな地歩を築いた！' }; }
                         else { s.deathCause = 'battle'; return { hp: -30, log: '読みが外れた！敗軍の将として追討を受け、深い傷を負いながら落ち延びた。' }; }
                     } },
                     { text: 'あえて劣勢の義に殉じる', condition: () => true, hint: '人徳上昇・負傷', effect: (s) => { s.flags.sekigahara = true; s.virtue += 30; recordChronology("関ヶ原で義に殉じ、その名を後世に残す"); return { hp: -20, log: '勝敗の見えた戦でも旗を降ろさなかった。その忠義と意地は、敵味方を超えて語り継がれる。' }; } },
@@ -3748,10 +3774,17 @@
 
             try {
                 const beforeStats = { valor: state.valor, karma: state.karma, strategy: state.strategy, virtue: state.virtue, luck: state.luck };
+                window.__tier = 0; window.__tierStat = null;
+                const chronBefore = state.chronology.length;
                 const res = choice.effect(state);
+                const tier = window.__tier || 0; const tierStat = window.__tierStat;
+                if (tier >= 2 && tierStat && typeof state[tierStat] === 'number') state[tierStat] += (tier === 3 ? 15 : 5);
+                if (tier >= 2) for (let ci = chronBefore; ci < state.chronology.length; ci++) state.chronology[ci].text += (tier === 3 ? '【超成功】' : '【大成功】');
+                if (tier >= 2 && tierStat === 'virtue') { state.flags.bonds = state.flags.bonds || []; state.flags.bonds.push({ age: state.age, event: state.flags.currentEventTitle || '' }); }
                 const hpChg = res.hp || 0; const moneyChg = res.money || 0;
                 // v11: money never below 0; losses are clamped to current balance
                 let appliedMoneyChg = moneyChg < 0 ? -Math.min(state.money, -moneyChg) : moneyChg;
+                if (appliedMoneyChg > 0 && tier >= 2) appliedMoneyChg = Math.floor(appliedMoneyChg * (tier === 3 ? 3 : 1.5));
                 if (appliedMoneyChg > 0 && state.classInfo && state.classInfo.id === 'merchant') appliedMoneyChg = Math.floor(appliedMoneyChg * 1.1);
                 state.health += hpChg; state.money += appliedMoneyChg;
                 if (state.money < 0) state.money = 0; // final guard against direct mutations inside effects
@@ -3765,6 +3798,8 @@
                 const statTag = tags.length > 0 ? `<span class="text-[10px] text-gray-500 ml-1">(${tags.join(', ')})</span>` : '';
 
                 addLog(`<span class="font-bold text-gray-500 mr-1">┗ 決断:</span><em class="text-gray-300">${choice.text.replace(/【.*?】/g, '')}</em><br>${res.log}${statTag}`, hpChg <= -25);
+                if (tier === 2) addLog('<span class="font-bold" style="color:#E03C31">【大成功】見事な冴えを見せた！</span>');
+                if (tier === 3) { addLog('<span class="font-bold text-gold">【超成功】天晴れ！神業のごとき冴えを見せた！</span>'); if (typeof window.playFanfareSE === 'function') window.playFanfareSE(); }
                 if (hpChg < 0 && appContainer) { appContainer.classList.remove('damage-flash'); void appContainer.offsetWidth; appContainer.classList.add('damage-flash'); }
             } catch (err) { console.error("Choice effect error:", err); }
 
