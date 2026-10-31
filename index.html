@@ -356,7 +356,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.1</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -1143,7 +1143,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             { id: 'famine', mode: ['normal', 'fugitive'], weight: 20, condition: () => true,
                 title: '【飢饉】天変地異の飢餓', text: '残酷なまでの日照りと長雨が続き、今年の作物は完全に根腐れを起こした。',
                 choices: [
-                    { text: '【銭120文】私財を投げ打ち、大量の粥を民に施す', condition: (s) => s.money >= 120, hint: '人徳特大アップ', effect: (s) => { s.virtue += 45; recordChronology("大飢饉で私財を投じ生き神と崇められる"); return { money: -120, hp: 5, log: '通りで大量の炊き出しを行い、領民たちは涙を流してあなたを崇めた。' }; } },
+                    { text: '【銭120文】私財を投げ打ち、大量の粥を民に施す', condition: (s) => s.money >= 120, hint: '人徳特大アップ', effect: (s) => { s.virtue += 45; recordChronology("大飢饉で私財を投じ生き神と崇められる"); return { money: -120, hp: 5, log: '通りで大量の炊き出しを行い、人々は涙を流してあなたを崇めた。' }; } },
                     { text: '【銭50文】高騰した食糧を強引に買い占める', condition: (s) => s.money >= 50, hint: '知略で出費抑制', effect: (s) => { let cost = Math.max(10, 50 - Math.floor(s.strategy * 0.3)); return { money: -cost, hp: 15, log: '蓄えておいた銭に物を言わせて闇米を確保し、命を繋いだ。' }; } },
                     { text: '托鉢と村々の施しで食い繋ぐ', condition: () => true, hint: '人徳で判定・被害軽減', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 5; const t = window.__tier || 1; if (t >= 3) recordChronology("大飢饉に施しの輪を広げ、一人の餓死者も出さなかった"); return { hp: -10, log: t >= 3 ? '施しは施しを呼び、やがて近隣の村々まで救う粥の輪が広がった。飢饉の年、あなたの周りでは一人の餓死者も出なかったという。' : t === 2 ? 'あなたの人徳を慕い、遠くの村からも施しの米が届いた。飢えの冬を、村ぐるみで生き延びることができた。' : '質素な粥を分け合い、施しと祈りで飢えの冬をなんとか凌いだ。' }; } return { hp: -25, log: '施しを乞うて村々を回ったが、飢えは村ごとに深く、分けてもらえたのはわずかな粥だけだった。' }; } },
                     { text: '【銭20文】蓄えを切り崩し、粗末な糧を確保する', condition: (s) => s.money >= 20, hint: '出費を抑えて凌ぐ', effect: (s) => { return { money: -20, hp: -15, log: '乏しい蓄えをはたいて粗末な糧を確保し、飢えを凌いだ。' }; } },
@@ -1189,7 +1189,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '【知略50】贋作であると論破し、商人を追い払う', condition: (s) => s.strategy >= 50, hint: '知略上昇', effect: (s) => { s.strategy += 10; return { hp: 0, log: '釉薬の不自然さを指摘すると、商人は逃げるように去っていった。' }; } },
                     { text: '「骨董に興味はない」と無視する', condition: () => true, hint: '回避', effect: () => ({ hp: 0, log: '怪しい儲け話には乗らず、堅実に生きる道を選んだ。' }) }
                 ] },
-            { id: 'tax_collection', mode: ['normal'], weight: 25, condition: (s) => s.money >= 300 && s.classInfo.id !== 'bandit',
+            { id: 'tax_collection', mode: ['normal'], weight: 25, condition: (s) => s.money >= 300 && s.classInfo.id !== 'bandit' && s.classInfo.id !== 'daimyo' && s.classInfo.id !== 'ronin',
                 title: '【御触書】過酷なる取り立て', text: '戦費の拡大に伴い、領主より非情な臨時徴収の御触れが出された。役人があなたの豊かな財産に目を付け、容赦ない取り立てにやってきた。',
                 choices: [
                     { text: '逆らわず、要求された額を素直に納める', condition: () => true, hint: '所持金の3割を失う', effect: (s) => { 
@@ -1202,7 +1202,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 title: '【災異】大地震', text: '突如、大地が轟音と共に激しく揺れた！家々は倒壊し、蔵は崩れ、人々の悲鳴が四方に木霊する。',
                 choices: [
                     { text: '倒壊した蔵の復旧に追われる', condition: () => true, hint: '銭・体力を失う', effect: (s) => { let cost = Math.min(s.money, 150); recordChronology("大地震に見舞われ、復旧に奔走する"); return { money: -cost, hp: -5, log: '瓦礫の山と化した蔵の復旧に追われ、蓄えも体力も大きく削られた。' }; } },
-                    { text: '瓦礫の中から領民を救助する', condition: () => true, hint: '人徳上昇・負傷', effect: (s) => { s.virtue += 25; recordChronology("大地震で領民を救助し、名声を得る"); return { hp: -20, log: '身を挺して何人もの民を瓦礫から救い出した。あなたの名は語り草となるだろう。' }; } },
+                    { text: '瓦礫の中から民を救助する', condition: () => true, hint: '人徳上昇・負傷', effect: (s) => { s.virtue += 25; recordChronology("大地震で民を救助し、名声を得る"); return { hp: -20, log: '身を挺して何人もの民を瓦礫から救い出した。あなたの名は語り草となるだろう。' }; } },
                     { text: '【銭100文】復興資材を買い占めて売り捌く', condition: (s) => s.money >= 100, hint: '悪逆上昇・大儲け', effect: (s) => { s.karma += 15; return { money: 100, hp: 0, log: '材木や食糧を買い占め、高値で売り捌いた。恨みを買ったが、懐はたっぷり潤った。' }; } },
                     { text: '【忍】混乱に乗じて敵方の屋敷へ潜入する', condition: (s) => s.classInfo.id === 'ninja', hint: '知略判定・機密と金品', effect: (s) => { if (critRoll('strategy', Math.min(0.9, 0.45 + s.strategy * 0.004))) { s.strategy += 10; recordChronology('大地震の混乱に乗じ、敵方の屋敷から機密を奪う'); return { money: 200, hp: 0, log: '人々が瓦礫に気を取られる隙に敵方の屋敷へ忍び込み、機密文書と金品を奪って闇に消えた。' }; } return { hp: -25, log: '潜入の途中で番人たちに気づかれ、斬られながらも辛くも逃げ延びた。' }; } }
                 ] },
@@ -1595,7 +1595,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 choices: [
                     { text: '静かに看取り、経を唱える', condition: () => true, hint: '人徳・銭', effect: (s) => { s.virtue += 20; return { money: 100, hp: 0, log: '老大名は経の声の中で、穏やかに息を引き取った。家臣一同が深く頭を垂れた。' }; } },
                     { text: '【人徳50】遺言を公正に取り次ぐ', condition: (s) => s.virtue >= 50, hint: '人徳・年表', effect: (s) => { s.virtue += 25; recordChronology("大名の遺言を取り次ぎ、家中の分裂を防ぐ"); return { hp: 0, log: '遺言の取り次ぎが公正であったため、跡目争いは未然に防がれた。' }; } },
-                    { text: '遺産目当てに取り入る', condition: () => true, hint: '悪逆・銭・人徳減少', effect: (s) => { s.karma += 20; s.virtue -= 15; return { money: 250, hp: 0, log: '遺言の場で私腹を肥やした。だが噂はすぐに広まり、冷たい目で見られるようになった。' }; } }
+                    { text: '遺産目当てに取り入る', condition: () => true, hint: '悪逆・銭獲得、人徳減少', effect: (s) => { s.karma += 20; s.virtue -= 15; return { money: 250, hp: 0, log: '遺言の場で私腹を肥やした。だが噂はすぐに広まり、冷たい目で見られるようになった。' }; } }
                 ] },
             { id: 'monk_yakusou', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'monk',
                 title: '【施薬】寺の薬草園', text: '寺の裏手に薬草園を作った話が広まり、病や怪我に苦しむ人々が門前に列を作り始めた。',
@@ -1624,7 +1624,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '【悪逆30】新たな主君へ寝返る', condition: (s) => s.karma >= 30, hint: '所属変更・銭', effect: (s) => { let newFactions = FACTIONS.filter(f => f.id !== s.faction.id); s.faction = newFactions[Math.floor(Math.random() * newFactions.length)]; s.karma += 20; s.valor += 5; s.mode = 'normal'; recordChronology(`主君を見限り、「${s.faction.name}」へ寝返る`); return { money: 150, hp: 0, log: `新たに「${s.faction.name}」へ寝返った。不忠者と謗られようと生き残る！` }; } },
                     { text: '使者を追い返す', condition: () => true, hint: '忠義', effect: (s) => { s.virtue += 15; return { hp: 0, log: '密使を毅然と追い返した。その忠誠心は主君の耳にも入った。' }; } }
                 ] },
-            { id: 'encounter_nobunaga', mode: ['normal', 'battle'], weight: 15, condition: (s) => s.faction && s.faction.id === 'oda' && s.valor >= 20 && !s.flags.metNobunaga,
+            { id: 'encounter_nobunaga', mode: ['normal', 'battle'], weight: 15, condition: (s) => s.faction && s.faction.id === 'oda' && s.valor >= 20 && !s.flags.metNobunaga && !['bandit', 'ronin', 'sukanpin', 'daimyo'].includes(s.classInfo.id),
                 title: '【御前】魔王の眼差し', text: '静まり返った広間。上座には、狂気を纏った第六天魔王・織田信長が座している。「貴様、何のために戦う？」',
                 choices: [
                     { text: '「天下布武のため」と吠える', condition: () => true, hint: '武功・悪逆上昇', effect: (s) => { s.valor+=20; s.karma+=20; s.flags.metNobunaga = true; return { hp: 0, log: '信長は不敵に笑って去っていった。覇道へ付き従う覚悟が決まる。' }; } },
@@ -1839,7 +1839,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 choices: [
                     { text: '身を挺して蔵へ飛び込み、品々を運び出す', condition: () => true, hint: '体力大減少・銭を守る', effect: (s) => { return { money: 100, hp: -25, log: '煙に巻かれながらも、高価な品々を運び出し続けた。火傷は負ったが、商いの元手は守り抜いた！'};}},
                     { text: '町衆に銭を配り、消火の手伝いを募る', condition: (s) => s.money >= 100, hint: '銭減少・人徳上昇', effect: (s) => { s.virtue += 20; return { money: -100, hp: 0, log: '銭の力で町衆総出の消火となった。蔵は半焼で済み、あなたの決断の速さが評判になった。'};}},
-                    { text: '命あっての物種と、蔵を諦めて見守る', condition: () => true, hint: '所持金を最大250文失う', effect: (s) => { return { money: -Math.min(s.money, 250), hp: 0, log: '蔵は一夜で灰となった。蓄えた財産の大半を失ったが、命と家族は無事だった。それだけが救いだ。'};}}
+                    { text: '命あっての物種と、蔵を諦めて見守る', condition: () => true, hint: '所持金を最大250文失う', effect: (s) => { return { money: -Math.min(s.money, 250), hp: 0, log: '蔵は一夜で灰となった。蓄えた財産の大半を失ったが、命と店の者は無事だった。それだけが救いだ。'};}}
             ]},
             { id: 'merchant_shuinsen', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'merchant' && s.money >= 500,
                 title: '【朱印船】朱印船交易', text: '異国との交易を許す朱印状の話が舞い込んだ。船を一艘仕立てれば、帰港する頃には蔵が銭で溢れるという。無論、海の藻屑となる覚悟も要る話だが。',
@@ -2072,7 +2072,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 title: '【荘園】領地の係争', text: '代々の荘園の領有を、台頭する武家が争ってきた。武器は刀ではなく、古記録と由緒である。',
                 choices: [
                     { text: '【知略40】古記録を揃え正当性を主張する', condition: (s) => s.strategy >= 40, hint: '銭・年表', effect: (s) => { recordChronology("荘園の係争に勝利し、家領を守る"); return { money: 200, hp: 0, log: '積み上げた証文の山が武家を退けた。学問と記録こそ、公家の刀である。' }; } },
-                    { text: '武家に管理を委ね、分け前を得る', condition: () => true, hint: '銭・人徳減少', effect: (s) => { s.virtue -= 5; return { money: 100, hp: 0, log: '実を取った形だが、家の誇りは少し痩せた。' }; } },
+                    { text: '武家に管理を委ね、分け前を得る', condition: () => true, hint: '銭獲得・人徳減少', effect: (s) => { s.virtue -= 5; return { money: 100, hp: 0, log: '実を取った形だが、家の誇りは少し痩せた。' }; } },
                     { text: '荘園を手放し、都の暮らしに専念する', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 15; return { hp: 0, log: '領地への執着を捨てた。軽くなった分、宮中での動きが冴える。' }; } }
                 ] },
             { id: 'kuge_gyoukou', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'kuge',
@@ -2096,7 +2096,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             { id: 'kuge_seiryaku', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'kuge',
                 title: '【縁談】武家との政略結婚', text: '有力武家から、あなたの家との縁組の申し出があった。公家の由緒と武家の実力、戦国の生存戦略が交わる。',
                 choices: [
-                    { text: '縁談を進める', condition: () => true, hint: '銭・人徳減少', effect: (s) => { s.virtue -= 10; return { money: 250, hp: 0, log: '結納の山が届いた。家は安泰だが、雅の誇りは戦国の現実に譲った。' }; } },
+                    { text: '縁談を進める', condition: () => true, hint: '銭獲得・人徳減少', effect: (s) => { s.virtue -= 10; return { money: 250, hp: 0, log: '結納の山が届いた。家は安泰だが、雅の誇りは戦国の現実に譲った。' }; } },
                     { text: '家の格を理由に破談にする', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 15; return { hp: 0, log: '格が違うと丁重に断った。貧しくとも、家の筋は通した。' }; } },
                     { text: '【知略50】双方に恩を売る形でまとめる', condition: (s) => s.strategy >= 50, hint: '人徳・銭・年表', effect: (s) => { s.virtue += 20; recordChronology("武家との縁談を巧みにまとめ、朝廷の重鎮となる"); return { money: 150, hp: 0, log: '両家が得をする形に落とし込んだ。その手腕に宮中がざわついた。' }; } }
                 ] },
@@ -2110,7 +2110,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             { id: 'kuge_botsuraku', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'kuge',
                 title: '【家計】没落の影', text: '公家の暮らしは細る一方で、家の蔵は心許ない。雅を守るにも、銭が要るのが戦国の現実だ。',
                 choices: [
-                    { text: '家伝の宝物を手放す', condition: () => true, hint: '銭・人徳減少', effect: (s) => { s.virtue -= 10; return { money: 300, hp: 0, log: '先祖伝来の名品が金に変わった。家は延命したが、心に穴が開いた。' }; } },
+                    { text: '家伝の宝物を手放す', condition: () => true, hint: '銭獲得・人徳減少', effect: (s) => { s.virtue -= 10; return { money: 300, hp: 0, log: '先祖伝来の名品が金に変わった。家は延命したが、心に穴が開いた。' }; } },
                     { text: '清貧を受け入れ、雅を守る', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 20; return { hp: 0, log: '貧しくとも、歌と月を愛でる暮らしは失わなかった。' }; } },
                     { text: '【知略40】都で学問を教えて稼ぐ', condition: (s) => s.strategy >= 40, hint: '銭・知略上昇', effect: (s) => { s.strategy += 10; return { money: 120, hp: 0, log: '和歌と故実の指南が武家にも評判となり、細く長く家計を支えた。' }; } }
                 ] },
@@ -2310,7 +2310,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 title: '【辞世】筆を取る刻', text: '大往生の認定を目前に控えた歳。多くの者が静かに辞世の句をしたため始める年頃である。あなたの胸にも、生涯を締めくくる言葉が浮かび始めていた。',
                 choices: [
                     { text: '静かに筆を取り、辞世の句を詠む', condition: () => true, hint: '運上昇', effect: (s) => { s.flags.jisei58 = true; s.luck += 20; recordChronology("辞世の句を詠む"); return { hp: 0, log: '震える手で筆を執り、生涯のすべてを一句に込めた。心が澄み渡っていく。' }; } },
-                    { text: '生涯を振り返り、家訓を残す', condition: () => true, hint: '人徳上昇', effect: (s) => { s.flags.jisei58 = true; s.virtue += 15; recordChronology("子孫のために家訓を残す"); return { hp: 0, log: '己の成功も失敗も余さず書き記し、子孫への戒めとした。' }; } },
+                    { text: '生涯を振り返り、家訓を残す', condition: () => true, hint: '人徳上昇', effect: (s) => { s.flags.jisei58 = true; s.virtue += 15; recordChronology("後世のために家訓を残す"); return { hp: 0, log: '己の成功も失敗も余さず書き記し、後世への戒めとした。' }; } },
                     { text: '「まだ死なん！」と筆をへし折る', condition: () => true, hint: '武功上昇・体力小減少', effect: (s) => { s.flags.jisei58 = true; s.valor += 15; recordChronology("辞世を拒み、現役にこだわる"); return { hp: -10, log: '縁起でもないと筆をへし折った。老いてなお盛んな気力に、周囲は呆れつつも舌を巻いた。' }; } }
                 ] }
         ];
@@ -2322,18 +2322,18 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '有難く頂戴し、懐に入れる', condition: () => true, hint: '銭超絶アップ', effect: (s) => { s.flags.hiddenGold=true; recordChronology("途方もない強運で埋蔵金を発見する"); return { money: 500, hp: 0, log: '天の配剤か、これほどの財産が転がり込んでくるとは！笑いが止まらない。' }; } }
                 ] },
             { id: 'goemon_raid', mode: ['normal'], weight: 20, condition: (s) => s.karma >= 80 && !s.flags.goemon,
-                title: '【義賊】大泥棒の襲撃', text: 'あなたの悪行は天下に知れ渡っていた。ある夜、屋敷の天井裏から天下の大泥棒（石川五右衛門）が舞い降り、「悪銭身に付かず、だ！」と刃を向けてきた！',
+                title: '【義賊】大泥棒の襲撃', text: (s) => s.classInfo.id === 'sukanpin' ? 'あなたの悪行は天下に知れ渡っていた。ある夜、軒先で眠るあなたの枕元へ、天下の大泥棒（石川五右衛門）が音もなく舞い降り、「悪銭身に付かず、だ！」と刃を向けてきた！' : 'あなたの悪行は天下に知れ渡っていた。ある夜、屋敷の天井裏から天下の大泥棒（石川五右衛門）が舞い降り、「悪銭身に付かず、だ！」と刃を向けてきた！',
                 choices: [
                     { text: '【武功80】大泥棒を返り討ちにする！', condition: (s) => s.valor >= 80, hint: '撃退', effect: (s) => { s.flags.goemon=true; return { hp: -10, money: 100, log: '激しい斬り合いの末、大泥棒を撃退！逃げ際に落とした金品をせしめた。' }; } },
                     { text: '【知略＋人徳80】言葉と人望で交渉し、被害を抑える', condition: (s) => (s.strategy + s.virtue) >= 80, hint: '知略と人徳で軽減・最大95%', effect: (s) => { s.flags.goemon = true; const rate = Math.min(95, Math.floor((s.strategy + s.virtue) / 2)); const lost = Math.ceil(s.money * (100 - rate) / 100); return { money: -lost, hp: -5, log: '言葉巧みに渡り合い、積んだ人望も味方した。五右衛門は「悪銭は実らんな」と笑い、被害は' + lost + '文（' + rate + '%軽減）で済んだ。' }; } },
                     { text: '命乞いをして全財産を差し出す', condition: () => true, hint: '銭全損', effect: (s) => { s.flags.goemon=true; let lost = s.money; return { money: -lost, hp: -10, log: '恐怖に震え上がり、土下座して金庫の鍵を渡した。これまでの悪銭がすべて消え去った…。' }; } }
                 ] },
-            { id: 'people_petition', mode: ['normal'], weight: 20, condition: (s) => s.virtue >= 80 && !s.flags.petition,
+            { id: 'people_petition', mode: ['normal'], weight: 20, condition: (s) => s.virtue >= 80 && !s.flags.petition && s.classInfo.id !== 'daimyo',
                 title: '【人望】民衆の嘆願', text: 'あなたの海より深い人徳を慕い、近隣の村々から数千人の民衆が集まり、「どうか我らの新たな領主になってくだされ！」と涙ながらに嘆願してきた。',
                 choices: [
                     { text: '民のため、新しい国を作る', condition: (s) => !s.flags.sukanpin, hint: '大名へ昇格', effect: (s) => { s.flags.petition=true; s.classInfo=CLASSES.find(c=>c.id==='daimyo'); s.faction = { id: 'custom', name: '民衆勢力', color: '#B8860B' }; recordChronology("民衆に推戴され大名となる"); return { hp: 0, log: '血を流さずして、民の力のみで一国を築き上げた。歴史に残る偉業だ！' }; } },
                     { text: '【忍】表には立たず、陰の君主として見守る', condition: (s) => s.classInfo.id === 'ninja', hint: '大名にならず・献金と人徳', effect: (s) => { s.flags.petition=true; s.virtue+=15; recordChronology('民に推されながら表に立たず、陰の君主として村々を守る'); return { money: 500, hp: 0, log: '推挙は固辞した。だがその夜から、村々を見守る影の目が増えたという。領主の名はいらない。誰も知らない。それでいい。' }; } },
-                    { text: '分不相応だと優しく諭して帰す', condition: () => true, hint: '人徳・運上昇', effect: (s) => { s.flags.petition=true; s.luck+=20; return { hp: 0, log: '野心を捨てたその無欲な姿に、民衆はあなたを生き神としてさらに深く崇拝した。' }; } }
+                    { text: '分不相応だと優しく諭して帰す', condition: () => true, hint: '人徳・運上昇', effect: (s) => { s.flags.petition=true; s.luck+=20; s.virtue+=10; return { hp: 0, log: '野心を捨てたその無欲な姿に、民衆はあなたを生き神としてさらに深く崇拝した。' }; } }
                 ] },
             { id: 'wandering_swordsman', mode: ['normal', 'battle'], weight: 20, condition: (s) => s.valor >= 60 && !s.flags.metSwordsman,
                 title: '【邂逅】流れの剣豪', text: '街道で、異様なまでの剣気を放つ流れの剣豪と行き会った。互いの実力を見抜いた者同士、言葉より先に視線が交錯する。',
