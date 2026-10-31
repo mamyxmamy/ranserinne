@@ -324,7 +324,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 46</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 46.1</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -2953,6 +2953,18 @@
             if (!n && typeof state !== 'undefined' && state && state.playerName) n = state.playerName;
             return n;
         };
+        // v46.1: 端末ごとのプレイヤーID（番付の「自分」判定用。同名プレイヤーとの混同を防ぐ。記録初期化でも消去しない）
+        window.__myPlayerId = function() {
+            let pid = '';
+            try {
+                pid = localStorage.getItem('sengoku_player_id') || '';
+                if (!pid) {
+                    pid = 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+                    localStorage.setItem('sengoku_player_id', pid);
+                }
+            } catch (e) {}
+            return pid;
+        };
         window.switchRankMode = function(mode) {
             window.__rankMode = (mode === 'recent') ? 'recent' : 'best';
             window.switchRankTab(window.__rankTab || 'total');
@@ -3167,6 +3179,7 @@
                 let html = '';
                 let rank = 1;
                 const myBoardName = window.__myBoardName();
+                const myPid = window.__myPlayerId();
                 records.forEach(data => {
                     let rankStyle = 'text-gray-400 text-sm';
                     let rankIcon = `${rank}位`;
@@ -3184,7 +3197,7 @@
                     }
 
                     // v38: 自分の記録は「自分」バッジ＋紫の色付けでハイライトする（最高・最近の両表示共通）
-                    const isMine = !!myBoardName && (data.playerName || '') === myBoardName;
+                    const isMine = (data.pid) ? (myPid !== '' && data.pid === myPid) : (!!myBoardName && (data.playerName || '') === myBoardName);
                     const mineBadge = isMine ? '<span class="text-[9px] font-bold text-black bg-purple-400 px-1 py-0.5 rounded ml-1 align-middle">自分</span>' : '';
                     if (isMine && (isRecentMode || rank > 3)) { bgStyle = 'bg-gradient-to-r from-purple-900/40 to-[#181513] border-purple-400/70'; }
 
@@ -4530,10 +4543,11 @@
                     await countRef.set({ count: window.currentReincarnationCount, equippedHeirlooms: window.activeHeirlooms }, { merge: true });
 
                     const pastLivesRef = db.collection('artifacts').doc(appId).collection('users').doc(uid).collection('past_lives');
-                    await pastLivesRef.add({ playerName: finalState.playerName || '名無し', age: age, className: className, faction: factionName, title: title, reason: reason, valor: finalState.valor, karma: finalState.karma, luck: finalState.luck, money: finalState.money, strategy: finalState.strategy, virtue: finalState.virtue, timestamp: Date.now(), chronology: finalState.chronology });
+                    await pastLivesRef.add({ pid: window.__myPlayerId(), playerName: finalState.playerName || '名無し', age: age, className: className, faction: factionName, title: title, reason: reason, valor: finalState.valor, karma: finalState.karma, luck: finalState.luck, money: finalState.money, strategy: finalState.strategy, virtue: finalState.virtue, timestamp: Date.now(), chronology: finalState.chronology });
 
                     const boardRef = db.collection('artifacts').doc(appId).collection('leaderboard');
                     const boardDocRef = await boardRef.add({
+                        pid: window.__myPlayerId(),
                         playerName: finalState.playerName || '名無しの権兵衛',
                         age: age,
                         money: finalState.money,
