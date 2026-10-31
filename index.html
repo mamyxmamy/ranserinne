@@ -262,6 +262,39 @@
             .gacha-result-card, .gacha-result-card.special { animation-duration: 0.01s; }
         }
     </style>
+<style>
+/* ===== v47: PCレイアウト（広い画面でのみ適用。スマホ表示は従来どおり） ===== */
+@media (min-width: 1024px) {
+    #app-container { max-width: 1180px !important; height: 97vh !important; max-height: none !important; }
+    #game-screen:not(.hidden) {
+        display: grid !important;
+        grid-template-columns: 300px minmax(0, 1fr);
+        grid-template-rows: minmax(0, 1fr) auto;
+        grid-template-areas: "pcstatus pclog" "pcstatus pcaction";
+    }
+    #game-screen > header { grid-area: pcstatus; border-bottom: none; border-right: 1px solid #3A322A; overflow-y: auto; padding: 20px 16px; }
+    #game-screen > header .grid-cols-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+    #game-screen > header .grid-cols-5 span[id^="ui-"] { font-size: 16px; }
+    #ui-class { font-size: 30px; }
+    #ui-health, #ui-money { font-size: 26px; }
+    #log-container { grid-area: pclog; padding: 22px 28px; }
+    .log-entry { font-size: 15px; line-height: 1.85; }
+    #action-bar { grid-area: pcaction; padding: 14px 18px; }
+    #choices-container { max-height: 46vh !important; counter-reset: pckey 0; }
+    #choices-container .choice-btn { font-size: 15px !important; padding: 12px 40px 12px 14px; position: relative; counter-increment: pckey; }
+    #choices-container .choice-btn::after {
+        content: counter(pckey);
+        position: absolute; top: 7px; right: 9px;
+        min-width: 20px; height: 20px; padding: 0 4px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 11px; font-weight: bold; color: #E8DCC0;
+        background: #2A241E; border: 1px solid #6B5B3E; border-bottom-width: 2px; border-radius: 4px;
+    }
+    #advance-btn { padding-top: 16px; padding-bottom: 16px; font-size: 17px; }
+    #gameover-screen .max-w-sm { max-width: 30rem !important; }
+    #ranking-screen { font-size: 15px; }
+}
+</style>
 </head>
 <body>
     <!-- オープニング・スプラッシュ（v10追加：タイトル画面の前に筆文字タイトルを表示。独立スクリプトで自己完結） -->
@@ -324,7 +357,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 46.1</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 47</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -690,6 +723,14 @@
                         <li><span class="font-bold" style="color:#E03C31">大成功</span>: 能力を試される場面で、ひときわ冴えた働きをすると大成功となり、得られる銭や能力の伸びが大きくなります。</li>
                         <li><span class="text-gold font-bold">超成功</span>: 能力を極限まで高め抜いた者にだけ開かれる、さらに上の境地。金色の文字で示され、その事跡は年表にも刻まれます。育て切った能力があってこそ届く領域です。</li>
                         <li>人徳で大成功・超成功を収めると、人々との縁が深まっていきます。</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ PCでの遊び方</h3>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li>パソコンの広い画面では、左にステータス、右に物語が表示される専用レイアウトに切り替わります。</li>
+                        <li>キーボード操作：選択肢は数字キー（1〜9）、「歳月を進める」は Enter キーまたはスペースキーでも押せます。</li>
                     </ul>
                 </section>
 
@@ -4596,5 +4637,36 @@
 
     <!-- 大往生エフェクト用 全画面キャンバス（アプリ枠の外＝body直下に配置し、画面全体に花びらを散らす） -->
     <canvas id="particle-canvas"></canvas>
+<script>
+// v47: PCキーボード操作（数字キー=選択肢／Enter・Space=進める）
+(function () {
+    var OVERLAYS = ['start-screen','splash-screen','ranking-screen','encyclopedia-screen','heirloom-screen','item-screen','shop-screen','help-screen','history-screen','premium-screen','roulette-screen','support-screen','rank-detail-screen','gameover-screen','name-entry-screen','intro-screen','freeze-overlay'];
+    function isVisible(el) { return !!el && !el.classList.contains('hidden'); }
+    window.__pcKey = function (e) {
+        if (!e || e.metaKey || e.ctrlKey || e.altKey) return false;
+        var ae = document.activeElement;
+        if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT' || ae.isContentEditable)) return false;
+        var gs = document.getElementById('game-screen');
+        if (!isVisible(gs)) return false;
+        for (var i = 0; i < OVERLAYS.length; i++) { if (isVisible(document.getElementById(OVERLAYS[i]))) return false; }
+        var cc = document.getElementById('choices-container');
+        if (isVisible(cc)) {
+            if (/^[1-9]$/.test(e.key)) {
+                var btns = cc.querySelectorAll('button:not([disabled])');
+                var idx = parseInt(e.key, 10) - 1;
+                if (btns[idx]) { btns[idx].click(); if (e.preventDefault) e.preventDefault(); return true; }
+            }
+            return false;
+        }
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            if (ae && (ae.tagName === 'BUTTON' || ae.tagName === 'A')) return false;
+            var ab = document.getElementById('advance-btn');
+            if (isVisible(ab)) { ab.click(); if (e.preventDefault) e.preventDefault(); return true; }
+        }
+        return false;
+    };
+    document.addEventListener('keydown', function (e) { window.__pcKey(e); });
+})();
+</script>
 </body>
 </html>
