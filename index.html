@@ -263,37 +263,35 @@
         }
     </style>
 <style>
-/* ===== v47: PCレイアウト（広い画面でのみ適用。スマホ表示は従来どおり） ===== */
-@media (min-width: 1024px) {
-    #app-container { max-width: 1180px !important; height: 97vh !important; max-height: none !important; }
-    #game-screen:not(.hidden) {
-        display: grid !important;
-        grid-template-columns: 300px minmax(0, 1fr);
-        grid-template-rows: minmax(0, 1fr) auto;
-        grid-template-areas: "pcstatus pclog" "pcstatus pcaction";
-    }
-    #game-screen > header { grid-area: pcstatus; border-bottom: none; border-right: 1px solid #3A322A; overflow-y: auto; padding: 20px 16px; }
-    #game-screen > header .grid-cols-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-    #game-screen > header .grid-cols-5 span[id^="ui-"] { font-size: 16px; }
-    #ui-class { font-size: 30px; }
-    #ui-health, #ui-money { font-size: 26px; }
-    #log-container { grid-area: pclog; padding: 22px 28px; }
-    .log-entry { font-size: 15px; line-height: 1.85; }
-    #action-bar { grid-area: pcaction; padding: 14px 18px; }
-    #choices-container { max-height: 46vh !important; counter-reset: pckey 0; }
-    #choices-container .choice-btn { font-size: 15px !important; padding: 12px 40px 12px 14px; position: relative; counter-increment: pckey; }
-    #choices-container .choice-btn::after {
-        content: counter(pckey);
-        position: absolute; top: 7px; right: 9px;
-        min-width: 20px; height: 20px; padding: 0 4px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 11px; font-weight: bold; color: #E8DCC0;
-        background: #2A241E; border: 1px solid #6B5B3E; border-bottom-width: 2px; border-radius: 4px;
-    }
-    #advance-btn { padding-top: 16px; padding-bottom: 16px; font-size: 17px; }
-    #gameover-screen .max-w-sm { max-width: 30rem !important; }
-    #ranking-screen { font-size: 15px; }
+/* ===== v47: PCレイアウト（body.pc-on のとき有効。自動=幅1024px以上／表示ボタンで手動切替も可） ===== */
+body.pc-on #app-container { max-width: 1180px !important; height: 97vh !important; max-height: none !important; }
+body.pc-on #game-screen:not(.hidden) {
+    display: grid !important;
+    grid-template-columns: 300px minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas: "pcstatus pclog" "pcstatus pcaction";
 }
+body.pc-on #game-screen > header { grid-area: pcstatus; border-bottom: none; border-right: 1px solid #3A322A; overflow-y: auto; padding: 20px 16px; }
+body.pc-on #game-screen > header .grid-cols-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+body.pc-on #game-screen > header .grid-cols-5 span[id^="ui-"] { font-size: 16px; }
+body.pc-on #ui-class { font-size: 30px; }
+body.pc-on #ui-health, body.pc-on #ui-money { font-size: 26px; }
+body.pc-on #log-container { grid-area: pclog; padding: 22px 28px; }
+body.pc-on .log-entry { font-size: 15px; line-height: 1.85; }
+body.pc-on #action-bar { grid-area: pcaction; padding: 14px 18px; }
+body.pc-on #choices-container { max-height: 46vh !important; counter-reset: pckey 0; }
+body.pc-on #choices-container .choice-btn { font-size: 15px !important; padding: 12px 40px 12px 14px; position: relative; counter-increment: pckey; }
+body.pc-on #choices-container .choice-btn::after {
+    content: counter(pckey);
+    position: absolute; top: 7px; right: 9px;
+    min-width: 20px; height: 20px; padding: 0 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: bold; color: #E8DCC0;
+    background: #2A241E; border: 1px solid #6B5B3E; border-bottom-width: 2px; border-radius: 4px;
+}
+body.pc-on #advance-btn { padding-top: 16px; padding-bottom: 16px; font-size: 17px; }
+body.pc-on #gameover-screen .max-w-sm { max-width: 30rem !important; }
+body.pc-on #ranking-screen { font-size: 15px; }
 </style>
 </head>
 <body>
@@ -340,6 +338,7 @@
     <div id="app-container" class="w-full h-full sm:h-[95vh] sm:max-h-[850px] max-w-md mx-auto relative flex flex-col sm:border sm:border-[#3A322A] sm:rounded-lg overflow-hidden">
         <!-- BGM ON/OFFボタン（v4追加・画面上部に常設） -->
         <button id="bgm-toggle-btn" type="button" onclick="window.toggleBGM(event)" aria-label="BGM ON/OFF切替" class="absolute top-2 left-1/2 -translate-x-1/2 z-[80] w-9 h-9 flex items-center justify-center rounded-full bg-black/60 border border-[#3A322A] text-base shadow-md backdrop-blur-sm active:scale-95 transition-transform">🔊</button>
+        <button id="layout-toggle-btn" type="button" onclick="window.toggleLayoutMode(event)" aria-label="表示切替（自動／PC／スマホ）" class="absolute top-2 left-[calc(50%+30px)] z-[80] h-9 px-2.5 flex items-center justify-center rounded-full bg-black/60 border border-[#3A322A] text-[10px] font-bold text-gray-300 shadow-md backdrop-blur-sm active:scale-95 transition-transform">表示:自動</button>
         
         <!-- スタート画面 -->
         <div id="start-screen" class="absolute inset-0 z-30 bg-[#161311] flex flex-col px-5 py-5 overflow-y-auto pb-8 scroll-smooth">
@@ -357,7 +356,7 @@
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 47</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 47.1</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -731,6 +730,7 @@
                     <ul class="list-disc pl-4 space-y-1">
                         <li>パソコンの広い画面では、左にステータス、右に物語が表示される専用レイアウトに切り替わります。</li>
                         <li>キーボード操作：選択肢は数字キー（1〜9）、「歳月を進める」は Enter キーまたはスペースキーでも押せます。</li>
+                        <li>画面上の「表示」ボタンで、表示の自動切替／PC表示／スマホ表示を切り替えることもできます。</li>
                     </ul>
                 </section>
 
@@ -4638,27 +4638,65 @@
     <!-- 大往生エフェクト用 全画面キャンバス（アプリ枠の外＝body直下に配置し、画面全体に花びらを散らす） -->
     <canvas id="particle-canvas"></canvas>
 <script>
-// v47: PCキーボード操作（数字キー=選択肢／Enter・Space=進める）
+// v47: PCレイアウト切替＋キーボード操作
 (function () {
-    var OVERLAYS = ['start-screen','splash-screen','ranking-screen','encyclopedia-screen','heirloom-screen','item-screen','shop-screen','help-screen','history-screen','premium-screen','roulette-screen','support-screen','rank-detail-screen','gameover-screen','name-entry-screen','intro-screen','freeze-overlay'];
+    // ---- 表示モード（auto/pc/mobile）。自動は幅1024px以上でPCレイアウト ----
+    function getMode() {
+        try { return localStorage.getItem('sengoku_layout_mode') || 'auto'; } catch (e) { return 'auto'; }
+    }
+    window.__applyLayoutMode = function () {
+        var m = getMode();
+        var pc = (m === 'pc') || (m === 'auto' && window.innerWidth >= 1024);
+        document.body.classList.toggle('pc-on', pc);
+        var btn = document.getElementById('layout-toggle-btn');
+        if (btn) btn.textContent = '表示:' + (m === 'pc' ? 'PC' : (m === 'mobile' ? 'スマホ' : '自動'));
+    };
+    window.toggleLayoutMode = function (e) {
+        if (e && e.stopPropagation) e.stopPropagation();
+        var order = ['auto', 'pc', 'mobile'];
+        var next = order[(order.indexOf(getMode()) + 1) % order.length];
+        try { localStorage.setItem('sengoku_layout_mode', next); } catch (err) {}
+        window.__applyLayoutMode();
+    };
+    window.addEventListener('resize', window.__applyLayoutMode);
+    window.__applyLayoutMode();
+
+    // ---- キーボード操作（数字キー=選択肢／Enter・Space=進める） ----
+    var OVERLAYS = ['start-screen','splash-screen','ranking-screen','encyclopedia-screen','heirloom-screen','item-screen','shop-screen','help-screen','history-screen','premium-screen','roulette-screen','support-screen','rank-detail-screen','gameover-screen','name-entry-screen','intro-screen'];
     function isVisible(el) { return !!el && !el.classList.contains('hidden'); }
+    // 実際に画面を覆っているか（透明度で出し入れされる要素を「表示中」と誤認しない）
+    function isCovering(el) {
+        if (!isVisible(el)) return false;
+        if (el.getClientRects && el.getClientRects().length === 0) return false;
+        try {
+            var cs = window.getComputedStyle(el);
+            if (cs) {
+                if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+                if (parseFloat(cs.opacity || '1') <= 0.05) return false;
+                if (cs.pointerEvents === 'none') return false;
+            }
+        } catch (err) {}
+        return true;
+    }
     window.__pcKey = function (e) {
         if (!e || e.metaKey || e.ctrlKey || e.altKey) return false;
         var ae = document.activeElement;
         if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.tagName === 'SELECT' || ae.isContentEditable)) return false;
         var gs = document.getElementById('game-screen');
         if (!isVisible(gs)) return false;
-        for (var i = 0; i < OVERLAYS.length; i++) { if (isVisible(document.getElementById(OVERLAYS[i]))) return false; }
+        for (var i = 0; i < OVERLAYS.length; i++) { if (isCovering(document.getElementById(OVERLAYS[i]))) return false; }
+        var key = e.key || '';
+        var digit = /^[1-9]$/.test(key) ? parseInt(key, 10) : 0;
+        if (!digit && e.code) { var m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code); if (m) digit = parseInt(m[1], 10); }
         var cc = document.getElementById('choices-container');
         if (isVisible(cc)) {
-            if (/^[1-9]$/.test(e.key)) {
+            if (digit) {
                 var btns = cc.querySelectorAll('button:not([disabled])');
-                var idx = parseInt(e.key, 10) - 1;
-                if (btns[idx]) { btns[idx].click(); if (e.preventDefault) e.preventDefault(); return true; }
+                if (btns[digit - 1]) { btns[digit - 1].click(); if (e.preventDefault) e.preventDefault(); return true; }
             }
             return false;
         }
-        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+        if (key === 'Enter' || key === ' ' || key === 'Spacebar') {
             if (ae && (ae.tagName === 'BUTTON' || ae.tagName === 'A')) return false;
             var ab = document.getElementById('advance-btn');
             if (isVisible(ab)) { ab.click(); if (e.preventDefault) e.preventDefault(); return true; }
