@@ -356,7 +356,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 47.1</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -1189,7 +1189,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '【知略50】贋作であると論破し、商人を追い払う', condition: (s) => s.strategy >= 50, hint: '知略上昇', effect: (s) => { s.strategy += 10; return { hp: 0, log: '釉薬の不自然さを指摘すると、商人は逃げるように去っていった。' }; } },
                     { text: '「骨董に興味はない」と無視する', condition: () => true, hint: '回避', effect: () => ({ hp: 0, log: '怪しい儲け話には乗らず、堅実に生きる道を選んだ。' }) }
                 ] },
-            { id: 'tax_collection', mode: ['normal'], weight: 25, condition: (s) => s.money >= 300,
+            { id: 'tax_collection', mode: ['normal'], weight: 25, condition: (s) => s.money >= 300 && s.classInfo.id !== 'bandit',
                 title: '【御触書】過酷なる取り立て', text: '戦費の拡大に伴い、領主より非情な臨時徴収の御触れが出された。役人があなたの豊かな財産に目を付け、容赦ない取り立てにやってきた。',
                 choices: [
                     { text: '逆らわず、要求された額を素直に納める', condition: () => true, hint: '所持金の3割を失う', effect: (s) => { 
@@ -1203,7 +1203,8 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 choices: [
                     { text: '倒壊した蔵の復旧に追われる', condition: () => true, hint: '銭・体力を失う', effect: (s) => { let cost = Math.min(s.money, 150); recordChronology("大地震に見舞われ、復旧に奔走する"); return { money: -cost, hp: -5, log: '瓦礫の山と化した蔵の復旧に追われ、蓄えも体力も大きく削られた。' }; } },
                     { text: '瓦礫の中から領民を救助する', condition: () => true, hint: '人徳上昇・負傷', effect: (s) => { s.virtue += 25; recordChronology("大地震で領民を救助し、名声を得る"); return { hp: -20, log: '身を挺して何人もの民を瓦礫から救い出した。あなたの名は語り草となるだろう。' }; } },
-                    { text: '【銭100文】復興資材を買い占めて売り捌く', condition: (s) => s.money >= 100, hint: '悪逆上昇・大儲け', effect: (s) => { s.karma += 15; return { money: 100, hp: 0, log: '材木や食糧を買い占め、高値で売り捌いた。恨みを買ったが、懐はたっぷり潤った。' }; } }
+                    { text: '【銭100文】復興資材を買い占めて売り捌く', condition: (s) => s.money >= 100, hint: '悪逆上昇・大儲け', effect: (s) => { s.karma += 15; return { money: 100, hp: 0, log: '材木や食糧を買い占め、高値で売り捌いた。恨みを買ったが、懐はたっぷり潤った。' }; } },
+                    { text: '【忍】混乱に乗じて敵方の屋敷へ潜入する', condition: (s) => s.classInfo.id === 'ninja', hint: '知略判定・機密と金品', effect: (s) => { if (critRoll('strategy', Math.min(0.9, 0.45 + s.strategy * 0.004))) { s.strategy += 10; recordChronology('大地震の混乱に乗じ、敵方の屋敷から機密を奪う'); return { money: 200, hp: 0, log: '人々が瓦礫に気を取られる隙に敵方の屋敷へ忍び込み、機密文書と金品を奪って闇に消えた。' }; } return { hp: -25, log: '潜入の途中で番人たちに気づかれ、斬られながらも辛くも逃げ延びた。' }; } }
                 ] },
             { id: 'dropped_wallet', mode: ['normal'], weight: 20, condition: () => true,
                 title: '【市井】落し物の財布', text: '人気のない路地で、ずっしりと重い財布が落ちているのを見つけた。持ち主の姿はどこにもない。',
@@ -1342,7 +1343,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 choices: [
                     { text: 'かつて助けた里人に助けを求める', condition: () => true, hint: '人徳で判定・農民へ復帰・回復', effect: (s) => { if (!(critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007))))) { return { hp: -20, log: '里人を訪ねたが、追手への恐れから戸は開かれなかった。夜露に濡れ、逃避行はなお続く。' }; } s.mode = 'normal'; if (s.flags.sukanpin) { recordChronology("匿われ、素寒貧として生き直す"); return { hp: 35, log: '村の長が匿ってくれた。捨てた身分は取り戻さない。素寒貧のまま、土に生きる道を選ぶ。' }; } s.classInfo = CLASSES.find(c=>c.id==='peasant'); recordChronology("農民として生き直す"); return { hp: 35, log: '村の長が匿ってくれた。再び「農民」となり土に生きる道を選ぶ。' }; } },
                     { text: '【銭80文】頭を金で買収し見逃させる', condition: (s) => s.money >= 80, hint: '浪人へ復帰', effect: (s) => { s.mode = 'normal'; if (s.flags.sukanpin) { recordChronology("追手の手を逃れ、素寒貧として生き直す"); return { money: -80, hp: 10, log: '農民どもに有り金を叩きつけ、その隙に他国へ逃れた。身分を捨てた素寒貧のまま、風の吹くままに生きていく。' }; } s.classInfo = CLASSES.find(c=>c.id==='ronin'); recordChronology("浪人へと復帰する"); return { money: -80, hp: 10, log: '農民どもに有り金を叩きつけ、その隙に「浪人」として他国へ逃れた。' }; } },
-                    { text: '腹をくくり、山賊の群れに加わって野盗に堕ちる', condition: () => true, hint: '野盗へ転身・悪逆上昇', effect: (s) => { s.mode = 'normal'; s.karma += 25; if (s.flags.sukanpin) { recordChronology("追手を退け、素寒貧のまま山に潜む"); return { hp: 15, money: 40, log: '農民を返り討ちにし、その金品を奪った。だが捨てた身分を取り戻す気はない。盗賊の仲間入りはせず、素寒貧のまま山の影に潜む道を選んだ。' }; } s.classInfo = CLASSES.find(c=>c.id==='bandit'); recordChronology("野盗に堕ちる"); return { hp: 15, money: 40, log: '農民を返り討ちにし、付近を荒らし回る野盗に仲間入りを果たした。' }; } }
+                    { text: '腹をくくり、山賊の群れに加わって野盗に堕ちる', condition: () => true, hint: '野盗へ転身・悪逆上昇', effect: (s) => { s.mode = 'normal'; s.karma += 25; if (s.flags.sukanpin) { recordChronology("追手を退け、素寒貧のまま山に潜む"); return { hp: 15, money: 40, log: '農民を返り討ちにし、その金品を奪った。だが捨てた身分を取り戻す気はない。盗賊の仲間入りはせず、素寒貧のまま山の影に潜む道を選んだ。' }; } if (s.flags.classHistory && s.flags.classHistory.includes('bandit')) { s.classInfo = CLASSES.find(c=>c.id==='ronin'); recordChronology("追手を退け、浪人として逃げ延びる"); return { hp: 15, money: 40, log: '農民を返り討ちにし、その金品を奪った。山賊が手を差し伸べてきたが、古巣に戻る気はなかった。一度降りた山に、二度は籠らない。' }; } s.classInfo = CLASSES.find(c=>c.id==='bandit'); recordChronology("野盗に堕ちる"); return { hp: 15, money: 40, log: '農民を返り討ちにし、付近を荒らし回る野盗に仲間入りを果たした。' }; } }
                 ] },
             { id: 'checkpoint_break', mode: ['fugitive'], weight: 40, condition: () => true,
                 title: '【関所】追手の関門', text: '街道の先に関所が見えた。厳重な検問が行われており、素通りはできそうにない。追手の手が迫る中、どう切り抜けるか。',
@@ -1362,7 +1363,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 choices: [
                     { text: '大人しく先祖代々の槍を提出する', condition: () => true, hint: '武功低下・人徳上昇', effect: (s) => { s.flags.katana=true; s.valor-=15; s.virtue+=10; return { hp: 0, log: '武器を捨て、鍬一本で土と生きる真の百姓となる覚悟を決めた。' }; } },
                     { text: '【知略40】床下に隠し、いざという時の牙を残す', condition: (s) => s.strategy >= 40, hint: '武功維持', effect: (s) => { s.flags.katana=true; s.strategy+=10; return { hp: 0, log: '巧妙に武器を隠し通した。乱世において丸腰など自殺行為に等しい。' }; } },
-                    { text: '役人に逆らって暴れ回る', condition: () => true, hint: '即死', effect: (s) => { s.deathCause='execution'; return { hp: -999, log: '代官に斬りかかったが、多勢に無勢。その場で無惨に斬り捨てられた…。' }; } }
+                    { text: '役人に逆らって暴れ回る', condition: () => true, hint: '武功判定・大怪我の危険あり', effect: (s) => { s.flags.katana=true; const t = critRoll('valor', Math.min(0.85, 0.3 + s.valor * 0.005)) ? (window.__tier || 1) : 0; if (t >= 2) { s.valor+=10; s.karma+=10; s.virtue+=10; recordChronology('刀狩りの代官を追い返し、村の英雄となる'); return { hp: -5, log: '村人たちと一斉に蜂起！代官一行を村から叩き出した。村の英雄である。' }; } if (t === 1) { s.valor+=5; s.karma+=10; return { hp: -20, log: '乱闘の末に何とか代官を追い返したが、斬られて深手を負った。' }; } return { hp: -50, log: '多勢に無勢、斬り伏せられかけたが、辛うじて命だけは拾った…。' }; } }
                 ] },
             { id: 'loan_to_daimyo', mode: ['normal'], weight: 30, condition: (s) => s.classInfo.id === 'merchant' && s.money >= 300,
                 title: '【御用】大名への大名貸し', text: '戦費に行き詰まった地元の大名から「金を貸してくれ」と直接の要請（という名の恐喝）が来た。',
@@ -1377,6 +1378,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 title: '【抗争】裏山の縄張り争い', text: '隣の山を縄張りとする凶悪な山賊団が、こちらのシマを荒らしにやってきた。血で血を洗う殺し合いの始まりだ。',
                 choices: [
                     { text: '【武功40】先陣を切って敵の頭目を討ち取る', condition: (s) => s.valor >= 40, hint: '武功・悪逆増', effect: (s) => { s.valor+=20; s.karma+=20; return { money: 100, hp: -10, log: '敵の頭の首を刎ね、相手の組織と財産をすべて吸収して大頭目へと成り上がった！' }; } },
+                    { text: '【悪逆60】敵の若頭を買収し、内側から崩す', condition: (s) => s.karma >= 60, hint: '悪逆上昇・銭獲得', effect: (s) => { s.karma += 15; recordChronology("敵の若頭を買収し、山賊団を内側から崩す"); return { money: 150, hp: 0, log: '敵の若頭に金と地位をちらつかせ、寝返らせた。抗争は血を流す前に終わり、相手の縄張りも財産も、すべてこちらのものとなった。' }; } },
                     { text: '手下を見捨てて一人で逃げ出す', condition: () => true, hint: '浪人へ転落', effect: (s) => { s.classInfo=CLASSES.find(c=>c.id==='ronin'); recordChronology("縄張り争いに敗れ、浪人へ転落する"); return { hp: 0, log: '勝ち目はないと悟り、夜逃げした。また一介の浪人からのやり直しだ。' }; } }
                 ] },
             { id: 'tsujigiri_tempt', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'ronin',
@@ -1466,7 +1468,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 choices: [
                     { text: '誘いを断ち切る', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 10; return { hp: 0, log: '誘いを一蹴した。掟は重いが、里は自分の居場所だ。' }; } },
                     { text: '密かに金だけ受け取る', condition: () => true, hint: '悪逆・銭', effect: (s) => { s.karma += 15; return { money: 120, hp: 0, log: '表向きは断り、裏で金を受け取った。二重の顔が板についてきた。' }; } },
-                    { text: '里に密告する', condition: () => true, hint: '銭・悪逆上昇', effect: (s) => { s.karma += 5; return { money: 80, hp: 0, log: '密告は褒美に変わった。旧知の末路は、聞かないことにした。' }; } }
+                    { text: '里に密告し、里を守る', condition: () => true, hint: '人徳上昇・僅かな褒美', effect: (s) => { s.virtue += 10; return { money: 50, hp: 0, log: '掟破りの動きを里に知らせた。褒美は僅かだが、里の平穏は守られた。旧知の末路は、聞かないことにした。' }; } }
                 ] },
             { id: 'ninja_kikimimi', mode: ['normal', 'battle'], weight: 25, condition: (s) => s.classInfo.id === 'ninja',
                 title: '【諜報】屋根裏の聞き耳', text: '敵方の屋敷の屋根裏に忍び込み、密談を聞き取る任務。息を殺し、夜明けまで動けない。',
@@ -1635,7 +1637,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '不満を置き手紙にぶちまけて去る', condition: () => true, hint: '知略・悪逆上昇／浪人へ転身', effect: (s) => { s.strategy += 10; s.karma += 10; s.classInfo = CLASSES.find(c=>c.id==='ronin'); recordChronology("置き手紙を残し、主君の元を出奔する"); return { hp: 0, log: '言いたいことは、全部書いた。読み終えた主君の顔を想像すると、少しだけ胸がすっとした。' }; } },
                     { text: '思いとどまり、忠義を尽くす', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 15; return { hp: 0, log: '今夜のことは、胸にしまう。仕える身の辛さも、また人生だ。' }; } }
                 ] },
-            { id: 'rakusou', mode: ['normal'], weight: 20, condition: (s) => (s.classInfo.id === 'peasant' || s.classInfo.id === 'ashigaru' || s.classInfo.id === 'ronin') && s.age >= 18,
+            { id: 'rakusou', mode: ['normal'], weight: 20, condition: (s) => (s.classInfo.id === 'peasant' || s.classInfo.id === 'ashigaru' || s.classInfo.id === 'ronin') && s.age >= 18 && !(s.flags.classHistory && s.flags.classHistory.includes('bandit')),
                 title: '【落草】山賊に身を投じる', text: 'このままでは、じり貧のまま死ぬだけだ。だが山には、法も身分も届かぬ場所がある。一度山に籠れば、もう里の人間には戻れない。',
                 choices: [
                     { text: '山賊の群れに身を投じ、野盗となる', condition: () => true, hint: '野盗へ転身・悪逆上昇', effect: (s) => { s.karma += 20; s.classInfo = CLASSES.find(c=>c.id==='bandit'); recordChronology("山賊に身を投じ、野盗となる"); return { hp: 0, log: '掟は一つ、弱肉強食。頭目は酒を勧め、「今日からお前も山の人間だ」と笑った。' }; } },
@@ -1959,8 +1961,15 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 title: '【義賊】貧しい村への目', text: '麓の村が年貢に苦しみ、餓えた子供たちがいると聞いた。山塞の蔵には、奪った米がある。',
                 choices: [
                     { text: '奪った米を貧村に配る', condition: (s) => s.money >= 50, hint: '人徳上昇・銭消費', effect: (s) => { s.virtue += 25; return { money: -50, hp: 0, log: '夜陰に乗じて米を届けた。翌日、村では「義賊様」の噂が広がっていた。' }; } },
-                    { text: '見せ金だけ置いてくる', condition: () => true, hint: '銭消費・人徳上昇', effect: (s) => { s.virtue += 10; return { money: -30, hp: 0, log: '小さな施しをした。義賊の評判は、討伐を遠ざける盾にもなる。' }; } },
+                    { text: '見せ金だけ置いてくる', condition: () => true, hint: '銭消費・人徳上昇（運で噂が広まる）', effect: (s) => { if (critRoll('luck', 0.4 + (s.luck * 0.004))) { s.virtue += 25; return { money: -30, hp: 0, log: '小さな施しのつもりが、子供の話から村中に広まった。「義賊様」の評判は、予想以上に大きくなった！' }; } s.virtue += 10; return { money: -30, hp: 0, log: '小さな施しをした。義賊の評判は、討伐を遠ざける盾にもなる。' }; } },
                     { text: '山賊に情けは無用と突っぱねる', condition: () => true, hint: '悪逆上昇', effect: (s) => { s.karma += 10; return { hp: 0, log: '情けなど、山賊の商売にはない。蔵の米は蔵の米だ。' }; } }
+                ] },
+            { id: 'bandit_tax_raid', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'bandit',
+                title: '【徴収隊】麓への取り立て', text: '領主の徴収隊が、年貢の取り立てに麓の村へ入った。集められた米や銭は、やがて街道を通って城へ運ばれる。手下たちが、色めき立っている。',
+                choices: [
+                    { text: '街道で徴収隊を待ち伏せし、積荷を奪う', condition: () => true, hint: '武功で判定', effect: (s) => { if (critRoll('valor', Math.min(0.9, 0.45 + (s.valor * 0.004)))) { s.karma += 15; recordChronology("徴収隊を襲い、年貢を奪う"); return { money: 280, hp: -10, log: '護衛を蹴散らし、年貢の積荷を根こそぎ奪った！村の取り立て分まで懐に入るのだから、皮肉な話だ。' }; } return { hp: -30, log: '護衛は思いのほか堅かった。積荷に手も触れられず、傷を負って山へ逃げ帰った。' }; } },
+                    { text: '【知略40】偽の触れを流し、徴収隊を遠回りさせる', condition: (s) => s.strategy >= 40, hint: '知略上昇', effect: (s) => { s.strategy += 10; return { hp: 0, log: '偽の御触書を村々に流し、徴収隊を遠回りの山道へ誘い込んだ。隊が迷っている間に、村は収穫を隠し終えた。' }; } },
+                    { text: '手を出さず、徴収隊の動きを見張る', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 5; return { hp: 0, log: '徴収隊の人数も進路も、すべて手下に探らせた。いつか襲う日のための布石である。' }; } }
                 ] },
             { id: 'ronin_bodyguard', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'ronin',
                 title: '【用心棒】護衛の依頼', text: '旅の商人が、街道の賊を恐れて用心棒を探している。腕の立つ浪人と聞き、あなたの元へ護衛の依頼が舞い込んだ。',
@@ -2323,6 +2332,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 title: '【人望】民衆の嘆願', text: 'あなたの海より深い人徳を慕い、近隣の村々から数千人の民衆が集まり、「どうか我らの新たな領主になってくだされ！」と涙ながらに嘆願してきた。',
                 choices: [
                     { text: '民のため、新しい国を作る', condition: (s) => !s.flags.sukanpin, hint: '大名へ昇格', effect: (s) => { s.flags.petition=true; s.classInfo=CLASSES.find(c=>c.id==='daimyo'); s.faction = { id: 'custom', name: '民衆勢力', color: '#B8860B' }; recordChronology("民衆に推戴され大名となる"); return { hp: 0, log: '血を流さずして、民の力のみで一国を築き上げた。歴史に残る偉業だ！' }; } },
+                    { text: '【忍】表には立たず、陰の君主として見守る', condition: (s) => s.classInfo.id === 'ninja', hint: '大名にならず・献金と人徳', effect: (s) => { s.flags.petition=true; s.virtue+=15; recordChronology('民に推されながら表に立たず、陰の君主として村々を守る'); return { money: 500, hp: 0, log: '推挙は固辞した。だがその夜から、村々を見守る影の目が増えたという。領主の名はいらない。誰も知らない。それでいい。' }; } },
                     { text: '分不相応だと優しく諭して帰す', condition: () => true, hint: '人徳・運上昇', effect: (s) => { s.flags.petition=true; s.luck+=20; return { hp: 0, log: '野心を捨てたその無欲な姿に、民衆はあなたを生き神としてさらに深く崇拝した。' }; } }
                 ] },
             { id: 'wandering_swordsman', mode: ['normal', 'battle'], weight: 20, condition: (s) => s.valor >= 60 && !s.flags.metSwordsman,
@@ -3752,7 +3762,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     }
                 } else {
                     state.modeTurn++;
-                    const isRandomEvent = Math.random() < 0.65;
+                    const isRandomEvent = Math.random() < 0.70;
                     
                     if (isRandomEvent) {
                         triggerEvent();
@@ -3815,16 +3825,16 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     default: pool = [{ text: '特に何も起こらない、静かで平穏な一年だった。', money: 1 }];
                 }
             } else if (state.mode === 'battle') {
-                pool = [ { text: '最前線の砦の警備にあたり、飛んでくる矢を避けながら幾度かの奇襲を退けた。', valor: 3 }, { text: '暗闇に紛れた敵の斥候部隊を素早く看破し、味方に急報をもたらして危機を救った！', strategy: 4, virtue: 2 }, { text: '凍えるような野営の夜、瞬く星を見上げながら遠い故郷に想いを馳せた。', hp: 2 }, { text: '小競り合いの混乱の中で、打ち倒した敵兵の懐から泥にまみれた銭袋を素早くかすめ取った。', money: 6, karma: 2 } ];
+                pool = [ { text: '最前線の砦の警備にあたり、飛んでくる矢を避けながら幾度かの奇襲を退けた。', valor: 3 }, { text: '暗闇に紛れた敵の斥候部隊を素早く看破し、味方に急報をもたらして危機を救った！', strategy: 4, virtue: 2 }, { text: '凍えるような野営の夜、瞬く星を見上げながら遠い故郷に想いを馳せた。', hp: 2 }, { text: '小競り合いの混乱の中で、打ち倒した敵兵の懐から泥にまみれた銭袋を素早くかすめ取った。', money: 6, karma: 2 }, { text: '豪雨で川が氾濫し、泥濘に足を取られながらも必死に陣を守り抜いた。', hp: -4, valor: 2 }, { text: '兵糧が尽きかけ、干し飯を分け合って飢えを凌いだ。戦の辛さは、腹に来る。', hp: -3 }, { text: '隣で戦っていた戦友が矢に倒れた。その形見の小刀を、そっと懐にしまった。', virtue: 3, hp: -2 }, { text: '夜襲の気配を察して一睡もできず、夜明けと共に重い瞼をこすった。', strategy: 3, hp: -2 }, { text: '捕虜となった敵兵に水を与えた。「戦が終われば、また畑を耕そう」と約束した。', virtue: 4 }, { text: '軍神の夢を見た。吉兆に士気が上がり、槍を握る手に力が漲る。', valor: 4, hp: 2 }, { text: '流れ矢が肩をかすめた。あと数寸ずれていれば、あの世行きだった。', hp: -6 }, { text: '敵陣から奪った酒樽で束の間の宴。笑い声が、戦場の夜に小さく響いた。', hp: 4, money: -5 } ];
             } else if (state.mode === 'fugitive') {
                 pool = [ { text: '遠くに見える追手の松明の灯りを避け、冷たく湿った洞窟でガタガタと震えながら一夜を明かした。', hp: -3 }, { text: '獣のように這いつくばって野イチゴや木の根を掘り、泥ごと食べて空腹を紛らわせた。', hp: 1 }, { text: '足の裏が破れて血が滲むのも構わず、人里離れた険しい山道をひたすら歩き続けた。', hp: -2 } ];
             }
 
-            let item = pool[Math.floor(Math.random() * pool.length)];
-            if (pool.length > 1 && state.flags.lastAmbientText === item.text) {
-                const alt = pool.filter(x => x.text !== item.text);
-                if (alt.length > 0) item = alt[Math.floor(Math.random() * alt.length)];
-            }
+            let recentAmbient = state.flags.ambientHistory || (state.flags.lastAmbientText ? [state.flags.lastAmbientText] : []);
+            let candidates = pool.filter(x => !recentAmbient.includes(x.text));
+            if (candidates.length === 0) candidates = pool;
+            let item = candidates[Math.floor(Math.random() * candidates.length)];
+            state.flags.ambientHistory = recentAmbient.concat(item.text).slice(-3);
             state.flags.lastAmbientText = item.text;
             const hpDiff = item.hp || 0; let moneyDiff = item.money || 0;
             // v11: yearly small expenses never push money below 0 (rewrite to effective diff so tags match)
@@ -3895,7 +3905,10 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 const beforeStats = { valor: state.valor, karma: state.karma, strategy: state.strategy, virtue: state.virtue, luck: state.luck };
                 window.__tier = 0; window.__tierStat = null;
                 const chronBefore = state.chronology.length;
+                const classBefore = state.classInfo ? state.classInfo.id : '';
                 const res = choice.effect(state);
+                if (classBefore) { state.flags.classHistory = state.flags.classHistory || []; if (!state.flags.classHistory.includes(classBefore)) state.flags.classHistory.push(classBefore); }
+                if (state.classInfo && state.classInfo.id !== classBefore) { state.flags.classHistory = state.flags.classHistory || []; if (!state.flags.classHistory.includes(state.classInfo.id)) state.flags.classHistory.push(state.classInfo.id); }
                 const tier = window.__tier || 0; const tierStat = window.__tierStat;
                 if (tier >= 2 && tierStat && typeof state[tierStat] === 'number') state[tierStat] += (tier === 3 ? 15 : 5);
                 if (tier >= 2) for (let ci = chronBefore; ci < state.chronology.length; ci++) state.chronology[ci].text += (tier === 3 ? '【超成功】' : '【大成功】');
