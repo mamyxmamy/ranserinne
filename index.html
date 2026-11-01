@@ -293,6 +293,7 @@ body.pc-on #advance-btn { padding-top: 16px; padding-bottom: 16px; font-size: 17
 body.pc-on #gameover-screen .max-w-sm { max-width: 30rem !important; }
 body.pc-on #ranking-screen { font-size: 15px; }
 </style>
+<script data-goatcounter="https://mamyxmamy.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 </head>
 <body>
     <!-- オープニング・スプラッシュ（v10追加：タイトル画面の前に筆文字タイトルを表示。独立スクリプトで自己完結） -->
@@ -356,7 +357,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.1</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.2</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -560,6 +561,9 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <button type="button" onclick="window.shareResult(false)" class="mb-3 action-button-main w-full max-w-sm bg-black border border-gray-600 text-white hover:bg-gray-900 py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all flex items-center justify-center gap-2 z-50">
                 𝕏 己の生き様を刻む
             </button>
+            <button type="button" onclick="window.openSupport(event)" class="mb-3 action-button-main w-full max-w-sm bg-[#2A0E12] border border-rose-900 text-rose-200 hover:bg-[#3A1218] py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all flex items-center justify-center gap-2 z-50">
+                💖 作者を応援する
+            </button>
             <button type="button" onclick="window.resetGame(event)" class="action-button-main w-full max-w-sm border-2 border-red-700 bg-red-950/80 hover:bg-red-900 text-white py-3.5 text-base font-bold tracking-widest rounded-sm transition-all active:scale-95 shadow-[0_0_15px_rgba(139,0,0,0.6)] z-50">次なる輪廻へ</button>
         </div>
 
@@ -600,6 +604,9 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 
                 <button type="button" onclick="window.shareResult(true)" class="anim-slide-up mb-2 action-button-main w-full max-w-sm bg-black border border-gray-600 text-white hover:bg-gray-900 py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all flex items-center justify-center gap-2 z-30" style="animation-delay: 3.8s;">
                     𝕏 己の生き様を刻む
+                </button>
+                <button type="button" onclick="window.openSupport(event)" class="anim-slide-up mb-2 action-button-main w-full max-w-sm bg-[#2A0E12] border border-rose-900 text-rose-200 hover:bg-[#3A1218] py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all flex items-center justify-center gap-2 z-30" style="animation-delay: 3.9s;">
+                    💖 作者を応援する
                 </button>
                 <button type="button" onclick="window.resetGame(event)" class="action-button-main w-full max-w-sm anim-slide-up border-2 border-gold bg-black text-gold hover:bg-gold hover:text-black py-3 text-base font-bold tracking-widest rounded-sm shadow-[0_0_20px_rgba(197,160,89,0.5)] active:scale-95 transition-all z-30" style="animation-delay: 4.0s;">新時代へ輪廻する</button>
             </div>
@@ -825,6 +832,9 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     本作を楽しんでいただけたなら、<br>一杯の酒（投げ銭）を奢っていただけると<br>次なるアップデートや新作開発の<br>大きな励みになります！
                 </p>
                 <div class="w-full max-w-xs space-y-3">
+                    <a href="https://mamyxmamy.booth.pm/" target="_blank" rel="noopener" class="block w-full bg-[#FB515E] hover:bg-[#FC6B76] text-white py-3 rounded font-bold text-sm shadow-md transition-colors">
+                        🎵 BOOTHショップ（公式サントラ販売中）
+                    </a>
                     <a href="https://www.amazon.jp/hz/wishlist/ls/92FAL8ZA3MU2?ref_=wl_share" target="_blank" class="block w-full bg-yellow-600 hover:bg-yellow-500 text-white py-3 rounded font-bold text-sm shadow-md transition-colors">
                         🎁 Amazonほしい物リストで支援
                     </a>
