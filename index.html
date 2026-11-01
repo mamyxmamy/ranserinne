@@ -357,7 +357,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.3</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.4</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -1619,11 +1619,12 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '偽情報を流し、疑いの目を逸らす', condition: () => true, hint: '知略で判定', effect: (s) => { if (critRoll('strategy', Math.min(0.95, 0.3 + (s.strategy * 0.005)))) { s.strategy += 10; return { hp: 0, log: '刺客の背後にいる者へ偽の証文を掴ませた。疑いの目はあらぬ方向へ向き、主君の不信は霧散した。' }; } else { return { hp: -30, log: '策は見抜かれた！間一髪、刺客の刃をかわしたが深手を負った。疑いは晴れぬまま、傷だけが残った。' }; } } },
                     { text: '城を脱出し、浪人に身をやつす', condition: () => true, hint: '浪人へ転落', effect: (s) => { s.classInfo = CLASSES.find(c=>c.id==='ronin'); s.karma += 20; s.mode = 'normal'; recordChronology("主君の疑いを逃れ、浪人に身をやつす"); return { hp: -10, log: '迫りくる刺客の手を逃れ、夜陰に紛れて出奔した。' }; } }
                 ] },
-            { id: 'tactician', mode: ['normal', 'battle'], weight: 30, condition: (s) => s.strategy >= 40 && !s.flags.tactician && (s.classInfo.id === 'ronin' || s.classInfo.id === 'ashigaru' || s.classInfo.id === 'peasant'),
+            { id: 'tactician', mode: ['normal', 'battle'], weight: 30, condition: (s) => s.strategy >= 40 && !s.flags.tactician && !s.flags.tacticianDeclined && (s.classInfo.id === 'ronin' || s.classInfo.id === 'ashigaru' || s.classInfo.id === 'peasant'),
                 title: '【推挙】軍師の召抱え', text: 'あなたの類まれなる知謀は諸国に知れ渡り、有力大名から「我が陣営の頭脳となれ」と仕官の誘いを受ける。',
                 choices: [
                     { text: '【知略70】破格の待遇を要求し仕える', condition: (s) => s.strategy >= 70, hint: '武将化・大金', effect: (s) => { s.flags.tactician = true; s.classInfo = CLASSES.find(c=>c.id==='bushou'); s.strategy += 20; recordChronology("破格の待遇で筆頭軍師に迎えられ、武将となる"); return { money: 300, hp: -15, log: '筆頭軍師の座へと登り詰めたが、謀略の毎日に心身はすり減っていく。' }; } },
-                    { text: '謹んでお受けする', condition: () => true, hint: '武将化', effect: (s) => { s.flags.tactician = true; s.classInfo = CLASSES.find(c=>c.id==='bushou'); recordChronology("軍師として召し抱えられ、武将となる"); return { money: 100, hp: -10, log: '軍師として大名の陣幕に席を連ねることとなった。' }; } }
+                    { text: '謹んでお受けする', condition: () => true, hint: '武将化', effect: (s) => { s.flags.tactician = true; s.classInfo = CLASSES.find(c=>c.id==='bushou'); recordChronology("軍師として召し抱えられ、武将となる"); return { money: 100, hp: -10, log: '軍師として大名の陣幕に席を連ねることとなった。' }; } },
+                    { text: '辞退して、今の生き方を貫く', condition: () => true, hint: '人徳上昇', effect: (s) => { s.flags.tacticianDeclined = true; s.virtue += 10; return { hp: 0, log: '陣幕の暮らしは性に合わぬ。誘いを丁重に断り、己の道を歩み続けることにした。' }; } }
                 ] },
             { id: 'defection', mode: ['normal', 'battle'], weight: 25, condition: (s) => (s.classInfo.id === 'bushou' || s.classInfo.id === 'ninja' || s.classInfo.id === 'ashigaru') && s.age > 20 && s.faction.id !== 'custom',
                 title: '【調略】敵陣営からの誘い', text: '敵対する大名家から「今の主君を見限り我が陣営へ寝返れば、莫大な恩賞を約束しよう」と囁かれる。',
