@@ -357,7 +357,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.2</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.3</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -433,9 +433,6 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <button type="button" onclick="window.openSupport(event)" class="w-full bg-transparent text-gray-600 hover:text-gray-300 py-1.5 text-[10px] underline tracking-widest transition-colors">
                     作者への応援・投げ銭はこちら
                 </button>
-                <a href="https://mamyxmamy.itch.io/ranserinne" target="_blank" rel="noopener" class="block w-full text-center text-gray-600 hover:text-gray-300 py-1 text-[10px] underline tracking-widest transition-colors">
-                    itch.ioでも公開中（投げ銭はこちら）
-                </a>
                 <p class="w-full text-center text-gray-700 text-[9px] tracking-widest pb-1">♪ BGMつき ― 音量にご注意ください</p>
             </div>
         </div>
@@ -1439,7 +1436,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                         if (critRoll('strategy', 0.5 + (s.strategy * 0.005))) { s.classInfo = CLASSES.find(c => c.id === 'daimyo'); s.mode = 'normal'; s.faction = { id: 'custom', name: '独立勢力', color: '#B8860B' }; s.valor += 50; recordChronology("武力による下剋上を果たし大名となる"); return { money: 200, hp: -20, log: '激戦の末に主家の本陣を打ち破り、完全なる独立を成し遂げた！' }; }
                         else { s.deathCause = 'execution'; return { hp: -999, log: '謀反の計画は脆くも崩れ、捕縛ののち無惨に斬首された……。' }; }
                     } },
-                    { text: '謀反を誘う者たちを一喝する', condition: () => true, hint: '忠義', effect: (s) => { s.virtue += 20; return { hp: 0, log: '見事な忠誠心は主君の耳にも入り、信望は不動のものとなった。' }; } }
+                    { text: '謀反を誘う者たちを一喝する', condition: () => true, hint: '忠義', effect: (s) => { s.flags.independence = true; s.virtue += 20; return { hp: 0, log: '見事な忠誠心は主君の耳にも入り、信望は不動のものとなった。' }; } }
                 ] },
             { id: 'ninja_promotion', mode: ['normal', 'battle'], weight: 30, condition: (s) => s.classInfo.id === 'ninja' && s.valor >= 40 && s.strategy >= 40 && !s.flags.ninjaPromotion,
                 title: '【御庭番】闇から光へ', text: '大名の目に留まり、「我が直属の武将として表舞台で働かぬか」と召し抱えを打診される。',
@@ -1640,14 +1637,14 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '「天下布武のため」と吠える', condition: () => true, hint: '武功・悪逆上昇', effect: (s) => { s.valor+=20; s.karma+=20; s.flags.metNobunaga = true; return { hp: 0, log: '信長は不敵に笑って去っていった。覇道へ付き従う覚悟が決まる。' }; } },
                     { text: '【知略40】不敵に返す', condition: (s) => s.strategy >= 40, hint: '銭獲得', effect: (s) => { s.strategy+=15; s.flags.metNobunaga = true; return { money: 100, hp: 0, log: '見事な返答に信長は大笑いし、褒美を下賜された。' }; } }
                 ] },
-            { id: 'shuppon', mode: ['normal'], weight: 20, condition: (s) => (s.classInfo.id === 'bushou' || s.classInfo.id === 'ashigaru' || s.classInfo.id === 'ninja') && s.age >= 20,
+            { id: 'shuppon', mode: ['normal'], weight: 20, condition: (s) => (s.classInfo.id === 'bushou' || s.classInfo.id === 'ashigaru' || s.classInfo.id === 'ninja') && s.age >= 20 && !s.flags.shupponDeclined,
                 title: '【出奔】主君への愛想が尽きた', text: '仕える日々に、ふと限界を感じた。禄も身分も捨ててしまえば、明日からは風の吹くままに生きられる。だが一度捨てた主君の元へは、二度と戻れない。',
                 choices: [
                     { text: '夜陰に紛れて出奔し、浪人となる', condition: () => true, hint: '浪人へ転身・自由な生き方', effect: (s) => { s.karma += 10; s.classInfo = CLASSES.find(c=>c.id==='ronin'); recordChronology("主君の元を出奔し、浪人となる"); return { hp: 0, log: '荷物は刀一本分だけ。城下を出る頃、東の空が白み始めていた。明日からは、誰のものでもない一日が始まる。' }; } },
                     { text: '不満を置き手紙にぶちまけて去る', condition: () => true, hint: '知略・悪逆上昇／浪人へ転身', effect: (s) => { s.strategy += 10; s.karma += 10; s.classInfo = CLASSES.find(c=>c.id==='ronin'); recordChronology("置き手紙を残し、主君の元を出奔する"); return { hp: 0, log: '言いたいことは、全部書いた。読み終えた主君の顔を想像すると、少しだけ胸がすっとした。' }; } },
-                    { text: '思いとどまり、忠義を尽くす', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 15; return { hp: 0, log: '今夜のことは、胸にしまう。仕える身の辛さも、また人生だ。' }; } }
+                    { text: '思いとどまり、忠義を尽くす', condition: () => true, hint: '人徳上昇', effect: (s) => { s.flags.shupponDeclined = true; s.virtue += 15; return { hp: 0, log: '今夜のことは、胸にしまう。仕える身の辛さも、また人生だ。' }; } }
                 ] },
-            { id: 'rakusou', mode: ['normal'], weight: 20, condition: (s) => (s.classInfo.id === 'peasant' || s.classInfo.id === 'ashigaru' || s.classInfo.id === 'ronin') && s.age >= 18 && !(s.flags.classHistory && s.flags.classHistory.includes('bandit')),
+            { id: 'rakusou', mode: ['normal'], weight: 20, condition: (s) => (s.classInfo.id === 'peasant' || s.classInfo.id === 'ashigaru' || s.classInfo.id === 'ronin') && s.age >= 18 && !(s.flags.classHistory && s.flags.classHistory.includes('bandit')) && !s.flags.rakusouDeclined,
                 title: '【落草】山賊に身を投じる', text: 'このままでは、じり貧のまま死ぬだけだ。だが山には、法も身分も届かぬ場所がある。一度山に籠れば、もう里の人間には戻れない。',
                 choices: [
                     { text: '山賊の群れに身を投じ、野盗となる', condition: () => true, hint: '野盗へ転身・悪逆上昇', effect: (s) => { s.karma += 20; s.classInfo = CLASSES.find(c=>c.id==='bandit'); recordChronology("山賊に身を投じ、野盗となる"); return { hp: 0, log: '掟は一つ、弱肉強食。頭目は酒を勧め、「今日からお前も山の人間だ」と笑った。' }; } },
@@ -1655,7 +1652,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                         if (critRoll('valor', 0.45 + (s.valor * 0.003))) { s.valor += 15; s.classInfo = CLASSES.find(c=>c.id==='bandit'); recordChronology("腕試しで頭目を唸らせ、野盗の仲間入りを果たす"); return { money: 50, hp: -5, log: '頭目と槍を交え、一歩も引かなかった。「いい腕だ。山の掟は守れよ」名を上げての合流だ。' }; }
                         return { hp: -20, log: '頭目に叩きのめされ、山道に転がされた。野盗にすら、なれなかった。' };
                     } },
-                    { text: '思いとどまって山を下りる', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 10; return { hp: 0, log: '山の入り口で、しばらく立ち尽くした。……まだ、人の道で生きてみる。' }; } }
+                    { text: '思いとどまって山を下りる', condition: () => true, hint: '人徳上昇', effect: (s) => { s.flags.rakusouDeclined = true; s.virtue += 10; return { hp: 0, log: '山の入り口で、しばらく立ち尽くした。……まだ、人の道で生きてみる。' }; } }
                 ] },
             { id: 'teppo_unit', mode: ['normal'], weight: 25, condition: (s) => s.flags.teppo && (s.classInfo.id === 'bushou' || s.classInfo.id === 'daimyo') && !s.flags.teppoUnit,
                 title: '【軍備】鉄砲隊の編制', text: '伝来した鉄砲は、戦の常識を覆しつつある。この新兵器を自軍に取り入れるかどうかは、今後の命運を大きく左右するだろう。',
@@ -1891,11 +1888,11 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '【人徳40】困窮者の利息を免除する', condition: (s) => s.virtue >= 40, hint: '人徳・評判上昇', effect: (s) => { s.virtue += 15; return { money: 20, hp: 0, log: '困った者の利息を免除した。儲けは薄いが、「情けのある店」の評判が町に広がった。' }; } },
                     { text: '高利で貸し付ける', condition: () => true, hint: '銭獲得・悪逆上昇', effect: (s) => { s.karma += 10; return { money: 120, hp: 0, log: '法外な利息で貸し付けた。儲けは大きいが、恨みの声も聞こえ始めた。' }; } }
                 ] },
-            { id: 'merchant_za', mode: ['normal'], weight: 15, condition: (s) => s.classInfo.id === 'merchant' && s.money >= 800 && !s.flags.zaPrivilege,
+            { id: 'merchant_za', mode: ['normal'], weight: 15, condition: (s) => s.classInfo.id === 'merchant' && s.money >= 800 && !s.flags.zaPrivilege && !s.flags.zaDeclined,
                 title: '【特権】座の株と御用の誘い', text: '大名の家臣から内々の誘いがあった。献金をすれば、座の特権と御用商人の地位を与えるという。商家にとっては一代の転機である。',
                 choices: [
                     { text: '【銭500文】献金して特権と御用を受ける', condition: (s) => s.money >= 500, hint: '御用商人へ・年表記録', effect: (s) => { s.flags.zaPrivilege = true; s.strategy += 10; recordChronology("御用商人となり、座の特権を得る"); return { money: 200, hp: 0, log: '献金は即座に数倍の取引となって返ってきた。御用商人の看板が、店に箔をつける。' }; } },
-                    { text: '断って、一商人のままでいる', condition: () => true, hint: '知略・人徳上昇', effect: (s) => { s.strategy += 10; s.virtue += 5; return { hp: 0, log: '権力に近づきすぎるのも危うい。一商人の自由を選んだ。' }; } }
+                    { text: '断って、一商人のままでいる', condition: () => true, hint: '知略・人徳上昇', effect: (s) => { s.flags.zaDeclined = true; s.strategy += 10; s.virtue += 5; return { hp: 0, log: '権力に近づきすぎるのも危うい。一商人の自由を選んだ。' }; } }
                 ] },
             { id: 'merchant_kikin', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'merchant' && s.money >= 150,
                 title: '【飢饉】凶作の米蔵', text: '大凶作で米価が高騰し、餓えた人々が町に溢れている。あなたの蔵には、去年買い置いた米がある。今売れば大儲けだが――。',
@@ -2019,11 +2016,11 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '酔客同士の喧嘩を止める', condition: () => true, hint: '人徳で判定', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 20; return { hp: 0, log: '見事な仲裁だった。店主から「あんたがいて助かった」と酒を振る舞われた。' }; } return { hp: -10, log: '止めに入って巻き込まれた。酒場の仲裁は難しい。' }; } },
                     { text: '喧嘩に加わって暴れる', condition: () => true, hint: '武功・悪逆上昇・体力減少', effect: (s) => { s.valor += 10; s.karma += 5; return { hp: -15, log: '大暴れして鬱憤を晴らした。出入り禁止になったが、後悔はない。' }; } }
                 ] },
-            { id: 'ronin_oldfriend', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'ronin',
+            { id: 'ronin_oldfriend', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'ronin' && !s.flags.oldfriendDeclined,
                 title: '【旧友】仕官の誘い', text: '昔馴染みの足軽頭が「うちの組に来ないか」と誘ってきた。安定した暮らしと、流れ者の自由を天秤にかける時だ。',
                 choices: [
                     { text: '誘いを受け、足軽として仕える', condition: () => true, hint: '足軽へ転身', effect: (s) => { s.classInfo = CLASSES.find(c=>c.id==='ashigaru'); recordChronology("旧友の誘いで足軽として仕官する"); return { money: 50, hp: 0, log: '流れ者の暮らしに区切りをつけ、足軽として仕官した。屋根のある暮らしも悪くない。' }; } },
-                    { text: '断って自由を選ぶ', condition: () => true, hint: '武功上昇', effect: (s) => { s.valor += 10; return { hp: 0, log: '「縛られるのは性に合わん」と笑って断った。剣一本の自由が、自分の全てだ。' }; } },
+                    { text: '断って自由を選ぶ', condition: () => true, hint: '武功上昇', effect: (s) => { s.flags.oldfriendDeclined = true; s.valor += 10; return { hp: 0, log: '「縛られるのは性に合わん」と笑って断った。剣一本の自由が、自分の全てだ。' }; } },
                     { text: '金を無心する', condition: () => true, hint: '悪逆上昇・銭獲得', effect: (s) => { s.karma += 5; return { money: 60, hp: 0, log: '旧友は呆れながらも銭をくれた。友情は、こういう時にも使える。' }; } }
                 ] },
             { id: 'ronin_rain', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'ronin',
@@ -3762,7 +3759,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     }
 
                     const isMilestone = (state.age % 5 === 0);
-                    const isRandomEvent = Math.random() < 0.55;
+                    const isRandomEvent = Math.random() < 0.65;
 
                     if (isMilestone || isRandomEvent) {
                         triggerEvent();
@@ -3849,7 +3846,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             const hpDiff = item.hp || 0; let moneyDiff = item.money || 0;
             // v11: yearly small expenses never push money below 0 (rewrite to effective diff so tags match)
             if (moneyDiff < 0) moneyDiff = -Math.min(state.money, -moneyDiff);
-            else if (moneyDiff > 0 && state.classInfo && state.classInfo.id === 'merchant') moneyDiff = Math.floor(moneyDiff * 1.1);
+            else if (moneyDiff > 0 && state.classInfo && state.classInfo.id === 'merchant') moneyDiff = Math.floor(moneyDiff * (state.flags && state.flags.zaPrivilege ? 1.2 : 1.1));
             state.health += hpDiff; state.money += moneyDiff;
             if (state.money < 0) state.money = 0;
             if (item.valor) state.valor += item.valor;
@@ -3927,7 +3924,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 // v11: money never below 0; losses are clamped to current balance
                 let appliedMoneyChg = moneyChg < 0 ? -Math.min(state.money, -moneyChg) : moneyChg;
                 if (appliedMoneyChg > 0 && tier >= 2) appliedMoneyChg = Math.floor(appliedMoneyChg * (tier === 3 ? 3 : 1.5));
-                if (appliedMoneyChg > 0 && state.classInfo && state.classInfo.id === 'merchant') appliedMoneyChg = Math.floor(appliedMoneyChg * 1.1);
+                if (appliedMoneyChg > 0 && state.classInfo && state.classInfo.id === 'merchant') appliedMoneyChg = Math.floor(appliedMoneyChg * (state.flags && state.flags.zaPrivilege ? 1.2 : 1.1));
                 state.health += hpChg; state.money += appliedMoneyChg;
                 if (state.money < 0) state.money = 0; // final guard against direct mutations inside effects
                 else if (hpChg <= -999) { state.health = 0; state.lastDamageEvent = state.flags.currentEventTitle || '重傷'; if (!state.deathCause) state.deathCause = state.mode === 'battle' ? 'battle' : 'execution'; }
