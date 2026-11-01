@@ -357,7 +357,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.7</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.8</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -740,7 +740,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
 
                 <section>
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 身分と初期能力</h3>
-                    <p class="mb-1">五大能力値はどの身分でも0から始まります。身分によって異なるのは初期の体力と所持金のみです。ただし、忍者は知略+20・運+20、僧侶は人徳+30、公家は知略+20・人徳+10の加護を持って生まれます。</p>
+                    <p class="mb-1">五大能力値はどの身分でも0から始まります。身分によって異なるのは初期の体力と所持金のみです。ただし、武将は武功+20、忍者は知略+20・運+20、僧侶は人徳+30、公家は知略+20・人徳+10の加護を持って生まれます。</p>
                     <ul class="list-disc pl-4 space-y-1 text-gray-400">
                         <li>農民: 体力80／所持金5文</li>
                         <li>足軽: 体力90／所持金15文</li>
@@ -1830,7 +1830,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 choices: [
                     { text: '倅と二人三脚で田を広げる', condition: () => true, hint: '人徳・銭獲得', effect: (s) => { s.flags.sonGrown = true; s.virtue += 15; return { money: 60, hp: 0, log: '親子二代の働きで、田は少し広くなった。跡継ぎの頼もしさが嬉しい。' }; } },
                     { text: '倅を商家へ奉公に出す', condition: () => true, hint: '銭獲得', effect: (s) => { s.flags.sonGrown = true; return { money: 90, hp: 0, log: '倅は丁稚奉公へ出た。仕送りを約束する倅の背中が、少し大きく見えた。' }; } },
-                    { text: '家族でささやかに祝う', condition: () => true, hint: '回復・銭減少', effect: (s) => { s.flags.sonGrown = true; return { hp: 10, money: -30, log: '倅の成長を祝い、ささやかな膳を囲んだ。貧しくとも、温かい食卓だった。' }; } }
+                    { text: '【銭30文】家族でささやかに祝う', condition: (s) => s.money >= 30, hint: '回復・銭減少', effect: (s) => { s.flags.sonGrown = true; return { hp: 10, money: -30, log: '倅の成長を祝い、ささやかな膳を囲んだ。貧しくとも、温かい食卓だった。' }; } }
                 ] },
             { id: 'peasant_locust', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'peasant',
                 title: '【蝗害】虫の知らせ', text: '隣村で蝗の大群が発生したとの知らせが届いた。備えのある村とない村で、運命は大きく分かれる。',
@@ -1941,7 +1941,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 title: '【越冬】厳しい冬支度', text: '山の冬は厳しい。蓄えと人望、どちらが欠けても、手下は離れていく。',
                 choices: [
                     { text: '蓄えを皆で分け合う', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 15; return { hp: 0, log: '頭領自ら蓄えを切り分けた。痩せ我慢の団結が、山塞を温めた。' }; } },
-                    { text: '麓へ買い出しに出る', condition: () => true, hint: '銭消費・体力回復', effect: (s) => { return { money: -60, hp: 10, log: '里でたっぷり買い込んだ。温かい食事で、手下たちの顔が明るくなった。' }; } },
+                    { text: '【銭60文】麓へ買い出しに出る', condition: (s) => s.money >= 60, hint: '銭消費・体力回復', effect: (s) => { return { money: -60, hp: 10, log: '里でたっぷり買い込んだ。温かい食事で、手下たちの顔が明るくなった。' }; } },
                     { text: '口減らしに手下を減らす', condition: () => true, hint: '悪逆上昇・銭獲得', effect: (s) => { s.karma += 15; return { money: 40, hp: 0, log: '弱い者から山を下りさせた。残った者たちの視線が、少し冷たい。' }; } }
                 ] },
             { id: 'bandit_mercy', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'bandit',
@@ -1976,7 +1976,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 title: '【義賊】貧しい村への目', text: '麓の村が年貢に苦しみ、餓えた子供たちがいると聞いた。山塞の蔵には、奪った米がある。',
                 choices: [
                     { text: '奪った米を貧村に配る', condition: (s) => s.money >= 50, hint: '人徳上昇・銭消費', effect: (s) => { s.virtue += 25; return { money: -50, hp: 0, log: '夜陰に乗じて米を届けた。翌日、村では「義賊様」の噂が広がっていた。' }; } },
-                    { text: '見せ金だけ置いてくる', condition: () => true, hint: '銭消費・人徳上昇（運で噂が広まる）', effect: (s) => { if (critRoll('luck', 0.4 + (s.luck * 0.004))) { s.virtue += 25; return { money: -30, hp: 0, log: '小さな施しのつもりが、子供の話から村中に広まった。「義賊様」の評判は、予想以上に大きくなった！' }; } s.virtue += 10; return { money: -30, hp: 0, log: '小さな施しをした。義賊の評判は、討伐を遠ざける盾にもなる。' }; } },
+                    { text: '【銭30文】見せ金だけ置いてくる', condition: (s) => s.money >= 30, hint: '銭消費・人徳上昇（運で噂が広まる）', effect: (s) => { if (critRoll('luck', 0.4 + (s.luck * 0.004))) { s.virtue += 25; return { money: -30, hp: 0, log: '小さな施しのつもりが、子供の話から村中に広まった。「義賊様」の評判は、予想以上に大きくなった！' }; } s.virtue += 10; return { money: -30, hp: 0, log: '小さな施しをした。義賊の評判は、討伐を遠ざける盾にもなる。' }; } },
                     { text: '山賊に情けは無用と突っぱねる', condition: () => true, hint: '悪逆上昇', effect: (s) => { s.karma += 10; return { hp: 0, log: '情けなど、山賊の商売にはない。蔵の米は蔵の米だ。' }; } }
                 ] },
             { id: 'bandit_tax_raid', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'bandit',
@@ -2020,7 +2020,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             { id: 'ronin_tavern', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'ronin',
                 title: '【酒場】喧嘩と情報', text: '宿場の酒場は、情報と喧嘩の坩堝だ。流れ者の耳と腕が、両方試される場所でもある。',
                 choices: [
-                    { text: '隅で静かに耳を澄ます', condition: () => true, hint: '知略上昇・銭消費', effect: (s) => { s.strategy += 15; return { money: -20, hp: 0, log: '酒代はかかったが、戦況と仕事の情報がたっぷり入った。' }; } },
+                    { text: '【銭20文】隅で静かに耳を澄ます', condition: (s) => s.money >= 20, hint: '知略上昇・銭消費', effect: (s) => { s.strategy += 15; return { money: -20, hp: 0, log: '酒代はかかったが、戦況と仕事の情報がたっぷり入った。' }; } },
                     { text: '酔客同士の喧嘩を止める', condition: () => true, hint: '人徳で判定', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 20; return { hp: 0, log: '見事な仲裁だった。店主から「あんたがいて助かった」と酒を振る舞われた。' }; } return { hp: -10, log: '止めに入って巻き込まれた。酒場の仲裁は難しい。' }; } },
                     { text: '喧嘩に加わって暴れる', condition: () => true, hint: '武功・悪逆上昇・体力減少', effect: (s) => { s.valor += 10; s.karma += 5; return { hp: -15, log: '大暴れして鬱憤を晴らした。出入り禁止になったが、後悔はない。' }; } }
                 ] },
@@ -2155,7 +2155,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 choices: [
                     { text: '軍を進めて威圧する', condition: () => true, hint: '武功で判定', effect: (s) => { if (critRoll('valor', Math.min(0.9, 0.45 + (s.valor * 0.004)))) { s.valor += 20; return { money: 100, hp: 0, log: '軍の威圧に隣国が退いた。境の村は安堵し、年貢も増えた。' }; } return { hp: -20, log: '小競り合いとなり、当主自らも傷を負った。決着は持ち越しだ。' }; } },
                     { text: '【知略50】外交で決着をつける', condition: (s) => s.strategy >= 50, hint: '知略上昇・年表', effect: (s) => { s.strategy += 10; recordChronology("境争いを外交で解決し、賢君と呼ばれる"); return { hp: 0, log: '互いの得になる線で合意した。血を流さぬ勝利に、家臣が畏敬の念を深めた。' }; } },
-                    { text: '朝廷に裁定を訴える', condition: () => true, hint: '銭消費・人徳上昇', effect: (s) => { s.virtue += 10; return { money: -100, hp: 0, log: '朝廷への工作に金はかかったが、正式な裁定で境は確定した。' }; } }
+                    { text: '【銭100文】朝廷に裁定を訴える', condition: (s) => s.money >= 100, hint: '銭消費・人徳上昇', effect: (s) => { s.virtue += 10; return { money: -100, hp: 0, log: '朝廷への工作に金はかかったが、正式な裁定で境は確定した。' }; } }
                 ] },
             { id: 'daimyo_treasure', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'daimyo',
                 title: '【名品】献上と収集', text: '家臣や商人が、家の権威を示す名品を競って献上してくる。乱世では、宝もまた力である。',
@@ -2168,7 +2168,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 title: '【疫病】領国の病', text: '領国に疫病が広がり始めた。領主の対応が、領民の命と家の評判を左右する。',
                 choices: [
                     { text: '【銭200文】私財を投じて施しを行う', condition: (s) => s.money >= 200, hint: '人徳大幅上昇・銭消費・年表', effect: (s) => { s.virtue += 30; recordChronology("疫病に私財を投じ、領民を救う"); return { money: -200, hp: 0, log: '粥の炊き出しと薬の配布が領民を救った。領主への感謝は深く根付いた。' }; } },
-                    { text: '寺社に祈祷を命じる', condition: () => true, hint: '人徳上昇・銭消費', effect: (s) => { s.virtue += 10; return { money: -80, hp: 0, log: '大規模な祈祷が行われた。疫病の勢いは、やがて収まっていった。' }; } },
+                    { text: '【銭80文】寺社に祈祷を命じる', condition: (s) => s.money >= 80, hint: '人徳上昇・銭消費', effect: (s) => { s.virtue += 10; return { money: -80, hp: 0, log: '大規模な祈祷が行われた。疫病の勢いは、やがて収まっていった。' }; } },
                     { text: '関所を閉じて封じ込める', condition: () => true, hint: '悪逆・知略上昇', effect: (s) => { s.karma += 5; s.strategy += 10; return { hp: 0, log: '冷徹な封じ込めだったが、被害の拡大は防いだ。' }; } }
                 ] },
             { id: 'daimyo_hostage', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'daimyo',
@@ -2181,7 +2181,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             { id: 'daimyo_era', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'daimyo',
                 title: '【政変】都の報せ', text: '都で大きな政変があったとの報せが届いた。朝廷の権威が揺らぐ時、地方の大名の動きが天下を決める。',
                 choices: [
-                    { text: '朝廷に忠誠を示し、献金する', condition: () => true, hint: '銭消費・人徳上昇', effect: (s) => { s.virtue += 20; return { money: -150, hp: 0, log: 'いち早く忠誠を示した。朝廷からの覚えは確かなものになった。' }; } },
+                    { text: '【銭150文】朝廷に忠誠を示し、献金する', condition: (s) => s.money >= 150, hint: '銭消費・人徳上昇', effect: (s) => { s.virtue += 20; return { money: -150, hp: 0, log: 'いち早く忠誠を示した。朝廷からの覚えは確かなものになった。' }; } },
                     { text: '情勢を見極めるまで様子見する', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 15; return { hp: 0, log: '動かず、しかし目も離さなかった。情報だけが着実に集まっていく。' }; } },
                     { text: '混乱に乗じて版図を広げる', condition: () => true, hint: '悪逆上昇・武功で判定', effect: (s) => { s.karma += 20; if (critRoll('valor', Math.min(0.9, 0.4 + (s.valor * 0.004)))) { s.valor += 20; return { money: 150, hp: 0, log: '混乱の中で隣領の一部を併せた。攻め時を見抜く目が実を結んだ。' }; } return { hp: -20, log: '出兵は裏目に出た。兵も金も失い、静けさだけが戻った。' }; } }
                 ] },
@@ -3634,6 +3634,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
 
             state = { playerName: finalName, age: 14, health: selectedClass.initHealth, money: selectedClass.initMoney, classInfo: selectedClass, faction: selectedFaction, isAlive: true, lastDamageEvent: '', deathCause: '', valor: 0, karma: 0, luck: 0, strategy: 0, virtue: 0, mode: 'normal', lastMode: 'normal', modeTurn: 0, flags: {}, chronology: [] };
 
+            if (state.classInfo.id === 'bushou') state.valor += 20;
             if (state.classInfo.id === 'monk') state.virtue += 30;
             if (state.classInfo.id === 'ninja') { state.strategy += 20; state.luck += 20; }
             if (state.classInfo.id === 'kuge') { state.strategy += 20; state.virtue += 10; }
