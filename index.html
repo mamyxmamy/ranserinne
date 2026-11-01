@@ -357,7 +357,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.4</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.5</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -800,6 +800,12 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <button type="button" onclick="window.switchRankTab('age')" id="tab-rank-age" class="flex-1 py-3 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">長寿番付</button>
                 <button type="button" onclick="window.switchRankTab('money')" id="tab-rank-money" class="flex-1 py-3 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">富国長者</button>
                 <button type="button" onclick="window.switchRankTab('valor')" id="tab-rank-valor" class="flex-1 py-3 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">修羅の道</button>
+            </div>
+            <div class="flex border-b border-[#3A322A] bg-[#1A1613] shrink-0">
+                <button type="button" onclick="window.switchRankTab('karma')" id="tab-rank-karma" class="flex-1 py-2.5 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">悪逆番付</button>
+                <button type="button" onclick="window.switchRankTab('strategy')" id="tab-rank-strategy" class="flex-1 py-2.5 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">知略番付</button>
+                <button type="button" onclick="window.switchRankTab('virtue')" id="tab-rank-virtue" class="flex-1 py-2.5 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">人徳番付</button>
+                <button type="button" onclick="window.switchRankTab('luck')" id="tab-rank-luck" class="flex-1 py-2.5 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">運番付</button>
             </div>
             <div class="flex border-b border-[#3A322A] bg-[#14110F] shrink-0">
                 <button type="button" onclick="window.switchRankMode('best')" id="rank-mode-best" class="flex-1 py-2 text-[11px] font-bold text-gold border-b-2 border-gold transition-colors">🏆 最高記録</button>
@@ -3158,7 +3164,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
 
         window.switchRankTab = async function(type) {
             window.__rankTab = type;
-            ['total', 'age', 'money', 'valor'].forEach(t => {
+            ['total', 'age', 'money', 'valor', 'karma', 'strategy', 'virtue', 'luck'].forEach(t => {
                 const el = document.getElementById(`tab-rank-${t}`);
                 if(t === type) { el.className = "flex-1 py-3 text-xs font-bold text-gold border-b-2 border-gold transition-colors"; } 
                 else { el.className = "flex-1 py-3 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors"; }
@@ -3265,6 +3271,10 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     if(type === 'age') scoreText = `享年 <strong class="text-blood text-xl">${data.age}</strong> <span class="text-xs">歳</span>`;
                     if(type === 'money') scoreText = `所持金 <strong class="text-gold text-xl">${data.money}</strong> <span class="text-xs">文</span>`;
                     if(type === 'valor') scoreText = `武功 <strong class="text-red-400 text-xl">${data.valor}</strong>`;
+                    if(type === 'karma') scoreText = `悪逆 <strong class="text-purple-400 text-xl">${data.karma}</strong>`;
+                    if(type === 'strategy') scoreText = `知略 <strong class="text-sky-400 text-xl">${data.strategy}</strong>`;
+                    if(type === 'virtue') scoreText = `人徳 <strong class="text-emerald-400 text-xl">${data.virtue}</strong>`;
+                    if(type === 'luck') scoreText = `運 <strong class="text-pink-400 text-xl">${data.luck}</strong>`;
 
                     const sukanpinBadge = data.sukanpin ? '<span class="text-[9px] font-bold text-amber-300 bg-amber-900/60 border border-amber-600/50 px-1 py-0.5 rounded ml-1 align-middle">素寒貧</span>' : '';
 
