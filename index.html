@@ -368,7 +368,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.10</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 49</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -443,6 +443,9 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 
                 <button type="button" onclick="window.openSupport(event)" class="w-full bg-transparent text-gray-600 hover:text-gray-300 py-1.5 text-[10px] underline tracking-widest transition-colors">
                     作者への応援・投げ銭はこちら
+                </button>
+                <button type="button" onclick="window.openSave(event)" class="w-full bg-transparent text-gray-600 hover:text-gray-300 py-1.5 text-[10px] underline tracking-widest transition-colors">
+                    記録の引き継ぎ・書き出し（機種変更・バックアップ用）
                 </button>
                 <p class="w-full text-center text-gray-700 text-[9px] tracking-widest pb-1">♪ BGMつき ― 音量にご注意ください</p>
             </div>
@@ -774,7 +777,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                         <li><span class="text-purple-400 font-bold">冥銭と道具</span>: 死後に業に応じて獲得する通貨。冥府の商人で「身代わり地蔵」やステータス強化札などの持込道具（1回使い切り）と交換できます。</li>
                         <li><span class="text-gold font-bold">継承家宝</span>: 特定条件で入手する永続強化品。<span class="text-red-400 font-bold">大往生（60歳到達）できずに非業の死を遂げると完全にロストします。</span></li>
                         <li><span class="text-gold font-bold">家宝の被りと還元</span>: 既に所持している家宝が再び授けられた場合、所持数は増えず、代わりにその家宝の格に応じた冥銭へと還元されます。</li>
-                        <li><span class="text-purple-400 font-bold">冥府の宝籤（ガチャ）</span>: 輪廻を30回重ねると、冥府の商人のもとで「冥府の宝籤」が解放されます。1回300冥銭で家宝が1つ授けられ、既に所持している家宝が出た場合は格に応じた冥銭に還元されます。</li>
+                        <li><span class="text-purple-400 font-bold">冥府の宝籤（ガチャ）</span>: 輪廻を30回重ねると、冥府の商人のもとで「冥府の宝籤」が解放されます。1回300冥銭で家宝が1つ授けられ、既に所持している家宝が出た場合は格に応じた冥銭に還元されます。新しい家宝が続けて出なかった場合、5回目で必ず未所持の家宝が出ます（天井）。</li>
                     </ul>
                 </section>
 
@@ -858,6 +861,37 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     </a>
                 </div>
                 <p class="text-gray-500 text-[10px] mt-6">※上記ボタンを押すと外部サイトへ移動します。</p>
+            </div>
+        </div>
+
+        <div id="save-screen" class="hidden absolute inset-0 z-50 bg-[#0C0A09] flex flex-col pointer-events-auto">
+            <div class="p-3 border-b border-gray-800 bg-[#111] flex justify-between items-center shrink-0">
+                <h2 class="text-base font-bold text-white tracking-widest">記録の引き継ぎ</h2>
+                <button type="button" onclick="window.closeSave(event)" class="action-button-main text-gray-400 hover:text-white text-3xl px-2 leading-none">&times;</button>
+            </div>
+            <div class="flex-grow overflow-y-auto p-5 pb-8">
+                <p class="text-gray-300 text-xs leading-relaxed mb-5">
+                    機種変更やブラウザのデータ消去に備えて、輪廻の記録をファイルに書き出せます。記録は<strong class="text-yellow-200">合言葉で暗号化</strong>されるため、ファイルだけでは中身を読んだり復元したりできません。
+                </p>
+                <h3 class="text-yellow-500 text-sm font-bold tracking-widest mb-2">■ 書き出し（バックアップ）</h3>
+                <p class="text-gray-400 text-[11px] leading-relaxed mb-2">合言葉を決めてください（6文字以上）。<span class="text-red-400">合言葉を忘れると復元できません</span>ので、必ず控えてください。</p>
+                <input id="save-pass1" type="password" placeholder="合言葉" class="w-full bg-[#1A1613] border border-[#3A322A] text-white text-sm rounded-sm px-3 py-2.5 mb-2">
+                <input id="save-pass2" type="password" placeholder="合言葉（確認）" class="w-full bg-[#1A1613] border border-[#3A322A] text-white text-sm rounded-sm px-3 py-2.5 mb-2">
+                <button type="button" onclick="window.exportSave(event)" class="w-full bg-gradient-to-b from-[#2A1F10] to-[#1A1308] text-yellow-500 border border-yellow-700/60 py-3 text-xs font-bold tracking-widest rounded-sm">記録を書き出す</button>
+                <h3 class="text-yellow-500 text-sm font-bold tracking-widest mt-7 mb-2">■ 読み込み（復元）</h3>
+                <p class="text-gray-400 text-[11px] leading-relaxed mb-2">書き出したファイルを選ぶか、下の欄に記録テキストを貼り付けて、合言葉を入れてください。読み込むと<strong class="text-red-400">今の記録は上書き</strong>されます。</p>
+                <input id="save-file" type="file" accept=".txt,.json,text/plain,application/json" class="w-full text-gray-300 text-xs mb-2">
+                <textarea id="save-text" rows="4" placeholder="記録テキスト（書き出し後にここへ表示されます／貼り付けでも読み込めます）" class="w-full bg-[#1A1613] border border-[#3A322A] text-gray-300 text-[10px] rounded-sm px-3 py-2 mb-2"></textarea>
+                <input id="save-load-pass" type="password" placeholder="合言葉" class="w-full bg-[#1A1613] border border-[#3A322A] text-white text-sm rounded-sm px-3 py-2.5 mb-2">
+                <button type="button" onclick="window.importSave(event)" class="w-full bg-gradient-to-b from-[#2A1F10] to-[#1A1308] text-yellow-500 border border-yellow-700/60 py-3 text-xs font-bold tracking-widest rounded-sm">記録を読み込む</button>
+                <div id="save-confirm" class="hidden mt-4 bg-[#1A1613] border border-yellow-700/60 rounded-sm p-4">
+                    <p id="save-summary" class="text-gray-200 text-xs leading-relaxed mb-3"></p>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="window.confirmImport(event)" class="flex-1 bg-red-900 hover:bg-red-800 text-white py-2.5 text-xs font-bold tracking-widest rounded-sm">上書きして復元する</button>
+                        <button type="button" onclick="window.cancelImport(event)" class="flex-1 bg-[#2A241E] text-gray-300 py-2.5 text-xs font-bold tracking-widest rounded-sm">やめる</button>
+                    </div>
+                </div>
+                <p id="save-msg" class="text-yellow-200 text-xs leading-relaxed mt-4"></p>
             </div>
         </div>
 
@@ -1127,6 +1161,8 @@ body.pc-on #ranking-screen { font-size: 15px; }
         // v45: 大成功・超成功ティア判定。成功時は window.__tier (1=成功/2=大成功/3=超成功) と __tierStat を記録する
         const TIER_SATURATION = { virtue: 93, strategy: 100, valor: 113, luck: 200 };
         function critRoll(stat, p) {
+            // v48.14: 運の上乗せ。運判定以外の全判定に、運×0.0005 を薄く加算する（基礎確率＋高運の上乗せ）
+            if (stat !== 'luck') p += (state.luck || 0) * 0.0005;
             const r = Math.random();
             window.__tier = 0; window.__tierStat = null;
             if (r >= p) return false;
@@ -1194,12 +1230,12 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     } },
                     { text: '命を懸ける見世物など阿呆らしいと立ち去る', condition: () => true, hint: 'スルー', effect: () => ({ hp: 0, log: '熱狂する歓声を背に、日々の生活へと戻っていった。' }) }
                 ] },
-            { id: 'red_light_district', mode: ['normal'], weight: 15, condition: (s) => s.money >= 100 && s.age >= 18,
+            { id: 'red_light_district', mode: ['normal'], weight: 8, condition: (s) => s.money >= 100 && s.age >= 18,
                 title: '【遊興】遊郭の誘惑', text: '夜の町で三味線の音が響き、艶やかな遊女たちが袖を引く。莫大な銭を積めば、極上の夢を見ることができるが…。',
                 choices: [
                     { text: '【銭100文】一晩豪遊し、浮世の憂さを晴らす', condition: () => true, hint: '大回復か、ぼったくりか', effect: (s) => { 
                         s.money = Math.max(0, s.money - 100); // v11: direct subtraction also clamped at 0
-                        if (Math.random() < 0.7) { s.luck += 10; return { hp: 40, money: 0, log: '金に物を言わせて一夜の夢を買い、心身共にリフレッシュした！' }; }
+                        if (Math.random() < Math.min(0.9, 0.7 + (s.luck * 0.0015))) { s.luck += 20; return { hp: 70, money: 0, log: '金に物を言わせて一夜の夢を買い、心身共にリフレッシュした！' }; } // v48.13: 基礎70%に運×0.0015を上乗せ（上限90%）／v48.14: 報酬を 体力+70・運+20 に増量
                         else { let lost = Math.min(s.money, 150); return { hp: -15, money: -lost, log: '悪女に結託した用心棒に酒を盛られ、身ぐるみ剥がされた挙句に路地裏に叩き出された……！' }; }
                     } },
                     { text: '乱世に色恋など不要と立ち去る', condition: () => true, hint: '回避', effect: () => ({ hp: 0, log: '遊女の誘惑を振り切り、真っ暗な家へ戻った。' }) }
@@ -1277,10 +1313,109 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 choices: [
                     { text: '【武功50】決死の単騎駆けで信玄の首に挑む！', condition: (s) => s.valor >= 50, hint: '大成功か即死', effect: (s) => {
                         s.flags.metShingen = true;
-                        if (Math.random() < 0.3) { s.valor += 100; s.virtue += 20; recordChronology("武田信玄の本陣へ単騎駆けし生還"); return { hp: -30, log: '信玄の鉄扇に防がれはしたものの、その凄まじい武勇は敵味方全軍に轟き渡った！' }; }
+                        // v48.12: 成功率を固定30%から 武功・運 連動に変更（0.2 + 武功×0.002 + 運×0.002、上限85%）
+                        if (critRoll('valor', Math.min(0.85, 0.2 + (s.valor * 0.002) + (s.luck * 0.002)))) { s.valor += 100; s.virtue += 20; recordChronology("武田信玄の本陣へ単騎駆けし生還"); return { hp: -30, log: '信玄の鉄扇に防がれはしたものの、その凄まじい武勇は敵味方全軍に轟き渡った！' }; }
                         else { s.deathCause = 'battle'; return { hp: -999, log: '無謀にも突撃したが、無敵の赤備え騎馬隊に側面を突かれ凄絶な戦死を遂げた……。' }; }
                     }},
+                    { text: '【武功30】一太刀だけ交えて、命あって退く', condition: (s) => s.valor >= 30, hint: '武功で判定・失敗でも戦死なし', effect: (s) => {
+                        s.flags.metShingen = true; s.deathCause = 'battle';
+                        if (critRoll('valor', Math.min(0.9, 0.45 + (s.valor * 0.002) + (s.luck * 0.001)))) { s.valor += 30; const t = window.__tier || 1; if (t >= 3) recordChronology("信玄の鉄扇と火花を散らし、全軍の目を奪う"); else recordChronologyVariant(["赤備えと一太刀交え、信玄本陣の前から生還する", "甲斐の虎の前で一太刀入れ、命あって退く", "信玄本陣に迫り、一槍交えて引き返す"]); return { hp: -15, money: 100, log: t >= 3 ? '駆け寄る赤備えを薙ぎ払い、信玄の鉄扇と火花を散らした！その武勇に、敵味方双方からどよめきが上がった。' : '赤備えの只中で一太刀交え、傷を負いながらも命あって本陣を離脱した。その名は戦場に知れ渡った。' }; }
+                        return { hp: -25, log: '一太刀入れる間もなく赤備えに弾き返され、傷だらけで転がり出た。だが、命は繋いだ。' };
+                    }},
                     { text: '恐れをなして陣を引いて逃げ出す', condition: () => true, hint: '体力温存・悪逆上昇', effect: (s) => { s.flags.metShingen = true; s.karma+=15; s.valor-=10; return { hp: 0, log: '虎の放つ圧倒的な威圧感に足がすくみ、武士の誇りを投げ捨てて一目散に逃亡した。' }; } }
+                ] },
+            // v48.14: 領地（所属家）イベント。前提＝領主あり（当主に仕える/領民）・定住不問・家族不問。当主イベントは1人生1回
+            { id: 'takeda_council', mode: ['normal'], weight: 15, condition: (s) => s.faction && s.faction.id === 'takeda' && ['ashigaru', 'bushou', 'ninja'].includes(s.classInfo.id) && !s.flags.metTakedaLord,
+                title: '【軍議】信玄の采配', text: '本陣の軍議に列席を許された。信玄は地図を広げ、居並ぶ者たちの顔を、静かに見回している。',
+                choices: [
+                    { text: '【知略40】軍議の席で献策する', condition: (s) => s.strategy >= 40, hint: '知略で判定', effect: (s) => { s.flags.metTakedaLord = true; if (critRoll('strategy', 0.45 + (s.strategy * 0.003))) { s.strategy += 20; recordChronology("信玄の軍議で献策が採用される"); return { money: 100, hp: 0, log: '恐る恐る進言すると、信玄は小さく頷いた。「悪くない」。その一言で、重臣たちの見る目が変わった。' }; } return { hp: -5, log: '献策は静かに退けられた。だが、虎の前で口を開いた度胸だけは、誰の目にも留まったはずだ。' }; } },
+                    { text: '【武功50】先鋒を志願する', condition: (s) => s.valor >= 50, hint: '武功で判定・負傷リスク', effect: (s) => { s.flags.metTakedaLord = true; s.deathCause = 'battle'; if (critRoll('valor', 0.45 + (s.valor * 0.003))) { s.valor += 25; recordChronology("信玄の軍で先鋒を務め、手柄を立てる"); return { money: 80, hp: -15, log: '風林火山の旗の下、先鋒として敵陣を切り崩した！信玄直々の感状を賜った。' }; } return { hp: -30, log: '先鋒の激戦で深手を負った。だが、虎の軍に弱兵なし。その意地だけは見せた。' }; } },
+                    { text: '末席で静かに控える', condition: () => true, hint: '人徳上昇・小回復', effect: (s) => { s.flags.metTakedaLord = true; s.virtue += 10; return { hp: 5, log: '分をわきまえ、末席で控えた。軍議の進め方そのものが、得難い学びとなった。' }; } }
+                ] },
+            { id: 'uesugi_gi', mode: ['normal'], weight: 15, condition: (s) => s.faction && s.faction.id === 'uesugi' && ['ashigaru', 'bushou', 'ninja', 'monk'].includes(s.classInfo.id) && !s.flags.metUesugiLord,
+                title: '【越後】謙信の義', text: '宿敵・武田へ塩を送ることが決まった。義を重んじる謙信の命に、陣中が静まり返る。',
+                choices: [
+                    { text: '塩送りの隊に同行する', condition: () => true, hint: '人徳で判定', effect: (s) => { s.flags.metUesugiLord = true; if (critRoll('virtue', 0.5 + (s.virtue * 0.003))) { s.virtue += 25; recordChronology("敵に塩を送る義挙に立ち会う"); return { hp: 0, log: '塩を届け終えた帰り道、武田の民が頭を下げた。義は、敵味方を超えて届くのだと知った。' }; } return { hp: -10, log: '山道で落ち武者狩りに遭い、塩の多くは奪われた。義は、力なくしては届かない。' }; } },
+                    { text: '【武功40】毘沙門天に祈り、先陣を切る', condition: (s) => s.valor >= 40, hint: '武功で判定・負傷リスク', effect: (s) => { s.flags.metUesugiLord = true; s.deathCause = 'battle'; if (critRoll('valor', 0.45 + (s.valor * 0.003))) { s.valor += 25; recordChronology("謙信の先陣で武名を上げる"); return { money: 80, hp: -15, log: '毘沙門天の旗を背に先陣を駆けた！越後の龍の軍は、今日も義によって強い。' }; } return { hp: -30, log: '先陣で深手を負い、担がれて戻った。義の戦いは、綺麗事だけでは済まなかった。' }; } },
+                    { text: '謙信の酒宴に陪席する', condition: () => true, hint: '運上昇・小回復', effect: (s) => { s.flags.metUesugiLord = true; s.luck += 10; return { hp: 10, log: '酒豪の謙信に酌をして、毘沙門天の加護を説かれた。杯の酒に、不思議な力が宿る気がした。' }; } }
+                ] },
+            { id: 'hojo_fuma', mode: ['normal'], weight: 15, condition: (s) => s.faction && s.faction.id === 'hojo' && ['ashigaru', 'bushou', 'ninja', 'peasant', 'merchant'].includes(s.classInfo.id) && !s.flags.metHojoLord,
+                title: '【小田原】風魔の影', text: '小田原の夜、風魔小太郎の忍び衆が影のように動いている。北条の「見えざる手」が、今夜も領国を守る。',
+                choices: [
+                    { text: '【忍者】風魔衆と共に敵城へ潜入する', condition: (s) => s.classInfo.id === 'ninja', hint: '悪逆と運で判定', effect: (s) => { s.flags.metHojoLord = true; if (critRoll('karma', 0.45 + (s.karma * 0.003) + (s.luck * 0.001))) { s.karma += 15; recordChronology("風魔衆と敵城に潜入し、機密を持ち帰る"); return { money: 200, hp: 0, log: '音もなく天守に忍び込み、兵糧の備蓄を示す帳面を持ち帰った。風魔の頭領が、静かに頷いた。' }; } return { hp: -25, log: '番兵に気づかれ、闇の中を命からがら逃げた。風魔の影になるには、まだ修行が足りない。' }; } },
+                    { text: '【武功40】小田原の守備に志願する', condition: (s) => s.valor >= 40, hint: '武功で判定・負傷リスク', effect: (s) => { s.flags.metHojoLord = true; s.deathCause = 'battle'; if (critRoll('valor', 0.45 + (s.valor * 0.003))) { s.valor += 20; recordChronology("小田原の守備で手柄を立てる"); return { hp: -10, log: '難攻不落と謳われる小田原の守りの一角を担い、寄せ手を退けた。氏政公の覚えもめでたい。' }; } return { hp: -20, log: '寄せ手との小競り合いで手傷を負った。だが小田原は、今日も落ちなかった。' }; } },
+                    { text: '氏康の検地と用水工事を手伝う', condition: () => true, hint: '人徳上昇・銭獲得', effect: (s) => { s.flags.metHojoLord = true; s.virtue += 15; return { money: 50, hp: 0, log: '善政で知られる氏康の検地を手伝った。領民の感謝の言葉が、何よりの褒美だった。' }; } }
+                ] },
+            { id: 'mori_teaching', mode: ['normal'], weight: 15, condition: (s) => s.faction && s.faction.id === 'mori' && ['ashigaru', 'bushou', 'ninja'].includes(s.classInfo.id) && !s.flags.metMoriLord,
+                title: '【安芸】元就の教え', text: '元就が若き家臣たちを集め、静かに語り始めた。あの「三本の矢」の教えを、直接聞ける機会は稀である。',
+                choices: [
+                    { text: '【知略40】教えの真意を問い、兵法を学ぶ', condition: (s) => s.strategy >= 40, hint: '知略で判定', effect: (s) => { s.flags.metMoriLord = true; if (critRoll('strategy', 0.45 + (s.strategy * 0.003))) { s.strategy += 25; recordChronology("元就から三本の矢の教えを直々に受ける"); return { hp: 0, log: '一本の矢は容易く折れても、三本束ねれば折れない。その真意を問う姿勢を、元就は深く頷いて褒めた。' }; } s.virtue += 5; return { hp: 0, log: '問いは稚拙と笑われたが、元就は「結束は力なり」とだけ答えた。その言葉が、胸に残った。' }; } },
+                    { text: '【武功40】厳島の故事に倣い、水際の戦いを志願する', condition: (s) => s.valor >= 40, hint: '武功で判定・負傷リスク', effect: (s) => { s.flags.metMoriLord = true; s.deathCause = 'battle'; if (critRoll('valor', 0.45 + (s.valor * 0.003))) { s.valor += 20; recordChronology("厳島に倣う水際の戦いで手柄を立てる"); return { money: 100, hp: -15, log: '厳島の合戦さながら、水際で敵を迎え撃ち大戦果！元就の軍配が、静かに頷いた。' }; } return { hp: -25, log: '波打ち際の激戦で深手を負った。故事の再現は、生易しいものではなかった。' }; } },
+                    { text: '一族の結束を支える裏方に徹する', condition: () => true, hint: '人徳上昇・銭獲得', effect: (s) => { s.flags.metMoriLord = true; s.virtue += 20; return { money: 50, hp: 0, log: '隆元・元春・隆景の三兄弟を支える裏方に徹した。束ねられた矢の、結び目となる働きだった。' }; } }
+                ] },
+            { id: 'shimazu_tsuri', mode: ['battle'], weight: 15, condition: (s) => s.faction && s.faction.id === 'shimazu' && ['ashigaru', 'bushou'].includes(s.classInfo.id) && !s.flags.metShimazuLord,
+                title: '【薩摩】釣り野伏せ', text: '島津の必勝戦法「釣り野伏せ」の配置が下された。囮が敵を誘い込み、本隊が退路を断つ。',
+                choices: [
+                    { text: '【武功50】囮役を買って出る', condition: (s) => s.valor >= 50, hint: '武功と運で判定・大負傷リスク', effect: (s) => { s.flags.metShimazuLord = true; s.deathCause = 'battle'; if (critRoll('valor', Math.min(0.85, 0.4 + (s.valor * 0.003) + (s.luck * 0.001)))) { s.valor += 40; recordChronology("釣り野伏せの囮を務め、大金星を挙げる"); return { money: 120, hp: -20, log: '囮として敵を引きつけ、伏兵の本隊が退路を断った！薩摩隼人の戦いが、戦場を制した。' }; } return { hp: -40, log: '囮の役は苛烈だった。敵に囲まれ、満身創痍で味方の陣へ転がり込んだ。だが、命は繋いだ。' }; } },
+                    { text: '本隊に伏せ、退路を断つ側に回る', condition: () => true, hint: '武功・知略上昇', effect: (s) => { s.flags.metShimazuLord = true; s.valor += 15; s.strategy += 10; return { hp: -5, log: '息を殺して伏せ続け、退く敵の側面を突いた。釣り野伏せの仕上げは、本隊の忍耐にある。' }; } },
+                    { text: '示現流の稽古に励む', condition: () => true, hint: '武功上昇', effect: (s) => { s.flags.metShimazuLord = true; s.valor += 10; return { hp: -5, log: '「チェスト！」の掛け声と共に、一の太刀に全てを込める示現流の稽古に汗を流した。' }; } }
+                ] },
+            // v48.14: 戦場モード専用イベント追加。前提＝領主不問（従軍中）・定住なし（戦場）・家族不問
+            { id: 'battle_stray_horse', mode: ['battle'], weight: 20, condition: () => true,
+                title: '【戦場】主を失った名馬', text: '戦場の片隅で、立派な鞍を背負った名馬が、主を失って彷徨っている。',
+                choices: [
+                    { text: 'そっと近づき、手綱を取る', condition: () => true, hint: '運で判定', effect: (s) => { if (critRoll('luck', 0.45 + (s.luck * 0.003))) { s.valor += 10; recordChronology("戦場で名馬を捕らえ、愛馬とする"); return { money: 150, hp: 0, log: '名馬はあなたの手をじっと見つめ、静かに手綱を取らせた。この馬となら、どこまでも駆けられる気がする。' }; } return { hp: -20, log: '後ろ脚で蹴り飛ばされた。名馬は気性も一流だった。' }; } },
+                    { text: '【武功40】力づくで御する', condition: (s) => s.valor >= 40, hint: '武功で判定', effect: (s) => { s.deathCause = 'battle'; if (critRoll('valor', 0.45 + (s.valor * 0.003))) { s.valor += 20; return { money: 100, hp: 0, log: '暴れる名馬を力でねじ伏せ、手懐けた。その腕前に、見ていた兵たちがどよめいた。' }; } return { hp: -25, log: '振り落とされ、泥にまみれた。馬は戦場の彼方へ駆け去った。' }; } },
+                    { text: '見逃して持ち場に戻る', condition: () => true, hint: '小回復', effect: (s) => { return { hp: 5, log: '名馬には目もくれず持ち場に戻った。戦場では、欲が命取りになる。' }; } }
+                ] },
+            { id: 'battle_rearguard', mode: ['battle'], weight: 20, condition: () => true,
+                title: '【戦場】撤退戦の殿', text: '戦況は悪化し、本隊の撤退が決まった。誰かが殿（しんがり）を務めねば、全員が死ぬ。',
+                choices: [
+                    { text: '【武功50】殿を買って出る', condition: (s) => s.valor >= 50, hint: '武功と運で判定・大負傷リスク', effect: (s) => { s.deathCause = 'battle'; if (critRoll('valor', Math.min(0.85, 0.4 + (s.valor * 0.003) + (s.luck * 0.001)))) { s.valor += 40; recordChronology("撤退戦で殿を務め、本隊を生還させる"); return { money: 150, hp: -25, log: '最後の一兵になるまで踏みとどまり、本隊は無事に退き切った！戦場に、あなたの名が鳴り響いた。' }; } return { hp: -45, log: '殿の務めは苛烈を極めた。満身創痍で味方の陣に転がり込んだが、本隊は救われた。' }; } },
+                    { text: '本隊と共に退く', condition: () => true, hint: '武功上昇・体力減少', effect: (s) => { s.valor += 10; return { hp: -10, log: '秩序を保って退いた。殿の兵たちの無事を、ただ祈った。' }; } },
+                    { text: '誰より先に逃げる', condition: () => true, hint: '悪逆上昇・武功低下', effect: (s) => { s.karma += 15; s.valor -= 10; return { hp: 0, log: '生き残ることが先決だった。だが、背中に刺さる同胞の視線は、長く残った。' }; } }
+                ] },
+            { id: 'battle_field_medic', mode: ['battle'], weight: 20, condition: () => true,
+                title: '【戦場】野戦治療の手伝い', text: '野戦の治療所は負傷者で溢れている。人手が足らず、呻き声が絶えない。',
+                choices: [
+                    { text: '負傷者の治療を手伝う', condition: () => true, hint: '人徳で判定', effect: (s) => { if (critRoll('virtue', 0.45 + (s.virtue * 0.003))) { s.virtue += 25; recordChronology("野戦の治療所で多くの命を救う"); return { hp: 10, log: '水を飲ませ、包帯を巻き続けた。助かった兵たちが、涙ながらに手を合わせた。' }; } s.virtue += 10; return { hp: -5, log: '手伝いに徹したが、救えない命も多かった。それでも、誰もあなたを責めはしなかった。' }; } },
+                    { text: '【銭50文】自分の治療を優先してもらう', condition: (s) => s.money >= 50, hint: '銭消費・大回復', effect: (s) => { return { money: -50, hp: 35, log: '銭の力で順番を早めてもらい、確かな治療を受けた。戦場では、金もまた命綱であった。' }; } },
+                    { text: '持ち場に戻り、戦況を見極める', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 10; return { hp: 0, log: '治療所の喧騒を離れ、高所から戦況を見極めた。次の手は、もう見えている。' }; } }
+                ] },
+            { id: 'battle_fallen_warrior', mode: ['battle'], weight: 20, condition: () => true,
+                title: '【戦場】落ち武者の行く末', text: '敗走する敵の若い兵が、泥の中に倒れている。震える手で、懐を押さえている。',
+                choices: [
+                    { text: '討ち取って武名を上げる', condition: () => true, hint: '武功で判定', effect: (s) => { s.deathCause = 'battle'; if (critRoll('valor', 0.5 + (s.valor * 0.003))) { s.valor += 20; return { money: 80, hp: 0, log: '情け容赦なく討ち取った。戦場では、それが正しさであり、武名となった。' }; } return { hp: -20, log: '最期の力で放たれた小刀が、深く刺さった。油断が、命取りになるところだった。' }; } },
+                    { text: '情けをかけて見逃す', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 20; return { hp: 0, log: '水筒を置いて立ち去った。その背中を、若い兵の目がいつまでも追っていた。' }; } },
+                    { text: '【悪逆30】懐を漁ってから見逃す', condition: (s) => s.karma >= 30, hint: '悪逆上昇・銭獲得', effect: (s) => { s.karma += 15; return { money: 120, hp: 0, log: '形見らしき小判を懐に収め、命だけは取らずに置いた。情けと呼ぶには、少し汚れた仕草だった。' }; } }
+                ] },
+            { id: 'battle_envoy', mode: ['battle'], weight: 20, condition: () => true,
+                title: '【戦場】敵からの降伏の使者', text: '敵城から、白旗を掲げた降伏の使者がやって来た。開城交渉の席に、あなたも列席を命じられた。',
+                choices: [
+                    { text: '【知略40】交渉を取り仕切る', condition: (s) => s.strategy >= 40, hint: '知略で判定', effect: (s) => { if (critRoll('strategy', 0.45 + (s.strategy * 0.003))) { s.strategy += 25; recordChronology("交渉で無血開城を果たす"); return { money: 150, hp: 0, log: '一滴の血も流さず、城は開かれた。使者は深く一礼し、「あなたは軍師の器だ」と言い残した。' }; } return { hp: -10, log: '交渉は決裂寸前まで揉め、面目を失った。城攻めは、血で決着する他なくなった。' }; } },
+                    { text: '使者を斬って、徹底抗戦の士気を示す', condition: () => true, hint: '悪逆・武功上昇', effect: (s) => { s.karma += 15; s.valor += 10; return { hp: -10, log: '使者の首が、味方の鬨の声に変わった。だが、戦はさらに長引くことになる。' }; } },
+                    { text: '判断を上官に委ね、席を外す', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 10; return { hp: 0, log: '分不相応な席から退いた。交渉の行方は、上官たちに委ねられた。' }; } }
+                ] },
+            { id: 'battle_camp_gamble', mode: ['battle'], weight: 20, condition: () => true,
+                title: '【戦場】陣中の賭け事', text: '夜営の焚き火の周りで、足軽たちが小さな賭け事に興じている。',
+                choices: [
+                    { text: '【銭50文】丁半に張る', condition: (s) => s.money >= 50, hint: '運で判定', effect: (s) => { if (critRoll('luck', 0.45 + (s.luck * 0.003))) { s.luck += 10; return { money: 100, hp: 0, log: '「丁！」焚き火の周りがどよめいた。戦の前の、小さな大勝ちだった。' }; } return { money: -50, hp: 0, log: '「半！」張った銭は泡と消えた。だが流れの兵の夜は、これで明けていく。' }; } },
+                    { text: '胴元を買って出る', condition: () => true, hint: '銭獲得・悪逆上昇', effect: (s) => { s.karma += 5; return { money: 40, hp: 0, log: '胴元の取り分で、静かに儲けた。博打は、張るより回す方が堅い。' }; } },
+                    { text: '賭けに加わらず、見張りに立つ', condition: () => true, hint: '知略上昇・小回復', effect: (s) => { s.strategy += 10; return { hp: 5, log: '闇を見張る静かな夜だった。戦場の静けさが、かえって耳に残った。' }; } }
+                ] },
+            { id: 'battle_scout', mode: ['battle'], weight: 20, condition: () => true,
+                title: '【戦場】斥候の務め', text: '敵の配置を探る斥候が募られている。戻らぬ者も多い、危険な務めだ。',
+                choices: [
+                    { text: '【知略40】斥候として敵情を探る', condition: (s) => s.strategy >= 40, hint: '知略で判定', effect: (s) => { if (critRoll('strategy', 0.45 + (s.strategy * 0.003))) { s.strategy += 20; recordChronology("斥候として敵情を掴み、本隊の危機を救う"); return { money: 100, hp: 0, log: '敵の伏兵の配置まで掴んで戻った。その報告が、本隊の壊滅を救った。' }; } return { hp: -25, log: '敵の哨戒に見つかり、矢傷を負って這い戻った。報告は、命と引き換えの重さだった。' }; } },
+                    { text: '【忍者】単身で敵陣の深くへ潜る', condition: (s) => s.classInfo.id === 'ninja', hint: '悪逆で判定', effect: (s) => { if (critRoll('karma', 0.45 + (s.karma * 0.003))) { s.karma += 15; recordChronology("敵陣深くに潜り、軍略の機密を持ち帰る"); return { money: 180, hp: 0, log: '本陣の幕の影まで迫り、軍議の内容を持ち帰った。忍びの真価が問われる一夜だった。' }; } return { hp: -30, log: '番兵に気づかれ、深手を負って闇に紛れた。あと一歩のところだった。' }; } },
+                    { text: '定石通り、浅く探ってすぐ戻る', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 10; return { hp: 0, log: '無理はせず、見える範囲の敵情だけを持ち帰った。堅実な報告だった。' }; } }
+                ] },
+            { id: 'battle_dying_friend', mode: ['battle'], weight: 20, condition: () => true,
+                title: '【戦場】戦友の最期', text: '共に戦ってきた戦友が、深手を負って倒れている。最期の時が近い。',
+                choices: [
+                    { text: '傍らに座り、最期の言葉を聞く', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 20; recordChronology("戦友の最期を看取り、形見を預かる"); return { hp: 0, log: '戦友は故郷の話をしながら、静かに息を引き取った。その形見は、今もあなたの懐にある。' }; } },
+                    { text: '故郷の家族への文を代筆する', condition: () => true, hint: '人徳・知略上昇', effect: (s) => { s.virtue += 15; s.strategy += 5; return { hp: 0, log: '震える声を一文字ずつ拾い、文をしたためた。この文が届く頃、戦友はもういない。' }; } },
+                    { text: '短く別れを告げ、持ち場へ戻る', condition: () => true, hint: '武功上昇', effect: (s) => { s.valor += 10; return { hp: -5, log: '戦場は、感傷に浸る暇を与えてはくれなかった。だが、その顔は忘れない。' }; } }
                 ] },
             { id: 'battle_night_raid', mode: ['battle'], weight: 20, condition: () => true,
                 title: '【戦場】夜襲の影', text: '闇に紛れて敵の夜襲部隊が陣に忍び寄る気配がある。篝火の明かりが揺れ、草鞋の擦れる音が近づいてきた。',
@@ -1449,7 +1584,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 title: '【野望】独立の旗', text: '血の気の多い野心的な武士団が決起を迫ってきた。一介の家臣から大名へと飛躍する下剋上の時か。',
                 choices: [
                     { text: '【銭800文】豪族を買収し、無血開城で独立する', condition: (s) => s.money >= 800, hint: '「大名」へ昇格', effect: (s) => { s.flags.independence = true; s.classInfo = CLASSES.find(c => c.id === 'daimyo'); s.mode = 'normal'; s.faction = { id: 'custom', name: '独立勢力', color: '#B8860B' }; s.valor += 40; recordChronology("下剋上を果たし大名となる"); return { money: -800, hp: 0, log: '圧倒的な資金力で旧主を追い出し、己の城を持った大名の誕生だ！' }; } },
-                    { text: '【武力蜂起】主家に反旗を翻す！（成功率50%）', condition: () => true, hint: '成功か即死', effect: (s) => {
+                    { text: '【武力蜂起】主家に反旗を翻す！', condition: () => true, hint: '知略で判定・成功か即死', effect: (s) => {
                         s.flags.independence = true;
                         if (critRoll('strategy', 0.5 + (s.strategy * 0.005))) { s.classInfo = CLASSES.find(c => c.id === 'daimyo'); s.mode = 'normal'; s.faction = { id: 'custom', name: '独立勢力', color: '#B8860B' }; s.valor += 50; recordChronology("武力による下剋上を果たし大名となる"); return { money: 200, hp: -20, log: '激戦の末に主家の本陣を打ち破り、完全なる独立を成し遂げた！' }; }
                         else { s.deathCause = 'execution'; return { hp: -999, log: '謀反の計画は脆くも崩れ、捕縛ののち無惨に斬首された……。' }; }
@@ -1757,7 +1892,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 choices: [
                     { text: '慎重に見分け、確かなものだけ摘む', condition: () => true, hint: '小回復', effect: (s) => { return { hp: 6, log: '毒のあるものを丁寧に除き、山の恵みを鍋にした。慎ましいが、身体に染みる味だった。' }; } },
                     { text: '構わず腹いっぱい頬張る', condition: () => true, hint: '大回復か中毒かは運次第', effect: (s) => {
-                        if (Math.random() < 0.5) { return { hp: 16, log: 'これぞ山のご馳走！腹も心も満たされ、活力が漲ってきた。野山の神に感謝だ。' }; }
+                        if (Math.random() < Math.min(0.85, 0.5 + (s.luck * 0.0015))) { return { hp: 16, log: 'これぞ山のご馳走！腹も心も満たされ、活力が漲ってきた。野山の神に感謝だ。' }; } // v48.13: 基礎50%に運×0.0015を上乗せ（上限85%）
                         return { hp: -32, log: '…やはり毒キノコが混じっていた。腹を抱えて転げ回り、死ぬかと思った。命あっての物種とはこのことだ。' };
                     } }
                 ] },
@@ -2338,6 +2473,37 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '静かに筆を取り、辞世の句を詠む', condition: () => true, hint: '運上昇', effect: (s) => { s.flags.jisei58 = true; s.luck += 20; recordChronology("辞世の句を詠む"); return { hp: 0, log: '震える手で筆を執り、生涯のすべてを一句に込めた。心が澄み渡っていく。' }; } },
                     { text: '生涯を振り返り、家訓を残す', condition: () => true, hint: '人徳上昇', effect: (s) => { s.flags.jisei58 = true; s.virtue += 15; recordChronology("後世のために家訓を残す"); return { hp: 0, log: '己の成功も失敗も余さず書き記し、後世への戒めとした。' }; } },
                     { text: '「まだ死なん！」と筆をへし折る', condition: () => true, hint: '武功上昇・体力小減少', effect: (s) => { s.flags.jisei58 = true; s.valor += 15; recordChronology("辞世を拒み、現役にこだわる"); return { hp: -10, log: '縁起でもないと筆をへし折った。老いてなお盛んな気力に、周囲は呆れつつも舌を巻いた。' }; } }
+                ] },
+            // v48.16: 高齢期の節目イベント（3前提：領主不問・定住不問・家族不問。年齢とともに報酬は増える）
+            { id: 'kanreki_60', mode: ['normal'], weight: 100, condition: (s) => s.age >= 60 && !s.flags.kanreki60,
+                title: '【還暦】生まれ直しの歳', text: '干支が一巡りし、生まれた年の暦に戻る還暦を迎えた。この戦国の世で六十年を生き抜く者は稀だ。周囲の人々が、あなたの長寿を祝おうと集まってきた。', choices: [
+                    { text: '祝宴を開き、人々に振る舞う', condition: () => true, hint: '人徳上昇・体力回復', effect: (s) => { s.flags.kanreki60 = true; s.virtue += 20; recordChronology("還暦を迎え、祝宴を開く"); return { hp: 15, log: 'ささやかな宴だったが、集まった人々の笑顔が何よりの贈り物だった。六十年分の生が、静かに報われた気がした。' + (s.flags.sukanpin ? '棍棒一本の素寒貧にも、こんな日が来るとは。' : '') }; } },
+                    { text: '生まれ直しの覚悟で、新たなことに挑戦する', condition: () => true, hint: '運上昇', effect: (s) => { s.flags.kanreki60 = true; s.luck += 20; recordChronology("還暦を迎え、新たな挑戦を始める"); return { hp: 0, log: '暦が生まれ直るなら、自分も生まれ直せばいい。老いた胸に、新しい火が灯った。' + (s.flags.sukanpin ? 'まだまだ棍棒は置けそうにない。' : '') }; } },
+                    { text: '静かに先祖の墓に詣でる', condition: () => true, hint: '知略上昇・体力小回復', effect: (s) => { s.flags.kanreki60 = true; s.strategy += 15; recordChronology("還暦に先祖の墓へ詣でる"); return { hp: 10, log: '先に逝った者たちへ、まだこちらにいると報告した。六十年の歳月が、知恵の澱のように心に積もっている。' + (s.flags.sukanpin ? '墓前では身分の上下など関係ない。' : '') }; } }
+                ] },
+            { id: 'koki_70', mode: ['normal'], weight: 100, condition: (s) => s.age >= 70 && !s.flags.koki70,
+                title: '【古希】古来稀なる命', text: '「人生七十、古来稀なり」。七十歳を迎えた。かつて共に笑い、戦った者たちの多くは、もうこの世にいない。残された命の重さが、静かに肩にのしかかる。', choices: [
+                    { text: '若い者たちに生涯の知恵を説く', condition: () => true, hint: '人徳上昇', effect: (s) => { s.flags.koki70 = true; s.virtue += 25; recordChronology("古希を迎え、若き者へ知恵を説く"); return { hp: 0, log: '勝ち負けよりも、生き残ること、許すこと、人を残すこと。若い者たちは真剣な面持ちで聞き入っていた。' + (s.flags.sukanpin ? '素寒貧の説く知恵は、妙に腹に響くようだった。' : '') }; } },
+                    { text: '昔の戦地や旧友を訪ねる旅に出る', condition: () => true, hint: '運上昇・体力小回復', effect: (s) => { s.flags.koki70 = true; s.luck += 20; recordChronology("古希に昔を訪ねる旅に出る"); return { hp: 10, log: '変わり果てた戦地、年老いた旧友。積もる話に花が咲き、帰る頃には不思議と足取りが軽くなっていた。' + (s.flags.sukanpin ? '旅の供は、いつもの棍棒一本だった。' : '') }; } },
+                    { text: '若手と腕比べをし、老いの錆を見せる', condition: () => true, hint: '武功判定', effect: (s) => { s.flags.koki70 = true; if (critRoll('valor', Math.min(0.85, 0.4 + s.valor * 0.002 + s.luck * 0.001))) { s.valor += 25; recordChronology("古希にして若手との腕比べに勝つ"); return { hp: 0, log: '老いてなお牙は錆びていなかった。若手の腕を捻り上げると、周囲からどよめきが上がった。' }; } recordChronology("古希に若手との腕比べで敗れる"); return { hp: -15, log: 'さすがに若さには敵わなかった。だが最後まで崩れなかった体捌きに、若手たちは深く頭を下げた。' }; } }
+                ] },
+            { id: 'kiju_77', mode: ['normal'], weight: 100, condition: (s) => s.age >= 77 && !s.flags.kiju77,
+                title: '【喜寿】喜びの字の歳', text: '「喜」の字を崩して書けば、七十七。喜寿を迎えた。ここまで生き延びたこと自体が、もはや祝いであり、奇跡である。人々がささやかな祝いの品を持ち寄ってきた。', choices: [
+                    { text: '祝いの書をしたため、人々に配る', condition: () => true, hint: '知略上昇', effect: (s) => { s.flags.kiju77 = true; s.strategy += 25; recordChronology("喜寿を迎え、祝いの書をしたためる"); return { hp: 0, log: '一文字ごとに七十七年を込めた書は、受け取った者たちの家宝として大切にされた。' + (s.flags.sukanpin ? '素寒貧の書が家宝になるとは、世の中分からないものだ。' : '') }; } },
+                    { text: '集まった人々と、尽きぬ昔話に興じる', condition: () => true, hint: '人徳上昇', effect: (s) => { s.flags.kiju77 = true; s.virtue += 30; recordChronology("喜寿を迎え、人々と昔話に興じる"); return { hp: 0, log: '笑い声の絶えない一日だった。長く生きるとは、語れる物語が増えることなのだと知った。' + (s.flags.sukanpin ? '棍棒一本の物語が、子供たちには一番受けた。' : '') }; } },
+                    { text: '喜びを噛みしめ、静かに天に感謝する', condition: () => true, hint: '運上昇・体力回復', effect: (s) => { s.flags.kiju77 = true; s.luck += 25; recordChronology("喜寿を迎え、静かに天へ感謝する"); return { hp: 15, log: '幾度も死線をくぐり、それでもここにいる。それだけで十分だった。身体の奥から力が湧いてくるようだ。' + (s.flags.sukanpin ? '天は棍棒の男を見捨てなかったようだ。' : '') }; } }
+                ] },
+            { id: 'beiju_88', mode: ['normal'], weight: 100, condition: (s) => s.age >= 88 && !s.flags.beiju88,
+                title: '【米寿】八十八の実り', text: '「米」の字を分ければ八十八。米寿を迎えた。実りの歳に相応しく、あちこちから長老の知恵を乞う声がかかる。長い生が、いま静かに実を結ぼうとしている。', choices: [
+                    { text: '長老として、豊作と暮らしの知恵を授ける', condition: () => true, hint: '人徳上昇・御礼の銭', effect: (s) => { s.flags.beiju88 = true; s.virtue += 30; recordChronology("米寿を迎え、長老として知恵を授ける"); return { money: 50, hp: 0, log: '干ばつの年も洪水の年も知る者の言葉は重い。村々から御礼の品と銭が届けられた。' + (s.flags.sukanpin ? '野山で生き抜いた知恵が、ここに来て実を結んだ。' : '') }; } },
+                    { text: '祝いの米を皆に振る舞う', condition: (s) => s.money >= 100, hint: '銭100消費・人徳大上昇', effect: (s) => { s.flags.beiju88 = true; s.virtue += 35; recordChronology("米寿に祝いの米を振る舞う"); return { money: -100, hp: 0, log: '蔵の米を惜しみなく分け与えた。その夜、村じゅうの竈から湯気が立ちのぼる光景は、八十八年の生への何よりの答えだった。' + (s.flags.sukanpin ? '蓄えの少ない身でも、分け合う心は一人前だった。' : '') }; } },
+                    { text: '米寿でも持ち場に立ち、働き続ける', condition: () => true, hint: '運上昇・体力回復', effect: (s) => { s.flags.beiju88 = true; s.luck += 25; recordChronology("米寿でも持ち場に立ち続ける"); return { hp: 20, log: '腰は曲がっても、手つきは衰えない。働く者の後ろ姿に、若い者たちが静かに頭を垂れた。' + (s.flags.sukanpin ? '棍棒を杖に、今日も持ち場へ向かった。' : '') }; } }
+                ] },
+            { id: 'hyakuju_100', mode: ['normal'], weight: 100, condition: (s) => s.age >= 100 && !s.flags.hyakuju100,
+                title: '【百寿】百年の生', text: '百歳。一世紀を生きた。生まれた頃に天下を争った大名たちは、もはや物語の中の存在だ。あなた自身が、歩く歴史であり、生ける伝説となっている。', choices: [
+                    { text: '百年の生涯を書物に残す', condition: () => true, hint: '知略大上昇', effect: (s) => { s.flags.hyakuju100 = true; s.strategy += 50; recordChronology("百寿を迎え、百年の生涯を書物に残す"); return { hp: 0, log: '乱世の始まりから今日まで、見てきた全てを書き記した。その書は、後の世に何度も写され読み継がれることになる。' + (s.flags.sukanpin ? '棍棒一本、百年。書けばこれほど面白い生涯もない。' : '') }; } },
+                    { text: '生ける伝説として、人々の相談に乗る', condition: () => true, hint: '人徳大上昇', effect: (s) => { s.flags.hyakuju100 = true; s.virtue += 50; recordChronology("百寿を迎え、生ける伝説となる"); return { hp: 0, log: '恋の悩みから戦の是非まで、あらゆる相談が持ち込まれた。百年の重みの前では、どんな争いも小さく見えるという。' + (s.flags.sukanpin ? '素寒貧の百年は、誰の生涯よりも重かった。' : '') }; } },
+                    { text: '次の百年へ、静かに歩を進める', condition: () => true, hint: '運大上昇', effect: (s) => { s.flags.hyakuju100 = true; s.luck += 50; recordChronology("百寿を迎え、次の百年へ歩を進める"); return { hp: 0, log: '百年で満足するつもりはない。明日も明後日も、陽は昇る。杖をつきながら、あなたは静かに笑った。' + (s.flags.sukanpin ? '棍棒は百年の重さに、少しだけ軋んだ。' : '') }; } }
                 ] }
         ];
 
@@ -2544,15 +2710,29 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 return { inst: inst, grade: grade, weight: GACHA_GRADE_WEIGHTS[grade] };
             }).filter(x => x !== null);
         };
+        // v48.17: 宝籤の天井。未所持が出ないまま4回引いた後、次の1回（通算5回目）は未所持からのみ抽選する。
+        const GACHA_PITY_MAX = 5;
+        window.__gachaPityCount = function() { const v = parseInt(localStorage.getItem('sengoku_gacha_pity') || '0', 10); return isNaN(v) || v < 0 ? 0 : v; };
+        window.__gachaPity = function() {
+            const pool = window.__gachaPool();
+            const owned = new Set((window.unlockedHeirlooms || []).map(h => h.id));
+            const unowned = pool.filter(x => !owned.has(x.inst.id)).length;
+            const count = window.__gachaPityCount();
+            return { count: count, remain: unowned > 0 ? Math.max(1, GACHA_PITY_MAX - count) : null, unowned: unowned };
+        };
         window.drawHeirloomGacha = function() {
             if ((window.currentReincarnationCount || 0) < GACHA_UNLOCK_COUNT) return null;
             if ((window.meisen || 0) < GACHA_PRICE) return null;
             const pool = window.__gachaPool();
             if (pool.length === 0) return null;
-            const totalWeight = pool.reduce((sum, x) => sum + x.weight, 0);
+            const ownedIds = new Set((window.unlockedHeirlooms || []).map(h => h.id));
+            const unownedPool = pool.filter(x => !ownedIds.has(x.inst.id));
+            let pity = window.__gachaPityCount();
+            const drawPool = (unownedPool.length > 0 && pity >= GACHA_PITY_MAX - 1) ? unownedPool : pool;
+            const totalWeight = drawPool.reduce((sum, x) => sum + x.weight, 0);
             let r = Math.random() * totalWeight;
-            let picked = pool[pool.length - 1];
-            for (const x of pool) { r -= x.weight; if (r <= 0) { picked = x; break; } }
+            let picked = drawPool[drawPool.length - 1];
+            for (const x of drawPool) { r -= x.weight; if (r <= 0) { picked = x; break; } }
 
             window.meisen -= GACHA_PRICE;
             const hl = picked.inst;
@@ -2569,6 +2749,9 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 window.meisen += amount;
                 result = { kind: 'convert', id: hl.id, name: hl.name, grade: picked.grade, amount: amount };
             }
+            if (result.kind === 'new') pity = 0;
+            else if (unownedPool.length > 0) pity = Math.min(pity + 1, GACHA_PITY_MAX - 1);
+            localStorage.setItem('sengoku_gacha_pity', String(pity));
             saveMetaProgress();
             window.updateStartScreenUI();
             return result;
@@ -2866,6 +3049,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                         <div>
                             <div class="font-bold text-gold text-sm">冥府の宝籤 <span class="text-[10px] text-gray-400 ml-1">家宝ガチャ</span></div>
                             <div class="text-xs text-gray-400 mt-1 pr-2">冥銭と引き換えに、運命の家宝を1つ授かる。既に所持している家宝が出た場合は、格に応じた冥銭へ自動で還元される。</div>
+                            ${(() => { const p = window.__gachaPity(); return p.remain !== null ? `<div class="text-xs text-yellow-200/80 mt-1">宝籤の天井まで あと${p.remain}回（続けて新しい家宝が出なければ、天井で必ず未所持の家宝が出る）</div>` : ''; })()}
                         </div>
                         <button id="gacha-draw-btn" class="shrink-0 bg-${canDraw ? 'yellow-700 hover:bg-yellow-600' : 'gray-800 text-gray-500'} text-white border border-${canDraw ? 'yellow-500' : 'gray-700'} px-3 py-1.5 rounded text-xs font-bold transition-colors" ${!canDraw ? 'disabled' : ''}>引く・300 冥銭</button>
                     </div>
@@ -3342,6 +3526,107 @@ body.pc-on #ranking-screen { font-size: 15px; }
         window.closeSupport = function(e) {
             if(e){ e.preventDefault(); e.stopPropagation(); }
             document.getElementById('support-screen').classList.add('hidden');
+        };
+
+        // v48.15: 記録の書き出し・読み込み（暗号化ファイル＋合言葉方式／Web Crypto AES-GCM）
+        window.openSave = function(e) {
+            if(e){ e.preventDefault(); e.stopPropagation(); }
+            document.getElementById('save-screen').classList.remove('hidden');
+        };
+        window.closeSave = function(e) {
+            if(e){ e.preventDefault(); e.stopPropagation(); }
+            document.getElementById('save-screen').classList.add('hidden');
+        };
+        const __saveB64enc = (bytes) => { let bin = ''; const CH = 0x8000; for (let i = 0; i < bytes.length; i += CH) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CH)); return btoa(bin); };
+        const __saveB64dec = (b64) => { const bin = atob(b64); const out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; };
+        window.__saveCollect = function() {
+            const data = {};
+            for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.indexOf('sengoku_') === 0) data[k] = localStorage.getItem(k); }
+            return data;
+        };
+        window.__saveApply = function(data) {
+            const remove = [];
+            for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.indexOf('sengoku_') === 0) remove.push(k); }
+            remove.forEach(k => localStorage.removeItem(k));
+            Object.keys(data).forEach(k => { if (k.indexOf('sengoku_') === 0 && typeof data[k] === 'string') localStorage.setItem(k, data[k]); });
+        };
+        const __saveKey = async (pass, salt) => {
+            const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+            return crypto.subtle.deriveKey({ name: 'PBKDF2', salt: salt, iterations: 150000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+        };
+        window.__saveEncrypt = async function(pass, dataObj) {
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const key = await __saveKey(pass, salt);
+            const payload = JSON.stringify({ app: 'sengoku-rinne', v: 1, exportedAt: new Date().toISOString(), data: dataObj });
+            const ct = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv }, key, new TextEncoder().encode(payload));
+            return JSON.stringify({ format: 'sengoku-rinne-save', v: 1, salt: __saveB64enc(salt), iv: __saveB64enc(iv), data: __saveB64enc(new Uint8Array(ct)) }, null, 2);
+        };
+        window.__saveDecrypt = async function(pass, text) {
+            const env = JSON.parse(text);
+            if (!env || env.format !== 'sengoku-rinne-save' || typeof env.data !== 'string') throw new Error('bad format');
+            const key = await __saveKey(pass, __saveB64dec(env.salt));
+            const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: __saveB64dec(env.iv) }, key, __saveB64dec(env.data));
+            const payload = JSON.parse(new TextDecoder().decode(pt));
+            if (!payload || payload.app !== 'sengoku-rinne' || !payload.data || typeof payload.data !== 'object') throw new Error('bad payload');
+            return payload;
+        };
+        let __savePending = null;
+        const __saveMsg = (t) => { document.getElementById('save-msg').textContent = t; };
+        window.exportSave = async function(e) {
+            if(e){ e.preventDefault(); e.stopPropagation(); }
+            if (!window.crypto || !crypto.subtle) { __saveMsg('この環境では暗号化が使えません（https接続で開いてください）。'); return; }
+            const p1 = document.getElementById('save-pass1').value, p2 = document.getElementById('save-pass2').value;
+            if (!p1 || p1.length < 6) { __saveMsg('合言葉は6文字以上にしてください。'); return; }
+            if (p1 !== p2) { __saveMsg('合言葉（確認）が一致しません。'); return; }
+            try {
+                const text = await window.__saveEncrypt(p1, window.__saveCollect());
+                document.getElementById('save-text').value = text;
+                const blob = new Blob([text], { type: 'text/plain' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob); a.download = 'sengoku-rinne-save.txt';
+                document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+                __saveMsg('書き出しました。ファイル（または上のテキストのコピー）を大切に保管し、合言葉も必ず控えてください。');
+            } catch (err) { __saveMsg('書き出しに失敗しました。もう一度お試しください。'); }
+        };
+        window.importSave = async function(e) {
+            if(e){ e.preventDefault(); e.stopPropagation(); }
+            if (!window.crypto || !crypto.subtle) { __saveMsg('この環境では暗号化が使えません（https接続で開いてください）。'); return; }
+            const pass = document.getElementById('save-load-pass').value;
+            if (!pass) { __saveMsg('合言葉を入力してください。'); return; }
+            let text = document.getElementById('save-text').value.trim();
+            const fileInput = document.getElementById('save-file');
+            if (fileInput.files && fileInput.files.length > 0) { try { text = (await fileInput.files[0].text()).trim(); } catch (err) { } }
+            if (!text) { __saveMsg('ファイルを選ぶか、記録テキストを貼り付けてください。'); return; }
+            try {
+                const payload = await window.__saveDecrypt(pass, text);
+                __savePending = payload.data;
+                const d = payload.data;
+                const nm = d['sengoku_player_name'] || '（名前なし）';
+                const rin = parseInt(d['sengoku_rinne_count'] || '0', 10) || 0;
+                const mei = parseInt(d['sengoku_meisen'] || '0', 10) || 0;
+                const cur = parseInt(localStorage.getItem('sengoku_rinne_count') || '0', 10) || 0;
+                let summary = `この記録を読み込みますか？<br>名前：${nm}／輪廻 ${rin}回／冥銭 ${mei}`;
+                if (rin < cur) summary += `<br><span class="text-red-400">※今の記録（輪廻 ${cur}回）より進んでいない記録です。上書きすると今の記録は失われます。</span>`;
+                document.getElementById('save-summary').innerHTML = summary;
+                document.getElementById('save-confirm').classList.remove('hidden');
+                __saveMsg('');
+            } catch (err) { __savePending = null; __saveMsg('読み込めませんでした。合言葉が違うか、記録が壊れています。今の記録には何も変更されていません。'); }
+        };
+        window.confirmImport = function(e) {
+            if(e){ e.preventDefault(); e.stopPropagation(); }
+            if (!__savePending) return;
+            window.__saveApply(__savePending);
+            __savePending = null;
+            __saveMsg('復元しました。画面を再読み込みします。');
+            setTimeout(() => location.reload(), 800);
+        };
+        window.cancelImport = function(e) {
+            if(e){ e.preventDefault(); e.stopPropagation(); }
+            __savePending = null;
+            document.getElementById('save-confirm').classList.add('hidden');
+            __saveMsg('読み込みをやめました。今の記録はそのままです。');
         };
 
         window.shareToX = function(isPremium) {
@@ -3826,7 +4111,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             const availableEvents = pool.filter(e => { if (e.condition && !e.condition(state)) return false; return true; });
             if (availableEvents.length === 0) availableEvents.push(EVENTS[0]);
 
-            const priorityEv = ['genpuku', 'aging_40', 'inherit_50', 'sukanpin_50', 'jisei_58'].map(id => availableEvents.find(e => e.id === id)).find(Boolean);
+            const priorityEv = ['genpuku', 'aging_40', 'inherit_50', 'sukanpin_50', 'jisei_58', 'kanreki_60', 'koki_70', 'kiju_77', 'beiju_88', 'hyakuju_100'].map(id => availableEvents.find(e => e.id === id)).find(Boolean);
             if (priorityEv) { presentEventChoices(priorityEv); saveCurrentRun(); return; }
 
             // v16: 戦場ルート優遇。戦場専用イベント（BATTLE_EVENTS）の重みを1.5倍にし、
@@ -3957,8 +4242,8 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 if (tier >= 2) for (let ci = chronBefore; ci < state.chronology.length; ci++) state.chronology[ci].text += (tier === 3 ? '【超成功】' : '【大成功】');
                 if (tier >= 2 && tierStat === 'virtue') { state.flags.bonds = state.flags.bonds || []; state.flags.bonds.push({ age: state.age, event: state.flags.currentEventTitle || '' }); }
                 let hpChg = res.hp || 0; const moneyChg = res.money || 0;
-                // v48.9: 運によるダメージ軽減（全イベント共通）。運100で-10%、最大-40%。即死級（-999以下）は対象外
-                if (hpChg < 0 && hpChg > -900) { const luckRate = Math.min(0.4, (state.luck || 0) * 0.001); if (luckRate > 0) hpChg = -Math.max(1, Math.round(-hpChg * (1 - luckRate))); }
+                // v48.9: 運によるダメージ軽減（全イベント共通）。v48.11で係数0.0015に強化：運100で-15%、最大-40%。即死級（-999以下）は対象外
+                if (hpChg < 0 && hpChg > -900) { const luckRate = Math.min(0.4, (state.luck || 0) * 0.0015); if (luckRate > 0) hpChg = -Math.max(1, Math.round(-hpChg * (1 - luckRate))); }
                 // v11: money never below 0; losses are clamped to current balance
                 let appliedMoneyChg = moneyChg < 0 ? -Math.min(state.money, -moneyChg) : moneyChg;
                 if (appliedMoneyChg > 0 && tier >= 2) appliedMoneyChg = Math.floor(appliedMoneyChg * (tier === 3 ? 3 : 1.5));
