@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="75%">
+      <stop offset="0%" stop-color="#241b0e"/>
+      <stop offset="55%" stop-color="#14100a"/>
+      <stop offset="100%" stop-color="#070503"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f7e08a"/>
+      <stop offset="45%" stop-color="#d9a83f"/>
+      <stop offset="100%" stop-color="#9a741f"/>
+    </linearGradient>
+    <linearGradient id="gold2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffeeb0"/>
+      <stop offset="100%" stop-color="#b98c26"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- 雲の渦 -->
+  <g fill="none" stroke="#3a2c14" stroke-width="10" opacity="0.7" stroke-linecap="round">
+    <path d="M40 330 Q 150 290 250 322 T 480 306"/>
+    <path d="M28 372 Q 160 336 268 362 T 492 350"/>
+    <path d="M60 150 Q 120 118 205 138"/>
+  </g>
+  <g fill="none" stroke="#5a431d" stroke-width="6" opacity="0.55" stroke-linecap="round">
+    <path d="M36 352 Q 150 316 258 344 T 484 330"/>
+    <path d="M300 120 Q 380 96 452 128"/>
+  </g>
+  <!-- 龍の環（ウロボロス） -->
+  <circle cx="256" cy="240" r="148" fill="none" stroke="url(#gold)" stroke-width="36"/>
+  <circle cx="256" cy="240" r="148" fill="none" stroke="#7c5f16" stroke-width="36" stroke-dasharray="7 13" opacity="0.55"/>
+  <circle cx="256" cy="240" r="126" fill="none" stroke="#f3d67b" stroke-width="3" opacity="0.8"/>
+  <circle cx="256" cy="240" r="170" fill="none" stroke="#8a6a1e" stroke-width="2.5" opacity="0.6"/>
+  <!-- 龍の頭（環の右上） -->
+  <g fill="url(#gold2)" stroke="#6e5312" stroke-width="3" stroke-linejoin="round">
+    <path d="M368 96 L402 62 L404 92 L436 84 L420 112 L442 128 L408 134 L398 162 L382 128 L356 122 Z"/>
+    <path d="M402 62 L388 30 L416 48 Z"/>
+  </g>
+  <circle cx="402" cy="104" r="5.5" fill="#5c430c"/>
+  <!-- 朱の印 -->
+  <g>
+    <rect x="392" y="392" width="76" height="76" rx="10" fill="#a31616"/>
+    <text x="430" y="452" font-family="'Hiragino Mincho ProN','Yu Mincho',serif" font-size="52" font-weight="bold" fill="#f7ead2" text-anchor="middle">輪</text>
+  </g>
+</svg>

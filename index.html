@@ -294,6 +294,17 @@ body.pc-on #gameover-screen .max-w-sm { max-width: 30rem !important; }
 body.pc-on #ranking-screen { font-size: 15px; }
 </style>
 <script data-goatcounter="https://mamyxmamy.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+    <!-- v48.9: PWA（ホーム画面に追加・アイコンはタイトルロゴの龍の輪） -->
+    <link rel="manifest" href="https://mamyxmamy.github.io/ranserinne/manifest.json">
+    <link rel="apple-touch-icon" href="https://mamyxmamy.github.io/ranserinne/apple-touch-icon.png">
+    <meta name="theme-color" content="#0d0a08">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="戦国人生絵巻">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <script>
+    if ('serviceWorker' in navigator && location.hostname === 'mamyxmamy.github.io') { navigator.serviceWorker.register('sw.js').catch(function(){}); }
+    </script>
 </head>
 <body>
     <!-- オープニング・スプラッシュ（v10追加：タイトル画面の前に筆文字タイトルを表示。独立スクリプトで自己完結） -->
@@ -357,7 +368,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.8</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.9</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -564,9 +575,9 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <button type="button" onclick="window.resetGame(event)" class="action-button-main w-full max-w-sm border-2 border-red-700 bg-red-950/80 hover:bg-red-900 text-white py-3.5 text-base font-bold tracking-widest rounded-sm transition-all active:scale-95 shadow-[0_0_15px_rgba(139,0,0,0.6)] z-50">次なる輪廻へ</button>
         </div>
 
-        <div id="premium-screen" class="hidden absolute inset-0 z-50 premium-bg flex flex-col items-center justify-center text-center overflow-hidden pointer-events-auto">
+        <div id="premium-screen" class="hidden absolute inset-0 z-50 premium-bg flex flex-col items-center text-center overflow-y-auto pointer-events-auto py-6">
             <div id="freeze-overlay" class="freeze-overlay"></div>
-            <div id="premium-content" class="z-20 w-full px-6 opacity-0 flex flex-col items-center pointer-events-auto">
+            <div id="premium-content" class="z-20 w-full px-6 opacity-0 flex flex-col items-center pointer-events-auto my-auto shrink-0">
                 <p class="text-sm sm:text-base text-yellow-200 mb-2 font-bold tracking-[0.3em] anim-slide-up" style="animation-delay: 2.0s;">人生六十年、化天のうちを比ぶれば</p>
                 <h2 class="text-5xl sm:text-6xl font-black text-golden mb-2 tracking-widest anim-slide-up" style="animation-delay: 2.6s;">大往生</h2>
                 <div class="w-full max-w-sm border-y border-gold/70 py-3 px-4 mb-3 bg-black/80 anim-slide-up backdrop-blur-md" style="animation-delay: 3.2s;">
@@ -3945,7 +3956,9 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 if (tier >= 2 && tierStat && typeof state[tierStat] === 'number') state[tierStat] += (tier === 3 ? 15 : 5);
                 if (tier >= 2) for (let ci = chronBefore; ci < state.chronology.length; ci++) state.chronology[ci].text += (tier === 3 ? '【超成功】' : '【大成功】');
                 if (tier >= 2 && tierStat === 'virtue') { state.flags.bonds = state.flags.bonds || []; state.flags.bonds.push({ age: state.age, event: state.flags.currentEventTitle || '' }); }
-                const hpChg = res.hp || 0; const moneyChg = res.money || 0;
+                let hpChg = res.hp || 0; const moneyChg = res.money || 0;
+                // v48.9: 運によるダメージ軽減（全イベント共通）。運100で-10%、最大-40%。即死級（-999以下）は対象外
+                if (hpChg < 0 && hpChg > -900) { const luckRate = Math.min(0.4, (state.luck || 0) * 0.001); if (luckRate > 0) hpChg = -Math.max(1, Math.round(-hpChg * (1 - luckRate))); }
                 // v11: money never below 0; losses are clamped to current balance
                 let appliedMoneyChg = moneyChg < 0 ? -Math.min(state.money, -moneyChg) : moneyChg;
                 if (appliedMoneyChg > 0 && tier >= 2) appliedMoneyChg = Math.floor(appliedMoneyChg * (tier === 3 ? 3 : 1.5));
@@ -4066,6 +4079,17 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 state.health = 50; state.flags.migawari = false; state.deathCause = '';
                 addLog(`<span class="text-purple-300 font-bold">【身代わり地蔵】懐に忍ばせていた地蔵が砕け散った！冥府の力により体力を50回復し、死の淵から奇跡的に生還する……！</span>`);
                 updateUI(); return true;
+            }
+
+            // v48.9: 強運の奇跡（1人生に1回）。老衰死は対象外。確率は運依存で最大30%
+            if (state.health <= 0 && state.deathCause !== 'oldage' && !state.flags.luckMiracleUsed) {
+                const miracleP = Math.min(0.3, (state.luck || 0) * 0.0015);
+                if (miracleP > 0 && Math.random() < miracleP) {
+                    state.flags.luckMiracleUsed = true; state.health = 1; state.deathCause = '';
+                    recordChronology("死の淵で強運に救われる");
+                    addLog('<span class="font-bold text-gold">【強運の奇跡】九死に一生！ 致命傷を負いながらも、運命の糸が寸前で繋ぎ止めた……！</span>');
+                    updateUI(); return true;
+                }
             }
 
             if (state.health <= 0) {
