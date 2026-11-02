@@ -368,7 +368,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.9</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 48.10</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -4523,9 +4523,14 @@ body.pc-on #ranking-screen { font-size: 15px; }
             });
             audio.src = src;
             bgmAudio = audio;
-            const p = audio.play();
-            if (p && typeof p.catch === 'function') {
-                p.catch(function() { bgmStarted = false; }); // 自動再生制限など。次のタップで再試行させる
+            if (document.hidden) {
+                // v48.10: バックグラウンドでは再生を始めない（画面復帰時に bgmResumeFromBackground が再開する）
+                bgmHiddenPaused = true;
+            } else {
+                const p = audio.play();
+                if (p && typeof p.catch === 'function') {
+                    p.catch(function() { bgmStarted = false; }); // 自動再生制限など。次のタップで再試行させる
+                }
             }
             bgmFadeTo(audio, BGM_VOLUME, 1200);
             if (old && old !== audio) bgmFadeOutAndPause(old);
@@ -4581,7 +4586,31 @@ body.pc-on #ranking-screen { font-size: 15px; }
             window.setSceneBGM(bgmScene);
         }
 
-        function initApp() { 
+        // v48.10: バックグラウンド再生の停止。画面が隠れたらBGMとファンファーレを止め、
+        // 画面に戻ったら（止めた分だけ）再開する。ユーザーが自分で止めた再生には干渉しない。
+        let bgmHiddenPaused = false;
+        let fanfareHiddenPaused = false;
+        function bgmPauseForBackground() {
+            if (bgmAudio && !bgmAudio.paused) { try { bgmAudio.pause(); } catch (e) {} bgmHiddenPaused = true; }
+            if (fanfareAudio && !fanfareAudio.paused) { try { fanfareAudio.pause(); } catch (e) {} fanfareHiddenPaused = true; }
+        }
+        function bgmResumeFromBackground() {
+            if (bgmHiddenPaused) {
+                bgmHiddenPaused = false;
+                if (bgmAudio && bgmStarted) { const p = bgmAudio.play(); if (p && typeof p.catch === 'function') p.catch(function() {}); }
+            }
+            if (fanfareHiddenPaused) {
+                fanfareHiddenPaused = false;
+                if (fanfareAudio) { const p = fanfareAudio.play(); if (p && typeof p.catch === 'function') p.catch(function() {}); }
+            }
+        }
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) bgmPauseForBackground(); else bgmResumeFromBackground();
+        });
+        window.addEventListener('pagehide', bgmPauseForBackground);
+        window.addEventListener('pageshow', bgmResumeFromBackground);
+
+        function initApp() {
             cacheElements();
             bgmUpdateButton();
             document.addEventListener('pointerdown', bgmEnsureStarted);
