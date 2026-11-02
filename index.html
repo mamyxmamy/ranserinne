@@ -374,7 +374,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 50.2</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 50.3</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -4244,7 +4244,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
 
                 addLog(`<span class="font-bold text-gray-500 mr-1">┗ 決断:</span><em class="text-gray-300">${choice.text.replace(/【.*?】/g, '')}</em><br>${res.log}${statTag}`, hpChg <= -25);
                 if (tier === 2) addLog('<span class="font-bold" style="color:#E03C31">【大成功】見事な冴えを見せた！</span>');
-                if (tier === 3) { addLog('<span class="font-bold text-gold">【超成功】天晴れ！神業のごとき冴えを見せた！</span>'); if (typeof window.playFanfareSE === 'function') window.playFanfareSE(); }
+                if (tier === 3) { addLog('<span class="font-bold text-gold">【超成功】天晴れ！神業のごとき冴えを見せた！</span>'); /* v50.3: 超成功のファンファーレ（大往生曲の流用）は廃止し、SE＋振動＋金の閃光に一本化。ファンファーレは宝籤の上位格のみ */ }
                 if (hpChg < 0 && appContainer) { appContainer.classList.remove('damage-flash'); void appContainer.offsetWidth; appContainer.classList.add('damage-flash'); }
                 // v50: 演出フック（SE＋金の閃光＋画面の揺れ）
                 if (window.__sePlay) {
