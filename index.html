@@ -368,7 +368,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 49</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 49.1</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -711,95 +711,70 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="flex-grow overflow-y-auto p-4 space-y-4 pb-8 text-gray-300 text-xs leading-relaxed">
                 <section>
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 乱世の歩き方（基本）</h3>
-                    <p>14歳で身分と領地を背負って生まれ落ち、寿命を迎えるか非業の死を遂げるまで生き抜くライフシミュレーションです。「歳月を進める」で時間が流れ、様々な事象や決断が訪れます。</p>
+                    <p>14歳で身分と領地を得て生まれ、寿命か非業の死までを生き抜くライフシミュレーション。「歳月を進める」で時間が流れ、決断の連続で人生が形作られます。死ぬと冥銭を得て、次の輪廻へ。</p>
                 </section>
 
                 <section>
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 15歳の元服と「素寒貧」</h3>
-                    <p class="mb-1">15歳を迎えると必ず【元服の儀】が発生し、自らの生き様（伸ばす能力）を選択できます。</p>
+                    <p class="mb-1">15歳で【元服の儀】が発生し、伸ばす能力を選びます。</p>
                     <ul class="list-disc pl-4 space-y-1 text-gray-400">
-                        <li><strong class="text-white">能力特化:</strong> 武力・知略・人徳・野心・強運を選び、能力を大幅強化して生き抜く。</li>
-                        <li><strong class="text-yellow-400">素寒貧（縛り道）:</strong> 全財産を捨て、拾った木の棍棒1本で挑む極限モード。選んだ時点で身分そのものが「素寒貧」となり、以後は出世や身分の変更が一切できず、最後まで素寒貧として生き抜くことになります。さらに、家宝・持込道具の加護は受けられず、元服の時点でその人生に与えられていた加護はすべて失われます。この状態で60歳の大往生を果たすと、専用の二つ名と伝説の家宝が刻まれます。</li>
+                        <li><strong class="text-white">能力特化:</strong> 武力・知略・人徳・野心・強運から1つを大幅強化。</li>
+                        <li><strong class="text-yellow-400">素寒貧（縛り道）:</strong> 全財産を捨て棍棒1本で生きる極限の道。身分は最後まで素寒貧のまま変わらず、家宝・持込道具の加護も受けられません。60歳の大往生で専用の二つ名と伝説の家宝が得られます。</li>
                     </ul>
                 </section>
 
                 <section>
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 五大能力値</h3>
                     <ul class="list-disc pl-4 space-y-1">
-                        <li><span class="text-red-300 font-bold">武功</span>: 合戦や御前試合で有利になり、手柄を立てやすくなります。</li>
-                        <li><span class="text-purple-300 font-bold">悪逆</span>: 業の深さ。非情な決断で上昇し、裏社会の道が開かれます。</li>
-                        <li><span class="text-blue-300 font-bold">知略</span>: 策謀や危機回避、商売の成否に影響します。</li>
-                        <li><span class="text-green-300 font-bold">人徳</span>: 人望の厚さ。高いと民や他者に窮地を救われることがあります。</li>
-                        <li><span class="text-yellow-300 font-bold">運</span>: 生死を分ける確率や、不意の奇跡を引き寄せます。</li>
+                        <li><span class="text-red-300 font-bold">武功</span>: 合戦・御前試合で有利。</li>
+                        <li><span class="text-purple-300 font-bold">悪逆</span>: 非情な決断で上がり、裏社会の道が開ける。</li>
+                        <li><span class="text-blue-300 font-bold">知略</span>: 策謀・危機回避・商売に影響。</li>
+                        <li><span class="text-green-300 font-bold">人徳</span>: 高いと窮地で人に救われることがある。</li>
+                        <li><span class="text-yellow-300 font-bold">運</span>: あらゆる判定を助け、受ける傷を軽くし、奇跡も起こす。</li>
                     </ul>
                 </section>
 
                 <section>
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 大成功と超成功</h3>
-                    <ul class="list-disc pl-4 space-y-1">
-                        <li><span class="font-bold" style="color:#E03C31">大成功</span>: 能力を試される場面で、ひときわ冴えた働きをすると大成功となり、得られる銭や能力の伸びが大きくなります。</li>
-                        <li><span class="text-gold font-bold">超成功</span>: 能力を極限まで高め抜いた者にだけ開かれる、さらに上の境地。金色の文字で示され、その事跡は年表にも刻まれます。育て切った能力があってこそ届く領域です。</li>
-                        <li>人徳で大成功・超成功を収めると、人々との縁が深まっていきます。</li>
-                    </ul>
-                </section>
-
-                <section>
-                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ PCでの遊び方</h3>
-                    <ul class="list-disc pl-4 space-y-1">
-                        <li>パソコンの広い画面では、左にステータス、右に物語が表示される専用レイアウトに切り替わります。</li>
-                        <li>キーボード操作：選択肢は数字キー（1〜9）、「歳月を進める」は Enter キーまたはスペースキーでも押せます。</li>
-                        <li>画面上の「表示」ボタンで、表示の自動切替／PC表示／スマホ表示を切り替えることもできます。</li>
-                    </ul>
+                    <p>能力判定で冴えた働きをすると<span class="font-bold" style="color:#E03C31">大成功</span>（報酬増）。能力を極めた者には<span class="text-gold font-bold">超成功</span>（金文字・年表に記録）も開かれます。人徳の大成功以上では、人との縁が深まります。</p>
                 </section>
 
                 <section>
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 身分と初期能力</h3>
-                    <p class="mb-1">五大能力値はどの身分でも0から始まります。身分によって異なるのは初期の体力と所持金のみです。ただし、武将は武功+20、忍者は知略+20・運+20、僧侶は人徳+30、公家は知略+20・人徳+10の加護を持って生まれます。</p>
-                    <ul class="list-disc pl-4 space-y-1 text-gray-400">
-                        <li>農民: 体力80／所持金5文</li>
-                        <li>足軽: 体力90／所持金15文</li>
-                        <li>商人: 体力70／所持金300文</li>
-                        <li>武将: 体力90／所持金150文</li>
-                        <li>忍者: 体力70／所持金30文</li>
-                        <li>僧侶: 体力80／所持金20文</li>
-                        <li>公家: 体力60／所持金100文</li>
-                        <li>大名: 体力100／所持金1000文</li>
-                        <li>野盗: 体力80／所持金0文</li>
-                        <li>浪人: 体力90／所持金0文</li>
-                        <li>素寒貧: 体力80／所持金0文</li>
-                    </ul>
-                    <p class="mt-1 text-gray-400">※大名・野盗・浪人・素寒貧は誕生時の抽選には含まれず、生涯の中での昇進・転落・選択によってのみなれる身分です。浪人への道は、主を失う時だけでなく、仕える身分が主を捨てる決断をした先にもあります。野盗への道は、追い詰められた者が山に活路を求めた先にあります。</p>
+                    <p class="mb-1">能力は全員0から。身分差は初期の体力・所持金と、生まれ持つ加護（武将＝武功+20／忍者＝知略+20・運+20／僧侶＝人徳+30／公家＝知略+20・人徳+10）のみです。</p>
+                    <p class="text-gray-400">農民 体力80・5文／足軽 90・15文／商人 70・300文／武将 90・150文／忍者 70・30文／僧侶 80・20文／公家 60・100文</p>
+                    <p class="mt-1 text-gray-400">※大名・野盗・浪人・素寒貧は生まれでは決まらず、人生の選択でのみなれる身分です。</p>
                 </section>
 
                 <section>
-                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 冥銭・商人・家宝ロスト</h3>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 冥銭・家宝・宝籤</h3>
                     <ul class="list-disc pl-4 space-y-1">
-                        <li><span class="text-purple-400 font-bold">冥銭と道具</span>: 死後に業に応じて獲得する通貨。冥府の商人で「身代わり地蔵」やステータス強化札などの持込道具（1回使い切り）と交換できます。</li>
-                        <li><span class="text-gold font-bold">継承家宝</span>: 特定条件で入手する永続強化品。<span class="text-red-400 font-bold">大往生（60歳到達）できずに非業の死を遂げると完全にロストします。</span></li>
-                        <li><span class="text-gold font-bold">家宝の被りと還元</span>: 既に所持している家宝が再び授けられた場合、所持数は増えず、代わりにその家宝の格に応じた冥銭へと還元されます。</li>
-                        <li><span class="text-purple-400 font-bold">冥府の宝籤（ガチャ）</span>: 輪廻を30回重ねると、冥府の商人のもとで「冥府の宝籤」が解放されます。1回300冥銭で家宝が1つ授けられ、既に所持している家宝が出た場合は格に応じた冥銭に還元されます。新しい家宝が続けて出なかった場合、5回目で必ず未所持の家宝が出ます（天井）。</li>
+                        <li><span class="text-purple-400 font-bold">冥銭</span>: 死後に得る通貨。冥府の商人で持込道具（1人生に1つ）と交換できます。</li>
+                        <li><span class="text-gold font-bold">家宝</span>: 条件を満たすと得る永続強化品。装備できる数は輪廻回数で増えます（10回で2つ、30回で3つ）。<span class="text-red-400 font-bold">非業の死（大往生以外）で失い</span>、被ると格に応じた冥銭に還元されます。</li>
+                        <li><span class="text-purple-400 font-bold">冥府の宝籤（ガチャ）</span>: 輪廻30回で解放、1回300冥銭で家宝を1つ授かります。新しい家宝が出ない日が続いても、5回目で必ず未所持が出ます（天井）。</li>
                     </ul>
                 </section>
 
                 <section>
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 絵巻図鑑と天下の番付</h3>
                     <ul class="list-disc pl-4 space-y-1">
-                        <li><span class="text-gold font-bold">絵巻図鑑</span>: これまで集めた「家宝」、迎えた「死因」、そして人生の生き様によって授かる「二つ名（全50種）」がコレクションされます。</li>
-                        <li><span class="text-gold font-bold">家宝の見方</span>: 所持中の家宝は名前・効果・来歴（フレーバー）がそのまま表示されます。過去に手に入れたものの今は所持していない家宝は、名前・効果・来歴と取得条件に加えて、ブロンズ色の「取得済」バッジと「輪廻の流れの中で失われた」の注記が付きます。一度も手に入れていない家宝は、名前が「？？？」と伏せられ、取得条件のみが表示されます。</li>
-                        <li><span class="text-yellow-400 font-bold">天下の番付</span>: 全国のプレイヤーと「長寿」「富国」「武功」、そして「悪逆」「知略」「人徳」「運」を競い合うオンラインランキングです。さらに、全能力値と享年・所持金から算出する総合成績で競う「総合」番付もあります。「最高記録」では名前ごとに最も優れた記録だけが表示され、「最近の記録」では新しい順にすべての記録が流れます。自分の名前の記録には「自分」の目印が付き、死亡時の結果画面では今回の記録が総合で何位に相当するかも知らされます。番付に載る名前は、初めて「乱世に堕ちる」を押したときに決める画面が出ます（決めた名前はタイトル画面からいつでも変更できます）。番付の記録をタップすると、登録時の能力値と生涯年表が見られます（年表は新しい記録のみ）。</li>
+                        <li><span class="text-gold font-bold">絵巻図鑑</span>: 集めた家宝・死因・二つ名（全50種）を記録。まだ手に入れていない家宝は名前が伏せられます。</li>
+                        <li><span class="text-yellow-400 font-bold">天下の番付</span>: 総合・長寿・富国と、五道（武功・悪逆・知略・人徳・運）のオンラインランキング。記録をタップすると登録時の能力と生涯年表が見られます。名前は初回プレイ時に決め、タイトル画面でいつでも変更できます。</li>
                     </ul>
                 </section>
 
                 <section>
-                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 総合ランク</h3>
-                    <p>命を終えると、その一生の締めくくりとして「総合ランク」が二つ名の傍らに判子風の意匠で押されます。ランクはE・D・C・B・A・S・SS・SSSの8段階で、全能力値の合計に、享年（2倍で加算）と所持金の一部（20文につき1点）を加えて算出されます。長く生き抜くほど総合ランクは高くなります。ランクは表示専用であり、冥銭や家宝といった報酬には一切影響しません。</p>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 総合ランクと大往生</h3>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li><span class="font-bold">総合ランク</span>: 死後にE〜SSSの8段階で評価（全能力値＋享年×2＋所持金の一部）。表示専用で、報酬には影響しません。</li>
+                        <li><span class="font-bold">大往生</span>: 60歳到達で達成。大往生10回ごとに寿命限界が+5歳に延びます。還暦・古希・米寿・百寿など、長く生きるほど節目の祝いも訪れます。</li>
+                        <li>合戦・逃亡の最中は、月・日単位で濃密に時間が流れます。</li>
+                    </ul>
                 </section>
 
                 <section>
-                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 大往生と時間の流れ</h3>
-                    <p>享年60歳に達すると「大往生」となります。大往生を10回達成するごとに寿命限界が「+5歳」延長されます。</p>
-                    <p class="mt-1">合戦モードへは、農民・足軽は【動員令】、武将は【出陣】主君の命のイベントで赴くことになります。</p>
-                    <p class="text-red-300 font-bold mt-1">※合戦中や逃亡中は月・日単位で濃密に時間が流れます。</p>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ PCでの遊び方</h3>
+                    <p>広い画面では左右2画面の専用レイアウトになります。選択肢は数字キー、「歳月を進める」はEnterキーやスペースキーでも押せます。「表示」ボタンでレイアウトを切り替えられます。</p>
                 </section>
             </div>
         </div>
