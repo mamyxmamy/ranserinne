@@ -374,7 +374,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 50</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 50.1</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -4749,17 +4749,21 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 if (!__seCtx) __seCtx = new AC();
                 if (__seCtx.state === 'suspended') __seCtx.resume();
                 const ctx = __seCtx, t = ctx.currentTime;
-                const master = ctx.createGain(); master.gain.value = 0.12; master.connect(ctx.destination);
+                const master = ctx.createGain(); master.gain.value = 0.22; master.connect(ctx.destination);
+                // v50.1: SEが鳴る間だけBGMを少し下げて埋もれさせない（ダッキング）
+                try { if (window.__duckTimer) clearTimeout(window.__duckTimer); if (bgmAudio && !bgmAudio.paused) { if (window.__bgmBaseVol == null) window.__bgmBaseVol = bgmAudio.volume; bgmAudio.volume = window.__bgmBaseVol * 0.45; window.__duckTimer = setTimeout(() => { try { if (bgmAudio) bgmAudio.volume = window.__bgmBaseVol; } catch (e) {} }, 380); } } catch (e) {}
                 const tone = (freq, dur, type, vol, when, slideTo) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t + (when || 0)); if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + (when || 0) + dur); g.gain.setValueAtTime(0, t + (when || 0)); g.gain.linearRampToValueAtTime(vol, t + (when || 0) + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + (when || 0) + dur); o.connect(g); g.connect(master); o.start(t + (when || 0)); o.stop(t + (when || 0) + dur + 0.05); };
                 const noise = (dur, vol, when, freqFrom, freqTo) => { const len = Math.max(1, (ctx.sampleRate * dur) | 0); const buf = ctx.createBuffer(1, len, ctx.sampleRate); const d = buf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; const src = ctx.createBufferSource(); src.buffer = buf; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.setValueAtTime(freqFrom, t + (when || 0)); if (freqTo) f.frequency.exponentialRampToValueAtTime(freqTo, t + (when || 0) + dur); const g = ctx.createGain(); g.gain.setValueAtTime(vol, t + (when || 0)); g.gain.exponentialRampToValueAtTime(0.001, t + (when || 0) + dur); src.connect(f); f.connect(g); g.connect(master); src.start(t + (when || 0)); };
                 if (name === 'success') { tone(1318, 0.18, 'triangle', 0.5, 0); tone(1760, 0.25, 'triangle', 0.4, 0.07); }
                 else if (name === 'gold') { tone(1318, 0.2, 'triangle', 0.5, 0); tone(1760, 0.25, 'triangle', 0.45, 0.08); tone(2637, 0.4, 'triangle', 0.4, 0.16); }
-                else if (name === 'taiko') { tone(120, 0.25, 'sine', 0.9, 0, 45); noise(0.12, 0.25, 0, 300, 120); }
+                else if (name === 'taiko') { tone(120, 0.25, 'sine', 0.9, 0, 45); tone(320, 0.08, 'triangle', 0.5, 0); noise(0.12, 0.25, 0, 300, 120); }
                 else if (name === 'coin') { tone(1975, 0.08, 'square', 0.18, 0); tone(2637, 0.22, 'square', 0.18, 0.06); }
                 else if (name === 'heal') { tone(523, 0.3, 'sine', 0.35, 0, 784); }
                 else if (name === 'death') { tone(220, 1.1, 'sine', 0.5, 0, 55); tone(110, 1.2, 'triangle', 0.3, 0.1, 40); }
             } catch (e) { /* SEは演出のみ */ }
         };
+        // v50.1: 最初のタップで AudioContext を起こしておく（自動再生制限で眠ったままにならないよう）
+        document.addEventListener('pointerdown', function() { try { if (!bgmMuted) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) { if (!__seCtx) __seCtx = new AC(); if (__seCtx.state === 'suspended') __seCtx.resume(); } } } catch (e) {} }, true);
 
         window.toggleBGM = function(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
@@ -4768,7 +4772,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             if (bgmAudio) bgmAudio.muted = bgmMuted;
             if (fanfareAudio) fanfareAudio.muted = bgmMuted;
             bgmUpdateButton();
-            if (!bgmMuted) bgmEnsureStarted();
+            if (!bgmMuted) { bgmEnsureStarted(); if (window.__sePlay) setTimeout(() => window.__sePlay('success'), 60); }
         };
 
         // ファイルの有無をHEADリクエストで確認（失敗時は「ある」ものとして扱い、最終的にはAudioのerrorで救済）
