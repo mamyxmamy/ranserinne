@@ -374,7 +374,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="absolute inset-0 flex items-center justify-center opacity-10 text-[10rem] font-black text-red-700 pointer-events-none select-none">輪</div>
                 <h1 class="vertical-rl text-5xl sm:text-6xl font-black text-white tracking-[0.35em] drop-shadow-[0_0_20px_rgba(200,0,0,0.6)] z-10">乱世の輪廻</h1>
             </div>
-            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 50.1</span></div>
+            <div class="w-full text-center flex-shrink-0 -mt-2 mb-3"><span class="text-[10px] text-gray-500 tracking-[0.3em]">ver 50.2</span></div>
 
             <div class="w-full text-center flex-shrink-0 space-y-2 mb-6">
                 <div class="border-y border-[#3A322A] py-2 bg-black/45 rounded-sm flex justify-around items-center">
@@ -2802,6 +2802,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             if (shakeBox) shakeBox.classList.add('hidden');
             const special = window.__gachaIsSpecialGrade(res.grade);
             if (window.__sePlay && res.kind === 'new') window.__sePlay(special ? 'gold' : 'success');
+            if (window.__vibrate && res.kind === 'new') window.__vibrate(special ? [40, 60, 40] : [30]);
             const kindEl = document.getElementById('gacha-result-kind');
             const gradeEl = document.getElementById('gacha-result-grade');
             const nameEl = document.getElementById('gacha-result-name');
@@ -4253,6 +4254,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     else if (hpChg >= 30) window.__sePlay('heal');
                     if (appliedMoneyChg >= 300) window.__sePlay('coin');
                 }
+                if (window.__vibrate) { if (tier >= 3) window.__vibrate([40, 60, 40]); else if (tier >= 2) window.__vibrate([30]); if (hpChg <= -30) window.__vibrate([90]); }
                 if (appContainer && tier >= 2) { appContainer.classList.remove('gold-flash'); void appContainer.offsetWidth; appContainer.classList.add('gold-flash'); }
                 if (appContainer && hpChg <= -30) { appContainer.classList.remove('fx-shake'); void appContainer.offsetWidth; appContainer.classList.add('fx-shake'); }
             } catch (err) { console.error("Choice effect error:", err); }
@@ -4476,6 +4478,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
         function showGameOver(reason, title, nextHeirloom, deathCause, earnedMeisen, lostHeirlooms = [], hlInfo = null) {
             setSceneBGM('death');
             if (window.__sePlay) window.__sePlay('death');
+            if (window.__vibrate) window.__vibrate([120, 50, 120]);
             const screen = document.getElementById('gameover-screen'); const mainTitle = document.getElementById('go-main-title'); const subTitle = document.getElementById('go-sub-title');
             screen.className = 'hidden absolute inset-0 z-50 flex flex-col items-center justify-center p-5 text-white text-center backdrop-blur-md overflow-y-auto pointer-events-auto transition-colors duration-700'; mainTitle.className = 'text-5xl sm:text-6xl font-black mb-1 mt-2 tracking-[0.25em]';
 
@@ -4751,7 +4754,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 const ctx = __seCtx, t = ctx.currentTime;
                 const master = ctx.createGain(); master.gain.value = 0.22; master.connect(ctx.destination);
                 // v50.1: SEが鳴る間だけBGMを少し下げて埋もれさせない（ダッキング）
-                try { if (window.__duckTimer) clearTimeout(window.__duckTimer); if (bgmAudio && !bgmAudio.paused) { if (window.__bgmBaseVol == null) window.__bgmBaseVol = bgmAudio.volume; bgmAudio.volume = window.__bgmBaseVol * 0.45; window.__duckTimer = setTimeout(() => { try { if (bgmAudio) bgmAudio.volume = window.__bgmBaseVol; } catch (e) {} }, 380); } } catch (e) {}
+                try { if (window.__duckTimer) clearTimeout(window.__duckTimer); if (bgmAudio && !bgmAudio.paused) { if (window.__bgmBaseVol == null) window.__bgmBaseVol = bgmAudio.volume; bgmAudio.volume = window.__bgmBaseVol * 0.12; window.__duckTimer = setTimeout(() => { try { if (bgmAudio) bgmAudio.volume = window.__bgmBaseVol; } catch (e) {} }, 500); } } catch (e) {}
                 const tone = (freq, dur, type, vol, when, slideTo) => { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = type || 'sine'; o.frequency.setValueAtTime(freq, t + (when || 0)); if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + (when || 0) + dur); g.gain.setValueAtTime(0, t + (when || 0)); g.gain.linearRampToValueAtTime(vol, t + (when || 0) + 0.01); g.gain.exponentialRampToValueAtTime(0.001, t + (when || 0) + dur); o.connect(g); g.connect(master); o.start(t + (when || 0)); o.stop(t + (when || 0) + dur + 0.05); };
                 const noise = (dur, vol, when, freqFrom, freqTo) => { const len = Math.max(1, (ctx.sampleRate * dur) | 0); const buf = ctx.createBuffer(1, len, ctx.sampleRate); const d = buf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; const src = ctx.createBufferSource(); src.buffer = buf; const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.setValueAtTime(freqFrom, t + (when || 0)); if (freqTo) f.frequency.exponentialRampToValueAtTime(freqTo, t + (when || 0) + dur); const g = ctx.createGain(); g.gain.setValueAtTime(vol, t + (when || 0)); g.gain.exponentialRampToValueAtTime(0.001, t + (when || 0) + dur); src.connect(f); f.connect(g); g.connect(master); src.start(t + (when || 0)); };
                 if (name === 'success') { tone(1318, 0.18, 'triangle', 0.5, 0); tone(1760, 0.25, 'triangle', 0.4, 0.07); }
@@ -4762,6 +4765,8 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 else if (name === 'death') { tone(220, 1.1, 'sine', 0.5, 0, 55); tone(110, 1.2, 'triangle', 0.3, 0.1, 40); }
             } catch (e) { /* SEは演出のみ */ }
         };
+        // v50.2: 振動フィードバック（音と違いBGMに埋もれない。対応端末のみ）
+        window.__vibrate = function(pattern) { try { if (navigator && navigator.vibrate) navigator.vibrate(pattern); } catch (e) {} };
         // v50.1: 最初のタップで AudioContext を起こしておく（自動再生制限で眠ったままにならないよう）
         document.addEventListener('pointerdown', function() { try { if (!bgmMuted) { const AC = window.AudioContext || window.webkitAudioContext; if (AC) { if (!__seCtx) __seCtx = new AC(); if (__seCtx.state === 'suspended') __seCtx.resume(); } } } catch (e) {} }, true);
 
