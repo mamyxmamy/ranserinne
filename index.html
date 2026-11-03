@@ -391,7 +391,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 51</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 51.1</span></div>
             </div>
 
             <div class="hidden">
@@ -2639,63 +2639,82 @@ body.pc-on #ranking-screen { font-size: 15px; }
         function calculateTitle(s) {
             if (s.age >= 60 && s.flags.sukanpin) return "伝説の素寒貧";
 
-            if (s.valor >= 150 && s.strategy >= 150) return "智勇兼備の神将";
-            if (s.valor >= 150) return "天下無双の軍神";
-            if (s.strategy >= 150) return "神算鬼謀の伏龍";
-            if (s.virtue >= 150) return "現人神の如き菩薩";
-            if (s.karma >= 150) return "極悪非道の修羅";
-            if (s.money >= 5000) return "日ノ本を買い占めし者";
-            if (s.luck >= 100) return "天に愛されし御子";
+            // v51.1: 格（優先帯）は維持しつつ、帯の中に複数の候補がある場合は重み付き抽選にする。
+            // 取得済みの二つ名は重み1、未取得は重み3として、図鑑が埋まりやすくする。
+            const ownedTitles = (typeof window !== 'undefined' && window.unlockedTitles) || [];
+            const pickFromBand = (names) => {
+                if (!names.length) return null;
+                if (names.length === 1) return names[0];
+                let total = 0;
+                const weights = names.map(n => { const w = ownedTitles.includes(n) ? 1 : 3; total += w; return w; });
+                let r = Math.random() * total;
+                for (let i = 0; i < names.length; i++) { r -= weights[i]; if (r < 0) return names[i]; }
+                return names[names.length - 1];
+            };
+
+            let band = [];
+            if (s.valor >= 150 && s.strategy >= 150) band.push("智勇兼備の神将");
+            if (s.valor >= 150) band.push("天下無双の軍神");
+            if (s.strategy >= 150) band.push("神算鬼謀の伏龍");
+            if (s.virtue >= 150) band.push("現人神の如き菩薩");
+            if (s.karma >= 150) band.push("極悪非道の修羅");
+            if (s.money >= 5000) band.push("日ノ本を買い占めし者");
+            if (s.luck >= 100) band.push("天に愛されし御子");
+            if (band.length) return pickFromBand(band);
 
             if (s.valor >= 80 && s.karma >= 60) return "第六天魔王";
 
             if (s.classInfo) {
                 const cid = s.classInfo.id;
+                let flavor = [], classFallback = null;
                 if (cid === 'daimyo') {
-                    if (s.virtue >= 80) return "天下の仁君";
-                    if (s.karma >= 80) return "血塗られた覇王";
-                    return "天下の覇者";
+                    if (s.virtue >= 80) flavor.push("天下の仁君");
+                    if (s.karma >= 80) flavor.push("血塗られた覇王");
+                    classFallback = "天下の覇者";
+                } else if (cid === 'ninja') {
+                    if (s.valor >= 80) flavor.push("闇夜の死神");
+                    if (s.strategy >= 80) flavor.push("幻術の影");
+                    classFallback = "影を統べる者";
+                } else if (cid === 'monk') {
+                    if (s.karma >= 80) flavor.push("堕ちた破戒僧");
+                    if (s.virtue >= 80) flavor.push("生き仏");
+                    classFallback = "高名なる僧侶";
+                } else if (cid === 'merchant') {
+                    if (s.money >= 2000) flavor.push("天下の豪商");
+                    if (s.karma >= 80) flavor.push("死の商人");
+                    classFallback = "名物商人";
+                } else if (cid === 'ronin') {
+                    if (s.valor >= 100) flavor.push("天下無双の剣豪");
+                    if (s.karma >= 80) flavor.push("血に飢えた辻斬り");
+                    classFallback = "流浪の剣客";
+                } else if (cid === 'bandit') {
+                    if (s.money >= 1000) flavor.push("伝説の大盗賊");
+                    classFallback = "山河の凶魁";
+                } else if (cid === 'peasant') {
+                    if (s.money >= 1000) return "成金の大地主";
+                } else if (cid === 'kuge') {
+                    if (s.strategy >= 80) return "暗躍する黒幕";
                 }
-                if (cid === 'ninja') {
-                    if (s.valor >= 80) return "闇夜の死神";
-                    if (s.strategy >= 80) return "幻術の影";
-                    return "影を統べる者";
-                }
-                if (cid === 'monk') {
-                    if (s.karma >= 80) return "堕ちた破戒僧";
-                    if (s.virtue >= 80) return "生き仏";
-                    return "高名なる僧侶";
-                }
-                if (cid === 'merchant') {
-                    if (s.money >= 2000) return "天下の豪商";
-                    if (s.karma >= 80) return "死の商人";
-                    return "名物商人";
-                }
-                if (cid === 'ronin') {
-                    if (s.valor >= 100) return "天下無双の剣豪";
-                    if (s.karma >= 80) return "血に飢えた辻斬り";
-                    return "流浪の剣客";
-                }
-                if (cid === 'bandit') {
-                    if (s.money >= 1000) return "伝説の大盗賊";
-                    return "山河の凶魁";
-                }
-                if (cid === 'peasant' && s.money >= 1000) return "成金の大地主";
-                if (cid === 'kuge' && s.strategy >= 80) return "暗躍する黒幕";
+                if (flavor.length) return pickFromBand(flavor);
+                if (classFallback) return classFallback;
             }
 
-            if (s.valor >= 100 && s.strategy >= 100) return "天下の名将";
-            if (s.valor >= 100) return "一騎当千の剛将";
-            if (s.strategy >= 100) return "稀代の知将";
-            if (s.virtue >= 100) return "徳高き聖将";
-            if (s.karma >= 100) return "乱世の梟雄";
-            if (s.money >= 2000) return "富国豪商";
-            if (s.luck >= 80) return "豪運の持ち主";
+            band = [];
+            if (s.valor >= 100 && s.strategy >= 100) band.push("天下の名将");
+            if (s.valor >= 100) band.push("一騎当千の剛将");
+            if (s.strategy >= 100) band.push("稀代の知将");
+            if (s.virtue >= 100) band.push("徳高き聖将");
+            if (s.karma >= 100) band.push("乱世の梟雄");
+            if (s.money >= 2000) band.push("富国豪商");
+            if (s.luck >= 80) band.push("豪運の持ち主");
+            if (band.length) return pickFromBand(band);
 
-            if (s.valor >= 70) return "無双の剛槍";
-            if (s.strategy >= 70) return "王佐の才";
-            if (s.virtue >= 70) return "慈愛の士";
-            if (s.karma >= 70) return "冷酷なる野心家";
+            band = [];
+            if (s.valor >= 70) band.push("無双の剛槍");
+            if (s.strategy >= 70) band.push("王佐の才");
+            if (s.virtue >= 70) band.push("慈愛の士");
+            if (s.karma >= 70) band.push("冷酷なる野心家");
+            if (band.length) return pickFromBand(band);
 
             if (s.age >= 100) return "不老不死の化身";
             if (s.age >= 90) return "伝説の仙人";
@@ -2942,7 +2961,15 @@ body.pc-on #ranking-screen { font-size: 15px; }
             if (s.luck >= 100) candidates.push(heirloomInstance('hl_yohen'));
             if (s.luck >= 40) candidates.push(heirloomInstance('hl_aoi'));
             
-            if (candidates.length > 0) return candidates[Math.floor(Math.random() * candidates.length)];
+            if (candidates.length > 0) {
+                // v51.1: 未所持の家宝が出やすくなるよう重み付き抽選にする（未所持×3／所持済み×1）
+                const ownedIds = new Set((window.unlockedHeirlooms || []).map(h => h.id));
+                let totalW = 0;
+                const ws = candidates.map(c => { const w = (c && ownedIds.has(c.id)) ? 1 : 3; totalW += w; return w; });
+                let r = Math.random() * totalW;
+                for (let i = 0; i < candidates.length; i++) { r -= ws[i]; if (r < 0) return candidates[i]; }
+                return candidates[candidates.length - 1];
+            }
             return null;
         }
 
@@ -3470,19 +3497,22 @@ body.pc-on #ranking-screen { font-size: 15px; }
                         ]);
                         totalSnaps.forEach(collectDocs);
                     } else {
-                        collectDocs(await boardRef.orderBy(statField, 'desc').limit(150).get());
+                        collectDocs(await boardRef.orderBy(statField, 'desc').limit(1000).get()); // v51.1: 名前ごとの重複で上位が埋まらないよう取得上限を拡大
                     }
+                    // v51.1: 同点の場合は先に達成した記録を優先する
+                    const tsOf = (d) => { const t = d && d.timestamp; if (!t) return Number.MAX_SAFE_INTEGER; if (typeof t.toMillis === 'function') return t.toMillis(); if (typeof t === 'number') return t; if (typeof t.seconds === 'number') return t.seconds * 1000; return Number.MAX_SAFE_INTEGER; };
                     const bestByName = new Map();
                     allRecords.forEach(data => {
                         const metric = metricOf(data);
                         if (metric === null) return;
                         const nameKey = data.playerName || '名無し';
-                        if (!bestByName.has(nameKey) || metric > metricOf(bestByName.get(nameKey))) {
+                        const cur = bestByName.get(nameKey);
+                        if (!cur || metric > metricOf(cur) || (metric === metricOf(cur) && tsOf(data) < tsOf(cur))) {
                             bestByName.set(nameKey, data);
                         }
                     });
                     records = Array.from(bestByName.values())
-                        .sort((a, b) => metricOf(b) - metricOf(a))
+                        .sort((a, b) => (metricOf(b) - metricOf(a)) || (tsOf(a) - tsOf(b)))
                         .slice(0, 30);
                 }
 
