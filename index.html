@@ -391,7 +391,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 51.1</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 51.2</span></div>
             </div>
 
             <div class="hidden">
@@ -2625,14 +2625,15 @@ body.pc-on #ranking-screen { font-size: 15px; }
 
         function calculateLifeRank(s) {
             const score = (s.valor || 0) + (s.karma || 0) + (s.luck || 0) + (s.strategy || 0) + (s.virtue || 0) + ((s.age || 0) * 2) + Math.floor((s.money || 0) / 20);
+            // v51.2: 能力が上がりやすくなった分、ランク閾値全体を引き上げ
             let rank = 'E';
-            if (score >= 1500) rank = 'SSS';
-            else if (score >= 1000) rank = 'SS';
-            else if (score >= 750) rank = 'S';
-            else if (score >= 500) rank = 'A';
-            else if (score >= 350) rank = 'B';
-            else if (score >= 200) rank = 'C';
-            else if (score >= 100) rank = 'D';
+            if (score >= 2200) rank = 'SSS';
+            else if (score >= 1500) rank = 'SS';
+            else if (score >= 1100) rank = 'S';
+            else if (score >= 750) rank = 'A';
+            else if (score >= 500) rank = 'B';
+            else if (score >= 300) rank = 'C';
+            else if (score >= 150) rank = 'D';
             return { rank, score };
         }
 
