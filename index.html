@@ -391,7 +391,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 51.2</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 51.3</span></div>
             </div>
 
             <div class="hidden">
@@ -2514,6 +2514,11 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '「まだ死なん！」と筆をへし折る', condition: () => true, hint: '武功上昇・体力小減少', effect: (s) => { s.flags.jisei58 = true; s.valor += 15; recordChronology("辞世を拒み、現役にこだわる"); return { hp: -10, log: '縁起でもないと筆をへし折った。老いてなお盛んな気力に、周囲は呆れつつも舌を巻いた。' }; } }
                 ] },
             // v48.16: 高齢期の節目イベント（3前提：領主不問・定住不問・家族不問。年齢とともに報酬は増える）
+            { id: 'rinneko_cat', mode: ['normal'], weight: 1, condition: (s) => !s.flags.metRinneCat && Math.random() < 0.3,
+                title: '川辺の黒猫', text: '川辺の道で、ふと足が止まった。紺色のリボンを結んだ黒猫が、人を恐れる様子もなく座り、じっとこちらを見ている。その瞳に見つめられていると、どこか遠い昔に会ったことがあるような、奇妙な懐かしさが胸をよぎった。', choices: [
+                    { text: 'そっと近づいてみる', condition: () => true, hint: '運に委ねる', effect: (s) => { s.flags.metRinneCat = true; if (critRoll('luck', Math.min(0.85, 0.45 + s.luck * 0.002))) { recordChronology('紺色のリボンの黒猫に導かれる'); return { money: 60, log: '黒猫は短く鳴くと、川辺の草むらへと歩き出した。ついていくと、誰かが落としたらしい小銭の包みが見つかった。礼を言おうと振り返った時、猫の姿はもうどこにもなかった。' }; } recordChronology('紺色のリボンの黒猫と出会う'); return { hp: 0, log: '手を伸ばすと、黒猫は身をかわし、川の向こう岸を一瞥してから、音もなく姿を消した。なぜかひどく、惜しいことをした気がした。' }; } },
+                    { text: '腰を下ろし、しばらく一緒にいる', condition: () => true, hint: '運上昇・体力回復', effect: (s) => { s.flags.metRinneCat = true; s.luck += 5; recordChronology('紺色のリボンの黒猫と時を過ごす'); return { hp: 8, log: '黒猫は逃げもせず、隣に座って川の流れを眺めていた。不思議と心が凪いでいく。やがて猫は立ち上がり、こちらを一度だけ振り返ってから、夕日の向こうへ歩いていった。' }; } }
+                ] },
             { id: 'kanreki_60', mode: ['normal'], weight: 100, condition: (s) => s.age >= 60 && !s.flags.kanreki60,
                 title: '【還暦】生まれ直しの歳', text: '干支が一巡りし、生まれた年の暦に戻る還暦を迎えた。この戦国の世で六十年を生き抜く者は稀だ。周囲の人々が、あなたの長寿を祝おうと集まってきた。', choices: [
                     { text: '祝宴を開き、人々に振る舞う', condition: () => true, hint: '人徳上昇・体力回復', effect: (s) => { s.flags.kanreki60 = true; s.virtue += 20; recordChronology("還暦を迎え、祝宴を開く"); return { hp: 15, log: 'ささやかな宴だったが、集まった人々の笑顔が何よりの贈り物だった。六十年分の生が、静かに報われた気がした。' + (s.flags.sukanpin ? '棍棒一本の素寒貧にも、こんな日が来るとは。' : '') }; } },
