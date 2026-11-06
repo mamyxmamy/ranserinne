@@ -391,7 +391,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 51.4</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 51.5</span></div>
             </div>
 
             <div class="hidden">
@@ -3376,6 +3376,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             const ojBadge = (data.age || 0) >= 60 ? '<span class="text-[9px] bg-yellow-800 text-yellow-100 px-1.5 py-0.5 rounded-sm border border-yellow-600 font-bold">大往生</span>' : '';
             const sukanpinBadge = data.sukanpin ? '<span class="text-[9px] font-bold text-amber-300 bg-amber-900/60 border border-amber-600/50 px-1.5 py-0.5 rounded-sm">素寒貧</span>' : '';
             const dendoBadge = (Number(data.money) || 0) >= 1000000 ? '<span class="text-[9px] font-black bg-yellow-400 text-yellow-900 px-1.5 py-0.5 rounded-sm border border-yellow-200">富国殿堂入り</span>' : '';
+            const dendoReason = (Number(data.money) || 0) >= 1000000 ? '<div class="text-[11px] leading-relaxed text-yellow-200/80 bg-yellow-900/20 border border-yellow-700/40 rounded-sm px-2 py-1.5 mb-2">朱印船の荒波を越え築いた富は、作者の見込みすら大きく超えた。順位で量るものにあらず、殿堂に祀り称える。</div>' : '';
             let totalHtml = '';
             if (ctx.type === 'total' && typeof data.karma === 'number' && typeof data.luck === 'number' && typeof data.strategy === 'number' && typeof data.virtue === 'number') {
                 const lr = calculateLifeRank(data);
@@ -3393,6 +3394,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="text-sm font-bold text-gold mb-1">${data.title || '名もなき武者'}</div>
                 <div class="flex items-baseline gap-3 text-xs text-gray-300 mb-2"><span>享年 <strong class="text-lg text-blood">${data.age || 0}</strong> 歳</span>${classHtml}</div>
                 ${totalHtml}
+                ${dendoReason}
                 <div class="grid grid-cols-6 gap-1 text-center text-gray-400 text-[8px] sm:text-[9px] bg-black/40 p-1.5 rounded-sm border border-[#3A322A] mb-2">
                     <div>武功<br><span class="text-white font-bold">${data.valor || 0}</span></div>
                     <div>悪逆<br><span class="text-white font-bold">${data.karma || 0}</span></div>
@@ -3555,6 +3557,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                                 <span class="text-[9px] text-gray-400 bg-black/50 px-1 py-0.5 rounded">${data.title}</span>
                             </div>
                             <div class="text-right text-gray-300 mt-1">所持金 <strong class="text-gold text-xl">${data.money}</strong> <span class="text-xs">文</span></div>
+                            <div class="text-[10px] leading-relaxed text-yellow-200/70 mt-1">朱印船の荒波を越え築いた富は、作者の見込みすら大きく超えた。順位で量るものにあらず、殿堂に祀り称える。</div>
                             ${dateHtmlD}
                         </div>
                     </div>`;
