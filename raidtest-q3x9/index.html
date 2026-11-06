@@ -436,6 +436,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     </div>
                 </div>
                 <p class="w-full text-center text-[10px] text-gray-400 tracking-widest">寿命限界: <span id="ui-max-age-limit" class="text-red-400 font-bold">70</span>歳（老衰開始: <span id="ui-random-death-start">60</span>歳）</p>
+                <!-- utakata-event-banner -->
                 <div class="w-full border border-purple-800/80 bg-[#160D1A]/85 rounded-sm px-3 py-2 text-center shadow-[0_0_14px_rgba(88,28,135,0.35)]">
                     <p class="text-[12px] font-bold tracking-[0.2em] text-purple-200">期間限定 共討戦 ― 泡沫夢幻 ― 開催中</p>
                     <p class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">11月11日まで ― 死後の結果画面より、輪廻の番人に挑めます</p>
@@ -5643,11 +5644,11 @@ if (target) target.classList.remove('hidden');
 #raid-controls button{box-shadow:0 4px 14px rgba(0,0,0,.5);}
 @keyframes raidCharge{0%,100%{box-shadow:0 6px 28px rgba(0,0,0,.65),0 0 10px rgba(220,38,38,.25);}50%{box-shadow:0 6px 28px rgba(0,0,0,.65),0 0 40px rgba(220,38,38,.85),0 0 60px rgba(220,38,38,.4) inset;}}
 #raid-boss-stage.raid-charging{animation:raidCharge .8s ease-in-out infinite;border-color:rgba(248,113,113,.8);}
-#raid-cutin{position:absolute;left:0;right:0;top:24%;z-index:30;pointer-events:none;opacity:0;transform:translateX(105%);}
+#raid-cutin{position:absolute;left:0;right:0;top:50%;margin-top:-75px;z-index:90;pointer-events:none;opacity:0;transform:translateX(105%);}
 #raid-cutin img{width:100%;height:150px;object-fit:cover;object-position:center 30%;display:block;border-top:2px solid rgba(212,175,55,.8);border-bottom:2px solid rgba(212,175,55,.8);}
 #raid-cutin video{width:100%;height:150px;object-fit:cover;object-position:center 30%;display:block;border-top:2px solid rgba(212,175,55,.8);border-bottom:2px solid rgba(212,175,55,.8);}
 #raid-cutin-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:44px;letter-spacing:.25em;color:#FFE9A8;text-shadow:0 0 18px rgba(0,0,0,.95),0 2px 6px rgba(0,0,0,.9);}
-#raid-textpop{position:absolute;left:0;right:0;top:34%;z-index:31;text-align:center;pointer-events:none;font-weight:900;font-size:40px;letter-spacing:.2em;color:#FFE9A8;text-shadow:0 0 16px rgba(0,0,0,.95),0 2px 6px rgba(0,0,0,.9);opacity:0;}
+#raid-textpop{position:absolute;left:0;right:0;top:50%;margin-top:-128px;z-index:91;text-align:center;pointer-events:none;font-weight:900;font-size:40px;letter-spacing:.2em;color:#FFE9A8;text-shadow:0 0 16px rgba(0,0,0,.95),0 2px 6px rgba(0,0,0,.9);opacity:0;}
 </style>
 
 <div id="raid-screen" class="hidden absolute inset-0 z-[60] flex flex-col text-white pointer-events-auto overflow-hidden">
@@ -5892,6 +5893,25 @@ if (target) target.classList.remove('hidden');
     };
     document.addEventListener('keydown', function (e) { window.__pcKey(e); });
 })();
+</script>
+
+<script>
+if (new URLSearchParams(location.search).get('raidtest') === '1') {
+  window.addEventListener('load', function() {
+    var b = document.createElement('div');
+    b.id = 'raidtest-banner';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#a00;color:#fff;font-weight:bold;text-align:center;padding:6px;font-size:14px;';
+    b.textContent = 'TEST: READY';
+    document.body.appendChild(b);
+    var rs = document.getElementById('raid-screen');
+    if (rs) rs.classList.remove('hidden');
+    function stage(t, fn, at) { setTimeout(function() { b.textContent = 'TEST: ' + t; if (fn) fn(); }, at); }
+    stage('CUTIN-CRIT', function() { if (window.__raidShowCutin) window.__raidShowCutin('crit'); }, 1500);
+    stage('CUTIN-EVADE', function() { if (window.__raidShowCutin) window.__raidShowCutin('evade'); }, 5500);
+    stage('CUTIN-LUCKY', function() { if (window.__raidShowCutin) window.__raidShowCutin('lucky'); }, 9500);
+    stage('DONE', null, 12500);
+  });
+}
 </script>
 </body>
 </html>
