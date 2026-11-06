@@ -3320,7 +3320,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             try {
                 if (!myName || typeof myScore !== 'number') return null;
                 const db = firebase.firestore();
-                const boardRef = db.collection('artifacts').doc('sengoku-life-app').collection('leaderboard');
+                const boardRef = db.collection('artifacts').doc('sengokurinne-test-invalid').collection('leaderboard');
                 const snaps = await Promise.all([
                     boardRef.orderBy('timestamp', 'desc').limit(300).get(),
                     boardRef.orderBy('valor', 'desc').limit(100).get(),
@@ -3423,7 +3423,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             } else {
                 try {
                     const db = firebase.firestore();
-                    const snap = await db.collection('artifacts').doc('sengoku-life-app').collection('leaderboard_chronicles').doc(docId).get();
+                    const snap = await db.collection('artifacts').doc('sengokurinne-test-invalid').collection('leaderboard_chronicles').doc(docId).get();
                     const chronology = (snap && snap.exists) ? (snap.data().chronology || []) : [];
                     if (chronology.length > 0) {
                         renderChronology(chronology);
@@ -3458,7 +3458,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
 
             try {
                 const db = firebase.firestore();
-                const appId = 'sengoku-life-app';
+                const appId = 'sengokurinne-test-invalid';
                 const boardRef = db.collection('artifacts').doc(appId).collection('leaderboard');
                 // v12: 番付の独占対策。取得件数を多めに取り（プレイヤー名ごとの重複を排除した後でも上位30件を確保するため）、
                 // プレイヤー名ごとに現在のタブ指標での最良記録だけを残してから上位30件を表示する。
@@ -5165,7 +5165,7 @@ function raidSaveLocalBoss(b) { try { localStorage.setItem('sengoku_raid_event_l
 window.__raidFetchBoss = async function() {
 try {
 const db = firebase.firestore();
-const ref = db.collection('artifacts').doc('sengoku-life-app').collection('raid_event').doc('state');
+const ref = db.collection('artifacts').doc('sengokurinne-test-invalid').collection('raid_event').doc('state');
 const snap = await raidWithTimeout(ref.get(), 4000);
 if (snap.exists) { const d = snap.data(); return { gen: d.gen || 1, hp: d.hp, maxHp: d.maxHp || RAID_BASE_HP, shared: true};}
 await raidWithTimeout(ref.set({ gen: 1, hp: RAID_BASE_HP, maxHp: RAID_BASE_HP}), 4000);
@@ -5173,12 +5173,31 @@ return { gen: 1, hp: RAID_BASE_HP, maxHp: RAID_BASE_HP, shared: true};
 } catch (e) { const b = raidLocalBoss(); b.shared = false; return b;}
 };
 
+window.__raidFetchField = async function(gen) {
+const neutral = { dmgMul: 1, evadeBonus: 0, valorOn: false, evadeOn: false, count: 0 };
+try {
+if (!window.firebase || !firebase.firestore) return neutral;
+const db = firebase.firestore();
+const logsRef = db.collection('artifacts').doc('sengokurinne-test-invalid').collection('raid_event_logs');
+const snap = await raidWithTimeout(logsRef.orderBy('timestamp', 'desc').limit(40).get(), 4000);
+let n = 0, sv = 0, ss = 0, sl = 0;
+snap.forEach(function(doc) {
+const d = doc.data();
+if (d && d.gen === gen && typeof d.valor === 'number') { n++; sv += d.valor; ss += (d.strategy || 0); sl += (d.luck || 0);}
+});
+if (n < 3) return neutral;
+const avgV = sv / n, avgSL = (ss + sl) / n / 2;
+const valorOn = avgV >= 60, evadeOn = avgSL >= 60;
+return { dmgMul: valorOn? 1.08: 1, evadeBonus: evadeOn? 0.15: 0, valorOn: valorOn, evadeOn: evadeOn, count: n };
+} catch (e) { return neutral; }
+};
+
 window.__raidApplyDamage = async function(dmg) {
 const boss = window.__raidBossCache || { gen: 1, hp: RAID_BASE_HP, maxHp: RAID_BASE_HP};
 if (boss.shared) {
 try {
 const db = firebase.firestore();
-const ref = db.collection('artifacts').doc('sengoku-life-app').collection('raid_event').doc('state');
+const ref = db.collection('artifacts').doc('sengokurinne-test-invalid').collection('raid_event').doc('state');
 const out = await raidWithTimeout(db.runTransaction(async function(tx) {
 const snap = await tx.get(ref);
 let gen = 1, hp = RAID_BASE_HP, maxHp = RAID_BASE_HP;
@@ -5191,7 +5210,7 @@ tx.set(ref, { gen: gen + 1, hp: newHp, maxHp: newMax}, { merge: true});
 return { gen: gen + 1, hp: newHp, maxHp: newMax, killed: true};
 }), 6000);
 try {
-await db.collection('artifacts').doc('sengoku-life-app').collection('raid_event_logs').add({ pid: (typeof window.__myPlayerId === 'function')? window.__myPlayerId(): '', playerName: state.playerName || '名無し', damage: dmg, gen: boss.gen, timestamp: Date.now()});
+await db.collection('artifacts').doc('sengokurinne-test-invalid').collection('raid_event_logs').add({ pid: (typeof window.__myPlayerId === 'function')? window.__myPlayerId(): '', playerName: state.playerName || '名無し', damage: dmg, gen: boss.gen, timestamp: Date.now()});
 } catch (e2) {}
 return out;
 } catch (e) { /* fall through to local */}
@@ -5208,7 +5227,7 @@ return { gen: nb.gen, hp: nb.hp, maxHp: nb.maxHp, killed: true};
 window.__raidFetchSentatsu = async function(s) {
 try {
 const db = firebase.firestore();
-const boardRef = db.collection('artifacts').doc('sengoku-life-app').collection('leaderboard');
+const boardRef = db.collection('artifacts').doc('sengokurinne-test-invalid').collection('leaderboard');
 const keys = ['valor', 'karma', 'strategy', 'virtue', 'luck'];
 let weakest = 'valor';
 keys.forEach(function(k) { if ((s[k] || 0) < (s[weakest] || 0)) weakest = k;});
@@ -5221,7 +5240,9 @@ return { name: d.playerName || '名無しの先達', title: d.title || '無名�
 } catch (e) { return null;}
 };
 
-window.__raidSimulate = function(s, boss, sentatsu) {
+window.__raidSimulate = function(s, boss, sentatsu, field) {
+const fieldDmgMul = (field && field.dmgMul)? field.dmgMul: 1;
+const fieldEvade = (field && field.evadeBonus)? field.evadeBonus: 0;
 const R = Math.random;
 const cp = window.__raidCalcPower(s);
 const P = cp.power;
@@ -5237,6 +5258,12 @@ const cls = s.classInfo? s.classInfo.name: '亡魂';
 const pick = function(arr) { return arr[Math.floor(R() * arr.length)];};
 lines.push({ t: '―― ' + name + '（' + cls + '）の魂が、三途の川を渡り冥府の門へと歩を進める。', c: 'sys'});
 lines.push({ t: '門の奥、輪廻の番人が静かに佇んでいる。（第' + gen + '世代）', c: 'sys'});
+if (field && (field.valorOn || field.evadeOn)) {
+const fp = [];
+if (field.valorOn) fp.push('先達たちの武の勢いが、打ち込みを押し上げる');
+if (field.evadeOn) fp.push('見切りの風が吹き、番人の必殺をかわしやすくなっている');
+lines.push({ t: '戦況 ― ' + fp.join('。') + '。', c: 'sys'});
+}
 while (E > 0 && bossHp > 0 && turn < 40) {
 turn++;
 let mult = 0.85 + R() * 0.3;
@@ -5246,10 +5273,16 @@ if (kr < 0.2) { mult *= 2; flavor = '卑劣な一手が冴える！ ';} else if 
 let special = '';
 if (R() < Math.min(0.4, (s.strategy || 0) / 300)) { mult *= 1.6; special = '会心';}
 if (R() < Math.min(0.5, (s.luck || 0) / 1000)) { mult *= 2.5; special = '強運の一撃';}
-const dmg = Math.max(1, Math.round(P * mult));
+let dmg = Math.max(1, Math.round(P * mult));
+let floored = false;
+if (!(kr >= 0.2 && kr < 0.4)) {
+const fl = Math.round(P * Math.min(1.05, 0.88 + (s.valor || 0) * 0.0006));
+if (dmg < fl) { dmg = fl; floored = true;}
+}
+dmg = Math.max(1, Math.round(dmg * fieldDmgMul));
 bossHp -= dmg; total += dmg;
-const atkText = special? (''): pick(['渾身の一撃', '裂帛の一閃', '捨て身の突撃', '乱世を生き抜いた技']);
-lines.push({ t: flavor + atkText + ' ― ' + dmg + ' の打撃！', c: special? 'gold': '', d: dmg, turn: turn});
+const atkText = special? (special === '会心'? '会心の一撃': '強運の一撃'): pick(['渾身の一撃', '裂帛の一閃', '捨て身の突撃', '乱世を生き抜いた技']);
+lines.push({ t: flavor + atkText + (floored && !special? ' 武の冴えで押し切った！': '') + ' ― ' + dmg + ' の打撃！', c: special? 'gold': '', d: dmg, turn: turn});
 if (bossHp <= 0) { lines.push({ t: '番人の巨躯が、ゆっくりと崩れ落ちた ――', c: 'gold'}); break;}
 if (assistsUsed < bonds.length && R() < Math.min(0.5, (s.virtue || 0) / 200)) {
 assistsUsed++;
@@ -5264,7 +5297,15 @@ E = Math.min(maxE, E + 80);
 lines.push({ t: '「' + evName + '」で縁を結んだ者が駆けつけ、傷を癒やした（耐久+80）', c: 'assist', e: E});
 }
 }
-const atk = Math.round((55 + R() * 25) * Math.pow(1.15, gen - 1));
+const isSpecialAtk = (turn % 4 === 0);
+let atk = Math.round((55 + R() * 25) * Math.pow(1.15, gen - 1) * (isSpecialAtk? 1.7: 1));
+if (isSpecialAtk) {
+const evadeP = Math.min(0.55, (s.strategy || 0) / 500 + (s.luck || 0) / 1000 + fieldEvade);
+if (R() < evadeP) {
+lines.push({ t: '番人の必殺「冥府の裁き」が放たれた ―― が、' + name + ' はそれを見切り、紙一重でかわした！', c: 'gold'});
+continue;
+}
+}
 if (E - atk <= 0 &&!rescueUsed && sentatsu) {
 rescueUsed = true;
 const cd = Math.max(1, Math.round(Math.sqrt(Math.max(0, sentatsu.statVal || 0)) * 12 * (0.9 + R() * 0.4)));
@@ -5282,7 +5323,7 @@ if (bossHp <= 0) { lines.push({ t: '番人の巨躯が、ゆっくりと崩れ�
 continue;
 }
 E -= atk;
-lines.push({ t: '番人の一撃 ― ' + atk + ' の痛撃を受けた。（残り耐久 ' + Math.max(0, E) + '）', c: 'boss', e: Math.max(0, E)});
+lines.push({ t: (isSpecialAtk? '番人の必殺「冥府の裁き」': '番人の一撃') + ' ― ' + atk + ' の痛撃を受けた。（残り耐久 ' + Math.max(0, E) + '）', c: 'boss', e: Math.max(0, E)});
 }
 const victory = bossHp <= 0;
 if (!victory) lines.push({ t: name + ' の魂は力尽き、冥府の霧に溶けていった ……', c: 'sys'});
@@ -5409,6 +5450,7 @@ set('raid-res-turns', res.turns + '');
 set('raid-res-assist', res.assistsUsed + '回');
 const sent = window.__raidSentatsu;
 set('raid-res-rescue', res.rescueUsed? (sent && sent.isSelf? '前世の自分': (sent? sent.name: '先達')): '―');
+(function() { const f = window.__raidField; const el = document.getElementById('raid-res-field'); if (el) { const fp = []; if (f && f.valorOn) fp.push('軍勢の勢い'); if (f && f.evadeOn) fp.push('見切りの風'); el.innerText = fp.length? fp.join(' ・ '): '―'; } })();
 set('raid-res-meisen', '+' + reward);
 const tEl = document.getElementById('raid-res-title'); if (tEl) tEl.classList.toggle('hidden',!titleNew);
 const wEl = document.getElementById('raid-res-world');
@@ -5520,6 +5562,7 @@ if (target) target.classList.remove('hidden');
 <div class="flex justify-between text-[10px] text-gray-200 mt-1"><span>番人の残り命</span><span id="raid-boss-hptext">- / -</span></div>
 </div>
 </div>
+<div id="raid-field" class="text-center text-[11px] tracking-[0.25em] text-amber-200/90 pt-1.5">戦況 ― 静寂</div>
 </div>
 <div class="flex-1 flex flex-col w-full max-w-md mx-auto px-4 min-h-0">
 <div class="text-[10px] tracking-[0.5em] text-gold/80 text-center pb-1">― 実 況 ―</div>
@@ -5579,9 +5622,9 @@ if (target) target.classList.remove('hidden');
 
         const firebaseConfig = {
             apiKey: "AIzaSyA4EanMhH1xvArI-zAEHg0dYdcAHSgNV-Y",
-            authDomain: "sengokurinne-test-invalid.firebaseapp.com",
-            projectId: "sengokurinne-test-invalid",
-            storageBucket: "sengokurinne-test-invalid.firebasestorage.app",
+            authDomain: "sengokurinne-e0113.firebaseapp.com",
+            projectId: "sengokurinne-e0113",
+            storageBucket: "sengokurinne-e0113.firebasestorage.app",
             messagingSenderId: "315253519898",
             appId: "1:315253519898:web:3b0ea1de418ecf188643a3"
         };
@@ -5590,7 +5633,7 @@ if (target) target.classList.remove('hidden');
             firebase.initializeApp(firebaseConfig);
             const auth = firebase.auth();
             const db = firebase.firestore();
-            const appId = 'sengoku-life-app';
+            const appId = 'sengokurinne-test-invalid';
 
             auth.signInAnonymously().catch(function(err) {
                 console.warn("ログインスキップ");
@@ -5746,7 +5789,6 @@ if (target) target.classList.remove('hidden');
 </script>
 
 <script>
-// ===== BROWSER TEST ONLY (not in production builds) =====
 (function(){
 if (!location.search.includes('raidtest')) return;
 var stage = 'init';
@@ -5769,16 +5811,17 @@ var iv=setInterval(function(){
     if (rb && !rb.classList.contains('hidden')) { banner('CLICK-RAID'); rb.click(); return; }
     var pm = document.getElementById('pm-raid-btn');
     if (pm && !pm.classList.contains('hidden')) { banner('CLICK-RAID-PM'); pm.click(); return; }
+    if (clickText('結果を見る')) { banner('RESULT-OPEN'); return; }
     if (clickText('この支度で生まれる')) { banner('PREP-CONFIRMED'); return; }
     if (clickText('乱世に堕ちる')) { banner('START'); return; }
-    if (clickText('生まれる')) { banner('BIRTH'); return; }
-    // generic: click first visible choice-like button in the main flow
+    var intro = document.getElementById('intro-screen');
+    if (intro && vis(intro)) { intro.click(); banner('INTRO-TAP'); return; }
     var cs = document.querySelectorAll('#choices-container button, .choice-btn');
     for (var i=0;i<cs.length;i++){ if (vis(cs[i])) { cs[i].click(); banner('CHOICE '+tries); return; } }
     if (clickText('次へ') || clickText('進む') || clickText('閉じる') || clickText('受け取る')) { banner('ADV '+tries); return; }
     banner('WAIT '+tries);
   } catch(e){ banner('ERR '+e.message); }
-  if (tries>400) { clearInterval(iv); banner('TIMEOUT at '+stage); }
+  if (tries>1500) { clearInterval(iv); banner('TIMEOUT at '+stage); }
 }, 700);
 });
 })();
