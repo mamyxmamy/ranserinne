@@ -5896,16 +5896,16 @@ if (target) target.classList.remove('hidden');
 </script>
 
 <script>
-if (new URLSearchParams(location.search).get('raidtest') === '1') {
+if (new URLSearchParams(location.search).get('raidtest') === '3') {
   window.addEventListener('load', function() {
     var b = document.createElement('div');
     b.id = 'raidtest-banner';
     b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#a00;color:#fff;font-weight:bold;text-align:center;padding:6px;font-size:14px;';
-    b.textContent = 'TEST: READY';
+    b.textContent = 'TEST-V3: READY';
     document.body.appendChild(b);
     var rs = document.getElementById('raid-screen');
     if (rs) rs.classList.remove('hidden');
-    function stage(t, fn, at) { setTimeout(function() { b.textContent = 'TEST: ' + t; if (fn) fn(); }, at); }
+    function stage(t, fn, at) { setTimeout(function() { b.textContent = 'TEST-V3: ' + t; if (fn) fn(); }, at); }
     stage('CUTIN-CRIT', function() { if (window.__raidShowCutin) window.__raidShowCutin('crit'); }, 1500);
     stage('CUTIN-EVADE', function() { if (window.__raidShowCutin) window.__raidShowCutin('evade'); }, 5500);
     stage('CUTIN-LUCKY', function() { if (window.__raidShowCutin) window.__raidShowCutin('lucky'); }, 9500);
