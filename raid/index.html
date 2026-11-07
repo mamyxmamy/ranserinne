@@ -3761,6 +3761,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             text += `称号：『${title}』\n`;
             const lr = calculateLifeRank(state);
             text += `総合ランク：${lr.rank}（${lr.score}点）\n`;
+            if (window.__raidCard) text += `共討戦「泡沫夢幻」：第${window.__raidCard.gen}世代の番人に ${window.__raidCard.dmg.toLocaleString()} ダメージ\n`;
             const zukanCount = (window.unlockedTitles || []).length;
             const zukanTotal = (typeof TITLES_DB !== 'undefined') ? TITLES_DB.length : 50;
             text += `二つ名図鑑：${zukanCount}/${zukanTotal}種${window.__lastTitleNew ? '（新記録！）' : ''}\n\n`;
@@ -3772,113 +3773,165 @@ body.pc-on #ranking-screen { font-size: 15px; }
             window.open(url, '_blank');
         };
 
-        // 結果カード画像（1080x1350）を生成する
-        window.buildResultCard = function(isPremium) {
-            return new Promise((resolve) => {
-                try {
-                    const pName = state.playerName || "名無しの権兵衛";
-                    const fName = state.faction ? state.faction.name : "浪人";
-                    const cName = state.classInfo ? state.classInfo.name : "不明";
-                    const titleEl = document.getElementById(isPremium ? 'premium-title' : 'go-title');
-                    const title = titleEl ? titleEl.innerText.replace('【称号】\n', '').trim() : '';
-                    const deathText = isPremium ? "大往生" : (document.getElementById('go-main-title') ? document.getElementById('go-main-title').innerText : "討死");
-                    const zukanCount = (window.unlockedTitles || []).length;
-                    const zukanTotal = (typeof TITLES_DB !== 'undefined') ? TITLES_DB.length : 50;
-                    const lifeRank = calculateLifeRank(state);
+// 結果カード画像（1080x1350）を生成する ― v2: 出自・最期の一行・人生の節目・冥銭/家宝・共討帯（2026-11-07 本人「全部入り」決定）
+window.buildResultCard = function(isPremium) {
+return new Promise((resolve) => {
+try {
+const pName = state.playerName || "名無しの権兵衛";
+const fName = state.faction? state.faction.name: "浪人";
+const cName = state.classInfo? state.classInfo.name: "不明";
+const titleEl = document.getElementById(isPremium? 'premium-title': 'go-title');
+const title = titleEl? titleEl.innerText.replace('\n', '').trim(): '';
+const deathText = isPremium? "大往生": (document.getElementById('go-main-title')? document.getElementById('go-main-title').innerText: "討死");
+const zukanCount = (window.unlockedTitles || []).length;
+const zukanTotal = (typeof TITLES_DB!== 'undefined')? TITLES_DB.length: 50;
+const lifeRank = calculateLifeRank(state);
+const earned = Math.floor((state.age + state.valor + state.karma + state.luck + state.strategy + state.virtue) / 10);
+const reasonEl = document.getElementById(isPremium? 'premium-reason': 'go-reason');
+const reasonText = reasonEl? reasonEl.innerText.trim(): '';
+let birthId = null; try { birthId = localStorage.getItem('sengoku_last_birth_class');} catch (e) {}
+const birthCls = (typeof CLASSES!== 'undefined' && birthId)? CLASSES.find(c => c.id === birthId): null;
+let origin = '';
+if (state.flags && state.flags.sukanpin) origin = '素寒貧として、棍棒一本で生きた';
+else if (birthCls && state.classInfo && birthCls.id!== state.classInfo.id) origin = `${birthCls.name}に生まれ、${state.classInfo.name}に至る`;
+else if (birthCls) origin = `${birthCls.name}に生まれ、そのまま生きた`;
+else if (state.classInfo) origin = `${state.classInfo.name}として生きた`;
+const deathLines = ['戦場に散り、露と消える', '畳の上で安らかに眠る', '飢えに倒れ、路傍の土となる', '病に蝕まれ、静かに息を引き取る', '刑場の露と消える', '落武者狩りに倒れ、名もなき骸となる', 'この世を去る'];
+const chrono = (state.chronology || []).filter(en => en && en.text &&!deathLines.includes(en.text) &&!en.text.startsWith('番人の加護'));
+const scoreOf = (en) => { const t = en.text; let s = 0;
+    if (/大名に推挙|大名に就|大名とな|大名に成|大名へ推/.test(t)) s = Math.max(s, 100);
+    else if (t.includes('大名')) s = Math.max(s, 88);
+    if (/即位|天下統一|旗揚/.test(t)) s = Math.max(s, 95);
+    if (t.includes('家督')) s = Math.max(s, 90);
+    if (/討ち取|手柄/.test(t)) s = Math.max(s, 85);
+    if (/仕官|就任|襲名|転身|出家|堕ち|成り上が/.test(t)) s = Math.max(s, 80);
+    if (t.includes('結婚')) s = Math.max(s, 70);
+    if (t.includes('誕生')) s = Math.max(s, 65);
+    if (t.includes('初陣')) s = Math.max(s, 60);
+    if (/勝利|感得|授与/.test(t)) s = Math.max(s, 50);
+    return s + (en.age || 0) / 100; };
+const scored = chrono.map((en, i) => ({ en, i, s: scoreOf(en) }));
+let chosen = scored.filter(x => x.s >= 50).sort((a, b) => (b.s - a.s) || (b.i - a.i)).slice(0, 2);
+if (chosen.length < 2) { const rest = scored.filter(x => !chosen.includes(x)).sort((a, b) => b.i - a.i); while (chosen.length < 2 && rest.length) chosen.push(rest.shift()); }
+let picks = chosen.sort((a, b) => a.i - b.i).map(x => x.en);
+const hd = window.__lastHeirloomDraw;
+let heiTxt = '';
+if (hd && hd.kind === 'new') heiTxt = `家宝：『${hd.name}』`;
+else if (hd && hd.kind === 'convert') heiTxt = `家宝『${hd.name}』は冥銭${hd.amount}に還元`;
 
-                    const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1350;
-                    const ctx = cv.getContext('2d');
-                    ctx.fillStyle = '#161311'; ctx.fillRect(0, 0, 1080, 1350);
-                    ctx.strokeStyle = isPremium ? '#C9A227' : '#7A1F1F'; ctx.lineWidth = 10; ctx.strokeRect(24, 24, 1032, 1302);
-                    ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 2; ctx.strokeRect(44, 44, 992, 1262);
-                    ctx.textAlign = 'center';
-                    const mincho = '"Hiragino Mincho ProN","YuMincho","Yu Mincho","Noto Serif JP",serif';
+const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1350;
+const ctx = cv.getContext('2d');
+ctx.fillStyle = '#161311'; ctx.fillRect(0, 0, 1080, 1350);
+ctx.strokeStyle = isPremium? '#C9A227': '#7A1F1F'; ctx.lineWidth = 10; ctx.strokeRect(24, 24, 1032, 1302);
+ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 2; ctx.strokeRect(44, 44, 992, 1262);
+ctx.textAlign = 'center';
+const mincho = '"Hiragino Mincho ProN","YuMincho","Yu Mincho","Noto Serif JP",serif';
+const fit = (text, y, size, color, weight) => { let s = size; ctx.fillStyle = color; do { ctx.font = `${weight? weight + ' ': ''}${s}px ${mincho}`; s -= 2;} while (ctx.measureText(text).width > 950 && s > 22); ctx.fillText(text, 540, y);};
 
-                    ctx.fillStyle = '#9b8f83'; ctx.font = `42px ${mincho}`;
-                    ctx.fillText('戦国人生絵巻 - 乱世の輪廻 -', 540, 140);
+ctx.fillStyle = '#9b8f83'; ctx.font = `38px ${mincho}`;
+ctx.fillText('戦国人生絵巻 - 乱世の輪廻 -', 540, 118);
 
-                    ctx.fillStyle = isPremium ? '#E9C767' : '#E8E3D9'; ctx.font = `900 150px ${mincho}`;
-                    ctx.fillText(deathText, 540, 330);
+ctx.fillStyle = isPremium? '#E9C767': '#E8E3D9'; ctx.font = `900 ${deathText.length >= 5? 92: 118}px ${mincho}`;
+ctx.fillText(deathText, 540, 262);
 
-                    ctx.fillStyle = '#C9A227'; ctx.font = `900 92px ${mincho}`;
-                    ctx.fillText(`『${title}』`, 540, 500);
-                    if (window.__lastTitleNew) { ctx.fillStyle = '#E86A6A'; ctx.font = `bold 44px ${mincho}`; ctx.fillText('― 新記録 ―', 540, 580); }
+fit(`『${title}』`, 402, 76, '#C9A227', '900');
+if (window.__lastTitleNew) { ctx.fillStyle = '#E86A6A'; ctx.font = `bold 34px ${mincho}`; ctx.fillText('― 新記録 ―', 540, 452);}
 
-                    ctx.fillStyle = '#E8E3D9'; ctx.font = `56px ${mincho}`;
-                    ctx.fillText(`【${pName}】`, 540, 700);
-                    ctx.fillStyle = '#B9AFA2'; ctx.font = `46px ${mincho}`;
-                    ctx.fillText(`[${fName}] ${cName}`, 540, 775);
+ctx.fillStyle = '#E8E3D9'; ctx.font = `52px ${mincho}`;
+ctx.fillText('【' + pName + '】', 540, 536);
+ctx.fillStyle = '#B9AFA2'; ctx.font = `40px ${mincho}`;
+ctx.fillText(`[${fName}] ${cName}`, 540, 600);
+if (origin) fit(origin, 652, 36, '#8F8578');
 
-                    ctx.fillStyle = '#FFFFFF'; ctx.font = `900 120px ${mincho}`;
-                    ctx.fillText(`享年 ${state.age} 歳`, 540, 940);
+ctx.fillStyle = '#FFFFFF'; ctx.font = `900 96px ${mincho}`;
+ctx.fillText(`享年 ${state.age} 歳`, 540, 772);
 
-                    ctx.fillStyle = '#B9AFA2'; ctx.font = `44px ${mincho}`;
-                    ctx.fillText(`武功 ${state.valor}　悪逆 ${state.karma}　運 ${state.luck}`, 540, 1045);
-                    ctx.fillText(`知略 ${state.strategy}　人徳 ${state.virtue}　銭 ${state.money}文`, 540, 1115);
+if (reasonText) fit(`「${reasonText}」`, 850, 36, '#E9C767');
 
-                    ctx.fillStyle = '#9b8f83'; ctx.font = `42px ${mincho}`;
-                    ctx.fillText(`二つ名図鑑：${zukanCount}/${zukanTotal}種`, 540, 1215);
-                    ctx.fillStyle = '#6E655B'; ctx.font = `34px ${mincho}`;
-                    ctx.fillText('https://mamyxmamy.github.io/ranserinne/', 540, 1275);
+if (picks.length) {
+ctx.fillStyle = '#9b8f83'; ctx.font = `30px ${mincho}`;
+ctx.fillText('― 人生の節目 ―', 540, 918);
+picks.forEach((en, i) => { const t = `${en.age}歳　${en.text.length > 30? en.text.slice(0, 30) + '…': en.text}`; fit(t, 962 + i * 40, 34, '#CFC6AE');});
+}
 
-                    // 桜の花びら（控えめな装飾）
-                    ctx.fillStyle = 'rgba(240,170,190,0.5)';
-                    const petals = [[120,220],[950,180],[880,1150],[160,1080],[990,700],[90,760],[520,90],[760,250]];
-                    petals.forEach(([x,y]) => { ctx.beginPath(); ctx.ellipse(x, y, 16, 9, 0.6, 0, Math.PI * 2); ctx.fill(); });
+ctx.fillStyle = '#B9AFA2'; ctx.font = `40px ${mincho}`;
+ctx.fillText(`武功 ${state.valor}　悪逆 ${state.karma}　運 ${state.luck}`, 540, 1072);
+ctx.fillText(`知略 ${state.strategy}　人徳 ${state.virtue}　銭 ${state.money}文`, 540, 1124);
 
-                    // 総合ランクの判子（右上・表示専用）
-                    const rankPalettes = {
-                        E: { fill: '#574C41', stroke: '#D8CEC0', text: '#D9CFC0', inner: null, dashed: true },
-                        D: { fill: '#574C41', stroke: '#D8CEC0', text: '#D9CFC0', inner: null, dashed: true },
-                        C: { fill: '#EFE3CB', stroke: '#A92318', text: '#A92318', inner: '#A92318' },
-                        B: { fill: '#EFE3CB', stroke: '#A92318', text: '#A92318', inner: '#A92318' },
-                        A: { fill: '#120D0A', stroke: '#050403', text: '#E04424', inner: '#A02314' },
-                        S: { fill: '#5D0710', stroke: '#E7C568', text: '#F7D774', inner: '#E7C568' },
-                        SS: { gradient: true, stroke: '#7A5608', text: '#3A2503', inner: '#7A5608', glow: 'rgba(245,211,137,0.65)' },
-                        SSS: { gradient: true, stroke: '#FFE98A', text: '#2F1D02', inner: '#7A5608', outer: '#B8860B', glow: 'rgba(245,211,137,0.95)' }
-                    };
-                    const rp = rankPalettes[lifeRank.rank] || rankPalettes.E;
-                    ctx.save();
-                    ctx.translate(938, 178);
-                    ctx.rotate(-5 * Math.PI / 180);
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    if (rp.glow) { ctx.shadowColor = rp.glow; ctx.shadowBlur = lifeRank.rank === 'SSS' ? 34 : 24; }
-                    if (rp.outer) {
-                        ctx.strokeStyle = rp.outer; ctx.lineWidth = 4;
-                        ctx.strokeRect(-81, -81, 162, 162);
-                    }
-                    if (rp.gradient) {
-                        const grad = ctx.createLinearGradient(-69, -69, 69, 69);
-                        grad.addColorStop(0, '#8A6512'); grad.addColorStop(0.3, '#F6D873');
-                        grad.addColorStop(0.5, '#FFF0A6'); grad.addColorStop(0.74, '#CAA12E');
-                        grad.addColorStop(1, '#F9E07E');
-                        ctx.fillStyle = grad;
-                    } else {
-                        ctx.fillStyle = rp.fill;
-                    }
-                    ctx.fillRect(-69, -69, 138, 138);
-                    ctx.shadowBlur = 0;
-                    ctx.strokeStyle = rp.stroke;
-                    ctx.lineWidth = lifeRank.rank === 'A' ? 9 : 6;
-                    ctx.setLineDash(rp.dashed ? [10, 7] : []);
-                    ctx.strokeRect(-69, -69, 138, 138);
-                    ctx.setLineDash([]);
-                    if (rp.inner) {
-                        ctx.strokeStyle = rp.inner; ctx.lineWidth = 2;
-                        ctx.strokeRect(-57, -57, 114, 114);
-                    }
-                    ctx.fillStyle = rp.text;
-                    ctx.font = `700 20px ${mincho}`;
-                    ctx.fillText('総合ランク', 0, -34);
-                    ctx.font = `900 ${lifeRank.rank === 'SSS' ? 54 : 68}px ${mincho}`;
-                    ctx.fillText(lifeRank.rank, 0, 29);
-                    ctx.restore();
+fit(`獲得冥銭 +${earned}${heiTxt? '　' + heiTxt: ''}`, 1176, 34, '#9b8f83');
 
-                    cv.toBlob((b) => resolve(b), 'image/png');
-                } catch (e) { resolve(null); }
-            });
-        };
+if (window.__raidCard) {
+ctx.fillStyle = 'rgba(38,16,54,0.92)'; ctx.fillRect(140, 1206, 800, 110);
+ctx.strokeStyle = '#7C3AED'; ctx.lineWidth = 3; ctx.strokeRect(140, 1206, 800, 110);
+ctx.fillStyle = '#C4B5FD'; ctx.font = `bold 28px ${mincho}`;
+ctx.fillText('― 共討戦 ― 泡沫夢幻 ―', 540, 1242);
+ctx.fillStyle = '#FFFFFF'; ctx.font = `900 40px ${mincho}`;
+ctx.fillText(`第${window.__raidCard.gen}世代の番人に ${window.__raidCard.dmg.toLocaleString()} ダメージ`, 540, 1294);
+} else {
+ctx.fillStyle = '#9b8f83'; ctx.font = `40px ${mincho}`;
+ctx.fillText(`二つ名図鑑：${zukanCount}/${zukanTotal}種`, 540, 1240);
+ctx.fillStyle = '#6E655B'; ctx.font = `32px ${mincho}`;
+ctx.fillText('https://mamyxmamy.github.io/ranserinne/', 540, 1296);
+}
+
+// 桜の花びら（控えめな装飾）
+ctx.fillStyle = 'rgba(240,170,190,0.5)';
+const petals = [[120,220],[950,180],[880,1150],[160,1080],[990,700],[90,760],[520,90],[760,250]];
+petals.forEach(([x,y]) => { ctx.beginPath(); ctx.ellipse(x, y, 16, 9, 0.6, 0, Math.PI * 2); ctx.fill();});
+
+// 総合ランクの判子（右上・表示専用）
+const rankPalettes = {
+E: { fill: '#574C41', stroke: '#D8CEC0', text: '#D9CFC0', inner: null, dashed: true},
+D: { fill: '#574C41', stroke: '#D8CEC0', text: '#D9CFC0', inner: null, dashed: true},
+C: { fill: '#EFE3CB', stroke: '#A92318', text: '#A92318', inner: '#A92318'},
+B: { fill: '#EFE3CB', stroke: '#A92318', text: '#A92318', inner: '#A92318'},
+A: { fill: '#120D0A', stroke: '#050403', text: '#E04424', inner: '#A02314'},
+S: { fill: '#5D0710', stroke: '#E7C568', text: '#F7D774', inner: '#E7C568'},
+SS: { gradient: true, stroke: '#7A5608', text: '#3A2503', inner: '#7A5608', glow: 'rgba(245,211,137,0.65)'},
+SSS: { gradient: true, stroke: '#FFE98A', text: '#2F1D02', inner: '#7A5608', outer: '#B8860B', glow: 'rgba(245,211,137,0.95)'}
+};
+const rp = rankPalettes[lifeRank.rank] || rankPalettes.E;
+ctx.save();
+ctx.translate(938, 178);
+ctx.rotate(-5 * Math.PI / 180);
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+if (rp.glow) { ctx.shadowColor = rp.glow; ctx.shadowBlur = lifeRank.rank === 'SSS'? 34: 24;}
+if (rp.outer) {
+ctx.strokeStyle = rp.outer; ctx.lineWidth = 4;
+ctx.strokeRect(-81, -81, 162, 162);
+}
+if (rp.gradient) {
+const grad = ctx.createLinearGradient(-69, -69, 69, 69);
+grad.addColorStop(0, '#8A6512'); grad.addColorStop(0.3, '#F6D873');
+grad.addColorStop(0.5, '#FFF0A6'); grad.addColorStop(0.74, '#CAA12E');
+grad.addColorStop(1, '#F9E07E');
+ctx.fillStyle = grad;
+} else {
+ctx.fillStyle = rp.fill;
+}
+ctx.fillRect(-69, -69, 138, 138);
+ctx.shadowBlur = 0;
+ctx.strokeStyle = rp.stroke;
+ctx.lineWidth = lifeRank.rank === 'A'? 9: 6;
+ctx.setLineDash(rp.dashed? [10, 7]: []);
+ctx.strokeRect(-69, -69, 138, 138);
+ctx.setLineDash([]);
+if (rp.inner) {
+ctx.strokeStyle = rp.inner; ctx.lineWidth = 2;
+ctx.strokeRect(-57, -57, 114, 114);
+}
+ctx.fillStyle = rp.text;
+ctx.font = `700 20px ${mincho}`;
+ctx.fillText('総合ランク', 0, -34);
+ctx.font = `900 ${lifeRank.rank === 'SSS'? 54: 68}px ${mincho}`;
+ctx.fillText(lifeRank.rank, 0, 29);
+ctx.restore();
+
+cv.toBlob((b) => resolve(b), 'image/png');
+} catch (e) { resolve(null);}
+});
+};
 
         // 画像つき共有（対応環境では共有シート、非対応では画像保存＋従来の投稿画面）
         window.shareResult = async function(isPremium) {
@@ -3893,7 +3946,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                         const zukanCount = (window.unlockedTitles || []).length;
                         const zukanTotal = (typeof TITLES_DB !== 'undefined') ? TITLES_DB.length : 50;
                         const lr2 = calculateLifeRank(state);
-                        const shareText = `【${pName}】享年${state.age}歳、二つ名は『${title}』、総合ランク${lr2.rank}（${lr2.score}点）。二つ名図鑑：${zukanCount}/${zukanTotal}種\n#戦国人生絵巻 #二つ名図鑑 #ブラウザゲーム #ローグライク\nhttps://mamyxmamy.github.io/ranserinne/`;
+                        const shareText = `【${pName}】享年${state.age}歳、二つ名は『${title}』、総合ランク${lr2.rank}（${lr2.score}点）。二つ名図鑑：${zukanCount}/${zukanTotal}種${window.__raidCard ? `\n共討戦「泡沫夢幻」：第${window.__raidCard.gen}世代の番人に ${window.__raidCard.dmg.toLocaleString()} ダメージ` : ''}\n#戦国人生絵巻 #二つ名図鑑 #ブラウザゲーム #ローグライク\nhttps://mamyxmamy.github.io/ranserinne/`;
                         await navigator.share({ files: [file], text: shareText });
                         return;
                     }
@@ -4677,6 +4730,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     }
                 }
                 const endingHeirloomInfo = { draw: heirloomDrawResult, club: clubEvent };
+                window.__lastHeirloomDraw = heirloomDrawResult;
                 
                 // 追加：称号の保存
                 if (!window.unlockedTitles) window.unlockedTitles = [];
@@ -4702,7 +4756,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
 
                 // v21: 死亡・大往生が確定しても結果画面へ自動遷移しない。最期のログの画面で止め、
                 // プレイヤーが「見届ける」ボタンを押して初めて結果画面へ進む。
-                window.__raidUsedThisDeath = false;
+                window.__raidUsedThisDeath = false; window.__raidCard = null;
                 window.__pendingEnding = () => { if (state.age >= 60) showPremiumEnding(reason, finalTitle, nextHeirloom, earnedMeisen, endingHeirloomInfo); else showGameOver(reason, finalTitle, nextHeirloom, state.deathCause, earnedMeisen, lostHeirlooms, endingHeirloomInfo); };
                 window.__pendingEndingLabel = state.age >= 60 ? '大 往 生 の 結 果 を 見 る' : '最 期 を 見 届 け る';
                 if (advanceBtn) advanceBtn.classList.remove('hidden');
@@ -5678,6 +5732,8 @@ if (window.__raidTimer) { clearInterval(window.__raidTimer); window.__raidTimer 
 const res = window.__raidResult;
 if (!res) return;
 const after = await window.__raidApplyDamage(res.totalDamage);
+window.__raidCard = { gen: (window.__raidBossCache ? window.__raidBossCache.gen : after.gen), dmg: res.totalDamage };
+window.shareRaidResult = function(e) { if (e) { e.preventDefault(); e.stopPropagation(); } try { window.shareResult(!!window.__raidFromPremium); } catch (err) {} };
 const reward = Math.min(300, Math.floor(res.totalDamage / 10));
 window.meisen = (window.meisen || 0) + reward;
 try { localStorage.setItem('sengoku_raid_lifebonus', '10'); } catch (e) {}
@@ -5841,7 +5897,8 @@ if (target) target.classList.remove('hidden');
 </div>
 <div id="raid-res-title" class="hidden mt-2 border border-gold bg-yellow-950/30 p-2 text-center rounded-sm"><span class="text-white text-sm font-black">『冥府の門を叩きし者』</span><br><span class="text-[10px] text-gold font-bold">を感得！</span></div>
 <p id="raid-res-world" class="raid-res-anim mt-2 text-[11px] text-gray-400 leading-relaxed"></p>
-<button type="button" onclick="window.closeRaid(event)" class="action-button-main mt-3 w-full border-2 border-red-700 bg-red-950/80 hover:bg-red-900 text-white py-3 text-sm font-bold tracking-widest rounded-sm transition-all active:scale-95">結果へ戻る</button>
+<button type="button" onclick="window.shareRaidResult(event)" class="action-button-main mt-3 w-full border border-gray-500 bg-black/70 hover:bg-gray-900 text-gray-100 py-2.5 text-sm font-bold tracking-widest rounded-sm transition-all active:scale-95">📣 この戦いを投稿カードで共有</button>
+<button type="button" onclick="window.closeRaid(event)" class="action-button-main mt-2 w-full border-2 border-red-700 bg-red-950/80 hover:bg-red-900 text-white py-3 text-sm font-bold tracking-widest rounded-sm transition-all active:scale-95">結果へ戻る</button>
 </div>
 </div>
 </div>
