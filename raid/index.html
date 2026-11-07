@@ -437,9 +437,10 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 </div>
                 <p class="w-full text-center text-[10px] text-gray-400 tracking-widest">寿命限界: <span id="ui-max-age-limit" class="text-red-400 font-bold">70</span>歳（老衰開始: <span id="ui-random-death-start">60</span>歳）</p>
                 <!-- utakata-event-banner -->
-                <div class="w-full border border-purple-800/80 bg-[#160D1A]/85 rounded-sm px-3 py-2 text-center shadow-[0_0_14px_rgba(88,28,135,0.35)]">
+                <div onclick="window.openRaidRank(event)" class="w-full border border-purple-800/80 bg-[#160D1A]/85 rounded-sm px-3 py-2 text-center shadow-[0_0_14px_rgba(88,28,135,0.35)] cursor-pointer">
                     <p class="text-[12px] font-bold tracking-[0.2em] text-purple-200">期間限定 共討戦 ― 泡沫夢幻 ― 開催中</p>
                     <p class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">11月11日まで ― 死後の結果画面より、輪廻の番人に挑めます</p>
+                    <p class="text-[10px] text-[#F5D97E]/90 tracking-[0.25em] mt-1 font-bold">― 共討戦績（与ダメージ番付）を見る ―</p>
                 </div>
 
                 <button id="resume-btn" type="button" onclick="window.resumeGame(event)" class="hidden action-button-main w-full bg-[#1A331A] hover:bg-[#204020] text-green-200 border border-green-800 py-3 text-sm sm:text-base font-bold active:scale-95 transition-all shadow-[0_0_15px_rgba(0,100,0,0.4)] tracking-[0.2em] rounded-sm">
@@ -5181,6 +5182,70 @@ window.__raidTimer = null;
 window.__raidFinished = false;
 window.__raidCumDmg = 0;
 
+
+window.__raidAggregateRank = function(docs) {
+const map = {};
+docs.forEach(function(d) {
+if (!d || typeof d.damage !== 'number') return;
+const key = d.pid ? ('pid:' + d.pid) : ('name:' + (d.playerName || '名無し'));
+if (!map[key]) map[key] = { key: key, pid: d.pid || '', name: d.playerName || '名無し', total: 0, runs: 0, best: 0, latest: 0 };
+const r = map[key];
+r.total += d.damage;
+r.runs += 1;
+if (d.damage > r.best) r.best = d.damage;
+if ((d.timestamp || 0) >= r.latest) { r.latest = d.timestamp || 0; if (d.playerName) r.name = d.playerName; }
+});
+return Object.keys(map).map(function(k) { return map[k]; }).sort(function(a, b) { return (b.total - a.total) || (a.latest - b.latest); });
+};
+
+window.__raidFetchRank = async function() {
+try {
+if (!window.firebase || !firebase.firestore) return null;
+const db = firebase.firestore();
+const logsRef = db.collection('artifacts').doc('sengoku-life-app').collection('raid_event_logs');
+const snap = await raidWithTimeout(logsRef.orderBy('timestamp', 'desc').limit(1000).get(), 6000);
+const docs = [];
+snap.forEach(function(doc) { docs.push(doc.data()); });
+return window.__raidAggregateRank(docs);
+} catch (e) { return null; }
+};
+
+window.openRaidRank = async function(e) {
+if (e) { e.preventDefault(); e.stopPropagation(); }
+const scr = document.getElementById('raid-rank-screen');
+if (!scr) return;
+scr.classList.remove('hidden');
+const bossEl = document.getElementById('raid-rank-boss');
+const listEl = document.getElementById('raid-rank-list');
+if (bossEl) bossEl.innerText = '番人の様子を窺っている…';
+if (listEl) listEl.innerHTML = '<p class="text-center text-gray-400 text-xs py-6 tracking-widest">戦績を集計しています…</p>';
+const boss = await window.__raidFetchBoss();
+if (bossEl) bossEl.innerText = boss.shared ? ('輪廻の番人 ― 第' + boss.gen + '世代 ／ 残り ' + boss.hp.toLocaleString() + ' / ' + boss.maxHp.toLocaleString()) : '番人の様子は、現世からは窺えません';
+const rows = await window.__raidFetchRank();
+if (!listEl) return;
+if (!rows) { listEl.innerHTML = '<p class="text-center text-gray-400 text-xs py-6 tracking-widest">戦績を取得できませんでした</p>'; return; }
+if (!rows.length) { listEl.innerHTML = '<p class="text-center text-gray-400 text-xs py-6 tracking-widest">まだ挑んだ者はいません</p>'; return; }
+const myPid = (typeof window.__myPlayerId === 'function') ? window.__myPlayerId() : '';
+const esc = function(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
+let html = '';
+rows.slice(0, 30).forEach(function(r, i) {
+const mine = (myPid && r.pid && r.pid === myPid);
+html += '<div class="flex items-center gap-2 py-2 border-b border-[#3A322A]/70' + (mine ? ' bg-purple-950/40' : '') + '">'
++ '<span class="w-8 text-center font-black ' + (i === 0 ? 'text-gold text-lg' : 'text-gray-300') + '">' + (i + 1) + '</span>'
++ '<span class="flex-1 min-w-0"><span class="block truncate text-sm font-bold text-white">' + esc(r.name) + (mine ? ' <span class="text-[9px] text-purple-300 font-bold">自分</span>' : '') + '</span>'
++ '<span class="block text-[10px] text-gray-400">挑戦 ' + r.runs + ' 回 ／ 一撃最大 ' + r.best.toLocaleString() + '</span></span>'
++ '<span class="text-right"><span class="block text-base font-black text-[#F5D97E]">' + r.total.toLocaleString() + '</span><span class="block text-[9px] text-gray-500">合計ダメージ</span></span>'
++ '</div>';
+});
+listEl.innerHTML = html;
+};
+
+window.closeRaidRank = function(e) {
+if (e) { e.preventDefault(); e.stopPropagation(); }
+const scr = document.getElementById('raid-rank-screen');
+if (scr) scr.classList.add('hidden');
+};
+
 window.__raidCalcPower = function(s) {
 const sq = function(v) { return Math.sqrt(Math.max(0, v || 0));};
 const power = sq(s.valor) * 6 + sq(s.karma) * 4 + sq(s.strategy) * 4 + sq(s.virtue) * 4 + sq(s.luck) * 4 + Math.min(50, Math.floor((s.money || 0) / 200)) + Math.floor((s.age || 0) / 2);
@@ -5504,14 +5569,12 @@ if (line.d) window.__raidCumDmg += line.d;
 const log = document.getElementById('raid-log');
 if (log && line.img) { raidFx(function() { log.appendChild(raidImgEl(line.img)); }); }
 if (log) { log.appendChild(raidLineEl(line)); log.scrollTop = log.scrollHeight;}
-if (!instant && line.img === 'sen' && window.__raidTimer) {
+if (!instant && line.img === 'sen') {
 const veil = document.getElementById('raid-timestop-veil');
-const timer = window.__raidTimer;
-clearInterval(timer); window.__raidTimer = null;
 raidFx(function() { if (veil) veil.style.opacity = '0.55'; });
+if (window.__raidFxTimeout) clearTimeout(window.__raidFxTimeout);
 window.__raidFxTimeout = setTimeout(function() {
 raidFx(function() { if (veil) veil.style.opacity = '0'; });
-if (!window.__raidFinished && window.__raidResult && window.__raidRevealIdx < window.__raidResult.lines.length) { window.__raidTimer = setInterval(function() { raidStep();}, 1000); }
 }, 950);
 }
 if (!instant && line.d && (line.c === 'gold' || line.d >= 250)) raidDmgPop(line.d, line.d >= 250);
@@ -5590,8 +5653,8 @@ window.__raidSentatsu = sentatsu;
 const res = window.__raidSimulate(state, boss, sentatsu);
 window.__raidResult = res;
 raidUpdateBars();
-if (window.__raidTimer) clearInterval(window.__raidTimer);
-window.__raidTimer = setInterval(function() { raidStep();}, 1000);
+if (window.__raidTimer) { clearInterval(window.__raidTimer); window.__raidTimer = null; }
+raidStep();
 };
 
 window.closeRaid = function(e) {
@@ -5619,7 +5682,7 @@ if (target) target.classList.remove('hidden');
 .raid-thanks-glow { animation: raidThanksGlow 2.2s ease-in-out infinite; }
 @keyframes raidThanksGlow { 0%,100% { box-shadow: 0 0 18px rgba(212,175,55,0.35); } 50% { box-shadow: 0 0 42px rgba(212,175,55,0.75); } }
 .raid-thanks-line { opacity: 0; animation: raidLineIn 0.6s ease forwards; }
-#raid-screen > div:not(#raid-bglayer):not(#raid-danger-veil):not(#raid-timestop-veil){position:relative;z-index:1;}
+#raid-screen > div:not(#raid-bglayer):not(#raid-danger-veil):not(#raid-timestop-veil):not(#raid-cutin):not(#raid-textpop){position:relative;z-index:1;}
 #raid-bglayer{position:absolute;inset:-5%;background:var(--raidbg) center 18%/cover no-repeat;animation:raidBgZoom 38s ease-in-out infinite alternate;z-index:0;}
 @keyframes raidBgZoom{from{transform:scale(1) translateY(0);}to{transform:scale(1.09) translateY(-1.5%);}}
 #raid-danger-veil{position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 42%,rgba(150,8,8,.6) 100%);opacity:0;transition:opacity .9s ease;z-index:0;}
@@ -5644,11 +5707,11 @@ if (target) target.classList.remove('hidden');
 #raid-controls button{box-shadow:0 4px 14px rgba(0,0,0,.5);}
 @keyframes raidCharge{0%,100%{box-shadow:0 6px 28px rgba(0,0,0,.65),0 0 10px rgba(220,38,38,.25);}50%{box-shadow:0 6px 28px rgba(0,0,0,.65),0 0 40px rgba(220,38,38,.85),0 0 60px rgba(220,38,38,.4) inset;}}
 #raid-boss-stage.raid-charging{animation:raidCharge .8s ease-in-out infinite;border-color:rgba(248,113,113,.8);}
-#raid-cutin{position:absolute;left:0;right:0;top:24%;z-index:30;pointer-events:none;opacity:0;transform:translateX(105%);}
+#raid-cutin{position:absolute;left:0;right:0;top:50%;margin-top:-75px;z-index:90;pointer-events:none;opacity:0;transform:translateX(105%);}
 #raid-cutin img{width:100%;height:150px;object-fit:cover;object-position:center 30%;display:block;border-top:2px solid rgba(212,175,55,.8);border-bottom:2px solid rgba(212,175,55,.8);}
 #raid-cutin video{width:100%;height:150px;object-fit:cover;object-position:center 30%;display:block;border-top:2px solid rgba(212,175,55,.8);border-bottom:2px solid rgba(212,175,55,.8);}
 #raid-cutin-text{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:44px;letter-spacing:.25em;color:#FFE9A8;text-shadow:0 0 18px rgba(0,0,0,.95),0 2px 6px rgba(0,0,0,.9);}
-#raid-textpop{position:absolute;left:0;right:0;top:34%;z-index:31;text-align:center;pointer-events:none;font-weight:900;font-size:40px;letter-spacing:.2em;color:#FFE9A8;text-shadow:0 0 16px rgba(0,0,0,.95),0 2px 6px rgba(0,0,0,.9);opacity:0;}
+#raid-textpop{position:absolute;left:0;right:0;top:50%;margin-top:-128px;z-index:91;text-align:center;pointer-events:none;font-weight:900;font-size:40px;letter-spacing:.2em;color:#FFE9A8;text-shadow:0 0 16px rgba(0,0,0,.95),0 2px 6px rgba(0,0,0,.9);opacity:0;}
 </style>
 
 <div id="raid-screen" class="hidden absolute inset-0 z-[60] flex flex-col text-white pointer-events-auto overflow-hidden">
@@ -5701,6 +5764,20 @@ if (target) target.classList.remove('hidden');
 </div>
 </div>
 
+
+
+<div id="raid-rank-screen" class="hidden fixed inset-0 z-[210] bg-[#0A0708]/97 flex flex-col pointer-events-auto">
+<div class="p-4 border-b border-purple-900/60 bg-[#120A18] flex justify-between items-center shrink-0">
+<div>
+<h2 class="text-base font-black text-purple-100 tracking-[0.25em]">共討戦績</h2>
+<p class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">― 泡沫夢幻・与ダメージ番付（期間中の合計） ―</p>
+</div>
+<button type="button" onclick="window.closeRaidRank(event)" class="action-button-main text-gray-400 hover:text-white text-3xl px-2 leading-none">&times;</button>
+</div>
+<div class="px-4 py-2.5 bg-black/60 border-b border-[#3A322A] text-center shrink-0"><span id="raid-rank-boss" class="text-xs font-bold text-amber-100/90 tracking-widest">―</span></div>
+<div id="raid-rank-list" class="flex-1 overflow-y-auto px-4 py-2"></div>
+<p class="px-4 py-2 text-[9px] text-gray-500 text-center tracking-widest shrink-0">挑んだ回数だけ、名は刻まれる。死後の結果画面から、番人に挑めます。</p>
+</div>
 
 <div id="raid-thanks-screen" class="hidden fixed inset-0 z-[200] bg-black/85 flex items-center justify-center p-4">
 <div class="raid-thanks-pop raid-thanks-glow w-full max-w-md bg-[#0B0B10] border-2 border-[#D4AF37] rounded-md p-6 text-center relative overflow-hidden">
@@ -5850,7 +5927,7 @@ if (target) target.classList.remove('hidden');
     window.__applyLayoutMode();
 
     // ---- キーボード操作（数字キー=選択肢／Enter・Space=進める） ----
-    var OVERLAYS = ['start-screen','splash-screen','ranking-screen','encyclopedia-screen','heirloom-screen','item-screen','shop-screen','help-screen','history-screen','premium-screen','roulette-screen','support-screen','rank-detail-screen','gameover-screen','name-entry-screen','intro-screen','raid-screen','raid-thanks-screen'];
+    var OVERLAYS = ['start-screen','splash-screen','ranking-screen','encyclopedia-screen','heirloom-screen','item-screen','shop-screen','help-screen','history-screen','premium-screen','roulette-screen','support-screen','rank-detail-screen','gameover-screen','name-entry-screen','intro-screen','raid-screen','raid-thanks-screen','raid-rank-screen'];
     function isVisible(el) { return !!el && !el.classList.contains('hidden'); }
     // 実際に画面を覆っているか（透明度で出し入れされる要素を「表示中」と誤認しない）
     function isCovering(el) {
