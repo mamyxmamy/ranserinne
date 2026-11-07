@@ -439,7 +439,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <!-- utakata-event-banner -->
                 <div onclick="window.openRaidRank(event)" class="w-full border border-purple-800/80 bg-[#160D1A]/85 rounded-sm px-3 py-2 text-center shadow-[0_0_14px_rgba(88,28,135,0.35)] cursor-pointer">
                     <p class="text-[12px] font-bold tracking-[0.2em] text-purple-200">期間限定 共討戦 ― 泡沫夢幻 ― 開催中</p>
-                    <p class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">11月11日まで ― 死後の結果画面より、輪廻の番人に挑めます</p>
+                    <p class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">11月11日まで ― 死の直後、転生の合間に番人との一戦が待つ</p>
                     <p class="text-[10px] text-[#F5D97E]/90 tracking-[0.25em] mt-1 font-bold">― 共討戦績（与ダメージ番付）を見る ―</p>
                 </div>
 
@@ -4727,7 +4727,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             const goNameEl = document.getElementById('go-player-name');
             if(goNameEl) goNameEl.innerText = state.playerName || '名無しの権兵衛';
 
-            document.getElementById('go-age').innerText = state.age; window.__raidRefreshButtons(); document.getElementById('go-class').innerText = state.classInfo ? state.classInfo.name : '--'; document.getElementById('go-faction').innerText = state.faction ? `[${state.faction.name}]` : ''; document.getElementById('go-title').innerText = title;
+            document.getElementById('go-age').innerText = state.age; window.__raidRefreshButtons(); window.__raidAutoEnter(false); document.getElementById('go-class').innerText = state.classInfo ? state.classInfo.name : '--'; document.getElementById('go-faction').innerText = state.faction ? `[${state.faction.name}]` : ''; document.getElementById('go-title').innerText = title;
             document.getElementById('go-valor').innerText = state.valor; document.getElementById('go-karma').innerText = state.karma; document.getElementById('go-luck').innerText = state.luck; document.getElementById('go-strategy').innerText = state.strategy; document.getElementById('go-virtue').innerText = state.virtue; document.getElementById('go-money').innerText = state.money; document.getElementById('go-reason').innerText = reason;
             const goLifeRank = calculateLifeRank(state);
             const goRankEl = document.getElementById('go-rank');
@@ -4769,7 +4769,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             const premNameEl = document.getElementById('premium-player-name');
             if(premNameEl) premNameEl.innerText = state.playerName || '名無しの権兵衛';
 
-            document.getElementById('premium-title').innerText = title; window.__raidRefreshButtons(); document.getElementById('premium-age').innerText = state.age; document.getElementById('premium-class').innerText = state.classInfo ? state.classInfo.name : '--'; document.getElementById('premium-faction').innerText = state.faction ? `[${state.faction.name}]` : '';
+            document.getElementById('premium-title').innerText = title; window.__raidRefreshButtons(); window.__raidAutoEnter(true); document.getElementById('premium-age').innerText = state.age; document.getElementById('premium-class').innerText = state.classInfo ? state.classInfo.name : '--'; document.getElementById('premium-faction').innerText = state.faction ? `[${state.faction.name}]` : '';
             document.getElementById('premium-valor').innerText = state.valor; document.getElementById('premium-karma').innerText = state.karma; document.getElementById('premium-luck').innerText = state.luck; document.getElementById('premium-strategy').innerText = state.strategy; document.getElementById('premium-virtue').innerText = state.virtue; document.getElementById('premium-money').innerText = state.money;
             const premiumLifeRank = calculateLifeRank(state);
             const premiumRankEl = document.getElementById('premium-rank');
@@ -5283,6 +5283,12 @@ if (b) { b.classList.toggle('hidden',!show); b.classList.toggle('flex', show);}
 });
 };
 
+window.__raidAutoEnter = function(fromPremium) {
+if (window.__raidUsedThisDeath) return;
+window.__raidForceFrom = fromPremium ? 'pm' : 'go';
+if (window.openRaid) window.openRaid();
+};
+
 function raidLocalBoss() {
 try { const j = JSON.parse(localStorage.getItem('sengoku_raid_event_local') || 'null'); if (j && j.hp > 0) return j;} catch (e) {}
 return { gen: 1, hp: RAID_BASE_HP, maxHp: RAID_BASE_HP};
@@ -5518,7 +5524,46 @@ else if (line.c === 'boss') { div.className += ' text-red-300';}
 else if (line.c === 'warn') { div.className += ' text-red-200 font-bold tracking-wider';}
 else if (line.c === 'sys') { div.className += ' text-gray-300';}
 else { div.className += ' text-gray-100';}
-div.textContent = line.t;
+// --- 与ダメージ／被ダメージの視覚区別（2026-11-07 本人要望） ---
+let kind = null, num = null, text = line.t;
+if (line.c === 'boss') {
+const m = line.t.match(/―\s*([\d,]+)\s*の痛撃/);
+if (m) { kind = 'taken'; num = parseInt(m[1].replace(/,/g, ''), 10); text = line.t.replace(/\s*―\s*[\d,]+\s*の痛撃を受けた/, 'を受けた'); }
+} else if (typeof line.d === 'number' && line.d > 0) {
+kind = 'dealt'; num = line.d;
+text = line.t.replace(/！\s*―\s*[\d,]+\s*の打撃！/g, '！').replace(/\s*―\s*[\d,]+\s*の打撃！/g, '！').replace(/の\s*[\d,]+\s*打撃！/g, '！').replace(/、[\d,]+\s*の反撃を叩き込んだ！/g, '、反撃を叩き込んだ！');
+} else if (typeof line.e === 'number' && /癒やした|持ち直した/.test(line.t)) {
+kind = 'heal';
+}
+if (!kind) { div.textContent = line.t; return div; }
+if (kind === 'dealt' && line.c !== 'gold') div.className += line.c === 'assist'? ' border-l-[3px] border-emerald-400 bg-emerald-400/5 pl-2 pr-1 py-1 rounded-sm my-1': ' border-l-[3px] border-[#E8C268] bg-[#E8C268]/5 pl-2 pr-1 py-1 rounded-sm my-1';
+if (kind === 'taken') div.className += ' border-l-[3px] border-red-500 bg-red-500/10 pl-2 pr-1 py-1 rounded-sm my-1';
+const row = document.createElement('div');
+row.className = 'flex items-start gap-2 w-full';
+const chip = document.createElement('span');
+chip.className = 'flex-none mt-[3px] px-1.5 py-[2px] rounded-sm text-[10px] font-black tracking-[0.2em] leading-none';
+if (kind === 'dealt') { chip.textContent = line.c === 'assist'? '助太刀': '攻撃'; chip.className += line.c === 'assist'? ' bg-emerald-900 text-emerald-200': ' bg-[#8a6d1f] text-[#ffe9a8]'; }
+else if (kind === 'taken') { chip.textContent = '被弾'; chip.className += ' bg-red-900 text-red-200'; }
+else { chip.textContent = '回復'; chip.className += ' bg-emerald-900 text-emerald-200'; }
+row.appendChild(chip);
+const body = document.createElement('span');
+body.className = 'flex-1';
+body.textContent = text;
+row.appendChild(body);
+if (num !== null && !isNaN(num)) {
+const tag = document.createElement('span');
+tag.className = 'flex-none text-right leading-none pl-1';
+const big = document.createElement('span');
+big.className = 'block text-[22px] font-black leading-none';
+big.style.color = kind === 'taken'? '#fca5a5': (line.c === 'assist'? '#6ee7b7': '#F5D97E');
+big.textContent = (kind === 'taken'? '−': '') + num.toLocaleString();
+const lab = document.createElement('span');
+lab.className = 'block text-[9px] tracking-[0.25em] text-gray-400 mt-[3px]';
+lab.textContent = kind === 'taken'? '被ダメージ': '与ダメージ';
+tag.appendChild(big); tag.appendChild(lab);
+row.appendChild(tag);
+}
+div.appendChild(row);
 return div;
 }
 
@@ -5671,7 +5716,8 @@ if (window.__raidUsedThisDeath) return;
 window.__raidUsedThisDeath = true;
 window.__raidRefreshButtons();
 const prem = document.getElementById('premium-screen');
-window.__raidFromPremium =!!(prem &&!prem.classList.contains('hidden'));
+if (window.__raidForceFrom) { window.__raidFromPremium = (window.__raidForceFrom === 'pm'); window.__raidForceFrom = null; }
+else { window.__raidFromPremium =!!(prem &&!prem.classList.contains('hidden')); }
 const go = document.getElementById('gameover-screen'); if (go) go.classList.add('hidden');
 if (prem) prem.classList.add('hidden');
 const scr = document.getElementById('raid-screen'); if (scr) scr.classList.remove('hidden');
@@ -5812,7 +5858,7 @@ if (target) target.classList.remove('hidden');
 </div>
 <div class="px-4 py-2.5 bg-black/60 border-b border-[#3A322A] text-center shrink-0"><span id="raid-rank-boss" class="text-xs font-bold text-amber-100/90 tracking-widest">―</span></div>
 <div id="raid-rank-list" class="flex-1 overflow-y-auto px-4 py-2"></div>
-<p class="px-4 py-2 text-[9px] text-gray-500 text-center tracking-widest shrink-0">挑んだ回数だけ、名は刻まれる。死後の結果画面から、番人に挑めます。</p>
+<p class="px-4 py-2 text-[9px] text-gray-500 text-center tracking-widest shrink-0">挑んだ回数だけ、名は刻まれる。死の直後、転生の合間に番人へ挑めます。</p>
 </div>
 
 <div id="raid-thanks-screen" class="hidden fixed inset-0 z-[200] bg-black/85 flex items-center justify-center p-4">
