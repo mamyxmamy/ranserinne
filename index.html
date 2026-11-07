@@ -5323,27 +5323,37 @@ window.__raidApplyDamage = async function(dmg) {
 const boss = window.__raidBossCache || { gen: 1, hp: RAID_BASE_HP, maxHp: RAID_BASE_HP};
 if (boss.shared) {
 window.__raidApplyError = '';
-window.__raidApplyStage = 'tx';
+window.__raidApplyStage = 'inc';
 try {
 const db = firebase.firestore();
 const ref = db.collection('artifacts').doc('sengoku-life-app').collection('raid_event').doc('state');
-const out = await raidWithTimeout(db.runTransaction(async function(tx) {
-const snap = await tx.get(ref);
-let gen = 1, hp = RAID_BASE_HP, maxHp = RAID_BASE_HP;
-if (snap.exists) { const d = snap.data(); gen = d.gen || 1; hp = d.hp; maxHp = d.maxHp || RAID_BASE_HP;}
-const remain = hp - dmg;
-if (remain > 0) { tx.set(ref, { gen: gen, hp: remain, maxHp: maxHp}, { merge: true}); return { gen: gen, hp: remain, maxHp: maxHp, killed: false};}
+try {
+await raidWithTimeout(ref.update({ hp: firebase.firestore.FieldValue.increment(-dmg) }), 10000);
+} catch (e1) {
+if (e1 && e1.code === 'not-found') {
+await raidWithTimeout(ref.set({ gen: 1, hp: Math.max(1, RAID_BASE_HP - dmg), maxHp: RAID_BASE_HP }), 10000);
+} else { throw e1; }
+}
+window.__raidApplyStage = 'read';
+const snap = await raidWithTimeout(ref.get(), 8000);
+let cur = snap.exists ? snap.data() : { gen: boss.gen || 1, hp: Math.max(1, (boss.hp || RAID_BASE_HP) - dmg), maxHp: boss.maxHp || RAID_BASE_HP };
+let gen = cur.gen || 1, hp = cur.hp, maxHp = cur.maxHp || RAID_BASE_HP, killed = false;
+if (typeof hp === 'number' && hp <= 0) {
 const newMax = Math.round(maxHp * 1.5);
-const newHp = Math.max(1, newMax + remain);
-tx.set(ref, { gen: gen + 1, hp: newHp, maxHp: newMax}, { merge: true});
-return { gen: gen + 1, hp: newHp, maxHp: newMax, killed: true};
-}), 12000);
+const newHp = Math.max(1, newMax + hp);
+window.__raidApplyStage = 'genup';
+await raidWithTimeout(ref.set({ gen: gen + 1, hp: newHp, maxHp: newMax }, { merge: true }), 10000);
+const snap2 = await raidWithTimeout(ref.get(), 8000);
+if (snap2.exists) { const d2 = snap2.data(); gen = d2.gen || gen + 1; hp = d2.hp; maxHp = d2.maxHp || newMax; }
+else { gen = gen + 1; hp = newHp; maxHp = newMax; }
+killed = true;
+}
 window.__raidApplyStage = 'log';
 try {
 await db.collection('artifacts').doc('sengoku-life-app').collection('raid_event_logs').add({ pid: (typeof window.__myPlayerId === 'function')? window.__myPlayerId(): '', playerName: state.playerName || '名無し', damage: dmg, gen: boss.gen, valor: state.valor || 0, strategy: state.strategy || 0, luck: state.luck || 0, timestamp: Date.now()});
 } catch (e2) { window.__raidApplyError = 'log: ' + ((e2 && (e2.code || e2.message)) || 'unknown'); }
-return out;
-} catch (e) { window.__raidApplyError = (window.__raidApplyStage || 'tx') + ': ' + ((e && (e.code || e.message)) || 'unknown'); /* fall through to local */}
+return { gen: gen, hp: hp, maxHp: maxHp, killed: killed };
+} catch (e) { window.__raidApplyError = (window.__raidApplyStage || 'inc') + ': ' + ((e && (e.code || e.message)) || 'unknown'); /* fall through to local */}
 }
 const b = raidLocalBoss();
 const remain = b.hp - dmg;
@@ -5792,7 +5802,7 @@ if (target) target.classList.remove('hidden');
 
 
 
-<div id="raid-rank-screen" class="hidden fixed inset-0 z-[210] bg-[#0A0708]/97 flex flex-col pointer-events-auto">
+<div id="raid-rank-screen" class="hidden fixed inset-0 z-[210] flex flex-col pointer-events-auto" style="background:rgba(10,7,8,0.97)">
 <div class="p-4 border-b border-purple-900/60 bg-[#120A18] flex justify-between items-center shrink-0">
 <div>
 <h2 class="text-base font-black text-purple-100 tracking-[0.25em]">共討戦績</h2>
