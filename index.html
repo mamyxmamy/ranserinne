@@ -800,7 +800,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 領地の特徴と治世の方針</h3>
                     <ul class="list-disc pl-4 space-y-1">
                         <li>領地の特徴: 生まれた家ごとに初期の才へ色が付く（例: 織田=所持金+100・人徳-10／武田=武功+10・所持金-50／上杉=人徳+10・体力-10／北条=体力+10・武功-10／毛利=知略+10・武功-10／島津=武功+10・人徳-10）。素寒貧を選ぶと家の色も消える。</li>
-                        <li>治世の方針: 大名になると、伸ばす能力を1つ選べる。その能力の上昇量は1.5倍になり、その能力が伸びる出来事も訪れやすくなる（その人生限り・選び直し不可）。</li>
+                        <li>治世の方針: 大名になると、伸ばす能力を1つ選べる。その能力の上昇量は2倍になり、その能力が伸びる出来事も訪れやすくなる（その人生限り・選び直し不可）。</li>
                         <li>前世の栞: 冥府の商人の持込道具（100冥銭）。前回の人生と同じ身分・同じ家で生まれ変わる。</li>
                     </ul>
                 </section>
@@ -1338,7 +1338,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     } },
                     { text: '【知略】戦局を俯瞰し、有利な高所へ退避・布陣', condition: () => true, hint: '知略増・被ダメージ軽減（鉄砲伝来後は被弾増）', effect: (s) => { s.strategy += 15; s.deathCause = 'battle'; let dmg = s.flags.teppo ? 12 : 8; return { hp: -dmg, log: s.flags.teppo ? '高台へ移動し敵をいなしたが、遠方からの銃撃が絶えず、被害は以前より大きくなった。' : '高台へ移動し、味方への被害を最小限に抑えつつ敵をいなした。' }; } },
                     { text: '【乾坤一擲】血路を開き、敵本陣へ単騎突撃！（低確率）', condition: () => true, hint: '大逆転か即死', effect: (s) => {
-                        if (critRoll('valor', 0.25 + (s.valor * 0.001))) { s.valor += 90; const t = window.__tier || 1; if (t >= 3) recordChronology("単騎突撃で敵将の首級を挙げ、鬼神の如き武勇を轟かせる"); else recordChronologyVariant(["敵本陣へ単騎突撃し大戦果", "単騎で敵陣を突破し、敵将の首級を挙げる", "単騎突撃で敵本陣を打ち破り、大戦果を挙げる"]); return { hp: -25, money: 250, log: t >= 3 ? '単騎、嵐のように敵陣を駆け抜け、敵将の首級を掲げて帰還した。その姿を見た者は後に語った。「あれは人の技ではなかった」と。' : t === 2 ? '敵陣は我先にと崩れ、本陣のど真ん中で敵将の首級を掲げた！その武勇に、味方の士気は天を衝いた。' : '敵将の首級を高く掲げ、莫大な報奨金を手にした！' }; }
+                        if (critRoll('valor', 0.25 + (s.valor * 0.0015))) { s.valor += 90 + Math.floor(s.valor * 0.05); const t = window.__tier || 1; if (t >= 3) recordChronology("単騎突撃で敵将の首級を挙げ、鬼神の如き武勇を轟かせる"); else recordChronologyVariant(["敵本陣へ単騎突撃し大戦果", "単騎で敵陣を突破し、敵将の首級を挙げる", "単騎突撃で敵本陣を打ち破り、大戦果を挙げる"]); return { hp: -25, money: 250, log: t >= 3 ? '単騎、嵐のように敵陣を駆け抜け、敵将の首級を掲げて帰還した。その姿を見た者は後に語った。「あれは人の技ではなかった」と。' : t === 2 ? '敵陣は我先にと崩れ、本陣のど真ん中で敵将の首級を掲げた！その武勇に、味方の士気は天を衝いた。' : '敵将の首級を高く掲げ、莫大な報奨金を手にした！' }; }
                         else { s.deathCause = 'battle'; return { hp: -999, log: '待ち構えていた敵の鉄砲隊に蜂の巣にされ、凄惨な最期を遂げた……。' }; }
                     } }
                 ] },
@@ -2357,6 +2357,13 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '献上を受け、褒美を返す', condition: () => true, hint: '銭獲得・悪逆上昇', effect: (s) => { s.karma += 5; return { money: 150, hp: 0, log: '献上の流れが一つの商いとなった。蔵は潤うが、家臣の忠誠が金に寄っていく気もする。' }; } },
                     { text: '質素を旨とし、宝集めを戒める', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 15; return { hp: 0, log: '「宝は領民の暮らし」と言い切った。その質素さが却って評判となった。' }; } }
                 ] },
+            { id: 'daimyo_whitedeer', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'daimyo' && !s.flags.zuishouDeer,
+                title: '【瑞兆】白鹿の出現', text: '領内の山に、雪のように白い鹿が現れたという報せが届いた。古来、白き獣は天下泰平の瑞兆とされる。領民たちは色めき立っている。',
+                choices: [
+                    { text: '【銭200文】社を建てて手厚く祀る', condition: (s) => s.money >= 200, hint: '運で判定・人徳上昇', effect: (s) => { s.flags.zuishouDeer = true; s.virtue += 10; if (critRoll('luck', 0.45 + (s.luck * 0.001))) { s.luck += 25; recordChronology("白鹿を祀り、領内に福が満ちる"); return { money: -200, hp: 0, log: '白鹿は社に安んじ、領内には豊作と無病の噂が満ちた。天の恵みがこの身に集うのを感じる。' }; } s.luck += 10; return { money: -200, hp: 0, log: '白鹿はやがて山の奥へ去ったが、祀りの心が領民の結束を強めた。' }; } },
+                    { text: '狩りで仕留め、縁起物として飾る', condition: () => true, hint: '武功で判定・運上昇', effect: (s) => { s.flags.zuishouDeer = true; if (critRoll('valor', 0.5 + (s.valor * 0.001))) { s.valor += 15; s.luck += 15; return { money: 100, hp: 0, log: '見事に仕留めた白鹿の角は、城の広間を飾る縁起物となった。その武勇と運は家中の語り草だ。' }; } s.luck += 5; return { hp: -15, log: '白鹿は煙のように消え、追う家臣が崖で傷を負った。瑞兆は掴み損ねたが、不思議と悪い気はしない。' }; } },
+                    { text: '静かに見送り、領民と喜びを分かち合う', condition: () => true, hint: '人徳・運上昇', effect: (s) => { s.flags.zuishouDeer = true; s.virtue += 15; s.luck += 8; return { hp: 0, log: '白鹿の姿を領民と共に見送った。あの白さは、きっと良い世の兆しだ。' }; } }
+                ] },
             { id: 'daimyo_plague', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'daimyo',
                 title: '【疫病】領国の病', text: '領国に疫病が広がり始めた。領主の対応が、領民の命と家の評判を左右する。',
                 choices: [
@@ -2531,7 +2538,8 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 title: '【還暦】生まれ直しの歳', text: '干支が一巡りし、生まれた年の暦に戻る還暦を迎えた。この戦国の世で六十年を生き抜く者は稀だ。周囲の人々が、あなたの長寿を祝おうと集まってきた。', choices: [
                     { text: '祝宴を開き、人々に振る舞う', condition: () => true, hint: '人徳上昇・体力回復', effect: (s) => { s.flags.kanreki60 = true; s.virtue += 20; recordChronology("還暦を迎え、祝宴を開く"); return { hp: 15, log: 'ささやかな宴だったが、集まった人々の笑顔が何よりの贈り物だった。六十年分の生が、静かに報われた気がした。' + (s.flags.sukanpin ? '棍棒一本の素寒貧にも、こんな日が来るとは。' : '') }; } },
                     { text: '生まれ直しの覚悟で、新たなことに挑戦する', condition: () => true, hint: '運上昇', effect: (s) => { s.flags.kanreki60 = true; s.luck += 20; recordChronology("還暦を迎え、新たな挑戦を始める"); return { hp: 0, log: '暦が生まれ直るなら、自分も生まれ直せばいい。老いた胸に、新しい火が灯った。' + (s.flags.sukanpin ? 'まだまだ棍棒は置けそうにない。' : '') }; } },
-                    { text: '静かに先祖の墓に詣でる', condition: () => true, hint: '知略上昇・体力小回復', effect: (s) => { s.flags.kanreki60 = true; s.strategy += 15; recordChronology("還暦に先祖の墓へ詣でる"); return { hp: 10, log: '先に逝った者たちへ、まだこちらにいると報告した。六十年の歳月が、知恵の澱のように心に積もっている。' + (s.flags.sukanpin ? '墓前では身分の上下など関係ない。' : '') }; } }
+                    { text: '静かに先祖の墓に詣でる', condition: () => true, hint: '知略上昇・体力小回復', effect: (s) => { s.flags.kanreki60 = true; s.strategy += 15; recordChronology("還暦に先祖の墓へ詣でる"); return { hp: 10, log: '先に逝った者たちへ、まだこちらにいると報告した。六十年の歳月が、知恵の澱のように心に積もっている。' + (s.flags.sukanpin ? '墓前では身分の上下など関係ない。' : '') }; } },
+                    { text: '若い頃の槍を取り、鍛錬を再開する', condition: () => true, hint: '武功上昇・体力小減少', effect: (s) => { s.flags.kanreki60 = true; s.valor += 20; recordChronology("還暦を迎え、武の鍛錬を再開する"); return { hp: -5, log: '久しぶりに握る槍は重かったが、体の芯はまだ衰えを知らなかった。生まれ直すのは、心だけではない。' + (s.flags.sukanpin ? '棍棒の腕前も、まだまだ捨てたものではない。' : '') }; } }
                 ] },
             { id: 'koki_70', mode: ['normal'], weight: 100, condition: (s) => s.age >= 70 && !s.flags.koki70,
                 title: '【古希】古来稀なる命', text: '「人生七十、古来稀なり」。七十歳を迎えた。かつて共に笑い、戦った者たちの多くは、もうこの世にいない。残された命の重さが、静かに肩にのしかかる。', choices: [
@@ -2543,19 +2551,22 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 title: '【喜寿】喜びの字の歳', text: '「喜」の字を崩して書けば、七十七。喜寿を迎えた。ここまで生き延びたこと自体が、もはや祝いであり、奇跡である。人々がささやかな祝いの品を持ち寄ってきた。', choices: [
                     { text: '祝いの書をしたため、人々に配る', condition: () => true, hint: '知略上昇', effect: (s) => { s.flags.kiju77 = true; s.strategy += 25; recordChronology("喜寿を迎え、祝いの書をしたためる"); return { hp: 0, log: '一文字ごとに七十七年を込めた書は、受け取った者たちの家宝として大切にされた。' + (s.flags.sukanpin ? '素寒貧の書が家宝になるとは、世の中分からないものだ。' : '') }; } },
                     { text: '集まった人々と、尽きぬ昔話に興じる', condition: () => true, hint: '人徳上昇', effect: (s) => { s.flags.kiju77 = true; s.virtue += 30; recordChronology("喜寿を迎え、人々と昔話に興じる"); return { hp: 0, log: '笑い声の絶えない一日だった。長く生きるとは、語れる物語が増えることなのだと知った。' + (s.flags.sukanpin ? '棍棒一本の物語が、子供たちには一番受けた。' : '') }; } },
-                    { text: '喜びを噛みしめ、静かに天に感謝する', condition: () => true, hint: '運上昇・体力回復', effect: (s) => { s.flags.kiju77 = true; s.luck += 25; recordChronology("喜寿を迎え、静かに天へ感謝する"); return { hp: 15, log: '幾度も死線をくぐり、それでもここにいる。それだけで十分だった。身体の奥から力が湧いてくるようだ。' + (s.flags.sukanpin ? '天は棍棒の男を見捨てなかったようだ。' : '') }; } }
+                    { text: '喜びを噛みしめ、静かに天に感謝する', condition: () => true, hint: '運上昇・体力回復', effect: (s) => { s.flags.kiju77 = true; s.luck += 25; recordChronology("喜寿を迎え、静かに天へ感謝する"); return { hp: 15, log: '幾度も死線をくぐり、それでもここにいる。それだけで十分だった。身体の奥から力が湧いてくるようだ。' + (s.flags.sukanpin ? '天は棍棒の男を見捨てなかったようだ。' : '') }; } },
+                    { text: '祝いの庭で槍を振るい、衰えぬ腕を見せる', condition: () => true, hint: '武功上昇・体力小減少', effect: (s) => { s.flags.kiju77 = true; s.valor += 25; recordChronology("喜寿を迎え、槍の腕前を披露する"); return { hp: -8, log: '庭に集まった人々の前で、槍を大きく一閃。七十七の体に、若き日の冴えが戻った。' + (s.flags.sukanpin ? '棍棒の一振りは、今も子供たちの度肝を抜いた。' : '') }; } }
                 ] },
             { id: 'beiju_88', mode: ['normal'], weight: 100, condition: (s) => s.age >= 88 && !s.flags.beiju88,
                 title: '【米寿】八十八の実り', text: '「米」の字を分ければ八十八。米寿を迎えた。実りの歳に相応しく、あちこちから長老の知恵を乞う声がかかる。長い生が、いま静かに実を結ぼうとしている。', choices: [
                     { text: '長老として、豊作と暮らしの知恵を授ける', condition: () => true, hint: '人徳上昇・御礼の銭', effect: (s) => { s.flags.beiju88 = true; s.virtue += 30; recordChronology("米寿を迎え、長老として知恵を授ける"); return { money: 50, hp: 0, log: '干ばつの年も洪水の年も知る者の言葉は重い。村々から御礼の品と銭が届けられた。' + (s.flags.sukanpin ? '野山で生き抜いた知恵が、ここに来て実を結んだ。' : '') }; } },
                     { text: '祝いの米を皆に振る舞う', condition: (s) => s.money >= 100, hint: '銭100消費・人徳大上昇', effect: (s) => { s.flags.beiju88 = true; s.virtue += 35; recordChronology("米寿に祝いの米を振る舞う"); return { money: -100, hp: 0, log: '蔵の米を惜しみなく分け与えた。その夜、村じゅうの竈から湯気が立ちのぼる光景は、八十八年の生への何よりの答えだった。' + (s.flags.sukanpin ? '蓄えの少ない身でも、分け合う心は一人前だった。' : '') }; } },
-                    { text: '米寿でも持ち場に立ち、働き続ける', condition: () => true, hint: '運上昇・体力回復', effect: (s) => { s.flags.beiju88 = true; s.luck += 25; recordChronology("米寿でも持ち場に立ち続ける"); return { hp: 20, log: '腰は曲がっても、手つきは衰えない。働く者の後ろ姿に、若い者たちが静かに頭を垂れた。' + (s.flags.sukanpin ? '棍棒を杖に、今日も持ち場へ向かった。' : '') }; } }
+                    { text: '米寿でも持ち場に立ち、働き続ける', condition: () => true, hint: '運上昇・体力回復', effect: (s) => { s.flags.beiju88 = true; s.luck += 25; recordChronology("米寿でも持ち場に立ち続ける"); return { hp: 20, log: '腰は曲がっても、手つきは衰えない。働く者の後ろ姿に、若い者たちが静かに頭を垂れた。' + (s.flags.sukanpin ? '棍棒を杖に、今日も持ち場へ向かった。' : '') }; } },
+                    { text: '若手に稽古をつけ、武の心を伝える', condition: () => true, hint: '武功上昇・体力小減少', effect: (s) => { s.flags.beiju88 = true; s.valor += 25; recordChronology("米寿を迎え、若手に武の心を伝える"); return { hp: -8, log: '米寿の教えは重い。若手たちは緊張の面持ちで槍を構え直した。衰えぬ気迫が、その場の空気を引き締めた。' + (s.flags.sukanpin ? '棍棒の教え子が、また一人増えた。' : '') }; } }
                 ] },
             { id: 'hyakuju_100', mode: ['normal'], weight: 100, condition: (s) => s.age >= 100 && !s.flags.hyakuju100,
                 title: '【百寿】百年の生', text: '百歳。一世紀を生きた。生まれた頃に天下を争った大名たちは、もはや物語の中の存在だ。あなた自身が、歩く歴史であり、生ける伝説となっている。', choices: [
                     { text: '百年の生涯を書物に残す', condition: () => true, hint: '知略大上昇', effect: (s) => { s.flags.hyakuju100 = true; s.strategy += 50; recordChronology("百寿を迎え、百年の生涯を書物に残す"); return { hp: 0, log: '乱世の始まりから今日まで、見てきた全てを書き記した。その書は、後の世に何度も写され読み継がれることになる。' + (s.flags.sukanpin ? '棍棒一本、百年。書けばこれほど面白い生涯もない。' : '') }; } },
                     { text: '生ける伝説として、人々の相談に乗る', condition: () => true, hint: '人徳大上昇', effect: (s) => { s.flags.hyakuju100 = true; s.virtue += 50; recordChronology("百寿を迎え、生ける伝説となる"); return { hp: 0, log: '恋の悩みから戦の是非まで、あらゆる相談が持ち込まれた。百年の重みの前では、どんな争いも小さく見えるという。' + (s.flags.sukanpin ? '素寒貧の百年は、誰の生涯よりも重かった。' : '') }; } },
-                    { text: '次の百年へ、静かに歩を進める', condition: () => true, hint: '運大上昇', effect: (s) => { s.flags.hyakuju100 = true; s.luck += 50; recordChronology("百寿を迎え、次の百年へ歩を進める"); return { hp: 0, log: '百年で満足するつもりはない。明日も明後日も、陽は昇る。杖をつきながら、あなたは静かに笑った。' + (s.flags.sukanpin ? '棍棒は百年の重さに、少しだけ軋んだ。' : '') }; } }
+                    { text: '次の百年へ、静かに歩を進める', condition: () => true, hint: '運大上昇', effect: (s) => { s.flags.hyakuju100 = true; s.luck += 50; recordChronology("百寿を迎え、次の百年へ歩を進める"); return { hp: 0, log: '百年で満足するつもりはない。明日も明後日も、陽は昇る。杖をつきながら、あなたは静かに笑った。' + (s.flags.sukanpin ? '棍棒は百年の重さに、少しだけ軋んだ。' : '') }; } },
+                    { text: '庭に立ち、若者へ武の心を説く', condition: () => true, hint: '武功大上昇・体力小減少', effect: (s) => { s.flags.hyakuju100 = true; s.valor += 50; recordChronology("百寿を迎え、武の心を説く"); return { hp: -10, log: '百歳の身で杖を構える姿に、若者たちは言葉を失った。武の心は、衰えるどころか百年で研ぎ澄まされていた。' + (s.flags.sukanpin ? '百年の棍棒捌きは、もはや芸の域であった。' : '') }; } }
                 ] }
         ];
 
@@ -2596,7 +2607,9 @@ body.pc-on #ranking-screen { font-size: 15px; }
             { id: 'teppo_arrival', mode: ['normal'], weight: 50, condition: (s) => s.age >= 25 && !s.flags.teppo,
                 title: '【歴史】鉄砲の伝来', text: '南蛮船より、轟音と共に敵を撃ち抜く恐るべき筒「鉄砲」が伝来し、またたく間に諸国に広まった。これより先の戦場は、一発の鉛玉で命が散る真の修羅場と化す。',
                 choices: [
-                    { text: '時代の変化を肌で感じる', condition: () => true, hint: '今後の合戦が危険に', effect: (s) => { s.flags.teppo = true; recordChronology("鉄砲が伝来し、戦の常識が覆る"); return { hp: 0, log: 'どれほど剣術を磨こうと、鉛玉一発で名将が死ぬ時代が到来した。気を引き締めねば。' }; } }
+                    { text: '時代の変化を肌で感じる', condition: () => true, hint: '今後の合戦が危険に', effect: (s) => { s.flags.teppo = true; recordChronology("鉄砲が伝来し、戦の常識が覆る"); return { hp: 0, log: 'どれほど剣術を磨こうと、鉛玉一発で名将が死ぬ時代が到来した。気を引き締めねば。' }; } },
+                    { text: '【銭200文】いち早く鉄砲を買い集め、扱いを学ぶ', condition: (s) => s.money >= 200, hint: '知略・武功上昇', effect: (s) => { s.flags.teppo = true; s.strategy += 15; s.valor += 10; recordChronology("いち早く鉄砲を取り入れ、その扱いに習熟する"); return { money: -200, hp: 0, log: '南蛮渡りの筒を手に取り、火縄の扱いから学んだ。新しい戦の形が、頭にも腕にも染み込んでいく。' }; } },
+                    { text: '鉄砲など邪道と、従来の武芸を貫く', condition: () => true, hint: '武功上昇', effect: (s) => { s.flags.teppo = true; s.valor += 15; return { hp: 0, log: '鉛玉に頼らぬと決め、槍と太刀の稽古をいっそう重ねた。時代に逆らう強さも、また一つの道である。' }; } }
                 ] },
             { id: 'christianity', mode: ['normal'], weight: 15, condition: (s) => s.age >= 20 && !s.flags.christianity && s.classInfo.id !== 'monk',
                 title: '【異教】切支丹の教え', text: '見慣れぬ衣服を着た南蛮の宣教師が「デウスの教え」を説いて回っている。すべての人を救うというその教えは、乱世に苦しむ民の心を捉え始めている。',
@@ -4314,7 +4327,7 @@ cv.toBlob((b) => resolve(b), 'image/png');
             }
         }
 
-        // v51: 治世の方針（大名専用）。選んだ能力の上昇量1.5倍＆その能力が伸びるイベントの出現率1.5倍。
+        // v51: 治世の方針（大名専用）。選んだ能力の上昇量2倍＆その能力が伸びるイベントの出現率2倍。
         window.__eventStatCache = {};
         window.__eventRaises = function(e, stat) {
             const cacheKey = e.id + ':' + stat;
@@ -4387,7 +4400,7 @@ cv.toBlob((b) => resolve(b), 'image/png');
             const effWeight = (e) => {
                 let w = e.weight;
                 // v51: 治世の方針で選んだ能力が伸びるイベントは出やすくなる
-                if (state.classInfo && state.classInfo.id === 'daimyo' && state.flags && state.flags.daimyoPolicy && window.__eventRaises && window.__eventRaises(e, state.flags.daimyoPolicy)) w *= 1.5;
+                if (state.classInfo && state.classInfo.id === 'daimyo' && state.flags && state.flags.daimyoPolicy && window.__eventRaises && window.__eventRaises(e, state.flags.daimyoPolicy)) w *= 2;
                 if (state.mode === 'battle' && BATTLE_EVENTS.includes(e)) {
                     w *= 1.5;
                     if (e.id === 'battle_end') {
@@ -4507,9 +4520,9 @@ cv.toBlob((b) => resolve(b), 'image/png');
                 const res = choice.effect(state);
                 if (classBefore) { state.flags.classHistory = state.flags.classHistory || []; if (!state.flags.classHistory.includes(classBefore)) state.flags.classHistory.push(classBefore); }
                 if (state.classInfo && state.classInfo.id !== classBefore) { state.flags.classHistory = state.flags.classHistory || []; if (!state.flags.classHistory.includes(state.classInfo.id)) state.flags.classHistory.push(state.classInfo.id); }
-                // v51: 治世の方針（大名）：選んだ能力の上昇量を1.5倍（ティア補正はこの後・別枠）
+                // v51: 治世の方針（大名）：選んだ能力の上昇量を2倍（ティア補正はこの後・別枠）
                 const pol = state.flags && state.flags.daimyoPolicy;
-                if (pol && typeof state[pol] === 'number') { const pd = state[pol] - beforeStats[pol]; if (pd > 0) state[pol] += Math.floor(pd * 0.5); }
+                if (pol && typeof state[pol] === 'number') { const pd = state[pol] - beforeStats[pol]; if (pd > 0) state[pol] += pd; }
                 const tier = window.__tier || 0; const tierStat = window.__tierStat;
                 if (tier >= 2 && tierStat && typeof state[tierStat] === 'number') state[tierStat] += (tier === 3 ? 15 : 5);
                 if (tier >= 2) for (let ci = chronBefore; ci < state.chronology.length; ci++) state.chronology[ci].text += (tier === 3 ? '【超成功】' : '【大成功】');
