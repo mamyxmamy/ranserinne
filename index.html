@@ -5244,9 +5244,10 @@ for (let i = 0; i < 2 && boss && !boss.shared; i++) { await sleep(1800); boss = 
 if (bossEl) bossEl.innerText = boss.shared ? ('輪廻の番人 ― 第' + boss.gen + '世代 ／ 残り ' + boss.hp.toLocaleString() + ' / ' + boss.maxHp.toLocaleString()) : '番人の様子は、現世からは窺えません';
 let rows = await window.__raidFetchRank();
 for (let i = 0; i < 2 && !rows; i++) { await sleep(1800); rows = await window.__raidFetchRank(); }
+const applyNote = window.__raidApplyError ? '<p class="text-center text-red-300/80 text-[10px] py-2 tracking-widest">※ 前回の挑戦の記録が届きませんでした（' + String(window.__raidApplyError).slice(0, 44) + '）</p>' : '';
 if (!listEl) return;
 if (!rows) { listEl.innerHTML = '<p class="text-center text-gray-400 text-xs py-6 tracking-widest">戦績を取得できませんでした' + (window.__raidRankError ? '（' + String(window.__raidRankError).slice(0, 40) + '）' : '') + '</p>'; return; }
-if (!rows.length) { listEl.innerHTML = '<p class="text-center text-gray-400 text-xs py-6 tracking-widest">まだ挑んだ者はいません</p>'; return; }
+if (!rows.length) { listEl.innerHTML = applyNote + '<p class="text-center text-gray-400 text-xs py-6 tracking-widest">まだ挑んだ者はいません</p>'; return; }
 const myPid = (typeof window.__myPlayerId === 'function') ? window.__myPlayerId() : '';
 const esc = function(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
 let html = '';
@@ -5259,7 +5260,7 @@ html += '<div class="flex items-center gap-2 py-2 border-b border-[#3A322A]/70' 
 + '<span class="text-right"><span class="block text-base font-black text-[#F5D97E]">' + r.total.toLocaleString() + '</span><span class="block text-[9px] text-gray-500">合計ダメージ</span></span>'
 + '</div>';
 });
-listEl.innerHTML = html;
+listEl.innerHTML = applyNote + html;
 };
 
 window.closeRaidRank = function(e) {
@@ -5321,6 +5322,8 @@ return { dmgMul: valorOn? 1.08: 1, evadeBonus: evadeOn? 0.15: 0, valorOn: valorO
 window.__raidApplyDamage = async function(dmg) {
 const boss = window.__raidBossCache || { gen: 1, hp: RAID_BASE_HP, maxHp: RAID_BASE_HP};
 if (boss.shared) {
+window.__raidApplyError = '';
+window.__raidApplyStage = 'tx';
 try {
 const db = firebase.firestore();
 const ref = db.collection('artifacts').doc('sengoku-life-app').collection('raid_event').doc('state');
@@ -5334,12 +5337,13 @@ const newMax = Math.round(maxHp * 1.5);
 const newHp = Math.max(1, newMax + remain);
 tx.set(ref, { gen: gen + 1, hp: newHp, maxHp: newMax}, { merge: true});
 return { gen: gen + 1, hp: newHp, maxHp: newMax, killed: true};
-}), 6000);
+}), 12000);
+window.__raidApplyStage = 'log';
 try {
 await db.collection('artifacts').doc('sengoku-life-app').collection('raid_event_logs').add({ pid: (typeof window.__myPlayerId === 'function')? window.__myPlayerId(): '', playerName: state.playerName || '名無し', damage: dmg, gen: boss.gen, valor: state.valor || 0, strategy: state.strategy || 0, luck: state.luck || 0, timestamp: Date.now()});
-} catch (e2) {}
+} catch (e2) { window.__raidApplyError = 'log: ' + ((e2 && (e2.code || e2.message)) || 'unknown'); }
 return out;
-} catch (e) { /* fall through to local */}
+} catch (e) { window.__raidApplyError = (window.__raidApplyStage || 'tx') + ': ' + ((e && (e.code || e.message)) || 'unknown'); /* fall through to local */}
 }
 const b = raidLocalBoss();
 const remain = b.hp - dmg;
