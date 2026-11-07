@@ -691,6 +691,9 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="bg-[#1A1613] p-2 border-b border-[#3A322A] flex justify-between items-center">
                 <span class="text-xs text-gray-300">装備可能な枠数:</span><span class="text-sm font-bold text-gold" id="modal-slots-count">0/1</span>
             </div>
+            <div class="bg-[#14110F] px-3 py-2 border-b border-[#3A322A] flex items-center gap-1.5 flex-wrap">
+                <span class="text-[10px] text-gray-400">並び替え:</span><button type="button" data-hlsort="" onclick="window.setHeirloomSort(null, event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">標準</button><button type="button" data-hlsort="valor" onclick="window.setHeirloomSort('valor', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">武功</button><button type="button" data-hlsort="karma" onclick="window.setHeirloomSort('karma', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">悪逆</button><button type="button" data-hlsort="strategy" onclick="window.setHeirloomSort('strategy', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">知略</button><button type="button" data-hlsort="virtue" onclick="window.setHeirloomSort('virtue', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">人徳</button><button type="button" data-hlsort="luck" onclick="window.setHeirloomSort('luck', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">運</button><button type="button" data-hlsort="health" onclick="window.setHeirloomSort('health', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">体力</button><button type="button" data-hlsort="money" onclick="window.setHeirloomSort('money', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">銭</button>
+            </div>
             <div id="heirloom-list" class="flex-grow overflow-y-auto p-4 space-y-3 pb-8"></div>
         </div>
 
@@ -3081,7 +3084,30 @@ body.pc-on #ranking-screen { font-size: 15px; }
             noneCard.onclick = () => { window.activeHeirlooms = []; window.updateStartScreenUI(); window.closeHeirloomStorage(); };
             hList.appendChild(noneCard);
 
-            window.unlockedHeirlooms.forEach(item => {
+            // 家宝の並び替え（能力別・同じチップ再タップで昇順/降順を切替）
+            if (!window.__sortHeirlooms) {
+                window.__heirloomSort = window.__heirloomSort || null;
+                window.__sortHeirlooms = function(items, spec) {
+                    if (!spec || !spec.type) return items.slice();
+                    const val = (it) => { const d = HEIRLOOMS_DB.find(h => h.id === it.id); return (d && d.type === spec.type) ? d.value : null; };
+                    return items.slice().sort((a, b) => { const va = val(a), vb = val(b); if (va === null && vb === null) return 0; if (va === null) return 1; if (vb === null) return -1; return (va - vb) * spec.dir; });
+                };
+                window.setHeirloomSort = function(type, e) {
+                    if (e) { e.preventDefault(); e.stopPropagation(); }
+                    if (!type) window.__heirloomSort = null;
+                    else if (window.__heirloomSort && window.__heirloomSort.type === type) window.__heirloomSort.dir *= -1;
+                    else window.__heirloomSort = { type: type, dir: -1 };
+                    window.openHeirloomStorage();
+                };
+            }
+            document.querySelectorAll('.hl-sort-chip').forEach(chip => {
+                const t = chip.getAttribute('data-hlsort');
+                const active = (!t && !window.__heirloomSort) || (window.__heirloomSort && window.__heirloomSort.type === t);
+                chip.className = 'hl-sort-chip text-[10px] px-2 py-1 rounded border ' + (active ? 'border-gold text-gold bg-yellow-900/30 font-bold' : 'border-[#3A322A] text-gray-300');
+                const base = chip.textContent.replace(/ [↓↑]$/, '');
+                chip.textContent = base + (active && t ? (window.__heirloomSort.dir < 0 ? ' ↓' : ' ↑') : '');
+            });
+            window.__sortHeirlooms(window.unlockedHeirlooms, window.__heirloomSort).forEach(item => {
                 const isActive = window.activeHeirlooms.find(h => h.id === item.id);
                 const card = document.createElement('div');
                 card.className = `border p-3 rounded-sm cursor-pointer transition-all ${isActive ? 'bg-yellow-900/40 border-gold' : 'bg-[#181513] border-[#3A322A] hover:border-gold/50'}`;
@@ -5486,6 +5512,7 @@ if (kr < 0.2) { mult *= 2; flavor = '卑劣な一手が冴える！ ';} else if 
 let special = '';
 if (R() < Math.min(0.4, (s.strategy || 0) / 300)) { mult *= 1.6; special = '会心';}
 if (R() < Math.min(0.5, (s.luck || 0) / 1000)) { mult *= 2.5; special = '強運の一撃';}
+if (special) flavor = ''; // 会心・強運のときは悪逆フレーバー（浅く入った等）を付けない（文章の矛盾防止）
 let dmg = Math.max(1, Math.round(P * mult));
 let floored = false;
 if (!(kr >= 0.2 && kr < 0.4)) {
@@ -5519,8 +5546,9 @@ bossHp -= ad; total += ad;
 lines.push({ t: '「' + evName + '」で縁を結んだ者が駆けつけた！ 助太刀の ' + ad + ' 打撃！', c: 'assist', d: ad});
 if (bossHp <= 0) { lines.push({ t: '番人の巨躯が、ゆっくりと崩れ落ちた ――', c: 'gold'}); break;}
 } else {
-E = Math.min(maxE, E + 80);
-lines.push({ t: '「' + evName + '」で縁を結んだ者が駆けつけ、傷を癒やした（耐久+80）', c: 'assist', e: E});
+const healed = Math.min(maxE, E + 80) - E;
+E = E + healed;
+lines.push({ t: '「' + evName + '」で縁を結んだ者が駆けつけ、傷を癒やした（耐久+' + healed + '）', c: 'assist', e: E});
 }
 }
 const isSpecialAtk = (turn % 4 === 0);
@@ -5537,10 +5565,10 @@ rescueUsed = true;
 const cd = Math.max(1, Math.round(Math.sqrt(Math.max(0, sentatsu.statVal || 0)) * 12 * (0.9 + R() * 0.4)));
 bossHp -= cd; total += cd;
 if (sentatsu.isSelf) {
-lines.push({ t: '―― 倒れゆく意識の底で、前世の自分の声がした。', c: 'gold', img: 'sen', cut: 'sentatsu'});
+lines.push({ t: '―― 倒れゆく意識の底で、前世の自分の声がした。', c: 'gold', cut: 'sentatsu'});
 lines.push({ t: '前世の自分が番人の一撃を受け止め、' + cd + ' の反撃を叩き込んだ！', c: 'gold', d: cd});
 } else {
-lines.push({ t: '―― 絶体絶命のその瞬間、時が止まった。', c: 'gold', img: 'sen', cut: 'sentatsu'});
+lines.push({ t: '―― 絶体絶命のその瞬間、時が止まった。', c: 'gold', cut: 'sentatsu'});
 lines.push({ t: '番付の先達、『' + sentatsu.title + '』' + sentatsu.name + ' の魂が割って入り、番人の一撃を受け止めた！ 反撃の ' + cd + ' 打撃！', c: 'gold', d: cd});
 }
 E = Math.max(1, Math.round(maxE * 0.25));
@@ -5718,7 +5746,7 @@ if (line.d) window.__raidCumDmg += line.d;
 const log = document.getElementById('raid-log');
 if (log && line.img) { raidFx(function() { log.appendChild(raidImgEl(line.img)); }); }
 if (log) { log.appendChild(raidLineEl(line)); log.scrollTop = log.scrollHeight;}
-if (!instant && line.img === 'sen') {
+if (!instant && line.cut === 'sentatsu') {
 const veil = document.getElementById('raid-timestop-veil');
 raidFx(function() { if (veil) veil.style.opacity = '0.55'; });
 if (window.__raidFxTimeout) clearTimeout(window.__raidFxTimeout);
@@ -5800,9 +5828,12 @@ const mybar = document.getElementById('raid-my-hpbar'); if (mybar) mybar.style.w
 window.__raidFinished = false; window.__raidRevealIdx = 0; window.__raidCumDmg = 0;
 const boss = await window.__raidFetchBoss();
 window.__raidBossCache = boss;
+const field = await window.__raidFetchField(boss.gen);
+window.__raidField = field;
+(function() { const el = document.getElementById('raid-field'); if (el) { const fp = []; if (field && field.valorOn) fp.push('軍勢の勢い'); if (field && field.evadeOn) fp.push('見切りの風'); el.innerText = '戦況 ― ' + (fp.length? fp.join(' ・ '): '静寂'); } })();
 const sentatsu = await window.__raidFetchSentatsu(state);
 window.__raidSentatsu = sentatsu;
-const res = window.__raidSimulate(state, boss, sentatsu);
+const res = window.__raidSimulate(state, boss, sentatsu, field);
 window.__raidResult = res;
 raidUpdateBars();
 if (window.__raidTimer) { clearInterval(window.__raidTimer); window.__raidTimer = null; }
