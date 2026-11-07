@@ -5199,15 +5199,16 @@ return Object.keys(map).map(function(k) { return map[k]; }).sort(function(a, b) 
 };
 
 window.__raidFetchRank = async function() {
+window.__raidRankError = '';
 try {
-if (!window.firebase || !firebase.firestore) return null;
+if (!window.firebase || !firebase.firestore) { window.__raidRankError = 'no-firebase'; return null; }
 const db = firebase.firestore();
 const logsRef = db.collection('artifacts').doc('sengoku-life-app').collection('raid_event_logs');
 const snap = await raidWithTimeout(logsRef.orderBy('timestamp', 'desc').limit(1000).get(), 6000);
 const docs = [];
 snap.forEach(function(doc) { docs.push(doc.data()); });
 return window.__raidAggregateRank(docs);
-} catch (e) { return null; }
+} catch (e) { window.__raidRankError = (e && (e.code || e.message)) || 'unknown'; return null; }
 };
 
 window.openRaidRank = async function(e) {
@@ -5219,11 +5220,19 @@ const bossEl = document.getElementById('raid-rank-boss');
 const listEl = document.getElementById('raid-rank-list');
 if (bossEl) bossEl.innerText = '番人の様子を窺っている…';
 if (listEl) listEl.innerHTML = '<p class="text-center text-gray-400 text-xs py-6 tracking-widest">戦績を集計しています…</p>';
-const boss = await window.__raidFetchBoss();
+try {
+if (window.firebase && firebase.auth && !firebase.auth().currentUser) {
+await raidWithTimeout(firebase.auth().signInAnonymously(), 5000).catch(function() {});
+}
+} catch (e) {}
+const sleep = function(ms) { return new Promise(function(r) { setTimeout(r, ms); }); };
+let boss = await window.__raidFetchBoss();
+for (let i = 0; i < 2 && boss && !boss.shared; i++) { await sleep(1800); boss = await window.__raidFetchBoss(); }
 if (bossEl) bossEl.innerText = boss.shared ? ('輪廻の番人 ― 第' + boss.gen + '世代 ／ 残り ' + boss.hp.toLocaleString() + ' / ' + boss.maxHp.toLocaleString()) : '番人の様子は、現世からは窺えません';
-const rows = await window.__raidFetchRank();
+let rows = await window.__raidFetchRank();
+for (let i = 0; i < 2 && !rows; i++) { await sleep(1800); rows = await window.__raidFetchRank(); }
 if (!listEl) return;
-if (!rows) { listEl.innerHTML = '<p class="text-center text-gray-400 text-xs py-6 tracking-widest">戦績を取得できませんでした</p>'; return; }
+if (!rows) { listEl.innerHTML = '<p class="text-center text-gray-400 text-xs py-6 tracking-widest">戦績を取得できませんでした' + (window.__raidRankError ? '（' + String(window.__raidRankError).slice(0, 40) + '）' : '') + '</p>'; return; }
 if (!rows.length) { listEl.innerHTML = '<p class="text-center text-gray-400 text-xs py-6 tracking-widest">まだ挑んだ者はいません</p>'; return; }
 const myPid = (typeof window.__myPlayerId === 'function') ? window.__myPlayerId() : '';
 const esc = function(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); };
