@@ -5336,7 +5336,7 @@ tx.set(ref, { gen: gen + 1, hp: newHp, maxHp: newMax}, { merge: true});
 return { gen: gen + 1, hp: newHp, maxHp: newMax, killed: true};
 }), 6000);
 try {
-await db.collection('artifacts').doc('sengoku-life-app').collection('raid_event_logs').add({ pid: (typeof window.__myPlayerId === 'function')? window.__myPlayerId(): '', playerName: state.playerName || '名無し', damage: dmg, gen: boss.gen, timestamp: Date.now()});
+await db.collection('artifacts').doc('sengoku-life-app').collection('raid_event_logs').add({ pid: (typeof window.__myPlayerId === 'function')? window.__myPlayerId(): '', playerName: state.playerName || '名無し', damage: dmg, gen: boss.gen, valor: state.valor || 0, strategy: state.strategy || 0, luck: state.luck || 0, timestamp: Date.now()});
 } catch (e2) {}
 return out;
 } catch (e) { /* fall through to local */}
