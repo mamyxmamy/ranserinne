@@ -5211,6 +5211,23 @@ return window.__raidAggregateRank(docs);
 } catch (e) { window.__raidRankError = (e && (e.code || e.message)) || 'unknown'; return null; }
 };
 
+window.__raidWaitAuth = async function(ms) {
+try {
+if (!window.firebase || !firebase.auth) return false;
+const auth = firebase.auth();
+if (auth.currentUser) return true;
+const limit = ms || 12000;
+const user = await new Promise(function(res) {
+let done = false;
+const un = auth.onAuthStateChanged(function(u) { if (u && !done) { done = true; try { un(); } catch (e) {} res(u); } });
+setTimeout(function() { if (!done) { done = true; try { un(); } catch (e) {} res(null); } }, limit);
+});
+if (user || auth.currentUser) return true;
+await raidWithTimeout(auth.signInAnonymously(), 8000).catch(function() {});
+return !!auth.currentUser;
+} catch (e) { return false; }
+};
+
 window.openRaidRank = async function(e) {
 if (e) { e.preventDefault(); e.stopPropagation(); }
 const scr = document.getElementById('raid-rank-screen');
@@ -5220,11 +5237,7 @@ const bossEl = document.getElementById('raid-rank-boss');
 const listEl = document.getElementById('raid-rank-list');
 if (bossEl) bossEl.innerText = '番人の様子を窺っている…';
 if (listEl) listEl.innerHTML = '<p class="text-center text-gray-400 text-xs py-6 tracking-widest">戦績を集計しています…</p>';
-try {
-if (window.firebase && firebase.auth && !firebase.auth().currentUser) {
-await raidWithTimeout(firebase.auth().signInAnonymously(), 5000).catch(function() {});
-}
-} catch (e) {}
+await window.__raidWaitAuth(12000);
 const sleep = function(ms) { return new Promise(function(r) { setTimeout(r, ms); }); };
 let boss = await window.__raidFetchBoss();
 for (let i = 0; i < 2 && boss && !boss.shared; i++) { await sleep(1800); boss = await window.__raidFetchBoss(); }
