@@ -141,7 +141,7 @@ const WORLD = 1500;
 const SOIL = { x: 600, y: 40, w: 880, h: 640 };           // 右上の土エリア（畑）
 const CELL = 68;
 const POND = { x: 20, y: 110, w: 560, h: 400 };
-const HOUSE = { x: 30, y: 760, w: 430, h: 360 };
+const HOUSE = { x: 20, y: 700, w: 450, h: 330 };
 const GATE = { x: 1120, y: 1300, w: 380, h: 200 };
 const TABLE_POS = { x: 430, y: 1300 };
 const CHEST_POS = { x: 620, y: 1255 };
@@ -180,7 +180,7 @@ const S = {
 };
 for (const k of ITEM_KEYS) { if (!(k in S.shared.chest)) S.shared.chest[k] = 0; if (!(k in S.inv)) S.inv[k] = 0; }
 S.inv.seed_kabu = 3;
-const me = { x: 300, y: 900, dir: 0, moving: false, walkT: 0, dashT: 0, dashDx: 0, dashDy: 0, iframeT: 0, atkT: 0, hurtT: 0 };
+const me = { x: 560, y: 980, dir: 0, moving: false, walkT: 0, dashT: 0, dashDx: 0, dashDy: 0, iframeT: 0, atkT: 0, hurtT: 0 };
 let partners = {}; // clientId -> {race,x,y,dir,scene,floor,rx,ry,walkT,moving}
 let monsters = [], drops = [], particles = [], dmgNums = [], leaves = [];
 let treasureTaken = false;
@@ -524,7 +524,7 @@ function hurtPlayer(dmg) {
   refreshHUD();
   if (S.hp <= 0) {
     S.hp = Math.floor(S.maxHp / 2);
-    exitDungeon(); me.x = 300; me.y = 960;
+    exitDungeon(); me.x = 560; me.y = 1020;
     toast('💫 倒れてしまった… 村で目覚めた（HP半分で復活）');
     notify(myName() + 'がダンジョンで倒れた');
   }
