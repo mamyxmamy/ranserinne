@@ -414,8 +414,10 @@ function spawnFloor() {
   const n = 3 + S.floor;
   for (let i = 0; i < n; i++) {
     const type = (i + S.floor) % 2 === 0 ? 'slime' : 'goblin';
+    let sx = 220 + Math.random() * 1060, sy = 400 + Math.random() * 700;
+    if (dist(sx, sy, 750, 1300) < 320) { sx = 250; sy = 420; }
     monsters.push({
-      type, x: 220 + Math.random() * 1060, y: 420 + Math.random() * 880,
+      type, x: sx, y: sy,
       hp: type === 'slime' ? 14 + S.floor * 6 : 22 + S.floor * 8,
       maxHp: type === 'slime' ? 14 + S.floor * 6 : 22 + S.floor * 8,
       speed: 52 + Math.random() * 26, hitCd: 0, flashT: 0, ph: Math.random() * 6
@@ -450,10 +452,11 @@ function doAttack() {
   if (me.atkT > 0) return;
   me.atkT = 0.32;
   const d = [[0, 1], [0, -1], [-1, 0], [1, 0]][me.dir];
-  const ax = me.x + d[0] * 55, ay = me.y + d[1] * 55;
   const power = 8 + S.shared.weaponLv * 3;
   for (const m of monsters) {
-    if (dist(ax, ay, m.x, m.y) < 82) {
+    const dm = dist(me.x, me.y, m.x, m.y);
+    const dot = dm > 0 ? ((m.x - me.x) * d[0] + (m.y - me.y) * d[1]) / dm : 1;
+    if (dm < 105 && (dm < 64 || dot > -0.2)) {
       m.hp -= power; m.flashT = 0.15;
       addDmg(m.x, m.y - 34, power, '#ffe27a');
       addParticles(m.x, m.y - 6, '#ffffff', 5, 90, 10);
@@ -473,7 +476,7 @@ function onMonsterDown(m) {
 }
 function hurtPlayer(dmg) {
   if (me.iframeT > 0 || me.dashT > 0) return;
-  S.hp -= dmg; me.iframeT = 0.7; me.hurtT = 0.25;
+  S.hp -= dmg; me.iframeT = 1.0; me.hurtT = 0.25;
   addDmg(me.x, me.y - 40, '-' + dmg, '#ff8a7a');
   refreshHUD();
   if (S.hp <= 0) {
@@ -516,7 +519,7 @@ function update(now) {
         m.hitCd = Math.max(0, m.hitCd - dt); m.flashT = Math.max(0, m.flashT - dt);
         const d = dist(m.x, m.y, me.x, me.y);
         if (d < 300 && d > 34) { m.x += (me.x - m.x) / d * m.speed * dt; m.y += (me.y - m.y) / d * m.speed * dt; }
-        if (d <= 38 && m.hitCd <= 0) { m.hitCd = 0.85; hurtPlayer(S.floor + 5); }
+        if (d <= 38 && m.hitCd <= 0) { m.hitCd = 1.15; hurtPlayer(3 + S.floor); }
       }
       // drops pickup
       for (const dr of drops) {
