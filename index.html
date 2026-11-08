@@ -5599,9 +5599,41 @@ cap.textContent = kind === 'sen'? '― 先達の魂、駆けつける ―': '―
 wrap.appendChild(img); wrap.appendChild(cap);
 return wrap;
 }
+const RAID_SCENES = {
+art: { src: function() { return window.__RAID_ART64 || ''; }, cap: '― 集いし魂、冥府の門に挑む ―' },
+boss: { src: function() { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--raidbg').trim(); const m = v.match(/url\((.*)\)/); if (m) return m[1]; } catch (e) {} return window.__RAID_BG64 || ''; }, cap: '― 輪廻の番人、迫る ―' },
+crit: { src: function() { return window.__RAID_CRIT64 || ''; }, cap: '― 一 閃 ―' },
+evade: { src: function() { return window.__RAID_EVADE64 || ''; }, cap: '― 見 切 り ―' },
+sentatsu: { src: function() { return window.__RAID_SENCUT64 || ''; }, cap: '― 先達の加護 ―' },
+assist: { src: function() { return window.__RAID_SEN64 || ''; }, cap: '― 縁の魂、駆けつける ―' }
+};
+function raidSetScene(kind) {
+try {
+const def = RAID_SCENES[kind]; if (!def) return;
+if (window.__raidSceneKind === kind) return;
+window.__raidSceneKind = kind;
+const img = document.getElementById('raid-scene-img'); if (!img) return;
+const src = def.src(); if (!src) return;
+img.style.opacity = '0';
+setTimeout(function() { try { img.src = src; img.style.opacity = '1'; } catch (e) {} }, 120);
+const cap = document.getElementById('raid-scene-cap'); if (cap) cap.textContent = def.cap;
+} catch (e) {}
+}
+function raidSceneKindForLine(line) {
+if (line.cut === 'crit' || line.cut === 'lucky') return 'crit';
+if (line.cut === 'evade') return 'evade';
+if (line.cut === 'sentatsu') return 'sentatsu';
+if (line.c === 'boss' || line.c === 'warn') return 'boss';
+if (line.c === 'assist') return 'assist';
+if (line.c === 'gold' && typeof line.d === 'number') return (/先達|前世|反撃/.test(line.t))? 'sentatsu': 'crit';
+if (line.c === 'gold' && /番人の巨躯/.test(line.t)) return 'boss';
+if (line.c === 'sys' && /力尽き|崩れ落ちた/.test(line.t)) return 'boss';
+if (typeof line.d === 'number') return 'art';
+return null;
+}
 function raidDmgPop(d, big) {
 try {
-const scr = document.getElementById('raid-boss-stage') || document.getElementById('raid-screen'); if (!scr) return;
+const scr = document.getElementById('raid-scene') || document.getElementById('raid-boss-stage') || document.getElementById('raid-screen'); if (!scr) return;
 const el = document.createElement('div');
 el.className = 'raid-dmg-pop ' + (big? 'big': 'mid');
 el.textContent = d.toLocaleString();
@@ -5739,13 +5771,14 @@ window.__raidShowCutin = raidShowCut;
 
 function raidStep(instant) {
 const res = window.__raidResult;
-if (!res || window.__raidRevealIdx >= res.lines.length) { raidFinish(); return;}
+if (!res) return; // 読込中のタップでは何もしない（終了フラグを立てない）
+if (window.__raidRevealIdx >= res.lines.length) { raidFinish(); return;}
 const line = res.lines[window.__raidRevealIdx];
 window.__raidRevealIdx++;
 if (line.d) window.__raidCumDmg += line.d;
 const log = document.getElementById('raid-log');
-if (log && line.img) { raidFx(function() { log.appendChild(raidImgEl(line.img)); }); }
 if (log) { log.appendChild(raidLineEl(line)); log.scrollTop = log.scrollHeight;}
+if (!instant) { const sk = raidSceneKindForLine(line); if (sk) raidSetScene(sk); const scn = document.getElementById('raid-scene'); if (scn) { if (line.charge) scn.classList.add('raid-charging'); else if (line.c === 'boss') scn.classList.remove('raid-charging'); } }
 if (!instant && line.cut === 'sentatsu') {
 const veil = document.getElementById('raid-timestop-veil');
 raidFx(function() { if (veil) veil.style.opacity = '0.55'; });
@@ -5757,7 +5790,7 @@ raidFx(function() { if (veil) veil.style.opacity = '0'; });
 if (!instant && line.d && (line.c === 'gold' || line.d >= 250)) raidDmgPop(line.d, line.d >= 250);
 if (!instant && line.cut) raidShowCut(line.cut);
 if (line.turn) raidFx(function() { const t = document.getElementById('raid-turn'); if (t) t.innerText = '第' + line.turn + '手'; });
-if (!instant && line.d) raidFx(function() { const st = document.getElementById('raid-boss-stage'); if (st && st.animate) st.animate([{ filter: 'brightness(1.55)' }, { filter: 'brightness(1)' }], { duration: 260 }); });
+if (!instant && line.d) raidFx(function() { const st = document.getElementById('raid-scene'); if (st && st.animate) st.animate([{ filter: 'brightness(1.55)' }, { filter: 'brightness(1)' }], { duration: 260 }); });
 if (!instant && line.c === 'boss') raidFx(function() { const ms = document.getElementById('raid-mystatus'); if (ms && ms.animate) ms.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(4px)' }, { transform: 'translateX(0)' }], { duration: 240 }); });
 if (typeof line.e === 'number') {
 const pct = res.endurance > 0? (line.e / res.endurance) * 100: 0;
@@ -5769,10 +5802,10 @@ if (window.__raidRevealIdx >= res.lines.length) raidFinish();
 
 async function raidFinish() {
 if (window.__raidFinished) return;
-window.__raidFinished = true;
-if (window.__raidTimer) { clearInterval(window.__raidTimer); window.__raidTimer = null;}
 const res = window.__raidResult;
 if (!res) return;
+window.__raidFinished = true;
+if (window.__raidTimer) { clearInterval(window.__raidTimer); window.__raidTimer = null;}
 const after = await window.__raidApplyDamage(res.totalDamage);
 window.__raidCard = { gen: (window.__raidBossCache ? window.__raidBossCache.gen : after.gen), dmg: res.totalDamage };
 window.shareRaidResult = function(e) { if (e) { e.preventDefault(); e.stopPropagation(); } try { window.shareResult(!!window.__raidFromPremium); } catch (err) {} };
@@ -5804,8 +5837,10 @@ const panel0 = document.getElementById('raid-result');
 if (panel0 && panel0.querySelectorAll) { const rows = panel0.querySelectorAll('.raid-res-anim'); rows.forEach(function(r, i) { r.style.animationDelay = (0.15 + i * 0.13) + 's'; }); }
 if (titleNew) { const t2 = document.getElementById('raid-res-title'); if (t2) t2.classList.add('raid-title-flash'); }
 });
+window.__raidSceneKind = null; raidSetScene('boss');
+(function() { const cap = document.getElementById('raid-scene-cap'); if (cap) cap.textContent = res.victory? '― 番人の巨躯、崩れ落ちる ―': '― 魂は霧に溶け、門は遠ざかる ―'; })();
 const panel = document.getElementById('raid-result'); if (panel) panel.classList.remove('hidden');
-if (window.__raidBossCache) { window.__raidBossCache = { gen: after.gen, hp: after.hp, maxHp: after.maxHp, shared: window.__raidBossCache.shared}; window.__raidCumDmg = 0; raidUpdateBars();}
+if (window.__raidBossCache) { window.__raidBossCache = { gen: after.gen, hp: after.hp, maxHp: after.maxHp, shared: window.__raidBossCache.shared}; window.__raidCumDmg = 0; raidUpdateBars(); set('raid-my-dmg', res.totalDamage.toLocaleString()); }
 }
 
 window.openRaid = async function(e) {
@@ -5820,7 +5855,9 @@ const go = document.getElementById('gameover-screen'); if (go) go.classList.add(
 if (prem) prem.classList.add('hidden');
 const scr = document.getElementById('raid-screen'); if (scr) scr.classList.remove('hidden');
 try { window.setSceneBGM('raid'); } catch (e) {}
-const log = document.getElementById('raid-log'); if (log) { log.innerHTML = ''; raidFx(function() { log.appendChild(raidImgEl('art')); }); }
+const log = document.getElementById('raid-log'); if (log) { log.innerHTML = ''; }
+window.__raidSceneKind = null; raidSetScene('art');
+(function() { const scn = document.getElementById('raid-scene'); if (scn) scn.classList.remove('raid-charging'); })();
 window.__raidLastBossPct = 100;
 const panel = document.getElementById('raid-result'); if (panel) panel.classList.add('hidden');
 const ctr = document.getElementById('raid-controls'); if (ctr) ctr.classList.remove('hidden');
@@ -5882,9 +5919,13 @@ if (target) target.classList.remove('hidden');
 .raid-img-frame{border:1px solid rgba(197,160,89,.6);border-radius:2px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.6);animation:raidLineIn .5s ease both;}
 .raid-img-frame img{display:block;width:100%;}
 .raid-img-cap{background:rgba(5,3,8,.85);color:#e9d9a6;font-size:11px;letter-spacing:.18em;text-align:center;padding:4px 6px;}
-#raid-boss-stage{position:relative;border:1px solid rgba(147,51,234,.45);border-radius:3px;overflow:hidden;background:var(--raidbg) center 26%/cover no-repeat;box-shadow:0 6px 28px rgba(0,0,0,.65),0 0 0 1px rgba(0,0,0,.6),0 0 22px rgba(88,28,135,.35) inset;}
-#raid-boss-stage::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,3,8,.18) 0%,transparent 34%,rgba(5,3,8,.55) 72%,rgba(5,3,8,.92) 100%);pointer-events:none;}
-#raid-boss-stage .raid-dmg-pop{top:44%;}
+#raid-boss-stage{position:relative;border:1px solid rgba(147,51,234,.45);border-radius:3px;overflow:hidden;background:linear-gradient(180deg,rgba(22,10,30,.92),rgba(10,5,16,.95));box-shadow:0 6px 28px rgba(0,0,0,.65),0 0 0 1px rgba(0,0,0,.6),0 0 22px rgba(88,28,135,.3) inset;padding:8px 12px 9px;}
+#raid-scene{position:relative;border:1px solid rgba(197,160,89,.55);border-radius:3px;overflow:hidden;background:#000;box-shadow:0 6px 28px rgba(0,0,0,.65);margin-top:6px;}
+#raid-scene img{display:block;width:100%;height:100%;object-fit:cover;object-position:center 28%;transition:opacity .18s ease;}
+#raid-scene::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,transparent 55%,rgba(5,3,8,.88) 100%);pointer-events:none;}
+#raid-scene-cap{position:absolute;left:0;right:0;bottom:9px;z-index:2;text-align:center;font-size:11px;letter-spacing:.3em;color:#e9d9a6;text-shadow:0 1px 6px rgba(0,0,0,.95);}
+#raid-scene .raid-dmg-pop{top:44%;}
+#raid-scene.raid-charging{animation:raidCharge .8s ease-in-out infinite;border-color:rgba(248,113,113,.85);}
 #raid-log{border:1px solid rgba(197,160,89,.35);background:rgba(0,0,0,.55);border-radius:3px;box-shadow:0 0 0 1px rgba(0,0,0,.7),0 0 18px rgba(0,0,0,.5) inset;scrollbar-width:thin;}
 #raid-mystatus{border:1px solid rgba(220,38,38,.4);background:linear-gradient(180deg,rgba(24,6,8,.88),rgba(8,3,5,.92));border-radius:3px;padding:8px 10px;box-shadow:0 4px 18px rgba(0,0,0,.55);}
 #raid-controls button{box-shadow:0 4px 14px rgba(0,0,0,.5);}
@@ -5903,19 +5944,20 @@ if (target) target.classList.remove('hidden');
 <div id="raid-timestop-veil"></div>
 <div id="raid-cutin"><video id="raid-cutin-vid" muted playsinline preload="auto"></video><img id="raid-cutin-img" alt="" style="display:none"><div id="raid-cutin-text"></div></div>
 <div id="raid-textpop"></div>
-<div class="px-4 pt-4 pb-2 w-full max-w-md mx-auto">
-<div id="raid-boss-stage" class="h-44">
-<div class="absolute top-2 left-3 right-3 flex items-start justify-between" style="z-index:2">
+<div class="px-4 pt-12 pb-2 w-full max-w-md mx-auto">
+<div id="raid-boss-stage">
+<div class="flex items-start justify-between">
 <p class="text-[10px] tracking-[0.4em] text-fuchsia-200/90">期間限定 共討戦 ― 泡沫夢幻 ―</p>
 <span id="raid-gen" class="text-[11px] text-gold font-bold tracking-widest">第1世代</span>
 </div>
-<div class="absolute left-3 right-3 bottom-2" style="z-index:2">
-<h2 class="text-2xl font-black tracking-[0.3em] text-purple-50" style="text-shadow:0 2px 10px rgba(0,0,0,.9)">輪廻の番人</h2>
+<div class="flex items-baseline justify-between mt-0.5">
+<h2 class="text-xl font-black tracking-[0.3em] text-purple-50" style="text-shadow:0 2px 10px rgba(0,0,0,.9)">輪廻の番人</h2>
+<span id="raid-field" class="text-[11px] tracking-[0.25em] text-amber-200/90">戦況 ― 静寂</span>
+</div>
 <div class="mt-1.5 h-3 bg-black/75 border border-purple-300/40 rounded-sm overflow-hidden relative"><div id="raid-boss-hpghost" class="absolute inset-y-0 left-0 bg-white/45" style="width:100%"></div><div id="raid-boss-hpbar" class="relative h-full bg-gradient-to-r from-purple-900 via-purple-600 to-fuchsia-500 transition-all duration-500" style="width:100%"></div></div>
 <div class="flex justify-between text-[10px] text-gray-200 mt-1"><span>番人の残り命</span><span id="raid-boss-hptext">- / -</span></div>
 </div>
-</div>
-<div id="raid-field" class="text-center text-[11px] tracking-[0.25em] text-amber-200/90 pt-1.5">戦況 ― 静寂</div>
+<div id="raid-scene" class="h-56"><img id="raid-scene-img" alt=""><div id="raid-scene-cap">― 集いし魂、冥府の門に挑む ―</div></div>
 </div>
 <div class="flex-1 flex flex-col w-full max-w-md mx-auto px-4 min-h-0">
 <div class="text-[10px] tracking-[0.5em] text-gold/80 text-center pb-1">― 実 況 ―</div>
