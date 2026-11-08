@@ -41,8 +41,7 @@
   .bar-wrap { flex:1; height:9px; background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.45); border-radius:5px; overflow:hidden; }
   .bar { height:100%; width:100%; transition:width .2s; }
   #bar-hp { background:linear-gradient(90deg,#7ec850,#a5e075); }
-  #bar-mp { background:linear-gradient(90deg,#4a90d9,#8ec9f5); }
-  #bar-st { background:linear-gradient(90deg,#d9a83c,#f5d98e); }
+  #bar-rp { background:linear-gradient(90deg,#4a90d9,#8ec9f5); }
   .bar-num { font-size:10px; font-weight:700; width:56px; text-align:right; color:#e8dcc0; }
   #player-card #sync-state { display:block; margin-top:3px; }
   #inv-row { display:flex; gap:6px; flex-wrap:wrap; }
@@ -72,8 +71,7 @@
     <div id="player-card">
       <div id="pc-name">ヒューマン</div>
       <div class="bar-row"><span>HP</span><div class="bar-wrap"><div class="bar" id="bar-hp"></div></div><span class="bar-num" id="num-hp"></span></div>
-      <div class="bar-row"><span>MP</span><div class="bar-wrap"><div class="bar" id="bar-mp"></div></div><span class="bar-num" id="num-mp"></span></div>
-      <div class="bar-row"><span>ST</span><div class="bar-wrap"><div class="bar" id="bar-st"></div></div><span class="bar-num" id="num-st"></span></div>
+      <div class="bar-row"><span>RP</span><div class="bar-wrap"><div class="bar" id="bar-rp"></div></div><span class="bar-num" id="num-rp"></span></div>
       <span id="sync-state">接続中…</span>
     </div>
     <div class="hud-box"><span id="hud-day">1日目</span> ・ <span id="hud-place">村</span><br>💰 <span id="hud-gold">0</span> G</div>
@@ -102,12 +100,12 @@
     <label>あなたの種族</label>
     <div class="race-grid">
       <button class="race-btn sel" id="race-human">🧑 ヒューマン<small>バランス型。すべての基準になる種族</small></button>
-      <button class="race-btn" id="race-newman">🧝 ニューマン<small>MPが多く、サラダの回復量アップ</small></button>
+      <button class="race-btn" id="race-newman">🧝 ニューマン<small>RPが多く、サラダの回復量アップ</small></button>
       <button class="race-btn" id="race-fairy">🧚 フェアリー<small>移動が速い。体力は低め</small></button>
       <button class="race-btn" id="race-dwarf">⛏️ ドワーフ<small>頑丈で攻撃力が高く、鉱石がよく取れる</small></button>
     </div>
     <button id="start-btn">村へ行く</button>
-    <div id="title-note">※ 種族でHP・MP・スタミナや特技が少し変わります。畑もダンジョンも全種族共通で遊べます。<br>※ 通信が使えない環境ではオフラインモードでそのまま遊べます。</div>
+    <div id="title-note">※ 種族でHP・RPや特技が少し変わります。畑もダンジョンも全種族共通で遊べます。<br>※ 通信が使えない環境ではオフラインモードでそのまま遊べます。</div>
   </div>
 </div>
 
@@ -158,10 +156,10 @@ const ITEM_NAMES = { seed_kabu: 'かぶの種', seed_tomato: 'トマトの種', 
 const ITEM_ICONS = { seed_kabu: '🌱', seed_tomato: '🌱', seed_melon: '🌱', crop_kabu: '🥬', crop_tomato: '🍅', crop_melon: '🍈', ore: '⛏️', salad: '🥗' };
 const ITEM_KEYS = Object.keys(ITEM_NAMES);
 const RACES = {
-  human:  { name: 'ヒューマン', img: 'human',  maxHp: 100, maxMp: 50, maxSt: 100, speed: 1.0,  atk: 0, saladHeal: 40 },
-  newman: { name: 'ニューマン', img: 'newman', maxHp: 85,  maxMp: 95, maxSt: 90,  speed: 1.02, atk: 0, saladHeal: 55 },
-  fairy:  { name: 'フェアリー', img: 'fairy',  maxHp: 75,  maxMp: 70, maxSt: 85,  speed: 1.28, atk: 0, saladHeal: 40 },
-  dwarf:  { name: 'ドワーフ',   img: 'dwarf',  maxHp: 130, maxMp: 30, maxSt: 120, speed: 0.92, atk: 2, saladHeal: 40, oreBonus: true }
+  human:  { name: 'ヒューマン', img: 'human',  maxHp: 100, maxRp: 120, speed: 1.0,  atk: 0, saladHeal: 40 },
+  newman: { name: 'ニューマン', img: 'newman', maxHp: 85,  maxRp: 140, speed: 1.02, atk: 0, saladHeal: 55 },
+  fairy:  { name: 'フェアリー', img: 'fairy',  maxHp: 75,  maxRp: 110, speed: 1.28, atk: 0, saladHeal: 40 },
+  dwarf:  { name: 'ドワーフ',   img: 'dwarf',  maxHp: 130, maxRp: 130, speed: 0.92, atk: 2, saladHeal: 40, oreBonus: true }
 };
 let myRace = 'human';
 function myName() { return RACES[myRace].name; }
@@ -175,7 +173,7 @@ const S = {
   scene: 'village', floor: 1,
   shared: { gold: 100, weaponLv: 1, day: 1, chest: {}, plots: {} },
   inv: { seed_kabu: 3 },
-  hp: 100, maxHp: 100, mp: 50, maxMp: 50, st: 100, maxSt: 100,
+  hp: 100, maxHp: 100, rp: 120, maxRp: 120,
   selSeed: 'kabu'
 };
 for (const k of ITEM_KEYS) { if (!(k in S.shared.chest)) S.shared.chest[k] = 0; if (!(k in S.inv)) S.inv[k] = 0; }
@@ -251,15 +249,20 @@ function refreshHUD() {
 }
 function updateBars() {
   const b = (id, n, v, m) => { const e = $(id); if (e) e.style.width = clamp(v / m * 100, 0, 100) + '%'; const t = $(n); if (t) t.textContent = Math.ceil(v) + '/' + m; };
-  b('bar-hp', 'num-hp', S.hp, S.maxHp); b('bar-mp', 'num-mp', S.mp, S.maxMp); b('bar-st', 'num-st', S.st, S.maxSt);
+  b('bar-hp', 'num-hp', S.hp, S.maxHp); b('bar-rp', 'num-rp', S.rp, S.maxRp);
   const hb = $('bar-hp'); if (hb) hb.style.background = S.hp <= S.maxHp * .3 ? 'linear-gradient(90deg,#e2483a,#f08070)' : 'linear-gradient(90deg,#7ec850,#a5e075)';
 }
 let warnT = 0;
 function warnLack(kind) {
   const now = performance.now(); if (now - warnT < 2500) return; warnT = now;
-  toast(kind === 'mp' ? 'MPが足りない…' : 'スタミナ切れ…（サラダか睡眠で回復）');
+  toast(kind === 'sub' ? 'RPが足りない…HPで肩代わり！' : 'もう限界…（サラダか睡眠で回復しよう）');
 }
-function spendSt(n) { if (S.st < n) { warnLack('st'); return false; } S.st -= n; return true; }
+function spendRP(n) {
+  if (S.rp >= n) { S.rp -= n; return true; }
+  const short = n - S.rp;
+  if (S.hp > 1) { S.rp = 0; S.hp = Math.max(1, S.hp - short); warnLack('sub'); return true; }
+  warnLack('limit'); return false;
+}
 let panelOnClose = null;
 function openPanel(title, desc, buttons, onClose) {
   $('panel-title').textContent = title; $('panel-desc').textContent = desc || '';
@@ -323,15 +326,14 @@ setInterval(() => {  // 長押し＝サラダ
 }, 90);
 function doDash(dx, dy) {
   if (me.dashT > 0) return;
-  if (S.mp < 12) { warnLack('mp'); return; }
-  S.mp -= 12;
+  if (!spendRP(10)) return;
   me.dashT = 0.18; me.dashDx = dx; me.dashDy = dy; me.iframeT = Math.max(me.iframeT, 0.28);
   addParticles(me.x, me.y + 16, '#cbb98a', 7, 70, 10);
 }
 function useSalad() {
   if (S.inv.salad <= 0) { toast('サラダがありません（作業台で作れます）'); return; }
-  if (S.hp >= S.maxHp && S.st >= S.maxSt) { toast('HPもスタミナも満タンです'); return; }
-  S.inv.salad--; S.hp = Math.min(S.maxHp, S.hp + RACES[myRace].saladHeal); S.st = Math.min(S.maxSt, S.st + 50);
+  if (S.hp >= S.maxHp && S.rp >= S.maxRp) { toast('HPもRPも満タンです'); return; }
+  S.inv.salad--; S.hp = Math.min(S.maxHp, S.hp + RACES[myRace].saladHeal); S.rp = Math.min(S.maxRp, S.rp + 50);
   addParticles(me.x, me.y - 10, '#a5e075', 10, 60, 30); refreshHUD(); saveLocal();
 }
 
@@ -339,7 +341,7 @@ function useSalad() {
 function advanceDay(fromRemote) {
   S.shared.day++;
   for (const k in S.shared.plots) { const p = S.shared.plots[k]; if (p.s === 'planted') p.s = 'ready'; }
-  S.hp = S.maxHp; S.mp = S.maxMp; S.st = S.maxSt;
+  S.hp = S.maxHp; S.rp = S.maxRp;
   refreshHUD(); saveLocal(); syncShared();
   toast('🌅 ' + S.shared.day + '日目の朝になりました');
 }
@@ -374,7 +376,7 @@ function onTap(sx, sy) {
 function farmAction(pk) {
   const p = S.shared.plots[pk.key];
   if (!p) {
-    if (!spendSt(6)) return;
+    if (!spendRP(6)) return;
     S.shared.plots[pk.key] = { s: 'plowed' };
     addParticles(pk.cx, pk.cy, '#8a6a45', 10, 80, 20);
     afterSharedChange(); return;
@@ -382,14 +384,14 @@ function farmAction(pk) {
   if (p.s === 'plowed') {
     const sk = 'seed_' + S.selSeed;
     if (S.inv[sk] <= 0) { toast(CROPS[S.selSeed].name + 'の種がありません（作業台で購入）'); return; }
-    if (!spendSt(4)) return;
+    if (!spendRP(4)) return;
     S.inv[sk]--; p.s = 'planted'; p.crop = S.selSeed;
     addParticles(pk.cx, pk.cy, '#a5e075', 8, 60, 25);
     afterSharedChange(); refreshHUD(); return;
   }
   if (p.s === 'planted') { toast('芽が出ています。明日には収穫できそうです'); return; }
   if (p.s === 'ready') {
-    if (!spendSt(3)) return;
+    if (!spendRP(3)) return;
     const ck = 'crop_' + p.crop;
     S.inv[ck]++; delete S.shared.plots[pk.key];
     addParticles(pk.cx, pk.cy, CROPS[p.crop].fruit, 12, 90, 30);
@@ -492,7 +494,7 @@ function checkTreasureTap(sx, sy) {
 function doAttack() {
   if (me.atkT > 0) return;
   me.atkT = 0.32;
-  if (!spendSt(3)) return;
+  if (!spendRP(3)) return;
   const d = [[0, 1], [0, -1], [-1, 0], [1, 0]][me.dir];
   const power = 8 + S.shared.weaponLv * 3 + RACES[myRace].atk;
   for (const m of monsters) {
@@ -552,8 +554,7 @@ function update(now) {
       if (Math.random() < dt * 2) addParticles(me.x, me.y + 20, '#d8cf9e', 1, 20, 0);
     }
     me.atkT = Math.max(0, me.atkT - dt); me.iframeT = Math.max(0, me.iframeT - dt); me.hurtT = Math.max(0, me.hurtT - dt);
-    S.mp = Math.min(S.maxMp, S.mp + 5 * dt);
-    if (S.scene === 'village') S.st = Math.min(S.maxSt, S.st + 2.5 * dt);
+    S.rp = Math.min(S.maxRp, S.rp + (S.scene === 'village' ? 5 : 2.5) * dt);
     updateBars();
     // gate / stairs
     if (S.scene === 'village') {
@@ -789,13 +790,13 @@ let db = null, syncOk = false, saveTimer = null, sharedTimer = null, presenceTim
 function saveLocal() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
-    try { localStorage.setItem('tf_save_' + roomId, JSON.stringify({ shared: S.shared, inv: S.inv, hp: S.hp, mp: S.mp, st: S.st })); } catch (e) {}
+    try { localStorage.setItem('tf_save_' + roomId, JSON.stringify({ shared: S.shared, inv: S.inv, hp: S.hp, rp: S.rp })); } catch (e) {}
   }, 250);
 }
 function loadLocal() {
   try {
     const j = JSON.parse(localStorage.getItem('tf_save_' + roomId) || 'null');
-    if (j) { S.shared = Object.assign(S.shared, j.shared); S.inv = Object.assign(S.inv, j.inv); S.hp = j.hp ?? S.hp; S.mp = j.mp ?? S.mp; S.st = j.st ?? S.st; }
+    if (j) { S.shared = Object.assign(S.shared, j.shared); S.inv = Object.assign(S.inv, j.inv); S.hp = j.hp ?? S.hp; S.rp = j.rp ?? (j.st != null ? j.st + Math.floor((j.mp || 0) / 2) : S.rp); }
   } catch (e) {}
 }
 function afterSharedChange() { saveLocal(); syncShared(); }
@@ -899,11 +900,11 @@ $('sleep-btn').onclick = doSleep;
 $('start-btn').onclick = () => {
   roomId = ($('room-input').value || 'yamaguchi_farm').trim() || 'yamaguchi_farm';
   const R = RACES[myRace];
-  S.maxHp = R.maxHp; S.maxMp = R.maxMp; S.maxSt = R.maxSt;
+  S.maxHp = R.maxHp; S.maxRp = R.maxRp;
   const hasSave = !!localStorage.getItem('tf_save_' + roomId);
   loadLocal();
-  if (!hasSave) { S.hp = S.maxHp; S.mp = S.maxMp; S.st = S.maxSt; }
-  S.hp = clamp(S.hp, 1, S.maxHp); S.mp = clamp(S.mp, 0, S.maxMp); S.st = clamp(S.st, 0, S.maxSt);
+  if (!hasSave) { S.hp = S.maxHp; S.rp = S.maxRp; }
+  S.hp = clamp(S.hp, 1, S.maxHp); S.rp = clamp(S.rp, 0, S.maxRp);
   started = true; startedAt = Date.now();
   $('title-screen').style.display = 'none';
   $('hud').style.display = 'block';
