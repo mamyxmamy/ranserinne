@@ -192,6 +192,9 @@ button { color: inherit; }
   text-align: center;
 }
 
+/* CONTINUE 表示時はインストール訴求文を畳み、ボタンの重なりを避ける */
+.attract.has-continue .install-cta__note { display: none; }
+
 .install-cta__note {
   margin: 0;
   color: #8dffb0;
@@ -213,6 +216,27 @@ button { color: inherit; }
 
 .install-cta__btn:hover,
 .install-cta__btn:focus-visible { border-color: var(--phosphor-hot); }
+
+/* PROMPT-24: セーブデータがある時だけタイトルに出る再開ボタン */
+.continue-btn {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 30%;
+  z-index: 4;
+  border: 1px solid rgba(255, 210, 122, 0.75);
+  background: #241a04;
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: clamp(13px, 1.6vw, 16px);
+  letter-spacing: 0.12em;
+  padding: 10px 22px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.continue-btn:hover,
+.continue-btn:focus-visible { border-color: var(--amber); box-shadow: 0 0 14px rgba(255, 210, 122, 0.35); }
 
 .install-cta__how {
   margin: 0;
@@ -498,7 +522,8 @@ button { color: inherit; }
   min-width: 0;
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) minmax(118px, 22%);
+  /* PROMPT-24: 下段トレイを広げ、手札カードを指で掴める大きさにする */
+  grid-template-rows: auto minmax(0, 1fr) minmax(168px, 30%);
   gap: 6px;
 }
 
@@ -1365,6 +1390,15 @@ button { color: inherit; }
   border-color: rgba(255, 141, 122, 0.7);
 }
 
+/* PROMPT-25: スタン（行動不能）はシアンのターミナルタグで示す（旧「隙」バッジの置き換え） */
+.intent-badge[data-action="stunned"] {
+  color: #8ef6ff;
+  border: 1px solid rgba(142, 246, 255, 0.8);
+  background: rgba(3, 22, 28, 0.82);
+  text-shadow: 0 0 8px rgba(142, 246, 255, 0.65);
+  box-shadow: 0 0 12px rgba(80, 220, 255, 0.25), inset 0 0 8px rgba(80, 220, 255, 0.12);
+}
+
 #stun-pips[hidden] { display: none !important; }
 
 .shot-call {
@@ -1798,7 +1832,8 @@ button { color: inherit; }
   overflow-x: auto;
   overflow-y: hidden;
   gap: 0;
-  padding: 14px 8px 0;
+  /* PROMPT-24: 上パディングはカード高（100cqh）から差し引かれるため、最小限に詰める */
+  padding: 6px 8px 0;
 }
 
 .hopper-note {
@@ -1816,7 +1851,7 @@ button { color: inherit; }
 
 .punchcard {
   position: relative;
-  height: min(88px, 100cqh);
+  height: min(120px, 100cqh);
   width: auto;
   max-width: 168px;
   aspect-ratio: 3 / 2;
@@ -1888,6 +1923,8 @@ button { color: inherit; }
   cursor: grabbing;
   z-index: 20;
   transition: none;
+  /* PROMPT-24: 掴んだ瞬間から少し拡大する（移動中はJSが rotate+scale を上書きする） */
+  transform: rotate(2deg) scale(1.15);
   box-shadow:
     inset 0 1px 0 rgba(255, 250, 236, 0.7),
     inset 0 0 0 1px #9a7d52,
@@ -2007,6 +2044,14 @@ button { color: inherit; }
   color: #3a3124;
   overflow: hidden;
 }
+
+/* PROMPT-24: 手札（ホッパー内）のカードだけ文字を大きくし、肉眼で読めるようにする。
+   報酬シーンのカードは従来寸法のまま（ステージ内に3枚収める制約があるため） */
+.hopper .punchcard__head, .hopper .punchcard__foot { font-size: 10.5px; }
+.hopper .punchcard__name { font-size: 13.5px; }
+.hopper .punchcard__rules { font-size: 10.5px; }
+.hopper .punchcard__text { font-size: 10.5px; }
+.hopper .punchcard__flavor { font-size: 10px; }
 
 /* ---------- motion ---------- */
 
@@ -2570,9 +2615,16 @@ body.is-dead .comms {
 
 /* 低い画面（スマホ横持ち）では左パネルをさらに詰め、スクロールなしで収める（微調整 2026-11-10） */
 @media (max-height: 400px) {
-  .rig { grid-template-rows: auto minmax(0, 1fr) minmax(104px, 22%); }
+  /* PROMPT-24: 740x360級でも手札が約96pxの高さになるようトレイを確保する */
+  .rig { grid-template-rows: auto minmax(0, 1fr) minmax(146px, 30%); }
   .counters__label { display: none; }
   .hint { display: none; }
+  /* PROMPT-24: 低い画面ではリーダーを詰め、浮いた分を手札カードの高さに回す */
+  .reader { padding: 2px 8px 2px; }
+  .reader__lamps { margin-bottom: 2px; }
+  .reader__lamps i { width: 5px; height: 5px; }
+  .reader__mouth { height: 20px; font-size: 10px; }
+  .hopper { padding-top: 4px; }
 }
 
 /* 低い画面では報酬シーンを詰め、3枚のカードが下段トレイ（リーダ）に重ならないようにする
@@ -2590,7 +2642,13 @@ body.is-dead .comms {
 
 /* 極端に低い画面向けの追加圧縮（同日） */
 @media (max-height: 340px) {
-  .rig { grid-template-rows: auto minmax(0, 1fr) minmax(96px, 22%); }
+  /* PROMPT-24: 568x320級ではステージ（報酬シーン等）を圧迫しない範囲でトレイを広げる */
+  .rig { grid-template-rows: auto minmax(0, 1fr) minmax(118px, 32%); }
+  .hopper .punchcard__head, .hopper .punchcard__foot { font-size: 9px; }
+  .hopper .punchcard__name { font-size: 11px; }
+  .hopper .punchcard__rules { font-size: 9px; }
+  .hopper .punchcard__text { font-size: 9px; }
+  .hopper .punchcard__flavor { font-size: 9px; }
   .bezel__top { font-size: 9px; }
   .status-bay { padding: 2px 3px; }
   .dossier h2 { margin: 0; }
