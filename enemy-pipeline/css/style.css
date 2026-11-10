@@ -277,6 +277,13 @@ button { color: inherit; }
   object-fit: cover;
   object-position: center;
   z-index: 0;
+  /* オープニング画像は若干フェードインさせる（本人指示 2026-11-11） */
+  animation: cinema-fadein 1.8s ease-out both;
+}
+
+@keyframes cinema-fadein {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .broadcast__stage::before,
@@ -2492,15 +2499,20 @@ body.is-dead .comms {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  gap: 16px;
-  flex-wrap: wrap;
+  gap: 10px;
+  flex-wrap: nowrap;
   margin: 12px auto 4px;
-  min-height: 140px;
+  width: 100%;
 }
 
+/* 3枚を必ず横一列に収める（本人指示 2026-11-11: 小さくなっても全枚見せる） */
 .reward-offers .punchcard {
   margin-left: 0;
-  height: 138px;
+  height: auto;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 168px;
+  grid-template-columns: 36px minmax(0, 1fr);
   cursor: pointer;
 }
 
@@ -2561,6 +2573,19 @@ body.is-dead .comms {
   .rig { grid-template-rows: auto minmax(0, 1fr) minmax(104px, 22%); }
   .counters__label { display: none; }
   .hint { display: none; }
+}
+
+/* 低い画面では報酬シーンを詰め、3枚のカードが下段トレイ（リーダ）に重ならないようにする
+   （2026-11-11 検収: 568x320でカード中心がリーダのランプに覆われ回収不能だった） */
+@media (max-height: 400px) {
+  #scene-reward { padding: 6px 10px 4px; }
+  /* 説明文は下段トレイの注記にも同じ内容があるため、低い画面では畳んでカードをステージ内に収める */
+  #scene-reward .sheet__copy { display: none; }
+  #scene-reward .reward-offers { margin: 5px auto 2px; gap: 8px; }
+  #scene-reward .reward-secured { margin-top: 4px; font-size: 15px; }
+  #scene-reward .reward-skip { margin-top: 4px; padding: 4px 10px; font-size: 11px; }
+  /* ステータスバーが2行に折り返すとステージが痩せるので、低い画面では1行に収める */
+  .statusbar { font-size: 9px; letter-spacing: 0.08em; gap: 6px; white-space: nowrap; }
 }
 
 /* 極端に低い画面向けの追加圧縮（同日） */
