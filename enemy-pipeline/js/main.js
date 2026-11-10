@@ -2352,11 +2352,12 @@ async function beginAttract() {
   ui.desk.hidden = true;
   ui.attract.hidden = false;
   ui.attract.classList.remove("is-logo", "is-live", "is-flash");
-  ui.attractLogo.hidden = true;
+  // 本人指示 2026-11-10: 最初の画面にもゲームタイトル（ロゴ）を表示する
+  ui.attractLogo.hidden = false;
   ui.attractTerm.replaceChildren();
-  // 最初は開始プロンプトだけを暗闇に浮かばせる（クリックで起動）
   ui.attractPrompt.hidden = false;
   ui.attract.classList.add("is-live");
+  ui.attract.classList.add("is-logo");
 }
 
 // クリック直後：ブートテキストを高速印字し、その裏で動画をプリロードする
