@@ -1,6 +1,11 @@
 /* Card play, piles, and enemy turns.
-   The sentry still shoots 8: COVER misses, EXPOSE loses 8, cancel skips one shot.
-   Elites step through the pattern in js/enemies.js. COVER blanks damage actions.
+   PROMPT-23 (2026-11-11): COVER is a stealth buff, not damage immunity.
+   Incoming damage order: base value -> COVER -2 -> player block soaks -> HP.
+   Playing a noisy card in COVER (noise > 0) breaks COVER back to EXPOSE,
+   with the noise itself suppressed by 1 while covered. Block expires at the
+   start of the player's turn (after it has soaked the enemy phase).
+   Energy gains (cards and relics) are capped at energyMax.
+   Elites step through the pattern in js/enemies.js.
    Enemy block soaks the vessel's strikes. Stun immunity ignores stun cards. */
 
 (function (root) {
@@ -101,7 +106,7 @@
         hpMax: PLAYER_HP,
         energy: ENERGY_PER_TURN,
         energyMax: ENERGY_PER_TURN,
-        stance: "COVER",
+        stance: "EXPOSE",
         block: 0,
         stagger: 0,
       },
@@ -183,7 +188,8 @@
       return;
     }
     if (effect.target === "player" && effect.type === "add_energy") {
-      state.player.energy += amount;
+      // PROMPT-23: 電力の増加は最大値を超えない
+      state.player.energy = Math.min(state.player.energyMax, state.player.energy + amount);
       log.push(`PWR +${amount}  TOTAL ${state.player.energy}`);
       return;
     }
@@ -223,13 +229,23 @@
     const check = canPlay(state, card);
     if (!check.ok) return { ok: false, reason: check.reason, log: [] };
     state.player.energy -= Math.max(0, card.cost);
-    state.noise += card.noise;
+    // PROMPT-23: 潜伏中はノイズ-1（下限0）。ノイズの出るカードは潜伏を解くが、
+    // COVER を付与するカード自身（CQC打撃など）は解除の例外とする
+    const inCover = state.player.stance === "COVER";
+    const rawNoise = card.noise || 0;
+    const effNoise = inCover ? Math.max(0, rawNoise - 1) : rawNoise;
+    state.noise += effNoise;
+    const log = [];
+    if (inCover && (rawNoise > 0 || card.breaksCover === true) && card.stance_change !== "COVER") {
+      state.player.stance = "EXPOSE";
+      log.push("COVER BROKEN");
+    }
     if (card.stance_change) state.player.stance = card.stance_change;
-    const log = [`PWR ${state.player.energy}  STANCE ${state.player.stance}`];
+    log.unshift(`PWR ${state.player.energy}  STANCE ${state.player.stance}`);
     for (const effect of card.effects) applyEffect(state, effect, log);
     // 検収修正 2026-11-10 (PROMPT-19): CQCカテゴリのカードはスタン+1（設計欠落の補完）
     if (card.category === "CQC" && !state.enemy.dead) addStun(state, 1, log, false);
-    log.push(`NOISE +${card.noise}  TOTAL ${state.noise}`);
+    log.push(`NOISE +${effNoise}${effNoise !== rawNoise ? ` (COVER -${rawNoise - effNoise})` : ""}  TOTAL ${state.noise}`);
     // PROMPT-18: ノイズ限界で警報発令（敵バフ＋リセット）
     let breach = false;
     if (state.noise >= NOISE_MAX) {
@@ -287,7 +303,12 @@
 
   function beginPlayerTurn(state, rng) {
     beginTurn(state);
+    // PROMPT-23: 防護は自ターン開始時に消滅する（敵フェーズで受け止めた残りは持ち越さない）。
+    // レリックのターン開始時効果より前に消すので、レリックで付いた防護はそのターン中有効。
+    const expiredBlock = state.player.block || 0;
+    state.player.block = 0;
     const notes = applyRelics(state, "start_of_turn");
+    if (expiredBlock > 0) notes.unshift(`BLOCK EXPIRED ${expiredBlock}`);
     const stagger = state.player.stagger || 0;
     if (stagger > 0) {
       const lost = Math.min(state.player.energy, stagger);
@@ -324,28 +345,41 @@
   }
 
   function strikeVolley(state, intent, log) {
-    if (state.player.stance === "COVER") {
-      log.push("MISS");
-      log.push("COVERED");
-      return { log, outcome: "miss", damage: 0, call: "MISS  COVERED" };
-    }
+    // PROMPT-23: 被ダメージ計算順序 = 基本値（+警報バフ）→ 潜伏-2 → 防護で相殺 → HP
     const hits = intent.hits || 1;
-    const value = intent.value + (state.alertBuff || 0);
+    const value = (intent.value || 0) + (state.alertBuff || 0);
     let dealt = 0;
+    let soakedTotal = 0;
+    let evaded = false;
     for (let i = 0; i < hits; i += 1) {
       if (state.player.hp <= 0) break;
-      const hit = Math.min(state.player.hp, value);
+      let dmg = value;
+      if (state.player.stance === "COVER") {
+        dmg = Math.max(0, dmg - 2);
+        if (dmg === 0) evaded = true;
+      }
+      const soaked = Math.min(state.player.block || 0, dmg);
+      if (soaked > 0) {
+        state.player.block -= soaked;
+        dmg -= soaked;
+        soakedTotal += soaked;
+      }
+      if (dmg > 0) log.push(`HIT ${dmg}`);
+      const hit = Math.min(state.player.hp, dmg);
       state.player.hp -= hit;
       dealt += hit;
-      log.push(`HIT ${value}`);
     }
+    if (soakedTotal > 0) log.push(`BLOCKED ${soakedTotal}  BLK ${state.player.block}`);
     log.push(`HP ${state.player.hp}`);
     if (state.player.hp === 0) log.push("VESSEL DOWN");
     if (intent.action === "attack_stun" && dealt > 0) {
       state.player.stagger = (state.player.stagger || 0) + 1;
       log.push("STAGGER 1");
     }
-    return { log, outcome: "hit", damage: dealt, call: `${dealt} DMG` };
+    if (dealt > 0) return { log, outcome: "hit", damage: dealt, call: `${dealt} DMG` };
+    if (soakedTotal > 0) return { log, outcome: "blocked", damage: 0, call: "BLOCKED" };
+    if (evaded) return { log, outcome: "blocked", damage: 0, call: "EVADED" };
+    return { log, outcome: "blocked", damage: 0, call: "NO DAMAGE" };
   }
 
   function resolveIntent(state, intent, log) {

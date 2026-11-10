@@ -89,7 +89,8 @@
         return;
       }
       if (effect.type === "add_energy") {
-        state.player.energy += effect.value;
+        // PROMPT-23: 電力の増加は最大値を超えない
+        state.player.energy = Math.min(state.player.energyMax, state.player.energy + effect.value);
         log.push(`PART ${relic.name}  PWR +${effect.value}`);
         return;
       }

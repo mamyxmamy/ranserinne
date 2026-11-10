@@ -25,7 +25,13 @@ const SCENE_BGM = {
 };
 
 const SPEECH = "我々は新たなデジタル防壁によって、国家の安全を——";
-const GRAY_DIVE_LINE = "見事な手際だ、パンドラ。コンソールを起動しろ。";
+// PROMPT-22: ブラックアウトからの初回通信（素体の用語説明を含む4行）
+const GRAY_DIVE_LINES = [
+  "……接続完了（ダイブ・サクセス）。見事な手際だ、パンドラ。",
+  "そちらの端末から遠隔操作している物理ボディ……【戦闘素体（VESSEL 07）】のバイタルも安定している。",
+  "AIが支配するデジタルの海で、質量を持つその義体（アナログ）だけが唯一の武器だ。",
+  "手元の【初期化カード（BOOT）】をスロットに落とせ。素体を起動するぞ。",
+];
 const SAFEHOUSE_LINE = "[SAFEHOUSE] 鉛の壁だけが、あの忌まわしいネットワークを遮断してくれる。次のダイブに備えろ。";
 const TUTORIAL_STORE = "enemy-pipeline-tutorial-v3"; // 完全版チュートリアル（BOOT→MAP→戦闘3ターン）追加に伴いキー更新
 // PROMPT-19/20: 完全版チュートリアル（BOOT→MAP→戦闘3ターン）の通信文
@@ -35,12 +41,16 @@ const GRAY_TUT_MAP = [
   "光っている【巡回プログラム（BATTLE）】のノードをクリックして、最初のセクターへ進め。",
 ];
 const GRAY_TUT_INTRO = "敵の巡回プログラムだ。昔の義体（素体）とは勝手が違うぞ、操作を思い出せ。";
-const GRAY_T1 = "パンドラ、敵の端末を見ろ。「8」のダメージを撃ち込んでくる気だ。まともに食らえば素体が保たん。まずは手札の【防護】カードをスロットに叩き込め！";
-const GRAY_T1_AFTER = "よし、これで防壁が展開された。ターン終了（END TURN）ボタンを押して、敵の攻撃を凌げ。";
-const GRAY_T2 = "防壁（ブロック）はターンごとにリセットされるから注意しろ。今度は敵が隙を見せている。エナジー（電力）の残量に気をつけながら、【打撃】で耐久値を削りきれ！";
-const GRAY_T3_A = "画面中央の【騒音値（NOISE）】のメーターを見ろ。強力な火力カードを切ればノイズが発生し、限界に達すると増援や敵の強化が作動する。";
-const GRAY_T3_B = "手堅くいくなら、敵の下にある【スタン】ゲージに注目しろ。CQC（格闘）でスタン値を最大まで溜めれば、敵の行動をショートさせられる。";
-const GRAY_T3_C = "リスクを背負って火力をブッ放すか、手堅く無力化するか……状況に合わせて選べ。";
+// PROMPT-22: チュートリアル通信文を新仕様（防護リセット／電力上限／COVERバフ）に合わせて改修
+const GRAY_T1 = [
+  "敵が攻撃を仕掛けてくる。まずは画面左の【電力（PWR）】を見ろ。毎ターン「3」までしか供給されない貴重なリソースだ。",
+  "電力を消費して、手札の【防護（BLK）】カードを使え。素体の装甲を展開するんだ。",
+];
+const GRAY_T1_AFTER = "よし。展開した防護（ブロック）は「ターン終了時」に消滅する。タイミングを間違えるなよ。ターンを終了しろ。";
+const GRAY_T2 = "敵に隙ができた。電力を計算しながら、攻撃カードで敵の耐久値を削れ！";
+const GRAY_T3_A = "画面中央の【騒音値（NOISE）】を見ろ。火力の高いカードを切ればノイズが発生し、限界に達すると敵の増援やバフが作動する。";
+const GRAY_T3_B = "ノイズを抑えたいなら【潜伏（COVER）】の態勢をとれ。ただし、派手な銃撃を行えば潜伏は即座に解けるぞ。";
+const GRAY_T3_C = "安全にいくなら【スタン】ゲージだ。格闘でゲージを最大まで溜めれば、敵をショートさせられる。状況に合わせて選べ。";
 const GRAY_TUT_END = "講義はここまでだ。あとは任せたぞ、パンドラ。敵を完全に沈黙させろ！";
 const GRAY_PINCH = "パンドラ、応答しろ！ ……おい、死ぬんじゃないぞ。作戦よりお前の命が最優先だ！";
 const GRAY_WIN = "見事だ。……昔のようには動かんと言ったが、杞憂だったな。先へ進もう。";
@@ -291,7 +301,9 @@ function changeScene(sceneName) {
   ui.screen.classList.toggle("is-event", name === "EVENT");
   if (audio) {
     const quiet = name === "SAFEHOUSE" || name === "EVENT";
-    audio.playBgm(quiet ? null : (SCENE_BGM[name] || null));
+    // ボス戦BGM: ボス戦とクリア画面では提供曲を流し続ける（同じ曲名なので再開始しない）
+    const track = bossBgm && (name === "BATTLE" || name === "CLEAR") ? "boss" : (SCENE_BGM[name] || null);
+    audio.playBgm(quiet ? null : track);
     if (name === "SAFEHOUSE") audio.playAmbient("fan");
     else audio.stopAmbient();
   }
@@ -576,9 +588,10 @@ function renderStance() {
   const stance = battle.player.stance;
   ui.stance.textContent = stance;
   ui.stance.dataset.mode = stance;
+  // PROMPT-23: 態勢バフを左パネルに明示する
   ui.stanceHint.textContent = stance === "EXPOSE"
-    ? "露出中は被弾する。"
-    : "カバー中は攻撃を回避する。";
+    ? "露呈中：バフなし"
+    : "潜伏中：被ダメ-2／ノイズ-1";
 }
 
 let lastNoiseShown = 0;
@@ -788,10 +801,9 @@ async function settlePlay(cardId, beforeHp, breached) {
     syncEndButton();
     return;
   }
-  // PROMPT-19 T3: FIRE / CQC を使った → 講義終了
+  // PROMPT-22 T3: 射撃／格闘／潜伏のいずれかを使った → 講義終了
   if (tutorialStep === "t3" && !battle.enemy.dead) {
-    const card = Battle.card(cardId);
-    if (card && (card.category === "GUN" || card.category === "CQC")) {
+    if (cardId === "gun_suppressed_pistol" || cardId === "strike_cqc" || cardId === "defend_cover") {
       await finishTutBattle();
       if (session.phase !== "combat") return;
     }
@@ -1068,8 +1080,8 @@ function tutorialLock(cardId) {
   if (tutorialStep === "t1") return cardId !== "defend_cover";
   if (tutorialStep === "t1end") return true;
   if (tutorialStep === "t3") {
-    const card = Battle.card(cardId);
-    return !(card && (card.category === "GUN" || card.category === "CQC"));
+    // PROMPT-22: T3は射撃／格闘／潜伏の3枚から選ばせる
+    return !(cardId === "gun_suppressed_pistol" || cardId === "strike_cqc" || cardId === "defend_cover");
   }
   return false;
 }
@@ -1079,6 +1091,7 @@ const TUTORIAL_FOCUS = {
   t1: { hi: [".glass", "#intent"], dim: [".status-bay", ".meters", ".tray"] },
   t1end: { hi: ["#end-turn"], dim: [".tray"] },
   t3a: { hi: ["#noise-meter"], dim: [".glass", ".tray"] },
+  t3cov: { hi: ["#stance", "#stance-hint"], dim: [".glass", ".tray"] },
   t3b: { hi: ["#stun-pips"], dim: [".glass", ".tray"] },
 };
 
@@ -1150,7 +1163,8 @@ async function setupTutTurn2() {
 }
 
 async function setupTutTurn3() {
-  rigHand(["gun_suppressed_pistol", "strike_cqc"]);
+  // PROMPT-22: T3の手札は射撃／格闘／潜伏の3枚。通信は ノイズ → 潜伏 → スタン の順で出す
+  rigHand(["gun_suppressed_pistol", "strike_cqc", "defend_cover"]);
   forceTutIntent({ action: "heavy_attack", name: "強射", value: 12, hits: 1 });
   setTutorialStep("t3");
   renderCombat();
@@ -1159,11 +1173,13 @@ async function setupTutTurn3() {
   setTutorialFocus("t3a");
   let ok = await presentRadio([GRAY_T3_A]);
   if (!ok || session.phase !== "combat") { clearTutorialFocus(); return; }
-  setTutorialFocus("t3b");
+  setTutorialFocus("t3cov");
   ok = await presentRadio([GRAY_T3_B]);
   if (!ok || session.phase !== "combat") { clearTutorialFocus(); return; }
+  setTutorialFocus("t3b");
+  ok = await presentRadio([GRAY_T3_C]);
+  if (!ok || session.phase !== "combat") { clearTutorialFocus(); return; }
   clearTutorialFocus();
-  await presentRadio([GRAY_T3_C]);
   refreshHand();
   syncEndButton();
 }
@@ -1462,6 +1478,9 @@ function setCctvImage(src, targetName) {
   ui.cctvImg.src = src;
 }
 
+// ボス戦BGM（heartbeat_at_the_gate）が有効かどうか
+let bossBgm = false;
+
 async function beginCombat(encounter) {
   session.busy = true;
   session.advance = false;
@@ -1479,7 +1498,11 @@ async function beginCombat(encounter) {
   const teach = !!(run && run.tutorialPending);
   tutorialBattle = teach;
   setTutorialStep(teach ? "t1" : "off");
+  // ボス戦では提供曲をゆっくりフェードインさせる（クリア画面まで継続）
+  bossBgm = encounter.type === "BOSS";
+  if (audio && bossBgm) audio.fadeSeconds = 2.2;
   changeScene("BATTLE");
+  if (audio) audio.fadeSeconds = 0.7;
   ui.ambush.hidden = true;
   ui.link.textContent = "CARRIER LOCK";
   ui.contact.textContent = encounter.name;
@@ -1511,14 +1534,15 @@ async function beginCombat(encounter) {
   refreshHand();
   // PROMPT-19 ターン1: 手札と敵インテントを固定し、通信を2段で出す
   rigHand(["defend_cover", "strike_cqc"]);
-  forceTutIntent({ action: "attack", name: "射撃", value: 8, hits: 1 });
+  // PROMPT-22: 射撃は7に調整（潜伏-2 → 防護5で相殺し、被ダメージ0で「防護が効く」ことを見せる）
+  forceTutIntent({ action: "attack", name: "射撃", value: 7, hits: 1 });
   renderCombat();
   refreshHand();
   syncEndButton();
   const introOk = await presentRadio([GRAY_TUT_INTRO]);
   if (!introOk || session.phase !== "combat") return;
   setTutorialFocus("t1");
-  const t1Ok = await presentRadio([GRAY_T1]);
+  const t1Ok = await presentRadio(GRAY_T1);
   clearTutorialFocus();
   if (!t1Ok || session.phase !== "combat") return;
   session.busy = false;
@@ -2051,6 +2075,7 @@ async function openGameOver() {
   session.busy = true;
   silenceRadio();
   pinchQueued = false;
+  bossBgm = false;
   if (audio) {
     audio.playBgm(null);
     audio.playSE("heavy_glitch");
@@ -2268,9 +2293,18 @@ async function phaseBlack(live) {
   if (ui.speechVideo) { ui.speechVideo.hidden = true; try { ui.speechVideo.pause(); } catch { /* noop */ } }
   try {
     if (!await hold(700, live)) return false;
-    // 暗闇にグレイの通信テキストだけを浮かび上がらせる
+    // 暗闇にグレイの通信テキストだけを浮かび上がらせる（PROMPT-22: 4行を1行ずつ印字）
     ui.grayline.hidden = false;
-    if (!await typeText(ui.grayline, GRAY_DIVE_LINE, live, { gap: 42, caret: true, radio: true })) return false;
+    ui.grayline.replaceChildren();
+    for (const line of GRAY_DIVE_LINES) {
+      const row = document.createElement("div");
+      row.className = "grayline__row";
+      ui.grayline.append(row);
+      if (!await typeText(row, line, live, { gap: 42, caret: true, radio: true })) return false;
+      if (!live()) return false;
+      session.advance = false;
+      if (!await hold(450, live)) return false;
+    }
     if (!live() || session.advance) return live();
     return await hold(1000, live);
   } finally {
@@ -2463,69 +2497,73 @@ function attractPrimary() {
   if (attractStage === "title") { diveFromTitle(); return; }
 }
 
-const PROLOGUE_LINES = [
-  "20XX年、デジタル空間は防壁AIによって「完全な嘘」に沈んだ。",
-  "ネットワーク上の映像、音声、記録……そのすべてが改ざんされるディープフェイクの時代。",
-  "高度なAIネットワーク「パイプライン」が、世界の真実を覆い隠している。",
-  "AIが唯一干渉できない領域。それは質量を伴う「物理回線（アナログ）」。",
-  "旧世代の遺物となったパンチカードと、物理素体だけが真実を暴く牙となる。",
-  "……アナログ・ネットワークへの強制接続（ダイブ）を開始する。",
+// PROMPT-21: プロローグはパンドラの独白・4段落。段落ごとにタイプライター印字し、
+// 完了で > CLICK TO CONTINUE を点滅。クリックで次段落へ（印字中のクリックは段落を即時完了）。
+const PROLOGUE_PARAGRAPHS = [
+  [
+    "20XX年、世界は「完璧な嘘」に沈んだ。",
+    "巨大AIネットワーク【パイプライン】によりあらゆる情報は統制され、人類はディープフェイクが作り出す幻の平和に飼いならされている。",
+  ],
+  [
+    "だが、完全に管理されたこの世界にも、密かに牙を研ぐ者はいた。",
+    "彼らが武器としたのは、AIが唯一干渉できない領域。電子データではない、確かな質量を伴う【物理回線（アナログ）】だ。",
+  ],
+  [
+    "ネットワークから物理的に隔離された旧世代の戦闘素体（VESSEL）。",
+    "情報のすべてを物理的な孔（あな）で刻み込んだ【パンチカード】。",
+    "AIから見れば時代遅れのゴミこそが、奴らの最強の防壁を破る唯一の鍵だった。",
+  ],
+  [
+    "……まだ、闘いは終わっちゃいない。ここからだ",
+  ],
 ];
 
-let prologueInputResolve = null;
-
-function signalPrologueInput() {
-  if (!prologueInputResolve) return;
-  const resolve = prologueInputResolve;
-  prologueInputResolve = null;
-  resolve();
-}
-
-// プロローグ：世界観テキストをタイプライター印字し、入力でダイブする（演出追加 2026-11-10）
 async function playPrologue(live) {
   ui.prologue.hidden = false;
   ui.prologue.classList.remove("is-glitching", "is-out");
   ui.prologueTerm.replaceChildren();
   ui.prologuePrompt.hidden = true;
-  let skipAll = false;
+  let typing = false;
+  let advanceResolve = null;
   const onInput = () => {
-    session.advance = true; // 印字中なら現在の行を即時完了させる（既存機構）
-    skipAll = true;          // 残りの行も一気に表示する
-    signalPrologueInput();   // プロンプト待ちならダイブへ
+    if (typing) {
+      session.advance = true; // 印字中のクリック → その段落を即時完了させる
+      return;
+    }
+    if (advanceResolve) {
+      const resolve = advanceResolve;
+      advanceResolve = null;
+      resolve();
+    }
   };
   window.addEventListener("pointerdown", onInput);
   window.addEventListener("keydown", onInput);
   try {
-    for (let i = 0; i < PROLOGUE_LINES.length; i++) {
-      const row = document.createElement("p");
-      row.className = "prologue__line";
-      ui.prologueTerm.append(row);
-      if (skipAll) {
-        row.textContent = PROLOGUE_LINES[i];
-      } else {
-        session.advance = false;
-        if (!await typeText(row, PROLOGUE_LINES[i], live, { gap: 34, caret: true, printer: true })) return false;
-      }
-      if (!live()) return false;
-      if (i === 2) {
-        const blank = document.createElement("p");
-        blank.className = "prologue__blank";
-        blank.textContent = "　";
-        ui.prologueTerm.append(blank);
-        if (!skipAll) {
-          session.advance = false;
-          if (!await hold(2000, live)) return false;
+    for (let p = 0; p < PROLOGUE_PARAGRAPHS.length; p++) {
+      ui.prologueTerm.replaceChildren();
+      ui.prologuePrompt.hidden = true;
+      typing = true;
+      let skipRest = false;
+      for (const line of PROLOGUE_PARAGRAPHS[p]) {
+        const row = document.createElement("p");
+        row.className = "prologue__line";
+        ui.prologueTerm.append(row);
+        if (skipRest) {
+          row.textContent = line;
+          continue;
         }
-      } else if (i < PROLOGUE_LINES.length - 1 && !skipAll) {
         session.advance = false;
-        if (!await hold(1000, live)) return false;
+        if (!await typeText(row, line, live, { gap: 34, caret: true, printer: true })) return false;
+        if (session.advance) skipRest = true;
+        if (!live()) return false;
       }
+      typing = false;
+      session.advance = false;
+      ui.prologuePrompt.hidden = false;
+      await new Promise((resolve) => { advanceResolve = resolve; });
+      advanceResolve = null;
       if (!live()) return false;
     }
-    ui.prologuePrompt.hidden = false;
-    session.advance = false;
-    await new Promise((resolve) => { prologueInputResolve = resolve; });
-    if (!live()) return false;
     cueSE("heavy_glitch");
     ui.prologue.classList.add("is-glitching");
     await delay(620);
@@ -2538,7 +2576,7 @@ async function playPrologue(live) {
   } finally {
     window.removeEventListener("pointerdown", onInput);
     window.removeEventListener("keydown", onInput);
-    prologueInputResolve = null;
+    advanceResolve = null;
   }
 }
 
@@ -2950,7 +2988,11 @@ ui.rewardSkip.addEventListener("click", () => {
 ui.returnTerminal.addEventListener("click", () => {
   if (audio) audio.unlock();
   if (session.phase !== "clear") return;
+  // クリア画面を抜けたらボスBGMは役目を終える（ゆっくりフェードアウト）
+  bossBgm = false;
+  if (audio) audio.fadeSeconds = 1.6;
   showTitle();
+  if (audio) audio.fadeSeconds = 0.7;
 });
 ui.rewardOffers.addEventListener("pointerover", (event) => {
   if (event.pointerType && event.pointerType !== "mouse") return;

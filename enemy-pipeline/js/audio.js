@@ -24,6 +24,7 @@ const AUDIO_FILES = {
   "bgm:battle": "assets/audio/bgm_battle.wav",
   "bgm:reward": "assets/audio/bgm_reward.wav",
   "bgm:gameover": "assets/audio/bgm_gameover.wav",
+  "bgm:boss": "assets/audio/heartbeat_at_the_gate.mp3",
   "se:card_hover": "assets/audio/se_card_hover.wav",
   "se:card_drag": "assets/audio/se_card_drag.wav",
   "se:card_insert": "assets/audio/se_machine_insert.wav",
