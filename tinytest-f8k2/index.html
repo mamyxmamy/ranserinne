@@ -4392,14 +4392,15 @@ function drawChar(img, x, y, dir, moving, walkT, alpha, name, nameColor) {
   const col = moving ? frames[Math.floor(walkT * 7) % 4] : 1;
   ctx.save();
   if (alpha !== undefined) ctx.globalAlpha = alpha;
-  ctx.drawImage(img, col * F, dir * F, F, F, x - 48, y - 90, 96, 96);   /* patch_v63: 従来スプライトも拡大（高さ96・足元は従来どおり y+6） */
+  ctx.drawImage(img, col * F, dir * F, F, F, x - 120, y - 234, 240, 240);   /* patch_v63: 従来スプライトも拡大（高さ96・足元は従来どおり y+6）→ patch_v64: 2.5倍（高さ240・足元 y+6 不変） */
   ctx.restore();
-  drawNamePlate(name, x, y, nameColor, (S.scene === 'house' || S.scene === 'barn') ? 168 : 112);
+  drawNamePlate(name, x, y, nameColor, (S.scene === 'house' || S.scene === 'barn') ? 420 : 280);
 }
 /* フレームアニメ描画（512pxキャンバス・中心x=256・足元y=469）。
    patch_v63: 本人指示でキャラを拡大。屋外の実高さは90（新畑マス112と釣り合う大きさ）、
-   室内は「部屋全体が1画面」表示でも小さく見えないよう実高さ150。足元はキャラ座標の4.7px上で不変。 */
-const CHAR_H_OUT = 90, CHAR_H_IN = 150;
+   室内は「部屋全体が1画面」表示でも小さく見えないよう実高さ150。足元はキャラ座標の4.7px上で不変。
+   patch_v64: 本人指示でさらに2.5倍（屋外225・室内375）。「まだちっちゃすぎる」との指摘への対応。 */
+const CHAR_H_OUT = 225, CHAR_H_IN = 375;
 const SPR_K = CHAR_H_OUT / 338;   /* 338 = 新スプライトのキャラ実高さ（idle_down の実測）。屋外用の代表値 */
 const SPR_D = 512 * SPR_K;
 function charK() { return ((S.scene === 'house' || S.scene === 'barn') ? CHAR_H_IN : CHAR_H_OUT) / 338; }
@@ -4418,7 +4419,7 @@ function drawCharFrames(pick, x, y, alpha, name, nameColor) {
     else ctx.drawImage(img, x - 256 * K, dy, D, D);
   }
   ctx.restore();
-  drawNamePlate(name, x, y, nameColor, (S.scene === 'house' || S.scene === 'barn') ? 176 : 116);
+  drawNamePlate(name, x, y, nameColor, (S.scene === 'house' || S.scene === 'barn') ? 440 : 290);
 }
 /* フレーム対応種族はフレーム描画、それ以外と画像未読込時は従来のシート描画 */
 function drawPlayerSprite(race, sheetImg, x, y, dir, moving, walkT, anim, animT, animDur, atkT, alpha, name, nameColor, hurtT, downed) {
