@@ -225,6 +225,9 @@ const ui = {
   attractTerm: $("attract-term"),
   attractLogo: $("attract-logo"),
   attractPrompt: $("attract-prompt"),
+  installCta: $("install-cta"),
+  installBtn: $("install-btn"),
+  installHow: $("install-how"),
   prologue: $("prologue"),
   prologueTerm: $("prologue-term"),
   prologuePrompt: $("prologue-prompt"),
@@ -2332,6 +2335,35 @@ function waitFor(cond, ms, live) {
   });
 }
 
+// PWAインストール導線（本人指示 2026-11-11: タイトル画面に推奨表示＋インストールボタン）
+let deferredInstallPrompt = null;
+let installDone = false;
+
+function installCtaContextOk() {
+  if (location.protocol !== "https:" && location.protocol !== "http:") return false;
+  const standalone = window.matchMedia("(display-mode: standalone)").matches
+    || window.matchMedia("(display-mode: fullscreen)").matches
+    || window.navigator.standalone === true;
+  return !standalone;
+}
+
+function refreshInstallCta() {
+  if (!ui.installCta) return;
+  ui.installCta.hidden = !(!installDone && session.phase === "attract" && installCtaContextOk());
+}
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  refreshInstallCta();
+});
+
+window.addEventListener("appinstalled", () => {
+  installDone = true;
+  deferredInstallPrompt = null;
+  if (ui.installCta) ui.installCta.hidden = true;
+});
+
 async function beginAttract() {
   const token = ++attractToken;
   attractSession = token;
@@ -2358,6 +2390,8 @@ async function beginAttract() {
   ui.attractPrompt.hidden = false;
   ui.attract.classList.add("is-live");
   ui.attract.classList.add("is-logo");
+  if (ui.installHow) ui.installHow.hidden = true;
+  refreshInstallCta();
 }
 
 // クリック直後：ブートテキストを高速印字し、その裏で動画をプリロードする
@@ -2831,6 +2865,54 @@ ui.attract.addEventListener("click", () => {
   if (audio) audio.unlock();
   launchFromAttract();
 });
+if (ui.installCta) {
+  // インストール導線内のタップではゲームを開始しない
+  ui.installCta.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
+}
+if (ui.installBtn) {
+  ui.installBtn.addEventListener("click", async (event) => {
+    event.stopPropagation();
+    if (audio) audio.unlock();
+    // 手順が開いているときは、まず閉じる（プロンプト再発火の有無に左右されない決定的な挙動にする）
+    if (ui.installHow && !ui.installHow.hidden) {
+      ui.installHow.hidden = true;
+      return;
+    }
+    if (deferredInstallPrompt) {
+      const promptEvent = deferredInstallPrompt;
+      deferredInstallPrompt = null;
+      let accepted = false;
+      let responded = false;
+      try {
+        // ダイアログが返らない環境でも固まらないよう、応答には上限を設ける
+        const promptResult = await Promise.race([
+          promptEvent.prompt(),
+          new Promise((resolve) => setTimeout(() => resolve("timeout"), 2500)),
+        ]);
+        if (promptResult !== "timeout") {
+          const outcome = await Promise.race([
+            promptEvent.userChoice,
+            new Promise((resolve) => setTimeout(() => resolve(null), 10000)),
+          ]);
+          responded = outcome !== null && outcome !== undefined;
+          accepted = responded && outcome.outcome === "accepted";
+        }
+      } catch { responded = true; }
+      if (accepted) {
+        ui.installCta.hidden = true;
+        return;
+      }
+      // 応答が無い環境では手動手順にフォールバックする
+      if (!responded && ui.installHow) ui.installHow.hidden = false;
+      refreshInstallCta();
+      return;
+    }
+    // インストールプロンプトが使えない環境では、手動手順を表示する
+    if (ui.installHow) ui.installHow.hidden = !ui.installHow.hidden;
+  });
+}
 ui.diveBtn.addEventListener("click", (event) => {
   event.stopPropagation();
   if (audio) audio.unlock();
