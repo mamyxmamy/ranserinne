@@ -442,13 +442,16 @@
     if (state.enemy.dead) return { label: "無力", action: "" };
     const intent = currentIntent(state.enemy);
     if (!state.enemy.immuneToStun && (state.enemy.stun || 0) >= (state.enemy.stunMax || 3)) {
-      return { label: "スタン限界 (次行動ショート)", action: "stunned" };
+      // PROMPT-25: スタン（行動不能）のインテント表記は英字タグ STUNNED に統一する
+      return { label: "STUNNED", action: "stunned" };
     }
     const buff = state.alertBuff || 0;
     const shown = buff > 0 && (intent.action === "attack" || intent.action === "heavy_attack" || intent.action === "attack_stun")
       ? { ...intent, value: (intent.value || 0) + buff }
       : intent;
-    return { label: intentText(shown), action: intent.action || "" };
+    const label = intentText(shown);
+    // PROMPT-25: ラベルが STUNNED のインテント（チュートリアルの強制インテント等）も同じタグ表示にする
+    return { label, action: label === "STUNNED" ? "stunned" : (intent.action || "") };
   }
 
   function intentLabel(state) {

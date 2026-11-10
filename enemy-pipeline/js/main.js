@@ -26,11 +26,11 @@ const SCENE_BGM = {
 
 const SPEECH = "我々は新たなデジタル防壁によって、国家の安全を——";
 // PROMPT-22: ブラックアウトからの初回通信（素体の用語説明を含む4行）
+// PROMPT-26: 導入通信は説明口調を排した3行に短縮（ダイブ直後・全プレイヤー共通）
 const GRAY_DIVE_LINES = [
-  "……接続完了（ダイブ・サクセス）。見事な手際だ、パンドラ。",
-  "そちらの端末から遠隔操作している物理ボディ……【戦闘素体（VESSEL 07）】のバイタルも安定している。",
-  "AIが支配するデジタルの海で、質量を持つその義体（アナログ）だけが唯一の武器だ。",
-  "手元の【初期化カード（BOOT）】をスロットに落とせ。素体を起動するぞ。",
+  "……接続完了（ダイブ・サクセス）。相変わらず見事な手際だな、パンドラ。",
+  "旧世代の【戦闘素体（VESSEL 07）】へのリンクも正常。いつでもいけるぞ。",
+  "さあ、仕事の時間だ。手元の【BOOTカード】をドラッグしてスロットに落とせ。システムを叩き起こすぞ。",
 ];
 const SAFEHOUSE_LINE = "[SAFEHOUSE] 鉛の壁だけが、あの忌まわしいネットワークを遮断してくれる。次のダイブに備えろ。";
 const TUTORIAL_STORE = "enemy-pipeline-tutorial-v3"; // 完全版チュートリアル（BOOT→MAP→戦闘3ターン）追加に伴いキー更新
@@ -238,6 +238,7 @@ const ui = {
   installCta: $("install-cta"),
   installBtn: $("install-btn"),
   installHow: $("install-how"),
+  continueBtn: $("continue-btn"),
   prologue: $("prologue"),
   prologueTerm: $("prologue-term"),
   prologuePrompt: $("prologue-prompt"),
@@ -1024,6 +1025,7 @@ function applyMapRelics() {
 }
 
 function openRoute() {
+  clearSave(); // PROMPT-24: 新規ラン開始時は前ランのセーブを破棄する
   session.linked = true;
   session.busy = false;
   session.offer = [];
@@ -1069,6 +1071,125 @@ function markTutorialDone() {
   catch { /* storage unavailable */ }
 }
 
+// ==== PROMPT-24: オートセーブ（localStorage にランを自動保存し、タイトルから再開可能にする） ====
+// 保存粒度は「マップ滞在中」または「戦闘の開始時」。戦闘の途中経過は保存せず、
+// 復元時はその戦闘の開始時から再開する。デッキ構成は run.deck（全カードのIDリスト）で保持し、
+// 戦闘の山札・手札・捨て札は戦闘開始時にそこから再構成される。
+const SAVE_KEY = "enemy_pipeline_save";
+
+function saveGame(pending) {
+  try {
+    if (!run || !route) return;
+    const data = {
+      v: 1,
+      hp: run.hp,
+      hpMax: run.hpMax,
+      relics: (run.relics || []).slice(),
+      deck: (run.deck || []).slice(),
+      route: {
+        nodes: route.nodes,
+        originId: route.originId,
+        currentId: route.currentId,
+        scansLeft: route.scansLeft,
+        scanMax: route.scanMax,
+        floorCount: route.floorCount,
+      },
+      pending: pending || null,
+      tutorialCompleted: tutorialCleared(),
+    };
+    window.localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch { /* storage unavailable */ }
+}
+
+function loadGame() {
+  try {
+    const raw = window.localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (!data || !data.route || !data.route.nodes || !data.route.currentId
+      || !Array.isArray(data.deck) || typeof data.hp !== "number") return null;
+    return data;
+  } catch { return null; }
+}
+
+function clearSave() {
+  try { window.localStorage.removeItem(SAVE_KEY); } catch { /* noop */ }
+}
+
+function refreshContinueBtn() {
+  if (!ui.continueBtn) return;
+  const hasSave = session.phase === "attract" && !!loadGame();
+  ui.continueBtn.hidden = !hasSave;
+  if (ui.attract) ui.attract.classList.toggle("has-continue", hasSave);
+}
+
+// セーブデータからランを復元する（タイトル画面の CONTINUE から呼ばれる）
+function restoreRun() {
+  const data = loadGame();
+  if (!data) { refreshContinueBtn(); return; }
+  const nodes = data.route.nodes;
+  const floors = [];
+  for (let f = 1; f <= (data.route.floorCount || 0); f += 1) {
+    floors.push(Object.values(nodes).filter((n) => n.floor === f).sort((a, b) => a.index - b.index));
+  }
+  const links = [];
+  for (const node of Object.values(nodes)) {
+    for (const to of node.edges || []) links.push({ from: node.id, to });
+  }
+  route = {
+    floors, nodes, links,
+    originId: data.route.originId,
+    currentId: data.route.currentId,
+    scansLeft: data.route.scansLeft,
+    scanMax: data.route.scanMax,
+    floorCount: data.route.floorCount,
+  };
+  run = {
+    hp: data.hp,
+    hpMax: data.hpMax,
+    relics: Array.isArray(data.relics) ? data.relics.slice() : [],
+    deck: data.deck.slice(),
+    // 復元したランではチュートリアルの脚本は再生しない（新規ラン開始時に改めて行われる）
+    tutorialPending: false,
+  };
+  session.linked = true;
+  session.busy = false;
+  session.offer = [];
+  session.dead = false;
+  routeToken += 1;
+  resetTutorialState();
+  ui.broadcast.hidden = true;
+  ui.desk.hidden = false;
+  window.requestAnimationFrame(() => ui.screen.classList.add("is-on"));
+  const pending = data.pending;
+  if (pending && pending.kind === "combat") {
+    void beginCombat(pending);
+    return;
+  }
+  enterRestoredMap();
+  if (pending && pending.kind === "rest") openSafehouse();
+  else if (pending) beginField(pending);
+}
+
+function enterRestoredMap() {
+  changeScene("MAP");
+  ui.link.textContent = "INJECT";
+  ui.ambush.hidden = true;
+  ui.endTurn.hidden = true;
+  ui.routeReturn.hidden = true;
+  ui.piles.hidden = true;
+  ui.shotCall.hidden = true;
+  ui.hopper.replaceChildren();
+  ui.slotLabel.textContent = "ROUTE SELECT";
+  ui.log.replaceChildren();
+  pushLog("VESSEL 07 INJECTED");
+  pushLog("記録データを復元。経路図を再展開");
+  ui.note.textContent = "光っているノードが次の区画。";
+  renderRelics();
+  renderRoute();
+  syncEndButton();
+}
+
 function setTutorialStep(step) {
   tutorialStep = step;
   if (ui.screen) ui.screen.dataset.tutorial = step;
@@ -1088,7 +1209,10 @@ function tutorialLock(cardId) {
 
 const TUTORIAL_FOCUS = {
   boot: { hi: [".punchcard[data-id='boot']", "#slot"], dim: [] },
-  t1: { hi: [".glass", "#intent"], dim: [".status-bay", ".meters", ".tray"] },
+  // PROMPT-25: T1は通信の行ごとにハイライトを切り替える（1行目=電力、2行目=防護カード+スロット）
+  t1a: { hi: ["#energy-row", "#energy-pips"], dim: [".glass", ".meters", ".tray"] },
+  t1b: { hi: [".punchcard[data-id='defend_cover']", "#slot"], dim: [".status-bay", ".meters", ".glass"] },
+  t2: { hi: ["#enemy-hp-row", ".bar--enemy"], dim: [".status-bay", ".glass", ".tray"] },
   t1end: { hi: ["#end-turn"], dim: [".tray"] },
   t3a: { hi: ["#noise-meter"], dim: [".glass", ".tray"] },
   t3cov: { hi: ["#stance", "#stance-hint"], dim: [".glass", ".tray"] },
@@ -1152,12 +1276,16 @@ function restoreTutIntent() {
 
 async function setupTutTurn2() {
   rigHand(["strike_cqc", "strike_cqc", "defend_cover"]);
-  forceTutIntent({ action: "wait", name: "隙", value: 0 });
+  // PROMPT-25: 「隙」バッジは廃止し、英字タグ STUNNED に統一する
+  forceTutIntent({ action: "wait", name: "STUNNED", value: 0 });
   setTutorialStep("t2");
   renderCombat();
   refreshHand();
   syncEndButton();
+  // PROMPT-25: T2の通信中は敵の耐久HPバーを光らせる
+  setTutorialFocus("t2");
   await presentRadio([GRAY_T2]);
+  clearTutorialFocus();
   refreshHand();
   syncEndButton();
 }
@@ -1486,6 +1614,7 @@ async function beginCombat(encounter) {
   session.advance = false;
   pinchHeard = false;
   pinchQueued = false;
+  saveGame(encounter); // PROMPT-24: バトル突入時に保存（復元時はこの戦闘の開始時から）
   battle = Battle.createState(undefined, { relics: run.relics, deck: run.deck });
   battle.player.hp = Math.max(0, run.hp);
   battle.player.hpMax = run.hpMax;
@@ -1541,8 +1670,12 @@ async function beginCombat(encounter) {
   syncEndButton();
   const introOk = await presentRadio([GRAY_TUT_INTRO]);
   if (!introOk || session.phase !== "combat") return;
-  setTutorialFocus("t1");
-  const t1Ok = await presentRadio(GRAY_T1);
+  // PROMPT-25: 1行目（電力を見ろ）では電力行、2行目（防護を使え）では防護カード+スロットを光らせる
+  setTutorialFocus("t1a");
+  const t1aOk = await presentRadio([GRAY_T1[0]]);
+  if (!t1aOk || session.phase !== "combat") { clearTutorialFocus(); return; }
+  setTutorialFocus("t1b");
+  const t1Ok = await presentRadio([GRAY_T1[1]]);
   clearTutorialFocus();
   if (!t1Ok || session.phase !== "combat") return;
   session.busy = false;
@@ -1850,6 +1983,7 @@ function pickEvent(index) {
 }
 
 function fieldDown() {
+  clearSave(); // PROMPT-24: イベントでの戦死もゲームオーバーとしてセーブ消去
   session.dead = true;
   session.busy = false;
   session.offer = [];
@@ -1899,6 +2033,7 @@ async function chooseNode(id) {
   const token = ++routeToken;
   const result = PipelineMap.move(route, id);
   if (!result.ok) return;
+  saveGame(result.encounter); // PROMPT-24: ノード選択時に保存（復元時はこの区画の開始から）
   session.busy = true;
   renderRoute();
   if (result.ambush) {
@@ -1999,6 +2134,7 @@ async function bossClearSequence() {
   session.offer = [];
   ui.hopper.replaceChildren();
   ui.piles.hidden = true;
+  clearSave(); // PROMPT-24: ラン完走時はセーブを破棄する
   changeScene("CLEAR");
   if (ui.fadeMask) {
     ui.fadeMask.classList.remove("is-on");
@@ -2025,6 +2161,7 @@ function claimReward(id) {
   const card = (session.offer || []).find((item) => item.id === id);
   if (!card || !Rewards.grant(run.deck, card.id)) return;
   pushLog(`DECK +1  ${card.name}`);
+  saveGame(); // PROMPT-24: リワード獲得時に保存
   if (audio) audio.playSE("machine_insert");
   session.offer = [];
   if (ui.rewardOffers) ui.rewardOffers.replaceChildren();
@@ -2066,10 +2203,12 @@ function finishCombat() {
   renderRelics();
   renderRoute();
   syncEndButton();
+  saveGame(); // PROMPT-24: 戦闘終了（マップ復帰時）に保存
 }
 
 async function openGameOver() {
   if (!battle || battle.player.hp > 0 || session.phase === "gameover" || session.dead) return;
+  clearSave(); // PROMPT-24: ゲームオーバーでセーブ消去
   session.dead = true;
   if (run) run.hp = battle.player.hp;
   session.busy = true;
@@ -2354,6 +2493,27 @@ function preloadIntroVideos() {
   }
 }
 
+// ブラウザの自動再生制限対策：開始タップの直後（ユーザー操作が有効な間）に無音で
+// 一瞬だけ再生し、動画要素を「再生許可済み」にして読み込みも開始させる。
+// これをしないと、ブラウザによっては本編開始の play() が蹴られたり、
+// 事前読み込み（preload）が無視されて再生が始まらなかったりする。
+let hackVideoPrimed = false;
+function primeIntroVideo() {
+  const v = ui.hackVideo;
+  if (!v || hackVideoPrimed) return;
+  hackVideoPrimed = true;
+  try {
+    v.muted = true;
+    const p = v.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        if (attractStage === "booting") { try { v.pause(); v.currentTime = 0; } catch { /* noop */ } }
+        v.muted = false;
+      }).catch(() => { v.muted = false; });
+    }
+  } catch { /* noop */ }
+}
+
 function waitFor(cond, ms, live) {
   return new Promise((resolve) => {
     const t0 = performance.now();
@@ -2426,6 +2586,7 @@ async function beginAttract() {
   ui.attract.classList.add("is-logo");
   if (ui.installHow) ui.installHow.hidden = true;
   refreshInstallCta();
+  refreshContinueBtn(); // PROMPT-24: セーブがあれば CONTINUE を出す
 }
 
 // クリック直後：ブートテキストを高速印字し、その裏で動画をプリロードする
@@ -2437,6 +2598,7 @@ async function attractBoot() {
   ui.attractPrompt.hidden = true;
   cueSE("crt_on");
   preloadIntroVideos();
+  primeIntroVideo();
   for (const line of BOOT_LINES) {
     const row = document.createElement("p");
     ui.attractTerm.append(row);
@@ -2456,17 +2618,54 @@ async function playHackTitle(live) {
   ui.introVideo.hidden = false;
   ui.introVideo.classList.remove("is-out");
   ui.diveBtn.hidden = true;
-  const ready = await waitFor(() => v.readyState >= 3 || hackVideoFailed, 6000, live);
+
+  // 再生開始を試みる：音声つき→蹴られたら無音→それもダメなら次のタップで再試行。
+  // 事前読み込みの進み具合（readyState）には依存しない。play() 自体が読み込みを駆動する
+  // （preload が無視されるブラウザでは、従来の readyState 待ちが永遠に実らなかった）。
+  const tryPlay = async () => {
+    try { v.muted = false; await v.play(); return true; } catch { /* 音声つき再生が蹴られた */ }
+    try { v.muted = true; await v.play(); return true; } catch { return false; }
+  };
+  let started = await tryPlay();
   if (!live()) return;
-  if (hackVideoFailed || !ready) {
+  if (!started) {
+    started = await new Promise((resolve) => {
+      let done = false;
+      const finish = (val) => {
+        if (done) return;
+        done = true;
+        window.removeEventListener("pointerdown", onTap, true);
+        resolve(val);
+      };
+      const onTap = () => { void tryPlay().then(finish); };
+      window.addEventListener("pointerdown", onTap, true);
+      setTimeout(() => finish(false), 8000);
+      (async () => { while (!done) { if (!live() || hackVideoFailed) { finish(false); return; } await delay(250); } })();
+    });
+  }
+  if (!live()) return;
+  if (!started || hackVideoFailed) {
     ui.introVideo.hidden = true;
     startPrologue();
     return;
   }
-  try { await v.play(); } catch { v.muted = true; try { await v.play(); } catch { /* 再生不可なら次で拾う */ } }
-  await waitFor(() => v.ended || hackVideoFailed, 45000, live);
+  // 無音で始まった場合は、再生中のタップで音を出す
+  const unmuteOnTap = () => { if (attractStage === "video" && v.muted) v.muted = false; };
+  window.addEventListener("pointerdown", unmuteOnTap, true);
+  // 終了まで見守る。止まったまま4秒経ったらストールとみなしてプロローグへ切り替える
+  let lastT = v.currentTime;
+  let stillMs = 0;
+  const maxMs = (Number.isFinite(v.duration) && v.duration > 0 ? v.duration * 1000 : 20000) + 8000;
+  const t0 = performance.now();
+  while (!v.ended && !hackVideoFailed && performance.now() - t0 < maxMs) {
+    await delay(400);
+    if (!live()) { window.removeEventListener("pointerdown", unmuteOnTap, true); return; }
+    if (v.currentTime !== lastT) { lastT = v.currentTime; stillMs = 0; }
+    else if (v.paused) { stillMs += 400; if (stillMs >= 4000) break; }
+  }
+  window.removeEventListener("pointerdown", unmuteOnTap, true);
   if (!live()) return;
-  if (hackVideoFailed) {
+  if (hackVideoFailed || !v.ended) {
     ui.introVideo.hidden = true;
     startPrologue();
     return;
@@ -2634,9 +2833,13 @@ function skip() {
   showTitle();
 }
 
+// PROMPT-24: ドラッグ中のカードを指の上に逃がす量（px）
+const DRAG_LIFT_PX = 26;
+
 function overSlot(x, y) {
+  // PROMPT-24: リーダーのヒットボックスを広げ、アバウトなドロップでも吸い込まれるようにする
   const r = ui.slot.getBoundingClientRect();
-  return x >= r.left - 12 && x <= r.right + 12 && y >= r.top - 24 && y <= r.bottom + 16;
+  return x >= r.left - 20 && x <= r.right + 20 && y >= r.top - 40 && y <= r.bottom + 28;
 }
 
 function lift(card, clientX, clientY) {
@@ -2648,7 +2851,8 @@ function lift(card, clientX, clientY) {
   card.classList.remove("is-new", "is-rise");
   card.style.position = "fixed";
   card.style.left = `${rect.left}px`;
-  card.style.top = `${rect.top}px`;
+  // PROMPT-24: ドラッグ中は指で隠れないよう、掴んだ位置より少し上に持ち上げて表示する
+  card.style.top = `${rect.top - DRAG_LIFT_PX}px`;
   card.style.width = `${rect.width}px`;
   card.style.height = `${rect.height}px`;
   card.style.margin = "0";
@@ -2661,6 +2865,7 @@ function lift(card, clientX, clientY) {
     dy: clientY - rect.top,
     ox: clientX,
     oy: clientY,
+    up: DRAG_LIFT_PX,
   };
 }
 
@@ -2790,12 +2995,14 @@ function acceptOrReturn(card, ghost) {
 function onPointerMove(event) {
   if (!drag || event.pointerId !== drag.pointerId) return;
   drag.card.style.left = `${event.clientX - drag.dx}px`;
-  drag.card.style.top = `${event.clientY - drag.dy}px`;
+  // PROMPT-24: 指の上にオフセットしたまま追従させる
+  drag.card.style.top = `${event.clientY - drag.dy - (drag.up || 0)}px`;
   const prevX = drag.lx == null ? event.clientX : drag.lx;
   const kick = Math.max(-8, Math.min(8, (event.clientX - prevX) * 0.55));
   drag.lx = event.clientX;
   drag.tilt = Math.max(-8, Math.min(8, (drag.tilt || 0) * 0.62 + kick));
-  drag.card.style.transform = `rotate(${drag.tilt.toFixed(2)}deg)`;
+  // PROMPT-24: ドラッグ中は少し拡大して視認性と掴みやすさを上げる
+  drag.card.style.transform = `rotate(${drag.tilt.toFixed(2)}deg) scale(1.15)`;
   if (!drag.rustled && Math.hypot(event.clientX - drag.ox, event.clientY - drag.oy) > 6) {
     drag.rustled = true;
     cueSE("card_drag");
@@ -2907,6 +3114,15 @@ if (ui.installCta) {
   // インストール導線内のタップではゲームを開始しない
   ui.installCta.addEventListener("click", (event) => {
     event.stopPropagation();
+  });
+}
+if (ui.continueBtn) {
+  // PROMPT-24: CONTINUE 内のタップでは新規開始せず、セーブから復元する
+  ui.continueBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (audio) audio.unlock();
+    if (session.phase !== "attract") return;
+    restoreRun();
   });
 }
 if (ui.installBtn) {
@@ -3038,8 +3254,9 @@ ui.rewardOffers.addEventListener("pointerup", (event) => {
   const { el, id } = offerDrag;
   offerDrag = null;
   const slotRect = ui.slot.getBoundingClientRect();
-  const overSlot = event.clientX >= slotRect.left && event.clientX <= slotRect.right
-    && event.clientY >= slotRect.top && event.clientY <= slotRect.bottom;
+  // PROMPT-24: 報酬ドラッグでもリーダーの判定を広げる（手札側の overSlot と揃える）
+  const overSlot = event.clientX >= slotRect.left - 20 && event.clientX <= slotRect.right + 20
+    && event.clientY >= slotRect.top - 40 && event.clientY <= slotRect.bottom + 28;
   el.style.position = "";
   el.style.left = "";
   el.style.top = "";
