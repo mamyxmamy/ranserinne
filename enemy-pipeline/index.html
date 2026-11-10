@@ -42,6 +42,7 @@
       <button type="button" class="install-cta__btn" id="install-btn">⬇ INSTALL — アプリをインストール</button>
       <p class="install-cta__how" id="install-how" hidden>ブラウザのメニューから「アプリをインストール」または「ホーム画面に追加」を選んでください。</p>
     </div>
+    <button type="button" class="continue-btn" id="continue-btn" hidden>▶ CONTINUE — 前回の記録から再開</button>
     <div class="attract__flash" aria-hidden="true"></div>
   </section>
 
@@ -87,7 +88,7 @@
               <h2>VESSEL 07</h2>
               <p class="stat"><span>耐久 HP</span><b id="hp-value">60</b></p>
               <div class="bar" aria-hidden="true"><span id="hp-bar"></span></div>
-              <p class="stat"><span>電力 PWR</span><b id="energy-value">3</b><span class="dim">/ 3</span></p>
+              <p class="stat" id="energy-row"><span>電力 PWR</span><b id="energy-value">3</b><span class="dim">/ 3</span></p>
               <div class="pips" id="energy-pips" aria-hidden="true"><i></i><i></i><i></i></div>
               <div class="buffs" aria-label="バフとデバフ">
                 <p class="stat stat--icon stat--block"><span>防護 BLK</span><b id="block-value">0</b></p>
@@ -160,7 +161,7 @@
 
                   <section class="meters" aria-label="標的と騒音">
                     <h2 id="enemy-name">哨戒兵</h2>
-                    <p class="stat"><span>耐久 HP</span><b id="enemy-hp-value">30</b><span class="dim">/ <span id="enemy-hp-max">30</span></span></p>
+                    <p class="stat" id="enemy-hp-row"><span>耐久 HP</span><b id="enemy-hp-value">30</b><span class="dim">/ <span id="enemy-hp-max">30</span></span></p>
                     <div class="bar bar--enemy" aria-hidden="true"><span id="enemy-hp-bar"></span></div>
                     <p class="stat"><span>スタン</span><b id="stun-value">0/3</b></p>
                     <div class="pips pips--stun" id="stun-pips" aria-hidden="true"><i class="is-off"></i><i class="is-off"></i><i class="is-off"></i></div>
