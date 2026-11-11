@@ -143,7 +143,11 @@
                   <section class="glass" aria-label="現場映像">
                     <canvas id="glass-canvas"></canvas>
                     <div class="cctv-monitor" id="cctv-monitor" aria-hidden="true">
-                      <img class="cctv-monitor__img" id="cctv-img" alt="" hidden>
+                      <div class="cctv-monitor__scene" id="cctv-scene" hidden>
+                        <img class="cctv-monitor__room" id="cctv-room" alt="">
+                        <img class="cctv-monitor__enemy" id="cctv-enemy" alt="">
+                        <img class="cctv-monitor__vessel" id="cctv-vessel" alt="">
+                      </div>
                       <div class="cctv-monitor__dummy" id="cctv-dummy"><span>NO SIGNAL</span></div>
                       <div class="cctv-monitor__scan"></div>
                       <span class="cctv-monitor__tag cctv-monitor__tag--rec"><span class="cctv-monitor__dot">●</span> REC</span>
