@@ -6,7 +6,7 @@
   const CATALOG = Object.freeze([
     { "id": "enemy_cyborg_elite", "name": "重装サイボーグ兵", "image": "assets/cctv_enemy_elite.png", "max_hp": 80, "max_stun": 3, "immune_to_stun": false, "intent_pattern": [ { "action": "buff", "name": "警戒態勢", "value": 10 }, { "action": "attack", "name": "制圧射撃", "value": 8 }, { "action": "heavy_attack", "name": "グレネード", "value": 15 } ] },
     { "id": "enemy_defense_mech", "name": "防衛メック『センチネル』", "image": "assets/cctv_enemy_mech.png", "max_hp": 150, "max_stun": 99, "immune_to_stun": true, "intent_pattern": [ { "action": "debuff", "name": "サーマルスキャン", "value": 0 }, { "action": "attack", "name": "ガトリング", "value": 4, "hits": 3 }, { "action": "wait", "name": "排熱処理", "value": 0 } ] },
-    { "id": "enemy_rival_vessel", "name": "鹵獲素体『ゴースト』", "image": "assets/cctv_enemy_ghost.png", "max_hp": 60, "max_stun": 3, "immune_to_stun": false, "intent_pattern": [ { "action": "stealth", "name": "隠伏", "value": 5 }, { "action": "attack_stun", "name": "CQC打撃", "value": 5 }, { "action": "hack", "name": "ジャミング", "value": 0 } ] },
+    { "id": "enemy_rival_vessel", "name": "鹵獲素体『ゴースト』", "image": "assets/cctv_enemy_ghost.png", "max_hp": 60, "max_stun": 3, "immune_to_stun": false, "intent_pattern": [ { "action": "stealth", "name": "潜伏", "value": 5 }, { "action": "attack_stun", "name": "CQC打撃", "value": 5 }, { "action": "hack", "name": "ジャミング", "value": 0 } ] },
   ].map((enemy) => Object.freeze({
     ...enemy,
     intent_pattern: Object.freeze(enemy.intent_pattern.map((step) => Object.freeze({ ...step }))),
