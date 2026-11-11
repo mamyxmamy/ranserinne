@@ -620,6 +620,15 @@ button { color: inherit; }
   filter: brightness(2.6);
 }
 
+/* v13.5: チュートリアル後は通信パネルを畳み、通信時のみ表示する */
+.screen.comms-folded .screen__content {
+  grid-template-columns: minmax(148px, 18%) minmax(0, 1fr) 0;
+}
+
+.screen.comms-folded .comms {
+  display: none;
+}
+
 .status-bay {
   grid-area: status;
   min-width: 0;
@@ -2778,6 +2787,23 @@ body.is-dead .comms {
   #scene-reward .reward-skip { margin-top: 4px; padding: 4px 10px; font-size: 11px; }
   /* ステータスバーが2行に折り返すとステージが痩せるので、低い画面では1行に収める */
   .statusbar { font-size: 9px; letter-spacing: 0.08em; gap: 6px; white-space: nowrap; }
+}
+
+/* v13.5: 戦闘時の左ステータスベイをスクロールなしで一目に収める */
+@media (max-height: 480px) {
+  .status-bay { padding: 2px 3px; gap: 1px; }
+  .dossier h2 { margin: 0; font-size: 12px; }
+  .dossier .pips { display: none; }
+  .buffs { margin-top: 0; }
+  .stat { font-size: 11px; line-height: 1.25; }
+  .stat--icon { padding-top: 0; padding-bottom: 0; }
+  #stance-hint { font-size: 10px; }
+  .relics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+  .relics .relic-chip, .relics .relic-empty { font-size: 9px; line-height: 1.15; padding: 1px 2px; white-space: nowrap; overflow: hidden; }
+  .relics-label { font-size: 8.5px; margin-top: 1px; }
+  .piles { padding: 0 3px; font-size: 10px; line-height: 1.2; }
+  .dossier h2 { line-height: 1.1; }
+  .relics .relic-chip, .relics .relic-empty { line-height: 1.05; }
 }
 
 /* 極端に低い画面向けの追加圧縮（同日） */
