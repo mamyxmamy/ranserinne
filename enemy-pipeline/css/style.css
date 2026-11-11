@@ -2354,17 +2354,17 @@ button { color: inherit; }
 .cctv-monitor__vessel.is-cover { height: 50%; }
 
 /* 部屋ごとの配置：遠近（接地ライン・大きさ）と物陰の位置に合わせる */
-#cctv-scene[data-room="server"] .cctv-monitor__enemy { right: 9%; bottom: 4%; height: 60%; }
-#cctv-scene[data-room="server"] .cctv-monitor__vessel.is-expose { left: 12%; bottom: 4%; height: 59%; }
+#cctv-scene[data-room="server"] .cctv-monitor__enemy { right: 9%; bottom: 4%; height: 54%; }
+#cctv-scene[data-room="server"] .cctv-monitor__vessel.is-expose { left: 12%; bottom: 4%; height: 53%; }
 #cctv-scene[data-room="server"] .cctv-monitor__vessel.is-cover { left: 16%; bottom: 46%; height: 27%; }
-#cctv-scene[data-room="corridor"] .cctv-monitor__enemy { right: 5%; bottom: 2%; height: 72%; }
-#cctv-scene[data-room="corridor"] .cctv-monitor__vessel.is-expose { left: 1%; bottom: 2%; height: 64%; }
+#cctv-scene[data-room="corridor"] .cctv-monitor__enemy { right: 5%; bottom: 2%; height: 64%; }
+#cctv-scene[data-room="corridor"] .cctv-monitor__vessel.is-expose { left: 1%; bottom: 2%; height: 57%; }
 #cctv-scene[data-room="corridor"] .cctv-monitor__vessel.is-cover { left: 3%; bottom: 34%; height: 27%; }
-#cctv-scene[data-room="hangar"] .cctv-monitor__enemy { right: 13%; bottom: 5%; height: 57%; }
-#cctv-scene[data-room="hangar"] .cctv-monitor__vessel.is-expose { left: 26%; bottom: 5%; height: 57%; }
+#cctv-scene[data-room="hangar"] .cctv-monitor__enemy { right: 13%; bottom: 5%; height: 51%; }
+#cctv-scene[data-room="hangar"] .cctv-monitor__vessel.is-expose { left: 26%; bottom: 5%; height: 51%; }
 #cctv-scene[data-room="hangar"] .cctv-monitor__vessel.is-cover { left: 9%; bottom: 43%; height: 25%; }
-#cctv-scene[data-room="gate"] .cctv-monitor__enemy { right: 7%; bottom: 2%; height: 75%; }
-#cctv-scene[data-room="gate"] .cctv-monitor__vessel.is-expose { left: 3%; bottom: 2%; height: 64%; }
+#cctv-scene[data-room="gate"] .cctv-monitor__enemy { right: 7%; bottom: 2%; height: 68%; }
+#cctv-scene[data-room="gate"] .cctv-monitor__vessel.is-expose { left: 3%; bottom: 2%; height: 57%; }
 #cctv-scene[data-room="gate"] .cctv-monitor__vessel.is-cover { left: 4%; bottom: 22%; height: 25%; }
 
 .cctv-monitor__dummy {
