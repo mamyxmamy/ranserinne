@@ -438,8 +438,8 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <p class="w-full text-center text-[10px] text-gray-400 tracking-widest">寿命限界: <span id="ui-max-age-limit" class="text-red-400 font-bold">70</span>歳（老衰開始: <span id="ui-random-death-start">60</span>歳）</p>
                 <!-- utakata-event-banner -->
                 <div onclick="window.openRaidRank(event)" class="w-full border border-purple-800/80 bg-[#160D1A]/85 rounded-sm px-3 py-2 text-center shadow-[0_0_14px_rgba(88,28,135,0.35)] cursor-pointer">
-                    <p class="text-[12px] font-bold tracking-[0.2em] text-purple-200">期間限定 共討戦 ― 泡沫夢幻 ― 開催中</p>
-                    <p class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">11月11日まで ― 死の直後、転生の合間に番人との一戦が待つ</p>
+                    <p class="text-[12px] font-bold tracking-[0.2em] text-purple-200">共討戦 ― 泡沫夢幻 ― 閉幕</p>
+                    <p class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">降臨は終わりました。挑んだ皆さまに、冥府よりの礼を。</p>
                     <p class="text-[10px] text-[#F5D97E]/90 tracking-[0.25em] mt-1 font-bold">― 共討戦績（与ダメージ番付）を見る ―</p>
                 </div>
 
@@ -5236,12 +5236,12 @@ cv.toBlob((b) => resolve(b), 'image/png');
 // ===== 共討戦「泡沫夢幻」：レイドバトル「輪廻の番人」 =====
 const RAID_BASE_HP = 50000; // 仮降臨（第1世代）のボスHP
 const RAID_TITLE_NAME = '冥府の門を叩きし者';
-const RAID_TEST_ENDED = false; // 降臨終了時に true にして差し替えると、参加者へ永続+10（降臨の証）が変換される
+const RAID_TEST_ENDED = true; // 降臨終了時に true にして差し替えると、参加者へ永続+30（降臨の証）が変換される【2026-11-11 23:00 閉幕版】
 window.__raidPermAge = function() { try { return parseInt(localStorage.getItem('sengoku_raid_perm_age') || '0', 10) || 0; } catch (e) { return 0; } };
 window.__raidConvertTestReward = function() {
 if (!RAID_TEST_ENDED) return false;
 try {
-if ((localStorage.getItem('sengoku_raid_participant') === '1' || localStorage.getItem('sengoku_raid_alpha_participant') === '1') && !localStorage.getItem('sengoku_raid_perm_age')) { localStorage.setItem('sengoku_raid_perm_age', '10'); return true; }
+if ((localStorage.getItem('sengoku_raid_participant') === '1' || localStorage.getItem('sengoku_raid_alpha_participant') === '1') && !localStorage.getItem('sengoku_raid_perm_age')) { localStorage.setItem('sengoku_raid_perm_age', '30'); return true; }
 } catch (e) {}
 return false;
 };
@@ -5369,7 +5369,7 @@ return { power: power, endurance: Math.round(350 + power * 1.5)};
 };
 
 window.__raidRefreshButtons = function() {
-const show =!window.__raidUsedThisDeath;
+const show = !RAID_TEST_ENDED && !window.__raidUsedThisDeath;
 ['go-raid-btn', 'pm-raid-btn'].forEach(function(id) {
 const b = document.getElementById(id);
 if (b) { b.classList.toggle('hidden',!show); b.classList.toggle('flex', show);}
@@ -5377,6 +5377,7 @@ if (b) { b.classList.toggle('hidden',!show); b.classList.toggle('flex', show);}
 };
 
 window.__raidAutoEnter = function(fromPremium) {
+if (RAID_TEST_ENDED) return;
 if (window.__raidUsedThisDeath) return;
 window.__raidForceFrom = fromPremium ? 'pm' : 'go';
 if (window.openRaid) window.openRaid();
@@ -5845,6 +5846,7 @@ if (window.__raidBossCache) { window.__raidBossCache = { gen: after.gen, hp: aft
 
 window.openRaid = async function(e) {
 if (e) { e.preventDefault(); e.stopPropagation();}
+if (RAID_TEST_ENDED) return;
 if (window.__raidUsedThisDeath) return;
 window.__raidUsedThisDeath = true;
 window.__raidRefreshButtons();
@@ -6011,7 +6013,7 @@ if (target) target.classList.remove('hidden');
 <p class="raid-thanks-line text-[10px] tracking-[0.5em] text-[#D4AF37]/80 mb-2" style="animation-delay:.15s">冥府よりの礼状</p>
 <h3 class="raid-thanks-line text-2xl font-black text-[#F5D97E] tracking-widest mb-4" style="animation-delay:.35s">降臨の証、<br>ここにあり</h3>
 <p class="raid-thanks-line text-sm text-gray-200 leading-relaxed mb-2" style="animation-delay:.6s">泡沫夢幻は終わり、冥府の門は閉ざされた。<br>されど、番人に挑んだ証は消えない。<br>その加護は、これからの全ての生に宿り続ける。</p>
-<p class="raid-thanks-line inline-block mt-2 mb-5 px-4 py-2 border border-[#D4AF37]/70 bg-[#D4AF37]/10 text-[#F5D97E] font-bold tracking-widest" style="animation-delay:.85s">寿命限界 永続 +10</p>
+<p class="raid-thanks-line inline-block mt-2 mb-5 px-4 py-2 border border-[#D4AF37]/70 bg-[#D4AF37]/10 text-[#F5D97E] font-bold tracking-widest" style="animation-delay:.85s">寿命限界 永続 +30</p>
 <p class="raid-thanks-line text-[11px] text-gray-400 mb-5" style="animation-delay:1s">これからのすべての人生に適用されます</p>
 <button type="button" onclick="window.closeRaidThanks(event)" class="raid-thanks-line w-full bg-[#D4AF37] text-black font-black tracking-widest py-3 rounded-sm" style="animation-delay:1.15s">ありがたく受け取る</button>
 </div>
