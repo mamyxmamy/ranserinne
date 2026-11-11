@@ -197,8 +197,9 @@
       return;
     }
     if (effect.target === "player" && effect.type === "add_energy") {
-      // PROMPT-23: 電力の増加は最大値を超えない
-      state.player.energy = Math.min(state.player.energyMax, state.player.energy + amount);
+      // PROMPT-23: 電力の増加は最大値を超えない。ただし overcharge 指定（違法オーバークロック）は上限を突破する
+      const cap = effect.overcharge ? Number.POSITIVE_INFINITY : state.player.energyMax;
+      state.player.energy = Math.min(cap, state.player.energy + amount);
       log.push(`PWR +${amount}  TOTAL ${state.player.energy}`);
       return;
     }
