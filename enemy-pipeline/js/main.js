@@ -84,6 +84,18 @@ const CODE_BY_ID = {
   hack_overload: "HAK",
   tactic_adrenaline: "ADR",
   curse_flashback: "NOI",
+  wired_jack: "JAK",
+  illegal_overclock: "OVC",
+  full_burst: "BST",
+  forced_cooling: "COL",
+  acoustic_flare: "FLR",
+  pile_bunker: "PBK",
+  close_combat: "CCB",
+  jamming_flare: "JAM",
+  noise_canceller: "NCL",
+  decoy_foil: "DCY",
+  serial_punch: "SPN",
+  tactical_wait: "TWT",
 };
 const INK_BY_CATEGORY = {
   CURSE: "curse",
@@ -91,6 +103,9 @@ const INK_BY_CATEGORY = {
   GUN: "gun",
   DIGITAL: "digital",
   TACTIC: "tactic",
+  HAK: "digital",
+  TEC: "tactic",
+  DEF: "stealth",
 };
 
 function isCurse(card) {
@@ -105,6 +120,8 @@ function blurb(card) {
   if (card.requirements.includes("target_stun_max")) parts.push("要スタン最大");
   for (const effect of card.effects) {
     if (effect.type === "damage" && effect.target === "player") parts.push(`自傷 ${effect.value}`);
+    else if (effect.type === "damage" && effect.pierce) parts.push(`ダメージ ${effect.value}（貫通）`);
+    else if (effect.type === "damage" && effect.hits && effect.hits > 1) parts.push(`ダメージ ${effect.value} ×${effect.hits}回`);
     else if (effect.type === "damage") parts.push(`ダメージ ${effect.value}`);
     if (effect.type === "stun") parts.push(`スタン +${effect.value}`);
     if (effect.type === "block") parts.push(`防護 +${effect.value}`);
@@ -113,6 +130,13 @@ function blurb(card) {
     if (effect.type === "instant_kill") parts.push("その場で制圧");
     if (effect.type === "add_energy") parts.push(`電力 +${effect.value}`);
     if (effect.type === "add_card_to_discard") parts.push("捨て札に呪装");
+    if (effect.type === "heal") parts.push(`HP回復 +${effect.value}`);
+    if (effect.type === "drain_energy") parts.push("残りPWR全喪失");
+    if (effect.type === "damage_per_noise") parts.push(`ダメージ 現在のノイズ×${effect.value}`);
+    if (effect.type === "block_per_noise") parts.push(`防護 +現在のノイズ×${effect.value}`);
+    if (effect.type === "reset_noise") parts.push("ノイズ リセット");
+    if (effect.type === "draw") parts.push(`${effect.value}枚ドロー`);
+    if (effect.type === "halve_next") parts.push("次の被ダメージ半減");
     if (effect.type === "unplayable") parts.push("読取不能");
   }
   // CQCカテゴリは使用時に敵スタン+1（battle.js playCard の仕様）。即制圧カードは敵が消滅しスタンが乗らないため除外
@@ -130,6 +154,7 @@ function face(card) {
     noise: card.noise,
     stance: card.stance_change || "",
     ink: INK_BY_CATEGORY[card.category] || "cqc",
+    exhaust: !!card.isExhaust,
     curse,
     flavor: card.flavor || "",
     rules: blurb(card),
@@ -537,6 +562,7 @@ function makeCard(spec) {
   card.dataset.noise = String(spec.noise);
   card.dataset.stance = spec.stance || "";
   card.dataset.ink = spec.ink;
+  if (spec.exhaust) { card.classList.add("is-exhaust"); card.dataset.exhaust = "1"; }
   if (spec.curse) card.classList.add("is-curse");
   if (spec.flavor) card.dataset.flavor = spec.flavor;
   card.setAttribute("aria-label", spec.curse
@@ -567,6 +593,11 @@ function makeCard(spec) {
   name.className = "punchcard__name";
   name.textContent = spec.name;
 
+  const exhaustTag = document.createElement("span");
+  exhaustTag.className = "punchcard__exhaust";
+  exhaustTag.textContent = "[ 廃棄 ]";
+  exhaustTag.hidden = !spec.exhaust;
+
   const rules = document.createElement("span");
   rules.className = "punchcard__rules";
   rules.textContent = spec.rules || "";
@@ -584,7 +615,7 @@ function makeCard(spec) {
   stance.textContent = spec.stance || "—";
   foot.append(noise, stance);
 
-  card.append(head, stripe, holes, name, rules, text, foot);
+  card.append(head, stripe, holes, name, exhaustTag, rules, text, foot);
   card.addEventListener("animationend", () => {
     card.classList.remove("is-new", "is-rise");
   }, { once: true });
@@ -691,7 +722,7 @@ function renderPiles() {
     return;
   }
   ui.piles.hidden = false;
-  ui.piles.innerHTML = `<span>山札 ${battle.drawPile.length}</span><span>手札 ${battle.hand.length}</span><span>捨て札 ${battle.discard.length}</span>`;
+  ui.piles.innerHTML = `<span>山札 ${battle.drawPile.length}</span><span>手札 ${battle.hand.length}</span><span>捨て札 ${battle.discard.length}</span><span>廃棄 ${battle.exhaust ? battle.exhaust.length : 0}</span>`;
 }
 
 function syncEndButton() {
@@ -1473,12 +1504,14 @@ function focusCard(el) {
     noise: el.dataset.noise || "0",
     stance: el.dataset.stance || "",
     flavor: el.dataset.flavor || "",
+    exhaust: el.dataset.exhaust === "1",
     rules: "",
   };
   const card = window.Battle && el.dataset.id ? Battle.card(el.dataset.id) : null;
   if (card) data = face(card);
-  ui.cardInspectName.textContent = `解析： ${data.name}`;
-  const lines = [`消費PWR ${data.cost} ／ 発生ノイズ +${data.noise}${data.stance ? ` ／ 態勢→${data.stance}` : ""}`];
+  ui.cardInspectName.textContent = `解析：${data.name}${data.exhaust ? "【廃棄】" : ""}`;
+  const noiseText = Number(data.noise) > 0 ? `+${data.noise}` : `${data.noise}`;
+  const lines = [`消費PWR ${data.cost} / 発生ノイズ ${noiseText} / 態勢→${data.stance || "—"}`];
   if (data.rules) lines.push(data.rules);
   // スタン効果カードは、レリック補正（油圧関節など）込みの実効値を解析に併記する
   if (card && window.Relics && typeof run !== "undefined" && run && run.relics) {
@@ -1487,8 +1520,9 @@ function focusCard(el) {
     if (stunEff && bonus > 0) lines.push(`スタン実効 +${stunEff.value + bonus}（レリック補正 +${bonus}）`);
   }
   ui.cardInspectBody.textContent = lines.join("\n");
-  ui.cardInspectFlavor.textContent = data.flavor || "";
-  ui.cardInspectFlavor.hidden = !data.flavor;
+  const flavorText = (data.flavor || "").replace(/^「/, "").replace(/」$/, "");
+  ui.cardInspectFlavor.textContent = flavorText ? `「${flavorText}」` : "";
+  ui.cardInspectFlavor.hidden = !flavorText;
   ui.cardInspect.hidden = false;
   positionInspect(el);
 }
