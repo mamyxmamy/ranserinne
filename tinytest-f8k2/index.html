@@ -568,13 +568,13 @@ const BAKU = { name: '夢喰いのバク', hp: 950 };
 /* 敵: area -> [{key, emoji/img, name, hp, atk, drops:[[item,chance]], rare:[item,chance]}] */
 const ENEMIES = {
   forest: [
-    { key: 'slime', img: 'slime', name: 'スライム', hp: 16, atk: 4, drops: [['jelly', .45]], rare: ['clover', .005] },
+    { key: 'slime', img: 'slime', name: 'スライム', atkType: 'charge', hp: 16, atk: 4, drops: [['jelly', .45]], rare: ['clover', .005] },
     { key: 'goblin', img: 'goblin', name: 'ゴブリン', hp: 24, atk: 5, drops: [['fang', .35]], rare: ['ore_copper', .01] },
     { key: 'mush', emoji: '🍄', name: 'キノコ魔', hp: 20, atk: 5, drops: [['mush_spore', .4]], rare: ['crop_fairyring', .01] }
   ],
   cave: [
     { key: 'bat', emoji: '🦇', name: '洞窟コウモリ', hp: 30, atk: 7, drops: [['bat_wing', .4]], rare: ['ore_crystal', .008] },
-    { key: 'slime2', img: 'slime', name: '蒼スライム', hp: 38, atk: 8, drops: [['jelly', .5]], rare: ['clover', .006] },
+    { key: 'slime2', img: 'slime', name: '蒼スライム', atkType: 'charge', hp: 38, atk: 8, drops: [['jelly', .5]], rare: ['clover', .006] },
     { key: 'golem', emoji: '🗿', name: '岩ゴーレム', hp: 60, atk: 10, drops: [['ore_iron', .35]], rare: ['ore_crystal', .012] }
   ],
   ruins: [
@@ -583,12 +583,12 @@ const ENEMIES = {
     { key: 'goblin2', img: 'goblin', name: '遺跡ゴブリン', hp: 58, atk: 11, drops: [['fang', .45]], rare: ['ore_crystal', .01] }
   ],
   snow: [
-    { key: 'wolf', emoji: '🐺', name: '雪狼', hp: 85, atk: 14, drops: [['fang', .5]], rare: ['snow_crystal', .012] },
+    { key: 'wolf', emoji: '🐺', name: '雪狼', atkType: 'charge', hp: 85, atk: 14, drops: [['fang', .5]], rare: ['snow_crystal', .012] },
     { key: 'yeti', emoji: '🦍', name: '雪男', hp: 110, atk: 16, drops: [['snow_crystal', .3]], rare: ['crop_yukionna', .01] },
     { key: 'icefairy', emoji: '🧚', name: '氷の妖精', hp: 75, atk: 15, drops: [['snow_crystal', .4]], rare: ['clover', .008] }
   ],
   root: [
-    { key: 'rootbeast', emoji: '🦎', name: '根の獣', hp: 130, atk: 18, drops: [['rootfiber', .45]], rare: ['dragon_scale', .008] },
+    { key: 'rootbeast', emoji: '🦎', name: '根の獣', atkType: 'charge', hp: 130, atk: 18, drops: [['rootfiber', .45]], rare: ['dragon_scale', .008] },
     { key: 'nightmare', emoji: '🌑', name: '悪夢の影', hp: 115, atk: 19, drops: [['dream_shard', .4]], rare: ['dragon_scale', .01] },
     { key: 'dreammoth', emoji: '🦋', name: '夢蛾', hp: 100, atk: 17, drops: [['jelly', .4]], rare: ['clover', .01] }
   ],
@@ -645,7 +645,7 @@ function migrateV3(old) {
 const ANIM_RACES = { human: true };
 const ANIM_DIR_KEYS = ['down', 'up', 'side', 'side'];   /* dir: 0=下 1=上 2=左(横を反転) 3=右 */
 /* 表示専用: 種族・向き・状態からフレーム画像キーと左右反転を選ぶ。対応種族でなければ null（従来表示）。
-   優先順: ダウン中（倒れ）＞被弾（hurtT の間）＞攻撃（剣フレーム。上下は下向きで代用）＞道具＞歩行＞屈む＞待機。
+   優先順: ダウン中（倒れ）＞被弾（hurtT の間）＞攻撃（剣フレーム。上はシートに無いため歩行フレーム＋頭上斬撃で代用）＞道具＞歩行＞屈む＞待機。
    hurtT / downed は省略可（相方など情報が無い呼び出しは従来どおり歩行・待機のみ） */
 function pickCharFrame(race, dir, moving, walkT, anim, animT, animDur, atkT, hurtT, downed) {
   if (!ANIM_RACES[race]) return null;
@@ -653,7 +653,12 @@ function pickCharFrame(race, dir, moving, walkT, anim, animT, animDur, atkT, hur
   const flip = dir === 2;
   if (downed) return { key: race + '_down', flip: false };
   if (hurtT > 0) return { key: race + '_hit_down', flip };
-  if (atkT > 0) { const sd = d === 'side' ? 'side' : 'down'; return { key: race + '_sword_' + sd + '_' + (atkT > 0.16 ? 1 : 2), flip }; }
+  if (atkT > 0) {
+    /* patch_v69: 上向きの剣フレームはシートに存在しない。下向き代用（本人の指摘で廃止）ではなく、
+       上向き歩行フレームに頭上方向の扇形斬撃エフェクト（slashFx・判定と一致）を重ねて成立させる */
+    if (d === 'up') return { key: race + '_walk_up_' + (atkT > 0.16 ? 1 : 2), flip: false, upAtk: true };
+    return { key: race + '_sword_' + (d === 'side' ? 'side' : 'down') + '_' + (atkT > 0.16 ? 1 : 2), flip };
+  }
   if (anim === 'tool' && animT > 0) return { key: race + '_tool_' + d + '_' + (animT > (animDur || 0.36) / 2 ? 1 : 2), flip };
   if (moving) return { key: race + '_walk_' + d + '_' + (Math.floor(walkT * 3.5) % 2 + 1), flip };   /* 位相は歩行時計で交互する（patch_v63検証済み）。下/上の2コマ目の左右反転は drawCharFrames 側 */
   if (anim === 'crouch' && animT > 0) return { key: race + '_crouch_down', flip: false };
@@ -680,6 +685,7 @@ const FARM_LAYOUT = {
     { x: 30, y: 8, w: 378, h: 232 },                                          /* 出荷の荷台（足元のみ） */
     { x: 815, y: 130, w: 315, h: 90 },                                        /* 家畜小屋の壁際のみ（屋根には重なって通れる）。実測で絵の壁幅に拡大 */
     { x: 1095, y: 30, w: 268, h: 255 },                                       /* 干し草置き場（右上）：絵の柵は閉じているため立ち入り不可。放牧場の中の風景として残す（v4.2 畜産） */
+    { x: 1363, y: 0, w: 137, h: 42 },                                         /* patch_v68: 北東角の木立の裏（干し草置き場の東・放牧場柵の北）。歩行可能なのに柵と干し草に囲まれ到達不能な孤立帯（20pxグリッド5セル）があったため、絵どおり木立として塞ぐ */
     { x: 290, y: 1445, w: 1210, h: 40 },                                      /* 南の石垣（左下に道の切れ目） */
     { x: 0, y: 1440, w: 150, h: 45 },                                        /* 南西の石垣（出口の西側。従来は未設定で抜けられた） */
     { c: 1, x: 63, y: 460, r: 28 }, { c: 1, x: 64, y: 685, r: 28 }, { c: 1, x: 81, y: 1031, r: 28 },  /* 左端の木々（幹の足元・実測） */
@@ -716,8 +722,14 @@ const HOME_LAYOUT = {
     { x: 300, y: 1418, w: 180, h: 14 }, { x: 480, y: 1418, w: 170, h: 14 },
     /* 西の柵の残り（実測の杭位置に合わせた） */
     { x: 175, y: 648, w: 80, h: 14 }, { x: 225, y: 678, w: 80, h: 14 },
-    /* 花壇（絵の花壇2つ。従来は未設定で踏み入れた） */
-    { x: 754, y: 633, w: 240, h: 91 }, { x: 987, y: 754, w: 262, h: 120 },
+    /* 花壇（絵の花壇2つ。patch_v68: 実測の平行四辺形に沿った段矩形に引き直し。
+       旧・軸平行矩形2つは角同士が 30.8px まで接近し、FOOT_R=16 の膨らみで間の斜めの土の道を
+       塞いでいた（本人の指摘）。頂点実測=花壇1 W(742,700) N(883,654) E(995,671) S(857,753)／
+       花壇2 W(990,842) N(1136,790) E(1251,795) S(1094,907)。各区間は上辺最小・下辺最大±3px で被覆） */
+    { x: 742, y: 683, w: 42, h: 39 }, { x: 784, y: 670, w: 42, h: 72 }, { x: 826, y: 656, w: 42, h: 100 },
+    { x: 868, y: 651, w: 42, h: 98 }, { x: 910, y: 655, w: 42, h: 69 }, { x: 952, y: 661, w: 43, h: 39 },   /* 花壇1（ベンチの下） */
+    { x: 990, y: 824, w: 42, h: 47 }, { x: 1032, y: 809, w: 42, h: 88 }, { x: 1074, y: 794, w: 42, h: 115 },
+    { x: 1116, y: 787, w: 42, h: 107 }, { x: 1158, y: 788, w: 42, h: 76 }, { x: 1200, y: 790, w: 51, h: 44 },   /* 花壇2（玄関の前） */
     { c: 1, x: 576, y: 665, r: 14 },                          /* 看板の根元（実測） */
     { c: 1, x: 843, y: 552, r: 26 },                          /* ベンチ（実測） */
     { c: 1, x: 679, y: 586, r: 12 }, { c: 1, x: 903, y: 473, r: 12 },        /* 洗濯物干しの柱（実測） */
@@ -1095,7 +1107,7 @@ function freshShared() {
   };
 }
 S.shared = freshShared();
-const me = { x: 560, y: 880, dir: 0, moving: false, walkT: 0, dashT: 0, dashDx: 0, dashDy: 0, iframeT: 0, atkT: 0, hurtT: 0, anim: null, animT: 0, animDur: 0 };
+const me = { x: 560, y: 880, dir: 0, moving: false, walkT: 0, dashT: 0, dashDx: 0, dashDy: 0, iframeT: 0, atkT: 0, hurtT: 0, anim: null, animT: 0, animDur: 0, kbvx: 0, kbvy: 0 };   /* kbvx/kbvy: patch_v69 被弾ノックバック速度 */
 /* 表示専用アニメ（'tool'=道具を振る／'crouch'=屈む）。ゲームロジックには影響しない */
 function setAnim(kind, dur) { me.anim = kind; me.animT = dur; me.animDur = dur; }
 let partners = {};
@@ -3239,22 +3251,165 @@ const GUARDIAN_LINES = [
 ];
 
 /* ================= combat ================= */
+/* patch_v69: 戦闘アクション本格見直し（B案）。接触ダメージは廃止し、敵は状態機械で
+   「近づく→予備動作（範囲予告）→攻撃→硬直→クールダウン」を繰り返す。ダメージは攻撃の
+   命中フレームだけ。状態・ノックバックはローカル見た目（共有HPの仕組みは無変更）。 */
+const COMBAT = {
+  aggro: 320,            /* 索敵範囲（従来どおり） */
+  stopDist: 55,          /* 通常敵がプレイヤーへ詰める間合い（中心間） */
+  bossStop: 118,         /* ボスの間合い（叩きつけ範囲の内側・分離距離71より外） */
+  enemyR: 20, bossR: 55, /* 分離（押し合い）の体の半径。プレイヤーは FOOT_R=16 */
+  windup: 0.42, chargeWindup: 0.5, bossWindup: 0.6,   /* 予備動作の長さ */
+  slamRange: 88, slamTrigger: 96, slamHalf: 1.13,     /* 叩きつけ: 命中距離／発動距離／扇形半角（≒65°） */
+  chargeTrigger: 175, chargeDist: 165, chargeSpeed: 370, chargeTime: 0.5,
+  bossRange: 168, bossTrigger: 175, bossChargeTrigger: 250, bossChargeDist: 235, bossChargeSpeed: 390, bossChargeTime: 0.65,
+  recover: 0.6, cooldown: 0.45, bossRecover: 0.8, bossCooldown: 0.7,
+  kbEnemy: 260, kbPlayer: 300, kbDecay: 10            /* ノックバック初速と減衰率（/s） */
+};
+const SWING_RANGE = 100, SWING_HALF = 0.9599, SWING_COS = 0.5736;   /* プレイヤーの剣: 半径100px・扇形110°（半角55°） */
+let slashFx = null;   /* 斬撃エフェクト { t, dur, dir }。判定の扇形と一致させて描く */
+
+/* 敵オブジェクトに戦闘状態を遅延初期化する（スポーン経路が複数あるため） */
+function ensureMonsterCombat(m) {
+  if (m.state) return;
+  m.state = 'approach'; m.stateT = 0; m.atkCount = 0;
+  m.atkKind = (m.def && m.def.atkType === 'charge') ? 'charge' : 'slam';
+  m.atkDirX = 0; m.atkDirY = 1; m.faceX = 0; m.faceY = 1;
+  m.kbvx = 0; m.kbvy = 0; m.chargeHitDone = false; m.chargeLeft = 0;
+}
+/* 敵の移動はすべてここを通し、blocked() を尊重する（プレイヤーと同じ軸別＝壁ずり） */
+function moveMonsterAxis(m, dx, dy) {
+  if (dx) { const nx = m.x + dx; if (!blocked(nx, m.y, 'dungeon')) m.x = nx; }
+  if (dy) { const ny = m.y + dy; if (!blocked(m.x, ny, 'dungeon')) m.y = ny; }
+}
+/* 叩きつけの命中解決（strike 入りの瞬間に1回だけ）。予告した扇形と判定を一致させる */
+function enemySlamHit(m) {
+  if (S.downed) return;
+  const range = m.boss ? COMBAT.bossRange : COMBAT.slamRange;
+  const d = dist(m.x, m.y, me.x, me.y);
+  if (d > range + FOOT_R) return;
+  const dot = d > 0 ? ((me.x - m.x) * m.atkDirX + (me.y - m.y) * m.atkDirY) / d : 1;
+  if (dot < Math.cos(COMBAT.slamHalf) && d > (m.boss ? COMBAT.bossR + FOOT_R : COMBAT.enemyR + FOOT_R)) return;   /* 至近距離は角度不問 */
+  hurtPlayer(m.atk, m.x, m.y);
+}
+/* 敵AI本体: update() のダンジョン節から毎フレーム呼ばれる */
+function updateMonsters(dt) {
+  for (const m of monsters) {
+    if (m.hp <= 0) continue;
+    ensureMonsterCombat(m);
+    m.hitCd = Math.max(0, m.hitCd - dt); m.flashT = Math.max(0, m.flashT - dt);
+    const dxp = me.x - m.x, dyp = me.y - m.y;
+    const d = Math.hypot(dxp, dyp) || 0.0001;
+    const ux = dxp / d, uy = dyp / d;
+    /* ノックバック（速度ベース・減衰・壁で止まる） */
+    if (m.kbvx || m.kbvy) {
+      moveMonsterAxis(m, m.kbvx * dt, m.kbvy * dt);
+      const dec = Math.exp(-COMBAT.kbDecay * dt);
+      m.kbvx *= dec; m.kbvy *= dec;
+      if (Math.hypot(m.kbvx, m.kbvy) < 10) { m.kbvx = 0; m.kbvy = 0; }
+    }
+    const nextKind = m.boss ? ((m.atkCount % 3 === 2) ? 'charge' : 'slam') : m.atkKind;   /* ボスは3回に1回が突進 */
+    const trigger = m.boss
+      ? (nextKind === 'charge' ? COMBAT.bossChargeTrigger : COMBAT.bossTrigger)
+      : (nextKind === 'charge' ? COMBAT.chargeTrigger : COMBAT.slamTrigger);
+    switch (m.state) {
+      case 'approach': {
+        m.faceX = ux; m.faceY = uy;
+        const stop = m.boss ? COMBAT.bossStop : COMBAT.stopDist;
+        if (d < COMBAT.aggro && d > stop) moveMonsterAxis(m, ux * m.speed * dt, uy * m.speed * dt);
+        if (!S.downed && d <= trigger && Math.hypot(m.kbvx, m.kbvy) < 40) {
+          m.state = 'windup';
+          m.stateT = m.boss ? COMBAT.bossWindup : (nextKind === 'charge' ? COMBAT.chargeWindup : COMBAT.windup);
+          m.atkKind = nextKind; m.atkCount++;
+          m.atkDirX = ux; m.atkDirY = uy; m.faceX = ux; m.faceY = uy;
+          m.chargeHitDone = false;
+        }
+        break;
+      }
+      case 'windup': {
+        m.stateT -= dt;
+        if (m.stateT <= 0) {
+          m.state = 'strike';
+          if (m.atkKind === 'charge') { m.stateT = m.boss ? COMBAT.bossChargeTime : COMBAT.chargeTime; m.chargeLeft = m.boss ? COMBAT.bossChargeDist : COMBAT.chargeDist; }
+          else { enemySlamHit(m); m.stateT = 0.12; }
+        }
+        break;
+      }
+      case 'strike': {
+        if (m.atkKind === 'charge') {
+          const sp = m.boss ? COMBAT.bossChargeSpeed : COMBAT.chargeSpeed;
+          const ox = m.x, oy = m.y;
+          moveMonsterAxis(m, m.atkDirX * sp * dt, m.atkDirY * sp * dt);
+          m.chargeLeft -= Math.hypot(m.x - ox, m.y - oy);
+          m.stateT -= dt;
+          if (!m.chargeHitDone && !S.downed && dist(m.x, m.y, me.x, me.y) <= (m.boss ? 95 : 42)) {
+            m.chargeHitDone = true;
+            hurtPlayer(m.atk, me.x - m.atkDirX * 30, me.y - m.atkDirY * 30);   /* ノックバック方向＝突進方向 */
+          }
+          if (m.stateT <= 0 || m.chargeLeft <= 0) { m.state = 'recover'; m.stateT = m.boss ? COMBAT.bossRecover : COMBAT.recover; }
+        } else {
+          m.stateT -= dt;
+          if (m.stateT <= 0) { m.state = 'recover'; m.stateT = m.boss ? COMBAT.bossRecover : COMBAT.recover; }
+        }
+        break;
+      }
+      case 'recover': {
+        m.stateT -= dt;
+        if (m.stateT <= 0) { m.state = 'cooldown'; m.stateT = m.boss ? COMBAT.bossCooldown : COMBAT.cooldown; }
+        break;
+      }
+      default: {   /* cooldown */
+        m.faceX = ux; m.faceY = uy;
+        m.stateT -= dt;
+        if (m.stateT <= 0) m.state = 'approach';
+      }
+    }
+  }
+  separateMonsters();
+}
+/* 分離（押し合い）: 体の円が重なったら押し出す。プレイヤー相手では敵側だけを動かす
+   （プレイヤーの操作・ノックバックと競合させない）。突進中の敵はプレイヤー分離の対象外 */
+function separateMonsters() {
+  for (let i = 0; i < monsters.length; i++) {
+    const a = monsters[i];
+    if (a.hp <= 0) continue;
+    ensureMonsterCombat(a);
+    const ra = a.boss ? COMBAT.bossR : COMBAT.enemyR;
+    if (a.state !== 'strike') {
+      const d = dist(a.x, a.y, me.x, me.y), min = ra + FOOT_R;
+      if (d > 0.001 && d < min) moveMonsterAxis(a, (a.x - me.x) / d * (min - d), (a.y - me.y) / d * (min - d));
+      else if (d <= 0.001) moveMonsterAxis(a, min, 0);
+    }
+    for (let j = i + 1; j < monsters.length; j++) {
+      const b = monsters[j];
+      if (b.hp <= 0) continue;
+      ensureMonsterCombat(b);
+      const rb = b.boss ? COMBAT.bossR : COMBAT.enemyR;
+      const d = dist(a.x, a.y, b.x, b.y), min = ra + rb;
+      if (d > 0.001 && d < min) {
+        const push = (min - d) / 2, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
+        moveMonsterAxis(a, -ux * push, -uy * push);
+        moveMonsterAxis(b, ux * push, uy * push);
+      } else if (d <= 0.001) moveMonsterAxis(b, min, 0);
+    }
+  }
+}
 function doAttack() {
   if (me.atkT > 0 || S.downed) return;
   me.atkT = 0.32;
   if (!spendRP(3, 'sword')) return;
   const d = [[0, 1], [0, -1], [-1, 0], [1, 0]][me.dir];
+  slashFx = { t: 0, dur: 0.18, dir: me.dir };   /* patch_v69: 判定の扇形をそのまま描く（見た目＝判定） */
   let power = effAtk();
   if (S.buffs.atk) power = Math.round(power * (1 + S.buffs.atk));
   let hitAny = false;
   for (const m of monsters) {
     const dm = dist(me.x, me.y, m.x, m.y);
-    const range = m.boss ? 190 : 105;
+    if (dm > SWING_RANGE + (m.boss ? COMBAT.bossR : COMBAT.enemyR)) continue;   /* 半径は敵の体の縁まで */
     const dot = dm > 0 ? ((m.x - me.x) * d[0] + (m.y - me.y) * d[1]) / dm : 1;
-    if (dm < range && (dm < range * 0.6 || dot > -0.2)) {
-      hitAny = true;
-      damageMonster(m, power, d);
-    }
+    if (dot < SWING_COS) continue;   /* 扇形110°の外（真後ろ含む）は当たらない */
+    hitAny = true;
+    damageMonster(m, power, d);
   }
   for (const g of gates) {
     if (dist(me.x, me.y, g.x, g.y) < 120) {
@@ -3270,7 +3425,12 @@ function damageMonster(m, power, d) {
   m.hp -= power; m.flashT = 0.15;
   addDmg(m.x, m.y - (m.boss ? 90 : 34), power, '#ffe27a');
   addParticles(m.x, m.y - 6, '#ffffff', 5, 90, 10);
-  if (!m.boss) { m.x += d[0] * 12; m.y += d[1] * 12; }
+  if (!m.boss) {
+    /* patch_v69: 12pxずらしを廃し、速度ベースのノックバックへ。予備動作中は崩れて仕切り直しになる */
+    ensureMonsterCombat(m);
+    m.kbvx = d[0] * COMBAT.kbEnemy; m.kbvy = d[1] * COMBAT.kbEnemy;
+    if (m.state === 'windup') { m.state = 'cooldown'; m.stateT = 0.25; }
+  }
   if (m.boss) {
     S.shared.boss = { id: m.bossId, hp: Math.max(0, m.hp), max: m.maxHp, day: S.shared.day };
     afterSharedChange();
@@ -3329,12 +3489,17 @@ function calmBoss(m) {
   gainSkill('sword', 20);
   afterSharedChange();
 }
-function hurtPlayer(dmg) {
-  if (me.iframeT > 0 || me.dashT > 0 || S.downed) return;
+function hurtPlayer(dmg, sx, sy) {
+  if (me.iframeT > 0 || me.dashT > 0 || S.downed) return false;   /* patch_v69: 無敵時間中は完全無効（連続ヒット防止） */
   let d = dmg;
   if (S.buffs.def) d = Math.max(1, Math.round(d * (1 - S.buffs.def)));
   if (S.shared.dragons.snow) d = Math.max(1, Math.round(d * 0.85));
   S.hp -= d; me.iframeT = 1.0; me.hurtT = 0.25;
+  if (sx !== undefined && sy !== undefined) {
+    /* patch_v69: 攻撃源から離れる方向へノックバック（突進は攻撃方向そのものが渡される） */
+    const kdx = me.x - sx, kdy = me.y - sy, kl = Math.hypot(kdx, kdy) || 1;
+    me.kbvx = kdx / kl * COMBAT.kbPlayer; me.kbvy = kdy / kl * COMBAT.kbPlayer;
+  }
   addDmg(me.x, me.y - 40, '-' + d, '#ff8a7a');
   refreshHUD();
   if (S.hp <= 0) {
@@ -3343,6 +3508,7 @@ function hurtPlayer(dmg) {
     notify(myName() + 'がダンジョンで倒れた🆘');
     pushPresence(true);
   }
+  return true;
 }
 function revivePlayer() {
   S.downed = false; S.hp = Math.floor(effMaxHp() * 0.4);
@@ -4322,6 +4488,14 @@ function update(now) {
       }
     }
     me.atkT = Math.max(0, me.atkT - dt); me.iframeT = Math.max(0, me.iframeT - dt); me.hurtT = Math.max(0, me.hurtT - dt);
+    /* patch_v69: 被弾ノックバックの適用（速度ベース・減衰・軸別に壁で止まる） */
+    if (!S.downed && (me.kbvx || me.kbvy)) {
+      if (!blocked(me.x + me.kbvx * dt, me.y, S.scene)) me.x += me.kbvx * dt;
+      if (!blocked(me.x, me.y + me.kbvy * dt, S.scene)) me.y += me.kbvy * dt;
+      const kdec = Math.exp(-COMBAT.kbDecay * dt); me.kbvx *= kdec; me.kbvy *= kdec;
+      if (Math.hypot(me.kbvx, me.kbvy) < 10) { me.kbvx = 0; me.kbvy = 0; }
+    }
+    if (slashFx) { slashFx.t += dt; if (slashFx.t >= slashFx.dur) slashFx = null; }
     if (me.animT > 0) { me.animT = Math.max(0, me.animT - dt); if (me.animT <= 0) me.anim = null; }
     if (!S.downed) S.rp = Math.min(effMaxRp(), S.rp + (S.scene === 'dungeon' ? 2.5 : 5) * dt);
     updateBars();
@@ -4364,14 +4538,7 @@ function update(now) {
       if (doorCd <= 0 && zoneTrig('barnExit', inRectZ(ez))) exitBarn();
     } else checkStairs();
     if (S.scene === 'dungeon') {
-      for (const m of monsters) {
-        m.hitCd = Math.max(0, m.hitCd - dt); m.flashT = Math.max(0, m.flashT - dt);
-        /* 相方も対象に寄る（見た目のみ） */
-        let tx = me.x, ty = me.y;
-        const d = dist(m.x, m.y, tx, ty);
-        if (d < 320 && d > (m.boss ? 95 : 36)) { m.x += (tx - m.x) / d * m.speed * dt; m.y += (ty - m.y) / d * m.speed * dt; }
-        if (d <= (m.boss ? 100 : 40) && m.hitCd <= 0 && !S.downed) { m.hitCd = 1.15; hurtPlayer(m.atk); }
-      }
+      updateMonsters(dt);   /* patch_v69: 敵AIは combat 節の状態機械に集約（接触ダメージは廃止） */
       for (const g of gates) {
         g.spawnT -= dt;
         if (g.spawnT <= 0) {
@@ -4920,9 +5087,23 @@ function render() {
       ctx.fillText(dr.kind === 'gold' ? '💰' : itemIcon(dr.kind), dr.x, dr.y + Math.sin(dr.t * 4) * 3); ctx.restore();
     } });
     for (const m of monsters) draws.push({ y: m.y + 10, fn: () => {
+      /* patch_v69: 予備動作中は攻撃範囲を薄赤で予告する（テレグラフ＝実際の判定と一致） */
+      if (m.state === 'windup') {
+        ctx.save();
+        ctx.fillStyle = 'rgba(226,72,58,' + (0.15 + 0.09 * Math.sin(performance.now() / 45)).toFixed(3) + ')';
+        if (m.atkKind === 'charge') {
+          ctx.translate(m.x, m.y); ctx.rotate(Math.atan2(m.atkDirY, m.atkDirX));
+          ctx.fillRect(0, -(m.boss ? 55 : 23), m.boss ? COMBAT.bossChargeDist : COMBAT.chargeDist, m.boss ? 110 : 46);
+        } else {
+          const tR = m.boss ? COMBAT.bossRange : COMBAT.slamRange, tBase = Math.atan2(m.atkDirY, m.atkDirX);
+          ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.arc(m.x, m.y, tR, tBase - COMBAT.slamHalf, tBase + COMBAT.slamHalf); ctx.closePath(); ctx.fill();
+        }
+        ctx.restore();
+      }
       if (m.boss) {
         ctx.save(); ctx.font = '110px sans-serif'; ctx.textAlign = 'center';
         if (m.flashT > 0) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 24; }
+        if (m.state === 'windup') { ctx.shadowColor = '#e2483a'; ctx.shadowBlur = 22; }   /* patch_v69: 予備動作は赤く明滅 */
         ctx.fillText(m.def.emoji || '🐉', m.x, m.y + 30); ctx.restore();
         label(m.def.name + (S.floorKind === 'boss' ? '（悪夢に暴れている）' : ''), m.x, m.y + 74);
         ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(m.x - 80, m.y - 96, 160, 9);
@@ -4933,11 +5114,14 @@ function render() {
         const img = IMG[m.def.img]; const F = 72;
         const fr = Math.floor(performance.now() / 380 + m.ph) % 2;
         ctx.save(); if (m.flashT > 0) ctx.globalAlpha = .55;
-        ctx.drawImage(img, fr * F, 0, F, F, m.x - 30, m.y - 52, 60, 60); ctx.restore();
+        if (m.state === 'windup') ctx.drawImage(img, fr * F, 0, F, F, m.x - 33, m.y - 45, 66, 53);   /* patch_v69: 予備動作で沈み込む */
+        else ctx.drawImage(img, fr * F, 0, F, F, m.x - 30, m.y - 52, 60, 60);
+        ctx.restore();
       } else {
         ctx.save(); ctx.font = '40px sans-serif'; ctx.textAlign = 'center';
         if (m.flashT > 0) { ctx.shadowColor = '#fff'; ctx.shadowBlur = 16; }
-        ctx.fillText(m.def.emoji, m.x, m.y + 8); ctx.restore();
+        if (m.state === 'windup') { ctx.shadowColor = '#e2483a'; ctx.shadowBlur = 18; }   /* patch_v69: 予備動作は赤く明滅 */
+        ctx.fillText(m.def.emoji, m.x, m.y + (m.state === 'windup' ? 12 : 8)); ctx.restore();
       }
       ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(m.x - 22, m.y - 60, 44, 5);
       ctx.fillStyle = '#e2483a'; ctx.fillRect(m.x - 22, m.y - 60, 44 * clamp(m.hp / m.maxHp, 0, 1), 5); ctx.restore();
@@ -4959,10 +5143,19 @@ function render() {
     const blink = me.iframeT > 0 && Math.floor(performance.now() / 70) % 2 === 0;
     drawPlayerSprite(myRace, img, me.x, me.y, me.dir, me.moving, me.walkT, me.anim, me.animT, me.animDur, me.atkT, S.downed ? .4 : (blink ? .35 : 1), myName() + (S.downed ? ' 💫' : ''), '#ffeec2', me.hurtT, S.downed);
     if (me.hurtT > 0) { ctx.save(); ctx.globalAlpha = me.hurtT * 1.6; ctx.fillStyle = '#e2483a'; ctx.beginPath(); ctx.arc(me.x, me.y - 26, 30, 0, 7); ctx.fill(); ctx.restore(); }
-    if (me.atkT > 0.1) {
-      const d = [[0, 1], [0, -1], [-1, 0], [1, 0]][me.dir];
-      ctx.save(); ctx.strokeStyle = 'rgba(255,255,240,.9)'; ctx.lineWidth = 5; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.arc(me.x + d[0] * 46, me.y - 14 + d[1] * 46, 26, 0, 7); ctx.stroke(); ctx.restore();
+    if (slashFx) {
+      /* patch_v69: 斬撃エフェクトは剣判定の扇形（半径100・110°）そのもの。向きと範囲が絵で分かる */
+      const dv = [[0, 1], [0, -1], [-1, 0], [1, 0]][slashFx.dir];
+      const baseA = Math.atan2(dv[1], dv[0]), prog = slashFx.t / slashFx.dur;
+      ctx.save();
+      ctx.globalAlpha = 0.30 * (1 - prog) + 0.05;
+      ctx.fillStyle = '#fffbe8';
+      ctx.beginPath(); ctx.moveTo(me.x, me.y - 12);
+      ctx.arc(me.x, me.y - 12, SWING_RANGE, baseA - SWING_HALF, baseA + SWING_HALF); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 0.95 * (1 - prog) + 0.1;
+      ctx.strokeStyle = 'rgba(255,255,240,.95)'; ctx.lineWidth = 4; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.arc(me.x, me.y - 12, SWING_RANGE * (0.72 + 0.28 * prog), baseA - SWING_HALF, baseA + SWING_HALF); ctx.stroke();
+      ctx.restore();
     }
   } });
   draws.sort((a, b) => a.y - b.y).forEach(d => d.fn());
@@ -5288,8 +5481,9 @@ window.__tf = {
   fishSpotHere, startFishing, fishGameState: () => fishGame, fishPress, fishRelease, fishGameTick, catchFish, fishEscape,
   completeFishQuest, upgradeRod, ROD_COSTS, logFish, fishBestText, invFishTotal, DFISH, FISH_SPOT_NAMES,
   itemName, itemIcon, itemPrice,
-  claimSpotSeeds, SPOT_SEED_CROPS, SPOT, mineNode, spendRP, CROPS, DRAGONS,   /* patch_v66: 第1段階修正バッチの検証用 */
-  ensureVillageSpawn, POND, HOME_GATE_V, GATE, NPCS, TABLE_POS, FORGE_POS, CHEST_POS, GIFT_POS, SHOP_POS, BOARD_POS   /* patch_v67: 村マップ作り直しの検証用 */
+  claimSpotSeeds, SPOT_SEED_CROPS, SPOT, mineNode, spendRP, CROPS, DRAGONS, ENEMIES,   /* patch_v66: 第1段階修正バッチの検証用／patch_v69: ENEMIES を追加 */
+  ensureVillageSpawn, POND, HOME_GATE_V, GATE, NPCS, TABLE_POS, FORGE_POS, CHEST_POS, GIFT_POS, SHOP_POS, BOARD_POS,   /* patch_v67: 村マップ作り直しの検証用 */
+  updateMonsters, hurtPlayer, damageMonster, COMBAT, slashFx: () => slashFx   /* patch_v69: 戦闘見直しの検証用 */
 };
 requestAnimationFrame(update);
 </script>
