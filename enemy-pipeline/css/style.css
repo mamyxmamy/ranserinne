@@ -238,6 +238,30 @@ button { color: inherit; }
 .continue-btn:hover,
 .continue-btn:focus-visible { border-color: var(--amber); box-shadow: 0 0 14px rgba(255, 210, 122, 0.35); }
 
+.tutorial-btn {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 2.5%;
+  z-index: 4;
+  border: 1px solid rgba(143, 227, 174, 0.45);
+  background: rgba(3, 17, 8, 0.85);
+  color: #8fe3ae;
+  font-family: var(--font-mono);
+  font-size: clamp(11px, 1.3vw, 13px);
+  letter-spacing: 0.1em;
+  padding: 7px 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tutorial-btn:hover,
+.tutorial-btn:focus-visible { border-color: #8fe3ae; box-shadow: 0 0 12px rgba(143, 227, 174, 0.3); }
+
+@media (max-height: 400px) {
+  .tutorial-btn { padding: 5px 12px; font-size: 11px; }
+}
+
 .install-cta__how {
   margin: 0;
   color: #c8ffd4;
