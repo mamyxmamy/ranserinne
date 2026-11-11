@@ -3,10 +3,9 @@
   "short_name": "Enemy Pipeline",
   "description": "レトロフューチャーCRT端末で繰り広げる、デッキ構築型ローグライク潜入ゲーム。",
   "lang": "ja",
-  "start_url": "./index.html",
-  "scope": "./",
+  "start_url": "https://mamyxmamy.github.io/ranserinne/enemy-pipeline/",
+  "scope": "https://mamyxmamy.github.io/ranserinne/enemy-pipeline/",
   "display": "standalone",
-  "orientation": "landscape",
   "background_color": "#031108",
   "theme_color": "#031108",
   "icons": [
