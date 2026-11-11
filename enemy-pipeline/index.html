@@ -101,6 +101,7 @@
               <p class="piles" id="piles" hidden></p>
               <p class="counters__idle" aria-hidden="true">山札 —  /  捨て札 —</p>
             </div>
+            <p class="relics-label" id="relics-label" hidden>特殊装備 RELICS</p>
             <p class="relics" id="relics" hidden></p>
           </aside>
 
@@ -286,6 +287,12 @@
     <p class="card-inspect__name" id="card-inspect-name"></p>
     <p class="card-inspect__body" id="card-inspect-body"></p>
     <p class="card-inspect__flavor" id="card-inspect-flavor"></p>
+  </div>
+  <!-- レリック詳細ツールチップ（PROMPT-28）: チップのタップで開閉、他所タップで閉じる -->
+  <div class="relic-tip" id="relic-tip" hidden>
+    <p class="relic-tip__name" id="relic-tip-name"></p>
+    <p class="relic-tip__body" id="relic-tip-body"></p>
+    <p class="relic-tip__effect" id="relic-tip-effect"></p>
   </div>
   <script src="js/rewards.js"></script>
   <script src="js/events.js"></script>
