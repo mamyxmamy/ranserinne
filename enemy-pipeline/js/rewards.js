@@ -7,13 +7,25 @@
 
   const POOL = Object.freeze([
     root.Cards.get("gun_suppressed_pistol"),
+    root.Cards.get("wired_jack"),
+    root.Cards.get("illegal_overclock"),
+    root.Cards.get("full_burst"),
+    root.Cards.get("forced_cooling"),
+    root.Cards.get("acoustic_flare"),
+    root.Cards.get("pile_bunker"),
+    root.Cards.get("close_combat"),
+    root.Cards.get("jamming_flare"),
+    root.Cards.get("noise_canceller"),
+    root.Cards.get("decoy_foil"),
+    root.Cards.get("serial_punch"),
+    root.Cards.get("tactical_wait"),
     { "id": "gun_combat_shotgun", "name": "散弾銃 (SHOTGUN)", "cost": 2, "category": "GUN", "type": "attack", "noise": 2, "requirements": [], "stance_change": "EXPOSE", "effects": [ { "target": "enemy", "type": "damage", "value": 16 } ] },
     { "id": "hack_overload", "name": "神経系オーバーロード (HACK)", "cost": 0, "category": "DIGITAL", "type": "skill", "noise": 0, "requirements": [], "stance_change": null, "effects": [ { "target": "enemy", "type": "stun", "value": 2 }, { "target": "player", "type": "add_card_to_discard", "card_id": "curse_flashback", "value": 1 } ] },
     { "id": "tactic_adrenaline", "name": "アドレナリン注射 (INJECT)", "cost": 0, "category": "TACTIC", "type": "skill", "noise": 0, "requirements": [], "stance_change": null, "effects": [ { "target": "player", "type": "add_energy", "value": 2 }, { "target": "player", "type": "damage", "value": 3 } ] },
   ].map((card) => Object.freeze({
     ...card,
-    rarity: card.id === "gun_combat_shotgun" || card.id === "hack_overload" ? "rare"
-      : (card.id === "tactic_adrenaline" ? "uncommon" : "common"),
+    rarity: ["gun_combat_shotgun", "hack_overload", "full_burst", "acoustic_flare", "forced_cooling", "jamming_flare"].includes(card.id) ? "rare"
+      : (["tactic_adrenaline", "wired_jack", "illegal_overclock", "pile_bunker", "serial_punch", "decoy_foil"].includes(card.id) ? "uncommon" : "common"),
     requirements: Object.freeze((card.requirements || []).slice()),
     effects: Object.freeze(card.effects.map((effect) => Object.freeze({ ...effect }))),
   })));
