@@ -2335,9 +2335,9 @@ button { color: inherit; }
 
 .cctv-monitor__enemy {
   position: absolute;
-  right: 3%;
-  bottom: 0;
-  height: 82%;
+  right: 4%;
+  bottom: 1%;
+  height: 76%;
   width: auto;
   filter: saturate(0.95) contrast(1.05) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.5));
 }
@@ -2352,6 +2352,20 @@ button { color: inherit; }
 
 .cctv-monitor__vessel.is-expose { height: 68%; }
 .cctv-monitor__vessel.is-cover { height: 50%; }
+
+/* 部屋ごとの配置：遠近（接地ライン・大きさ）と物陰の位置に合わせる */
+#cctv-scene[data-room="server"] .cctv-monitor__enemy { right: 9%; bottom: 4%; height: 60%; }
+#cctv-scene[data-room="server"] .cctv-monitor__vessel.is-expose { left: 12%; bottom: 4%; height: 59%; }
+#cctv-scene[data-room="server"] .cctv-monitor__vessel.is-cover { left: 16%; bottom: 46%; height: 27%; }
+#cctv-scene[data-room="corridor"] .cctv-monitor__enemy { right: 5%; bottom: 2%; height: 72%; }
+#cctv-scene[data-room="corridor"] .cctv-monitor__vessel.is-expose { left: 1%; bottom: 2%; height: 64%; }
+#cctv-scene[data-room="corridor"] .cctv-monitor__vessel.is-cover { left: 3%; bottom: 34%; height: 27%; }
+#cctv-scene[data-room="hangar"] .cctv-monitor__enemy { right: 13%; bottom: 5%; height: 57%; }
+#cctv-scene[data-room="hangar"] .cctv-monitor__vessel.is-expose { left: 26%; bottom: 5%; height: 57%; }
+#cctv-scene[data-room="hangar"] .cctv-monitor__vessel.is-cover { left: 9%; bottom: 43%; height: 25%; }
+#cctv-scene[data-room="gate"] .cctv-monitor__enemy { right: 7%; bottom: 2%; height: 75%; }
+#cctv-scene[data-room="gate"] .cctv-monitor__vessel.is-expose { left: 3%; bottom: 2%; height: 64%; }
+#cctv-scene[data-room="gate"] .cctv-monitor__vessel.is-cover { left: 4%; bottom: 22%; height: 25%; }
 
 .cctv-monitor__dummy {
   position: absolute;
