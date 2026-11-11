@@ -1690,7 +1690,11 @@ function setCctvImage(src, targetName, type) {
   if (!ui.cctvScene || !ui.cctvEnemy || !ui.cctvDummy) return;
   ui.cctvScene.hidden = true;
   ui.cctvDummy.hidden = false;
-  if (ui.cctvRoom) ui.cctvRoom.src = pickCctvRoom(type);
+  if (ui.cctvRoom) {
+    const room = pickCctvRoom(type);
+    ui.cctvRoom.src = room;
+    ui.cctvScene.dataset.room = room.split("/").pop().replace("room_", "").replace(".jpg", "");
+  }
   if (!src) return;
   ui.cctvEnemy.onload = () => {
     ui.cctvScene.hidden = false;
