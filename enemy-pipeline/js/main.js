@@ -903,6 +903,8 @@ async function runEnemyPhase() {
 
 function setMapMode(on) {
   ui.screen.classList.toggle("is-map", on);
+  // マップ画面では下段トレイを畳んで経路盤を広く使う（v13.4）
+  if (ui.desk) ui.desk.classList.toggle("is-map", on);
 }
 
 function nodeButton(node, openIds, here) {
