@@ -4,7 +4,7 @@
 (function (root) {
   const CATALOG = Object.freeze([
     // PROMPT-28: 初期装備はこの1つのみ（VESSEL 07 基礎OS）。残りは道中で拾って空き枠を埋める。
-    { id: "relic_vessel07_os", name: "VESSEL 07 基礎OS", description: "時代遅れの素体に組み込まれた標準OS。戦闘開始時、自動的に防護（BLK）を 2 得る。", trigger: "start_of_combat", effects: [{ type: "add_block", value: 2 }] },
+    { id: "relic_vessel07_os", name: "VESSEL 07 基礎OS", description: "遠隔からの音響信号を受信し、体内の自動穿孔機で物理カードとして複製・実行するアナログ式OS。ハッキングを完全に無効化する。戦闘開始時、自動的に防護（BLK）を 2 得る。", trigger: "start_of_combat", effects: [{ type: "add_block", value: 2 }] },
     { id: "relic_optical_camo", name: "旧世代の光学迷彩", description: "旧世代の光学迷彩クローク。戦闘開始時、防護（BLK）を 8 得る。", trigger: "start_of_combat", effects: [{ type: "add_block", value: 8 }] },
     { id: "relic_overdose_injector", name: "オーバードーズ・インジェクター", description: "興奮剤の自動注入器。ターン開始時に電力 +1。ただし副作用でフラッシュバック（呪装）が捨て札に混ざる。", trigger: "start_of_turn", effects: [{ type: "add_energy", value: 1 }, { type: "add_card_to_discard", card_id: "curse_flashback", value: 1 }] },
     { id: "relic_hydraulic_actuator", name: "油圧式関節アクチュエータ", description: "関節部の油圧アクチュエータ。スタンを与える効果が +1 される。", trigger: "on_apply_stun", effects: [{ type: "increase_stun", value: 1 }] },
