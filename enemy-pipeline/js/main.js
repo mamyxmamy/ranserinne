@@ -128,7 +128,7 @@ function blurb(card) {
     if (effect.type === "cancel_next_intent") parts.push("次の行動を潰す");
     if (effect.type === "vulnerable") parts.push("脆弱 +1");
     if (effect.type === "instant_kill") parts.push("その場で制圧");
-    if (effect.type === "add_energy") parts.push(`電力 +${effect.value}`);
+    if (effect.type === "add_energy") parts.push(effect.overcharge ? `電力 +${effect.value}（上限突破）` : `電力 +${effect.value}`);
     if (effect.type === "add_card_to_discard") parts.push("捨て札に呪装");
     if (effect.type === "heal") parts.push(`HP回復 +${effect.value}`);
     if (effect.type === "drain_energy") parts.push("残りPWR全喪失");
