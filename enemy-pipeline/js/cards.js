@@ -26,7 +26,7 @@
     {
       "id": "illegal_overclock", "name": "違法オーバークロック", "cost": 0, "category": "TEC", "type": "skill", "noise": 2, "stance_change": null, "isExhaust": true,
       "flavor": "「冷却機構の安全ピンを物理的に引き抜き、体内の歯車を限界突破で強制駆動させる。文字通り、素体の寿命を削り出して得る電力。」",
-      "effects": [ { "target": "player", "type": "damage", "value": 3 }, { "target": "player", "type": "add_energy", "value": 3 } ]
+      "effects": [ { "target": "player", "type": "damage", "value": 3 }, { "target": "player", "type": "add_energy", "value": 3, "overcharge": true } ]
     },
     {
       "id": "full_burst", "name": "フル・バースト", "cost": 3, "category": "CQC", "type": "attack", "noise": 4, "stance_change": null, "isExhaust": true,
