@@ -1080,6 +1080,7 @@ function freshShared() {
   return {
     gold: 100, day: 1, createdAt: '', chest: {}, shipBox: {}, plots: {}, zones: {},
     unlocks: defaultUnlocks(), dragons: {}, guardianCalmed: false, bakuDefeated: false,
+    spotSeeds: {},        /* patch_v66: スポット専用種の初回受け取り済みフラグ（エリアキー→true。2人で共有し、同期対象） */
     bond: { pt: 0 }, quests: [], questsDay: 0, storyQuests: {}, gift: null, decor: {},
     shipStats: { crops: {}, fish: {}, totalGold: 0, totalCount: 0 }, story: { intro: false, frag: {} },
     boss: null, enemyHp: {}, logs: {}, contest: {},
@@ -1198,7 +1199,10 @@ function gainSkill(key, xp) {
   refreshHUD();
 }
 function spendRP(n, skillKey) {
-  const cost = skillKey ? Math.max(1, Math.round(n * skillCostMult(S.skills[skillKey].lv))) : n;
+  /* patch_v66: 遺跡の守り龍の加護「知恵の恵み（生産RP軽減）」。生産系＝料理（cook）・鍛冶（forge）の消費だけを 20% 軽減する。
+     農作業・釣り・剣・採掘・ダッシュには効かない（加護の文言どおり「生産」に限定） */
+  const prodMult = (S.shared.dragons && S.shared.dragons.ruins && (skillKey === 'cook' || skillKey === 'forge')) ? 0.8 : 1;
+  const cost = skillKey ? Math.max(1, Math.round(n * skillCostMult(S.skills[skillKey].lv) * prodMult)) : n;
   if (S.rp >= cost) { S.rp -= cost; return true; }
   const short = cost - S.rp;
   if (S.hp > 1) { S.rp = 0; S.hp = Math.max(1, S.hp - short); warnLack('sub'); return true; }
@@ -2533,12 +2537,14 @@ function openShop() {
   const sk = seasonKeyOf(S.shared.day);
   /* 種：今の季節＋出荷済みの作物 */
   const seedList = new Set();
-  for (const cid of CROP_IDS) if (CROPS[cid].season === sk && !CROPS[cid].spot) seedList.add(cid);
-  for (const cid in S.shared.shipStats.crops) if (!CROPS[cid].spot) seedList.add(cid);
+  /* patch_v66: スポット種は「対応する守り龍を鎮めた」エリアのものだけ並ぶ（未解放エリアのものは従来どおり除外） */
+  const spotSeedOk = cid => { const c = CROPS[cid]; return !c || !c.spot || !!S.shared.dragons[c.spot]; };
+  for (const cid of CROP_IDS) if (CROPS[cid].season === sk && spotSeedOk(cid)) seedList.add(cid);
+  for (const cid in S.shared.shipStats.crops) if (spotSeedOk(cid)) seedList.add(cid);
   for (const cid of seedList) {
     const lv = (S.shared.shipStats.crops[cid] || {}).maxLv || 1;
     const price = Math.round(seedPriceOf(cid) * (1 + (lv - 1) * 0.15));
-    btns.push({ label: '🌱 ' + CROPS[cid].name + 'の種 Lv' + lv + '（' + price + 'G）', small: '売値' + CROPS[cid].price + 'G・成長' + CROPS[cid].days + '日' + (lv > 1 ? '（あなたの出荷実績で店頭Lvが上がっています）' : ''), disabled: S.shared.gold < price, keepOpen: true, fn() { S.shared.gold -= price; S.inv['seed_' + cid] = (S.inv['seed_' + cid] || 0) + 1; S.invLv['seed_' + cid] = Math.max(S.invLv['seed_' + cid] || 1, lv); afterSharedChange(); refreshHUD(); setTimeout(openShop, 60); } });
+    btns.push({ label: '🌱 ' + CROPS[cid].name + 'の種 Lv' + lv + '（' + price + 'G）', small: '売値' + CROPS[cid].price + 'G・成長' + CROPS[cid].days + '日' + (CROPS[cid].spot ? '（' + AREAS[CROPS[cid].spot].name + 'の畑スポット専用）' : '') + (lv > 1 ? '（あなたの出荷実績で店頭Lvが上がっています）' : ''), disabled: S.shared.gold < price, keepOpen: true, fn() { S.shared.gold -= price; S.inv['seed_' + cid] = (S.inv['seed_' + cid] || 0) + 1; S.invLv['seed_' + cid] = Math.max(S.invLv['seed_' + cid] || 1, lv); afterSharedChange(); refreshHUD(); setTimeout(openShop, 60); } });
   }
   /* 牧草の種（年中買える：家畜のえさ用。店で飼い草そのものは売らない） */
 { const bp = seedPriceOf('bokuso'); btns.push({ label: '🌱 牧草の種（' + bp + 'G）', small: '家畜のえさ「飼い草」を育てる種。年中育ち、収穫で飼い草×2が得られます', disabled: S.shared.gold < bp, keepOpen: true, fn() { S.shared.gold -= bp; S.inv.seed_bokuso = (S.inv.seed_bokuso || 0) + 1; afterSharedChange(); refreshHUD(); setTimeout(openShop, 60);}});}
@@ -3179,6 +3185,26 @@ function checkStairs() {
   } else if (!inStairs) zoneTrig('dunStairs', false);
   if (zoneTrig('dunExit', me.x > DUN_EXIT.x && me.x < DUN_EXIT.x + DUN_EXIT.w && me.y > DUN_EXIT.y)) exitDungeon();
 }
+/* patch_v66: スポット専用種の初回入手。畑スポットの看板（スポットの表示プレート）で、
+   そのエリア専用の種×3 を1回だけ受け取れる（共有フラグ spotSeeds で管理）。
+   店では守り龍を鎮めるまで買えず、種化も育てた作物からしかできないため、これが初回の確実な経路になる。
+   根の国には専用作物がない（スポットは常春で通常作物用）ため対象外。 */
+const SPOT_SEED_CROPS = { forest: 'kodama', cave: 'cavedrop', ruins: 'inishie', snow: 'yukinko' };
+function claimSpotSeeds() {
+  if (S.scene !== 'dungeon' || S.floorKind !== 'normal') return false;
+  const cid = SPOT_SEED_CROPS[S.area]; if (!cid) return false;
+  if (!S.shared.spotSeeds) S.shared.spotSeeds = {};
+  if (S.shared.spotSeeds[S.area]) return false;
+  if (dist(me.x, me.y, SPOT.x + SPOT.cell, SPOT.y + SPOT.cell) >= 190) return false;
+  S.shared.spotSeeds[S.area] = true;
+  S.inv['seed_' + cid] = (S.inv['seed_' + cid] || 0) + 3;
+  afterSharedChange(); refreshHUD();
+  showDialogue([
+    { who: '畑スポットの看板', text: '「この地の畑では、' + CROPS[cid].name + ' が育ちます。はじめの種をどうぞ」' },
+    { who: '看板', text: CROPS[cid].name + 'の種×3 を受け取った！ この畑スポットで植えられます。守り龍を鎮めた後は、村の店でも買えるようになります' }
+  ]);
+  return true;
+}
 const AREA_FRAGMENTS = {
   forest: [{ who: '木霊の声', text: '「果実は眠っているのではない。聞いている」…土地の実りが戻るたび、果実の夢が少し揺れるのだそうです。' }],
   cave: [{ who: 'ドワーフの記録', text: '「掘りすぎて果実の根を傷つけた時代があった。謝罪と、根を守る掟をここに残す」' }],
@@ -3325,6 +3351,7 @@ function mineNode(node) {
   let item = node.item;
   if (S.area === 'cave' && Math.random() < 0.3) item = 'ore_copper';
   if (RACES[myRace].oreBonus && Math.random() < 0.25) { S.inv[item] = (S.inv[item] || 0) + 1; toast('⛏️ ドワーフの勘！もう1個取れた'); }
+  if (S.shared.dragons.cave && Math.random() < 0.25) { S.inv[item] = (S.inv[item] || 0) + 1; toast('🐉 鉱石の恵み！質のいい鉱石がもう1個取れた'); }   /* patch_v66: 洞窟の守り龍の加護「鉱石の恵み（採掘の質+）」（ドワーフの勘と同じ 25%・追加ドロップ形式） */
   S.inv[item] = (S.inv[item] || 0) + 1;
   gainSkill('mine', 5); questProgress('mine', null, 1);
   addParticles(node.x, node.y, '#cbb98a', 10, 80, 20);
@@ -3338,7 +3365,7 @@ function sharedPayload() {
   return {
     gold: sh.gold, day: sh.day, createdAt: sh.createdAt, chest: sh.chest, shipBox: sh.shipBox, shipLv: sh.shipLv || {},
     plots: sh.plots, zones: sh.zones, unlocks: sh.unlocks, dragons: sh.dragons, guardianCalmed: sh.guardianCalmed,
-    bakuDefeated: sh.bakuDefeated, bond: sh.bond, quests: sh.quests, questsDay: sh.questsDay, storyQuests: sh.storyQuests,
+    bakuDefeated: sh.bakuDefeated, spotSeeds: sh.spotSeeds || {}, bond: sh.bond, quests: sh.quests, questsDay: sh.questsDay, storyQuests: sh.storyQuests,
     gift: sh.gift, decor: sh.decor, shipStats: sh.shipStats, story: sh.story, boss: sh.boss, enemyHp: sh.enemyHp, livestock: sh.livestock,
     houseFurniture: sh.houseFurniture, houseFurniture2f: sh.houseFurniture2f || {}, houseWallItems: sh.houseWallItems, houseStage: sh.houseStage, furnStock: sh.furnStock || {}, questDone: sh.questDone || 0,   /* 家具フェーズ: 家のデータ一式を同期ホワイトリストに追加（DESIGN-FURNITURE.md §6） */
     gridV: sh.gridV || 1,   /* patch_v63: 畑マスの世代（2=新マス6×7）。相方と移行世代を揃えるためのマーカー */
@@ -3389,6 +3416,7 @@ function applySharedData(d) {
   S.shared.shipStats = d.shipStats || { crops: {}, fish: {}, totalGold: 0, totalCount: 0 };
   if (!S.shared.shipStats.fish) S.shared.shipStats.fish = {};
   S.shared.story = d.story || { intro: false, frag: {} };
+  S.shared.spotSeeds = d.spotSeeds || {};   /* patch_v66: スポット種の受け取りフラグ（旧データには無いので空で補完） */
   S.shared.boss = d.boss || null; S.shared.enemyHp = d.enemyHp || {};
   if (d.livestock) S.shared.livestock = Object.assign({ unlocked: false, animals: [], feed: 0, products: {}, careNotes: [], seq: 1, feedDay: 0 }, d.livestock);   /* v4.2 畜産: 家畜は2人で共有 */
   /* 家具フェーズ: 家のデータ（家具・壁・増築段階・家具在庫・依頼数）を相方と共有する */
@@ -3515,7 +3543,9 @@ async function initSync() {
    判定は「足元の小さな円（半径 FOOT_R）」×「物の足元だけの障害物」で行う。
    木は幹の根元だけ、建物は壁際だけ。葉・屋根・看板の上部には重なって通れる。
    障害物は各背景画の「絵で通れない所（池・崖・壁・柵・柱）」に合わせて配置した。 */
-const FOOT_R = 13;
+const FOOT_R = 16;   /* patch_v66: 13→16。キャラ拡大（屋外180/室内300）後の足元の実感に近づける最小限の拡大。
+   戸口・門の最小幅（放牧場の門84px・室内戸口56px）でも有効幅 52px／24px を確保できる範囲。
+   連結性解析（20px刻みBFS）で変更前と比較し、孤立セルの減少・新規孤立なしを確認済み（BUILD-V4.2-NOTES 参照） */
 const VILLAGE_OBS = [
   { x: POND.x, y: POND.y, w: POND.w, h: POND.h },
   { x: HOUSE.x, y: HOUSE.y, w: HOUSE.w, h: HOUSE.h },
@@ -3581,7 +3611,7 @@ function blocked(x, y, scene, fl) {
   const HL = scene === 'house' ? ((HF === 2 && HOUSE_F2) ? HOUSE_F2 : HOUSE_INT) : (scene === 'barn' ? BARN_INT : null);
   const EW = HL ? HL.extent.w : WORLD;
   const EH = HL ? HL.extent.h : WORLD;
-  if (x < 26 || y < 26 || x > EW - 26 || y > EH - 26) return true;
+  if (x < FOOT_R || y < FOOT_R || x > EW - FOOT_R || y > EH - FOOT_R) return true;   /* patch_v66: 端マージン 26→FOOT_R（16）。26 は FOOT_R(13) の2倍で「何もないのに止まる」帯になっていた */
   const obs = HL ? (scene === 'barn' ? BARN_OBS : (HF === 2 ? (HOUSE_F2_OBS || []) : HOUSE_INT_OBS)) : (OBSTACLES[scene] || []);
   for (const o of obs) {
     if (o.c) { if (dist(x, y, o.x, o.y) < o.r + FOOT_R) return true; }
@@ -3753,6 +3783,7 @@ function padAction(single) {
       if (!S.shared.story.frag[fk]) { S.shared.story.frag[fk] = true; gainSkill('explore', 8); afterSharedChange(); }
       return showDialogue(AREA_FRAGMENTS[st.area] || []);
     }
+    if (claimSpotSeeds()) return;   /* patch_v66: 畑スポットの看板で専用種の初回受け取り（受け取り済み・対象外なら false で通常処理へ） */
     const fsD = fishSpotHere();
     if (fsD && S.tool === 'rod') return startFishing(fsD);
     const sp = actionTargetPlot();
@@ -4392,7 +4423,10 @@ function drawChar(img, x, y, dir, moving, walkT, alpha, name, nameColor) {
   const col = moving ? frames[Math.floor(walkT * 7) % 4] : 1;
   ctx.save();
   if (alpha !== undefined) ctx.globalAlpha = alpha;
-  ctx.drawImage(img, col * F, dir * F, F, F, x - 96, y - 186, 192, 192);   /* patch_v63: 従来スプライトも拡大（高さ96・足元は従来どおり y+6）→ patch_v64: 2.5倍 → patch_v65: 2倍（高さ192・足元 y+6 不変） */
+  ctx.drawImage(img, col * F, dir * F, F, F, x - 92, y - 165, 192, 192);   /* patch_v63: 従来スプライトも拡大 → patch_v64: 2.5倍 → patch_v65: 2倍（高さ192）
+     patch_v66: アンカー実測で修正。シート実測（4種族とも）キャラの足裏はフレーム下端 y=60・中心 x=34.5。倍率 192/72=8/3 のため
+     足裏は矩形上端+160px・中心は左端+92px。旧 (x-96, y-186) では足裏が判定点の 26px 上・中心が 4px 左だった。
+     新 (x-92, y-165) で足裏 = y-5（フレーム描画の y-4.7 と一致）、中心 = x（同 256/512 と一致）になる */
   ctx.restore();
   drawNamePlate(name, x, y, nameColor, (S.scene === 'house' || S.scene === 'barn') ? 336 : 224);
 }
@@ -5238,7 +5272,8 @@ window.__tf = {
   FISH, FISH_IDS, ROD_DEFS, fishTableFor, rollFish, fishSizeFor, recordFishBest, tensionZoneWidth, nushiChance,
   fishSpotHere, startFishing, fishGameState: () => fishGame, fishPress, fishRelease, fishGameTick, catchFish, fishEscape,
   completeFishQuest, upgradeRod, ROD_COSTS, logFish, fishBestText, invFishTotal, DFISH, FISH_SPOT_NAMES,
-  itemName, itemIcon, itemPrice
+  itemName, itemIcon, itemPrice,
+  claimSpotSeeds, SPOT_SEED_CROPS, SPOT, mineNode, spendRP, CROPS, DRAGONS   /* patch_v66: 第1段階修正バッチの検証用 */
 };
 requestAnimationFrame(update);
 </script>
