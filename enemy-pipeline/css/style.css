@@ -548,6 +548,11 @@ button { color: inherit; }
   display: grid;
   /* PROMPT-24: 下段トレイを広げ、手札カードを指で掴める大きさにする */
   grid-template-rows: auto minmax(0, 1fr) minmax(168px, 30%);
+}
+
+/* v13.4: マップ画面ではトレイ行を内容の高さまで畳み、経路盤に回す */
+.desk.is-map .rig {
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 6px;
 }
 
@@ -853,7 +858,7 @@ button { color: inherit; }
   gap: 12px;
   padding-bottom: 6px;
   border-bottom: 1px solid rgba(150, 255, 180, 0.28);
-  color: var(--phosphor-dim);
+  color: var(--phosphor);
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.16em;
@@ -1618,8 +1623,9 @@ button { color: inherit; }
   justify-content: space-between;
   gap: 6px 8px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   letter-spacing: 0.08em;
+  color: var(--phosphor-hot);
 }
 
 .route__bar p { margin: 0; min-width: 0; }
@@ -1680,9 +1686,9 @@ button { color: inherit; }
 
 .route__tag {
   align-self: center;
-  color: var(--phosphor-dim);
+  color: var(--phosphor);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.06em;
 }
 
@@ -1692,11 +1698,11 @@ button { color: inherit; }
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid rgba(150, 255, 180, 0.4);
+  border: 1px solid rgba(150, 255, 180, 0.6);
   background: rgba(4, 20, 12, 0.85);
   color: var(--phosphor);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.06em;
   line-height: 1.05;
   padding: 2px 0 1px;
@@ -1707,14 +1713,14 @@ button { color: inherit; }
   display: block;
   font-size: 10px;
   letter-spacing: 0.12em;
-  color: var(--phosphor-dim);
+  color: var(--phosphor);
 }
 
 .node span,
 .node small { display: block; }
 
 .node small {
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 0.14em;
 }
 
@@ -1729,9 +1735,9 @@ button { color: inherit; }
   border-color: var(--phosphor-hot);
 }
 
-.node.is-past { opacity: 0.42; }
+.node.is-past { opacity: 0.62; }
 
-.node.is-ahead { opacity: 0.72; }
+.node.is-ahead { opacity: 0.9; }
 
 .node.is-revealed,
 .node.is-open.is-revealed,
@@ -1890,7 +1896,7 @@ button { color: inherit; }
 .hopper-note {
   margin: 0;
   text-align: center;
-  color: #9bb5a2;
+  color: #cfe8d6;
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.06em;
