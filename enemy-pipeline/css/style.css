@@ -835,6 +835,15 @@ button { color: inherit; }
   letter-spacing: 0.16em;
 }
 
+/* PROMPT-28: 特殊装備パネル（見出し＋チップ＋空き枠） */
+.relics-label {
+  margin: 6px 0 2px;
+  color: #8d948e;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+
 .relics {
   display: flex;
   flex-wrap: wrap;
@@ -843,14 +852,32 @@ button { color: inherit; }
   flex: none;
 }
 
-.relics span {
+.relics .relic-chip {
   border: 1px solid rgba(255, 210, 122, 0.55);
+  background: transparent;
   color: var(--amber);
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 0.04em;
   line-height: 1.15;
   padding: 1px 5px;
+  cursor: pointer;
+}
+
+.relics .relic-chip.is-open {
+  border-color: var(--amber);
+  box-shadow: 0 0 10px rgba(255, 210, 122, 0.35);
+}
+
+.relics .relic-empty {
+  border: 1px dashed rgba(141, 148, 142, 0.4);
+  color: #5c665e;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  padding: 1px 5px;
+  text-shadow: none;
 }
 
 .stage {
@@ -2435,6 +2462,48 @@ button { color: inherit; }
   color: var(--phosphor-dim);
 }
 
+/* ---------- relic tooltip（レリック詳細／PROMPT-28 追加） ---------- */
+
+.relic-tip {
+  /* card-inspect と同じく body 直下＋fixed で最前面。タップは透過させ、開閉はチップと他所タップに任せる */
+  position: fixed;
+  z-index: 9999;
+  width: max-content;
+  min-width: 240px;
+  max-width: 320px;
+  padding: 8px 11px;
+  border: 1px solid rgba(61, 255, 122, 0.55);
+  background:
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, transparent 1px 3px),
+    rgba(2, 12, 6, 0.96);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55), 0 0 14px rgba(40, 255, 110, 0.18);
+  pointer-events: none;
+}
+
+.relic-tip__name {
+  margin: 0 0 3px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--amber);
+}
+
+.relic-tip__body {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--phosphor);
+}
+
+.relic-tip__effect {
+  margin: 4px 0 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--phosphor-hot);
+}
+
 .punchcard.is-focused {
   transform: translateY(-9px);
   outline: 2px solid rgba(61, 255, 122, 0.75);
@@ -2618,6 +2687,7 @@ body.is-dead .comms {
   /* PROMPT-24: 740x360級でも手札が約96pxの高さになるようトレイを確保する */
   .rig { grid-template-rows: auto minmax(0, 1fr) minmax(146px, 30%); }
   .counters__label { display: none; }
+  .relics-label { display: none; }
   .hint { display: none; }
   /* PROMPT-24: 低い画面ではリーダーを詰め、浮いた分を手札カードの高さに回す */
   .reader { padding: 2px 8px 2px; }
@@ -2656,7 +2726,8 @@ body.is-dead .comms {
   .dossier .pips { display: none; }
   .stat--icon { padding-top: 0; padding-bottom: 0; }
   .relics { gap: 3px; }
-  .relics span { font-size: 9px; line-height: 1.1; padding: 1px 3px; }
+  .relics .relic-chip, .relics .relic-empty { font-size: 9px; line-height: 1.1; padding: 1px 3px; }
+  .relics-label { font-size: 8px; margin-top: 3px; }
   .piles { padding: 1px 3px; }
 }
 
