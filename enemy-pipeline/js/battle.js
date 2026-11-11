@@ -109,6 +109,7 @@
         stance: "EXPOSE",
         block: 0,
         stagger: 0,
+        halveNext: 0,
       },
       enemy,
       noise: 0,
@@ -117,6 +118,7 @@
       drawPile: shuffle(deck, rng),
       hand: [],
       discard: [],
+      exhaust: [],
     };
   }
 
@@ -164,18 +166,25 @@
 
   function applyEffect(state, effect, log) {
     if (effect.type === "unplayable") return;
+    // 音響フレア/ジャミング・フレア: 発動時点のノイズを効果値へ変換する
+    if (effect.type === "damage_per_noise") effect = { ...effect, type: "damage", value: state.noise * (effect.value || 0) };
+    if (effect.type === "block_per_noise") effect = { ...effect, type: "block", value: state.noise * (effect.value || 0) };
     const amount = effect.value;
     if (effect.target === "enemy" && effect.type === "damage") {
-      const block = state.enemy.block || 0;
-      const soaked = Math.min(block, amount);
-      const dealt = amount - soaked;
-      if (soaked > 0) {
-        state.enemy.block = block - soaked;
-        log.push(`BLOCKED ${soaked}`);
+      const hits = effect.hits || 1;
+      for (let h = 0; h < hits; h += 1) {
+        if (state.enemy.hp <= 0) break;
+        const block = effect.pierce ? 0 : (state.enemy.block || 0);
+        const soaked = Math.min(block, amount);
+        const dealt = amount - soaked;
+        if (soaked > 0) {
+          state.enemy.block = block - soaked;
+          log.push(`BLOCKED ${soaked}`);
+        }
+        state.enemy.hp = Math.max(0, state.enemy.hp - dealt);
+        if (state.enemy.hp === 0) state.enemy.dead = true;
+        log.push(`DMG ${dealt}${effect.pierce ? " PIERCE" : ""}  HP ${state.enemy.hp}`);
       }
-      state.enemy.hp = Math.max(0, state.enemy.hp - dealt);
-      if (state.enemy.hp === 0) state.enemy.dead = true;
-      log.push(`DMG ${dealt}  HP ${state.enemy.hp}`);
       return;
     }
     if (effect.target === "enemy" && effect.type === "stun") {
@@ -218,6 +227,32 @@
       log.push(`VULN ${state.enemy.vulnerable}`);
       return;
     }
+    if (effect.target === "player" && effect.type === "heal") {
+      const before = state.player.hp;
+      state.player.hp = Math.min(state.player.hpMax, state.player.hp + amount);
+      log.push(`HEAL +${state.player.hp - before}  HP ${state.player.hp}`);
+      return;
+    }
+    if (effect.target === "player" && effect.type === "drain_energy") {
+      state.player.energy = 0;
+      log.push("PWR DRAINED  TOTAL 0");
+      return;
+    }
+    if (effect.target === "player" && effect.type === "reset_noise") {
+      state.noise = 0;
+      log.push("NOISE RESET  TOTAL 0");
+      return;
+    }
+    if (effect.target === "player" && effect.type === "draw") {
+      const res = drawCards(state, amount);
+      for (const line of res.log) log.push(line);
+      return;
+    }
+    if (effect.target === "player" && effect.type === "halve_next") {
+      state.player.halveNext = (state.player.halveNext || 0) + amount;
+      log.push("DECOY SET - NEXT DAMAGE HALVED");
+      return;
+    }
     if (effect.target === "enemy" && effect.type === "instant_kill") {
       state.enemy.hp = 0;
       state.enemy.dead = true;
@@ -237,8 +272,9 @@
     // COVER を付与するカード自身（CQC打撃など）は解除の例外とする
     const inCover = state.player.stance === "COVER";
     const rawNoise = card.noise || 0;
-    const effNoise = inCover ? Math.max(0, rawNoise - 1) : rawNoise;
-    state.noise += effNoise;
+    // 負ノイズ（ノイズ・キャンセラー等）は潜伏の抑制対象外。そのまま増減し下限0で止める
+    const effNoise = rawNoise < 0 ? rawNoise : (inCover ? Math.max(0, rawNoise - 1) : rawNoise);
+    state.noise = Math.max(0, state.noise + effNoise);
     const log = [];
     if (inCover && (rawNoise > 0 || card.breaksCover === true) && card.stance_change !== "COVER") {
       state.player.stance = "EXPOSE";
@@ -249,7 +285,7 @@
     for (const effect of card.effects) applyEffect(state, effect, log);
     // 検収修正 2026-11-10 (PROMPT-19): CQCカテゴリのカードはスタン+1（設計欠落の補完）
     if (card.category === "CQC" && !state.enemy.dead) addStun(state, 1, log, false);
-    log.push(`NOISE +${effNoise}${effNoise !== rawNoise ? ` (COVER -${rawNoise - effNoise})` : ""}  TOTAL ${state.noise}`);
+    log.push(`NOISE ${effNoise >= 0 ? "+" : ""}${effNoise}${effNoise !== rawNoise && rawNoise >= 0 ? ` (COVER -${rawNoise - effNoise})` : ""}  TOTAL ${state.noise}`);
     // PROMPT-18: ノイズ限界で警報発令（敵バフ＋リセット）
     let breach = false;
     if (state.noise >= NOISE_MAX) {
@@ -269,7 +305,12 @@
     const result = playCard(state, card);
     if (!result.ok) return result;
     state.hand.splice(index, 1);
-    state.discard.push(card);
+    if (card.isExhaust) {
+      state.exhaust.push(card);
+      result.log.push(`EXHAUST ${card.name}`);
+    } else {
+      state.discard.push(card);
+    }
     return result;
   }
 
@@ -358,6 +399,11 @@
     for (let i = 0; i < hits; i += 1) {
       if (state.player.hp <= 0) break;
       let dmg = value;
+      if (i === 0 && (state.player.halveNext || 0) > 0) {
+        state.player.halveNext -= 1;
+        dmg = Math.floor(dmg / 2);
+        log.push(`DECOY HALVED ${dmg}`);
+      }
       if (state.player.stance === "COVER") {
         dmg = Math.max(0, dmg - 2);
         if (dmg === 0) evaded = true;
@@ -475,7 +521,7 @@
   }
 
   function pileCount(state) {
-    return state.drawPile.length + state.hand.length + state.discard.length;
+    return state.drawPile.length + state.hand.length + state.discard.length + (state.exhaust ? state.exhaust.length : 0);
   }
 
   root.Battle = {
