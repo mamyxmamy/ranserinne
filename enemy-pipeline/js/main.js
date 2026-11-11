@@ -1675,9 +1675,9 @@ async function maybeVictory() {
 
 // PROMPT-27: モニターはシーン合成（部屋／敵／素体）。部屋はエンカウント種別で振り分ける
 const CCTV_ROOMS = {
-  BOSS: ["assets/room_gate.jpg"],
-  ELITE: ["assets/room_corridor.jpg", "assets/room_hangar.jpg"],
-  BATTLE: ["assets/room_server.jpg", "assets/room_corridor.jpg", "assets/room_hangar.jpg"],
+  BOSS: [{ key: "gate", src: "assets/room_gate.jpg" }],
+  ELITE: [{ key: "corridor", src: "assets/room_corridor.jpg" }, { key: "hangar", src: "assets/room_hangar.jpg" }],
+  BATTLE: [{ key: "server", src: "assets/room_server.jpg" }, { key: "corridor", src: "assets/room_corridor.jpg" }, { key: "hangar", src: "assets/room_hangar.jpg" }],
 };
 
 function pickCctvRoom(type) {
@@ -1692,8 +1692,8 @@ function setCctvImage(src, targetName, type) {
   ui.cctvDummy.hidden = false;
   if (ui.cctvRoom) {
     const room = pickCctvRoom(type);
-    ui.cctvRoom.src = room;
-    ui.cctvScene.dataset.room = room.split("/").pop().replace("room_", "").replace(".jpg", "");
+    ui.cctvRoom.src = room.src;
+    ui.cctvScene.dataset.room = room.key;
   }
   if (!src) return;
   ui.cctvEnemy.onload = () => {
