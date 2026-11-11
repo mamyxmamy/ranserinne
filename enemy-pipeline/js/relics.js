@@ -3,10 +3,12 @@
 
 (function (root) {
   const CATALOG = Object.freeze([
-    { id: "relic_optical_camo", name: "旧世代の光学迷彩", trigger: "start_of_combat", effects: [{ type: "add_block", value: 8 }] },
-    { id: "relic_overdose_injector", name: "オーバードーズ・インジェクター", trigger: "start_of_turn", effects: [{ type: "add_energy", value: 1 }, { type: "add_card_to_discard", card_id: "curse_flashback", value: 1 }] },
-    { id: "relic_hydraulic_actuator", name: "油圧式関節アクチュエータ", trigger: "on_apply_stun", effects: [{ type: "increase_stun", value: 1 }] },
-    { id: "relic_analog_wiretap", name: "アナログ盗聴装置", trigger: "on_map_generation", effects: [{ type: "add_scan_uses", value: 1 }] },
+    // PROMPT-28: 初期装備はこの1つのみ（VESSEL 07 基礎OS）。残りは道中で拾って空き枠を埋める。
+    { id: "relic_vessel07_os", name: "VESSEL 07 基礎OS", description: "時代遅れの素体に組み込まれた標準OS。戦闘開始時、自動的に防護（BLK）を 2 得る。", trigger: "start_of_combat", effects: [{ type: "add_block", value: 2 }] },
+    { id: "relic_optical_camo", name: "旧世代の光学迷彩", description: "旧世代の光学迷彩クローク。戦闘開始時、防護（BLK）を 8 得る。", trigger: "start_of_combat", effects: [{ type: "add_block", value: 8 }] },
+    { id: "relic_overdose_injector", name: "オーバードーズ・インジェクター", description: "興奮剤の自動注入器。ターン開始時に電力 +1。ただし副作用でフラッシュバック（呪装）が捨て札に混ざる。", trigger: "start_of_turn", effects: [{ type: "add_energy", value: 1 }, { type: "add_card_to_discard", card_id: "curse_flashback", value: 1 }] },
+    { id: "relic_hydraulic_actuator", name: "油圧式関節アクチュエータ", description: "関節部の油圧アクチュエータ。スタンを与える効果が +1 される。", trigger: "on_apply_stun", effects: [{ type: "increase_stun", value: 1 }] },
+    { id: "relic_analog_wiretap", name: "アナログ盗聴装置", description: "アナログ盗聴装置。マップ生成時、スキャン回数が +1 される。", trigger: "on_map_generation", effects: [{ type: "add_scan_uses", value: 1 }] },
   ].map((relic) => Object.freeze({
     ...relic,
     effects: Object.freeze(relic.effects.map((effect) => Object.freeze({ ...effect }))),
@@ -16,6 +18,7 @@
 
   const byId = new Map(CATALOG.map((relic) => [relic.id, relic]));
   const CHIP = Object.freeze({
+    relic_vessel07_os: "基礎OS",
     relic_optical_camo: "光学迷彩",
     relic_overdose_injector: "注入器",
     relic_hydraulic_actuator: "油圧関節",
@@ -32,7 +35,8 @@
   }
 
   function issued() {
-    return CATALOG.map((relic) => relic.id);
+    // PROMPT-28: 初期所持は基礎OSのみ（かつての全件配布＝デバッグ用複数所持は廃止）
+    return ["relic_vessel07_os"];
   }
 
   function grant(ids, id) {
@@ -63,6 +67,18 @@
     const relic = byId.get(id);
     if (!relic) return "";
     return `${relic.name} / ${relic.effects.map(effectText).join("、")}`;
+  }
+
+  // PROMPT-28: ツールチップ表示用の詳細（名称・説明文・効果サマリ）
+  function detail(id) {
+    const relic = byId.get(id);
+    if (!relic) return null;
+    return {
+      id: relic.id,
+      name: relic.name,
+      description: relic.description || "",
+      effectsText: relic.effects.map(effectText).join("、"),
+    };
   }
 
   function eachEffect(ids, trigger, visit) {
@@ -122,6 +138,7 @@
     card,
     chip,
     summary,
+    detail,
     eachEffect,
     stunBonus,
     applyBattle,

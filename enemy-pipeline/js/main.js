@@ -41,6 +41,12 @@ const GRAY_TUT_MAP = [
   "光っている【巡回プログラム（BATTLE）】のノードをクリックして、最初のセクターへ進め。",
 ];
 const GRAY_TUT_INTRO = "敵の巡回プログラムだ。昔の義体（素体）とは勝手が違うぞ、操作を思い出せ。";
+// PROMPT-28: 戦闘チュートリアル冒頭（手札を配る前）のレリック説明通信
+const GRAY_TUT_RELIC = [
+  "パンドラ、左下の【特殊装備（レリック）】を確認しておけ。",
+  "今は初期装備の『基礎OS』しかないが、持っているだけで常に効果を発揮する。",
+  "道中で使えそうなパーツを拾い、その空き枠を埋めて素体を強化していくんだ。",
+];
 // PROMPT-22: チュートリアル通信文を新仕様（防護リセット／電力上限／COVERバフ）に合わせて改修
 const GRAY_T1 = [
   "敵が攻撃を仕掛けてくる。まずは画面左の【電力（PWR）】を見ろ。毎ターン「3」までしか供給されない貴重なリソースだ。",
@@ -215,6 +221,11 @@ const ui = {
   ambush: $("ambush"),
   ambushDetail: $("ambush-detail"),
   relics: $("relics"),
+  relicsLabel: $("relics-label"),
+  relicTip: $("relic-tip"),
+  relicTipName: $("relic-tip-name"),
+  relicTipBody: $("relic-tip-body"),
+  relicTipEffect: $("relic-tip-effect"),
   start: $("start-run"),
   restart: $("restart-run"),
   safehouseLine: $("safehouse-line"),
@@ -1004,17 +1015,67 @@ function renderRoute() {
   });
 }
 
+// PROMPT-28: レリックパネルは総枠5（カタログ総数と一致）。空き枠は [ EMPTY ] で示唆する。
+const RELIC_SLOTS = 5;
+let openRelicTipId = null;
+
+function closeRelicTip() {
+  openRelicTipId = null;
+  if (ui.relicTip) ui.relicTip.hidden = true;
+  for (const el of ui.relics.querySelectorAll(".relic-chip.is-open")) el.classList.remove("is-open");
+}
+
+function toggleRelicTip(id, anchor) {
+  if (!ui.relicTip) return;
+  if (openRelicTipId === id && !ui.relicTip.hidden) { closeRelicTip(); return; }
+  const info = Relics.detail(id);
+  if (!info) return;
+  closeRelicTip();
+  openRelicTipId = id;
+  ui.relicTipName.textContent = info.name;
+  ui.relicTipBody.textContent = info.description;
+  ui.relicTipEffect.textContent = info.effectsText;
+  ui.relicTip.hidden = false;
+  if (anchor) {
+    anchor.classList.add("is-open");
+    const r = anchor.getBoundingClientRect();
+    const width = ui.relicTip.offsetWidth || 260;
+    const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
+    ui.relicTip.style.left = `${left}px`;
+    ui.relicTip.style.top = "auto";
+    ui.relicTip.style.bottom = `${Math.max(8, window.innerHeight - r.top + 8)}px`;
+  }
+}
+
+// 他所タップでツールチップを閉じる（チップ自身とチップ内は除外し、チップの click でトグルさせる）
+document.addEventListener("pointerdown", (ev) => {
+  if (!openRelicTipId) return;
+  if (ev.target.closest && (ev.target.closest(".relic-chip") || ev.target.closest("#relic-tip"))) return;
+  closeRelicTip();
+}, true);
+
 function renderRelics() {
   const ids = (run && run.relics) || [];
   const live = ids.length > 0 && (session.phase === "map" || session.phase === "combat" || session.phase === "reward");
+  closeRelicTip(); // チップを作り直すので、開いていた詳細は閉じる
   ui.relics.hidden = !live;
+  if (ui.relicsLabel) ui.relicsLabel.hidden = !live;
   ui.relics.replaceChildren();
   if (!live) return;
   for (const id of ids) {
-    const chip = document.createElement("span");
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "relic-chip";
+    chip.dataset.relicId = id;
     chip.textContent = Relics.chip(id);
-    chip.title = Relics.summary(id);
+    chip.addEventListener("click", () => toggleRelicTip(id, chip));
     ui.relics.append(chip);
+  }
+  for (let i = ids.length; i < RELIC_SLOTS; i += 1) {
+    const empty = document.createElement("span");
+    empty.className = "relic-empty";
+    empty.textContent = "[ EMPTY ]";
+    ui.relics.append(empty);
   }
 }
 
@@ -1211,6 +1272,8 @@ function tutorialLock(cardId) {
 
 const TUTORIAL_FOCUS = {
   boot: { hi: [".punchcard[data-id='boot']", "#slot"], dim: [] },
+  // PROMPT-28: 戦闘冒頭のレリック説明（#relics は aside 内なので status-bay は dim しない）
+  relic: { hi: ["#relics"], dim: [".glass", ".tray"] },
   // PROMPT-25: T1は通信の行ごとにハイライトを切り替える（1行目=電力、2行目=防護カード+スロット）
   t1a: { hi: ["#energy-row", "#energy-pips"], dim: [".glass", ".meters", ".tray"] },
   t1b: { hi: [".punchcard[data-id='defend_cover']", "#slot"], dim: [".status-bay", ".meters", ".glass"] },
@@ -1667,6 +1730,11 @@ async function beginCombat(encounter) {
     syncEndButton();
     return;
   }
+  // PROMPT-28: 手札を配る前に、レリック（特殊装備）の説明ステップを挟む
+  setTutorialFocus("relic");
+  const relicOk = await presentRadio(GRAY_TUT_RELIC);
+  clearTutorialFocus();
+  if (!relicOk || session.phase !== "combat") return;
   dealOpeningHand();
   refreshHand();
   // PROMPT-19 ターン1: 手札と敵インテントを固定し、通信を2段で出す
@@ -2262,7 +2330,9 @@ function blankDesk() {
   ui.piles.hidden = true;
   ui.shotCall.hidden = true;
   ui.ambush.hidden = true;
+  closeRelicTip();
   ui.relics.hidden = true;
+  if (ui.relicsLabel) ui.relicsLabel.hidden = true;
   ui.relics.replaceChildren();
   ui.link.textContent = "NO CARRIER";
   ui.contact.textContent = "NO CARRIER";
@@ -2341,7 +2411,9 @@ function resetToCinema() {
   run = null;
   session.offer = [];
   routeToken += 1;
+  closeRelicTip();
   ui.relics.hidden = true;
+  if (ui.relicsLabel) ui.relicsLabel.hidden = true;
   ui.relics.replaceChildren();
   ui.log.replaceChildren();
   ui.hopper.replaceChildren();
