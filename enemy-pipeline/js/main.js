@@ -255,6 +255,7 @@ const ui = {
   installBtn: $("install-btn"),
   installHow: $("install-how"),
   continueBtn: $("continue-btn"),
+  tutorialBtn: $("tutorial-btn"),
   prologue: $("prologue"),
   prologueTerm: $("prologue-term"),
   prologuePrompt: $("prologue-prompt"),
@@ -1190,6 +1191,11 @@ function loadGame() {
 
 function clearSave() {
   try { window.localStorage.removeItem(SAVE_KEY); } catch { /* noop */ }
+}
+
+function refreshTutorialBtn() {
+  if (!ui.tutorialBtn) return;
+  ui.tutorialBtn.hidden = session.phase !== "attract";
 }
 
 function refreshContinueBtn() {
@@ -2697,6 +2703,7 @@ async function beginAttract() {
   if (ui.installHow) ui.installHow.hidden = true;
   refreshInstallCta();
   refreshContinueBtn(); // PROMPT-24: セーブがあれば CONTINUE を出す
+  refreshTutorialBtn();
 }
 
 // クリック直後：ブートテキストを高速印字し、その裏で動画をプリロードする
@@ -3233,6 +3240,16 @@ if (ui.continueBtn) {
     if (audio) audio.unlock();
     if (session.phase !== "attract") return;
     restoreRun();
+  });
+}
+if (ui.tutorialBtn) {
+  // チュートリアルから開始: 完了フラグを消してから通常の起動フローへ（BOOT通信から再体験できる）
+  ui.tutorialBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (audio) audio.unlock();
+    if (session.phase !== "attract") return;
+    try { localStorage.removeItem(TUTORIAL_STORE); } catch { /* noop */ }
+    launchFromAttract();
   });
 }
 if (ui.installBtn) {
