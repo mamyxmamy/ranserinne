@@ -50,11 +50,11 @@ const GRAY_TUT_RELIC = [
 // PROMPT-22: チュートリアル通信文を新仕様（防護リセット／電力上限／COVERバフ）に合わせて改修
 const GRAY_T1 = [
   "敵が攻撃を仕掛けてくる。まずは画面左の【電力（PWR）】を見ろ。毎ターン「3」までしか供給されない貴重なリソースだ。",
-  "電力を消費して、手札の【防護（BLK）】カードを使え。素体の装甲を展開するんだ。",
+  "電力を消費して、手札の【潜伏（COVER）】カードを使え。防護（BLK）を展開して、敵の攻撃を受け止めるんだ。",
 ];
 const GRAY_T1_AFTER = "よし。展開した防護（ブロック）は「ターン終了時」に消滅する。タイミングを間違えるなよ。ターンを終了しろ。";
 const GRAY_T2 = "敵に隙ができた。電力を計算しながら、攻撃カードで敵の耐久値を削れ！";
-const GRAY_T3_A = "画面中央の【騒音値（NOISE）】を見ろ。火力の高いカードを切ればノイズが発生し、限界に達すると敵の増援やバフが作動する。";
+const GRAY_T3_A = "画面中央の【騒音値（NOISE）】を見ろ。カードを切るたび、素体の体内で金属箔が打ち抜かれる。その駆動音がノイズだ。孔の複雑なカードほど音はデカくなる。限界に達すると敵の増援やバフが作動する。";
 const GRAY_T3_B = "ノイズを抑えたいなら【潜伏（COVER）】の態勢をとれ。ただし、派手な銃撃を行えば潜伏は即座に解けるぞ。";
 const GRAY_T3_C = "安全にいくなら【スタン】ゲージだ。格闘でゲージを最大まで溜めれば、敵をショートさせられる。状況に合わせて選べ。";
 const GRAY_TUT_END = "講義はここまでだ。あとは任せたぞ、パンドラ。敵を完全に沈黙させろ！";
@@ -315,6 +315,7 @@ function changeScene(sceneName) {
   clearCardFocus();
   if (name !== "BATTLE") silenceRadio();
   setMapMode(name === "MAP");
+  refreshCommsFold();
   ui.screen.classList.toggle("is-safe", name === "SAFEHOUSE");
   ui.screen.classList.toggle("is-event", name === "EVENT");
   if (audio) {
@@ -1148,6 +1149,7 @@ function tutorialCleared() {
 function markTutorialDone() {
   try { window.localStorage.setItem(TUTORIAL_STORE, "1"); }
   catch { /* storage unavailable */ }
+  refreshCommsFold();
 }
 
 // ==== PROMPT-24: オートセーブ（localStorage にランを自動保存し、タイトルから再開可能にする） ====
@@ -1510,9 +1512,18 @@ function clearCardFocus() {
   if (ui.cardInspect) ui.cardInspect.hidden = true;
 }
 
+// v13.5: チュートリアル後は通信パネルを畳み、通信（ラジオ）が来たときだけ出す
+const COMMS_FOLD_SCENES = ["MAP", "BATTLE", "EVENT", "SAFEHOUSE", "REWARD"];
+function refreshCommsFold() {
+  if (!ui.screen) return;
+  const fold = tutorialCleared() && !radioOpen && COMMS_FOLD_SCENES.includes(currentScene);
+  ui.screen.classList.toggle("comms-folded", fold);
+}
+
 function silenceRadio() {
   radioToken += 1;
   radioOpen = false;
+  refreshCommsFold();
   radioReady = false;
   window.clearTimeout(radioTimer);
   radioTimer = 0;
@@ -1621,6 +1632,7 @@ async function dismissRadio(token) {
   ui.radioLine.classList.remove("is-speaking");
   ui.radioNext.hidden = true;
   radioOpen = false;
+  refreshCommsFold();
   refreshHand();
   syncEndButton();
 }
@@ -1628,6 +1640,7 @@ async function dismissRadio(token) {
 async function presentRadio(lines, opts = {}) {
   const token = ++radioToken;
   radioOpen = true;
+  refreshCommsFold();
   radioReady = false;
   session.advance = false;
   window.clearTimeout(radioTimer);
@@ -2583,6 +2596,11 @@ const BOOT_LINES = [
   "LOADING ANALOG KERNEL...",
   "BYPASSING AI FIREWALL...",
   "[CONNECTION SECURED]",
+  "INITIALIZING SECURE CONNECTION...",
+  "ANALOG AUDIO-LINK ... [ CONNECTED ]",
+  "AUTO-PUNCHER MODULE ... [ STANDBY ]",
+  "FOIL ROLL REMAINING ... [ 99.8% ]",
+  "SYSTEM READY.",
 ];
 
 // 導入フロー状態：idle（開始待ち）→ booting（ブート印字＋裏読み）→ video（ハッキング動画）→ title（最終フレーム＋DIVE）
