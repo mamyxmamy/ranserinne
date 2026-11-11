@@ -873,6 +873,11 @@ button { color: inherit; }
   letter-spacing: 0.16em;
 }
 
+/* v13.6: 画面上部のタイトル帯（ENEMY PIPELINE / ANALOG ESPIONAGE）は装飾のみのため撤去し、ステージを広げる */
+.statusbar {
+  display: none;
+}
+
 /* PROMPT-28: 特殊装備パネル（見出し＋チップ＋空き枠） */
 .relics-label {
   margin: 6px 0 2px;
