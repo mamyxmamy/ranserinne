@@ -192,7 +192,10 @@ const ui = {
   routeReturn: $("route-return"),
   piles: $("piles"),
   glass: $("glass-canvas"),
-  cctvImg: $("cctv-img"),
+  cctvScene: $("cctv-scene"),
+  cctvRoom: $("cctv-room"),
+  cctvEnemy: $("cctv-enemy"),
+  cctvVessel: $("cctv-vessel"),
   cctvDummy: $("cctv-dummy"),
   cctvTarget: $("cctv-target"),
   cctvTime: $("cctv-time"),
@@ -606,6 +609,16 @@ function renderStance() {
   ui.stanceHint.textContent = stance === "EXPOSE"
     ? "露呈中：バフなし"
     : "潜伏中：被ダメ-2／ノイズ-1";
+  // PROMPT-27: 素体レイヤーを態勢に連動させる（COVER=物陰に潜伏／EXPOSE=踏み出し）
+  if (ui.cctvVessel) {
+    const cover = stance === "COVER";
+    if (ui.cctvVessel.dataset.stance !== stance) {
+      ui.cctvVessel.dataset.stance = stance;
+      ui.cctvVessel.src = cover ? "assets/cctv_vessel_cover.png" : "assets/cctv_vessel_expose.png";
+    }
+    ui.cctvVessel.classList.toggle("is-cover", cover);
+    ui.cctvVessel.classList.toggle("is-expose", !cover);
+  }
 }
 
 let lastNoiseShown = 0;
@@ -1660,21 +1673,34 @@ async function maybeVictory() {
   return true;
 }
 
-function setCctvImage(src, targetName) {
+// PROMPT-27: モニターはシーン合成（部屋／敵／素体）。部屋はエンカウント種別で振り分ける
+const CCTV_ROOMS = {
+  BOSS: ["assets/room_gate.jpg"],
+  ELITE: ["assets/room_corridor.jpg", "assets/room_hangar.jpg"],
+  BATTLE: ["assets/room_server.jpg", "assets/room_corridor.jpg", "assets/room_hangar.jpg"],
+};
+
+function pickCctvRoom(type) {
+  const list = CCTV_ROOMS[type] || CCTV_ROOMS.BATTLE;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+function setCctvImage(src, targetName, type) {
   if (ui.cctvTarget) ui.cctvTarget.textContent = `TARGET: ${targetName || "—"}`;
-  if (!ui.cctvImg || !ui.cctvDummy) return;
-  ui.cctvImg.hidden = true;
+  if (!ui.cctvScene || !ui.cctvEnemy || !ui.cctvDummy) return;
+  ui.cctvScene.hidden = true;
   ui.cctvDummy.hidden = false;
+  if (ui.cctvRoom) ui.cctvRoom.src = pickCctvRoom(type);
   if (!src) return;
-  ui.cctvImg.onload = () => {
-    ui.cctvImg.hidden = false;
+  ui.cctvEnemy.onload = () => {
+    ui.cctvScene.hidden = false;
     ui.cctvDummy.hidden = true;
   };
-  ui.cctvImg.onerror = () => {
-    ui.cctvImg.hidden = true;
+  ui.cctvEnemy.onerror = () => {
+    ui.cctvScene.hidden = true;
     ui.cctvDummy.hidden = false;
   };
-  ui.cctvImg.src = src;
+  ui.cctvEnemy.src = src;
 }
 
 // ボス戦BGM（heartbeat_at_the_gate）が有効かどうか
@@ -1707,7 +1733,7 @@ async function beginCombat(encounter) {
   ui.link.textContent = "CARRIER LOCK";
   ui.contact.textContent = encounter.name;
   ui.enemyName.textContent = encounter.short || encounter.name;
-  setCctvImage((battle.enemy && battle.enemy.image) || encounter.image || "", encounter.name);
+  setCctvImage((battle.enemy && battle.enemy.image) || encounter.image || "", encounter.name, encounter.type);
   ui.slotLabel.textContent = "READER LIVE";
   ui.note.textContent = "条件を満たさないカードは、スリットが拒否する。";
   ui.hopper.replaceChildren();
@@ -2154,11 +2180,11 @@ async function openReward() {
     return;
   }
   session.busy = true;
-  if (ui.cctvImg && !ui.cctvImg.hidden) ui.cctvImg.classList.add("is-glitching");
+  if (ui.cctvEnemy && ui.cctvScene && !ui.cctvScene.hidden) ui.cctvEnemy.classList.add("is-glitching");
   if (ui.silenced) ui.silenced.hidden = false;
   if (audio) audio.playSE("glitch");
   await delay(1500);
-  if (ui.cctvImg) ui.cctvImg.classList.remove("is-glitching");
+  if (ui.cctvEnemy) ui.cctvEnemy.classList.remove("is-glitching");
   if (ui.silenced) ui.silenced.hidden = true;
   if (session.phase !== "combat" || !battle || battle.player.hp <= 0) {
     session.busy = false;
@@ -2185,11 +2211,11 @@ async function openReward() {
 
 async function bossClearSequence() {
   session.busy = true;
-  if (ui.cctvImg && !ui.cctvImg.hidden) ui.cctvImg.classList.add("is-glitching");
+  if (ui.cctvEnemy && ui.cctvScene && !ui.cctvScene.hidden) ui.cctvEnemy.classList.add("is-glitching");
   if (ui.breached) ui.breached.hidden = false;
   if (audio) audio.playSE("glitch");
   await delay(1600);
-  if (ui.cctvImg) ui.cctvImg.classList.remove("is-glitching");
+  if (ui.cctvEnemy) ui.cctvEnemy.classList.remove("is-glitching");
   if (ui.breached) ui.breached.hidden = true;
   if (session.phase !== "combat") {
     session.busy = false;

@@ -123,7 +123,7 @@
       };
     }
     if (type === "BOSS") {
-      return { kind: "combat", type, enemyId: "enemy_gatekeeper", name: "重装甲サイボーグ『GATEKEEPER』", short: "GATEKEEPER", hp: 120, image: "assets/enemy_boss.svg" };
+      return { kind: "combat", type, enemyId: "enemy_gatekeeper", name: "重装甲サイボーグ『GATEKEEPER』", short: "GATEKEEPER", hp: 120, image: "assets/cctv_enemy_gatekeeper.png" };
     }
     if (type === "SAFEHOUSE") return { kind: "rest", type, heal: REST_HEAL };
     const event = root.Events && root.Events.forNode(node);
