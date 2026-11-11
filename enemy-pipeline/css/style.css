@@ -2318,14 +2318,40 @@ button { color: inherit; }
   background: #04140b;
 }
 
-.cctv-monitor__img {
+/* PROMPT-27: シーン合成（部屋／敵／素体の3層） */
+.cctv-monitor__scene {
+  position: absolute;
+  inset: 0;
+}
+
+.cctv-monitor__room {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: sepia(100%) hue-rotate(70deg) saturate(150%) contrast(120%);
+  filter: saturate(0.92) contrast(1.06) brightness(0.97);
 }
+
+.cctv-monitor__enemy {
+  position: absolute;
+  right: 3%;
+  bottom: 0;
+  height: 82%;
+  width: auto;
+  filter: saturate(0.95) contrast(1.05) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.5));
+}
+
+.cctv-monitor__vessel {
+  position: absolute;
+  left: 2%;
+  bottom: 0;
+  width: auto;
+  filter: saturate(0.95) contrast(1.05) drop-shadow(0 8px 8px rgba(0, 0, 0, 0.5));
+}
+
+.cctv-monitor__vessel.is-expose { height: 68%; }
+.cctv-monitor__vessel.is-cover { height: 50%; }
 
 .cctv-monitor__dummy {
   position: absolute;
@@ -2565,7 +2591,7 @@ body.is-dead .comms {
 
 /* ---------- victory flash / glitch（2026-11-10 追加） ---------- */
 
-.cctv-monitor__img.is-glitching {
+.cctv-monitor__enemy.is-glitching {
   animation: cctv-glitch 0.18s steps(2) infinite;
 }
 
@@ -2678,7 +2704,7 @@ body.is-dead .comms {
 
 @media (prefers-reduced-motion: reduce) {
   .radio--danger .radio__line { animation: none; }
-  .cctv-monitor__img.is-glitching { animation: none; }
+  .cctv-monitor__enemy.is-glitching { animation: none; }
   .glass-flash { animation: none; }
 }
 
