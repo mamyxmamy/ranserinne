@@ -9,7 +9,7 @@
       "effects": [ { "target": "enemy", "type": "damage", "value": 6 } ]
     },
     {
-      "id": "defend_cover", "name": "隠伏 (COVER)", "cost": 1, "category": "TACTIC", "type": "skill", "noise": 0, "stance_change": "COVER",
+      "id": "defend_cover", "name": "潜伏 (COVER)", "cost": 1, "category": "TACTIC", "type": "skill", "noise": 0, "stance_change": "COVER",
       "flavor": "「『聖歌隊』は互いの死角を完璧に補い合った。だが今は、この冷たいコンクリートの壁だけが相棒だ。」",
       "effects": [ { "target": "player", "type": "block", "value": 5 } ]
     },
