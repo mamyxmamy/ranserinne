@@ -158,7 +158,7 @@
     state.enemy.stun = before + gained;
     if (gained > 0) log.push(`STUN ${state.enemy.stun}/${state.enemy.stunMax}`);
     const extra = Math.max(0, gained - amount);
-    if (extra > 0) log.push(`PART STUN +${extra}`);
+    if (extra > 0) log.push(`STUN BOOST +${extra}`);
     return gained;
   }
 

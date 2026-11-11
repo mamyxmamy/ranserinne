@@ -109,6 +109,8 @@ function blurb(card) {
     if (effect.type === "add_card_to_discard") parts.push("捨て札に呪装");
     if (effect.type === "unplayable") parts.push("読取不能");
   }
+  // CQCカテゴリは使用時に敵スタン+1（battle.js playCard の仕様）。即制圧カードは敵が消滅しスタンが乗らないため除外
+  if (card.category === "CQC" && !(card.effects || []).some((effect) => effect.type === "instant_kill")) parts.push("スタン +1");
   return parts.join(" / ");
 }
 
@@ -1392,6 +1394,12 @@ function focusCard(el) {
   ui.cardInspectName.textContent = `解析： ${data.name}`;
   const lines = [`消費PWR ${data.cost} ／ 発生ノイズ +${data.noise}${data.stance ? ` ／ 態勢→${data.stance}` : ""}`];
   if (data.rules) lines.push(data.rules);
+  // スタン効果カードは、レリック補正（油圧関節など）込みの実効値を解析に併記する
+  if (card && window.Relics && typeof run !== "undefined" && run && run.relics) {
+    const stunEff = (card.effects || []).find((effect) => effect.target === "enemy" && effect.type === "stun");
+    const bonus = stunEff ? Relics.stunBonus({ relics: run.relics }) : 0;
+    if (stunEff && bonus > 0) lines.push(`スタン実効 +${stunEff.value + bonus}（レリック補正 +${bonus}）`);
+  }
   ui.cardInspectBody.textContent = lines.join("\n");
   ui.cardInspectFlavor.textContent = data.flavor || "";
   ui.cardInspectFlavor.hidden = !data.flavor;
