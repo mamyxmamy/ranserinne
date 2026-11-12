@@ -66,8 +66,85 @@ class AudioManager {
     this.fadeCount = 0;
     this.booted = false;
     this.booting = null;
+    this.muted = false;
+    try { this.muted = window.localStorage.getItem("enemy-pipeline-muted") === "1"; } catch { /* storage unavailable */ }
     this.loaded = this.preload();
     this.armUnlock();
+  }
+
+  setMuted(muted) {
+    this.muted = !!muted;
+    try { window.localStorage.setItem("enemy-pipeline-muted", this.muted ? "1" : "0"); } catch { /* ignore */ }
+    if (this.bgmGain) this.bgmGain.gain.value = this.muted ? 0 : this._bgmVolume;
+    if (this.seGain) this.seGain.gain.value = this.muted ? 0 : this._seVolume;
+    return this.muted;
+  }
+
+  /* 音響穿孔サウンド: ダイヤルアップ様の電子音に続けて金属箔を打ち抜く音。
+     intensity はカードのノイズ値（孔の複雑さ）。大きいほど打撃が強く甲高い。 */
+  playPunch(intensity = 1) {
+    this.ensureGraph();
+    if (!this.ctx || !this.seGain) return;
+    const ctx = this.ctx;
+    const t = ctx.currentTime + 0.01;
+    const out = ctx.createGain();
+    out.gain.value = 1;
+    out.connect(this.seGain);
+    // 電子音（ピーーッガガガ…）: 短いトーンの階段＋上昇スイープ
+    const chirpGain = ctx.createGain();
+    chirpGain.connect(out);
+    chirpGain.gain.setValueAtTime(0.0001, t);
+    chirpGain.gain.exponentialRampToValueAtTime(0.1, t + 0.02);
+    chirpGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+    const osc = ctx.createOscillator();
+    osc.type = "square";
+    osc.connect(chirpGain);
+    [1180, 1180, 1560, 980, 1740].forEach((f, i) => osc.frequency.setValueAtTime(f, t + i * 0.055));
+    osc.frequency.exponentialRampToValueAtTime(2100, t + 0.3);
+    osc.start(t);
+    osc.stop(t + 0.36);
+    // 打ち抜き（ガシャシャン！）: ノイズバースト＋重低音サンプ＋金属ピング
+    const pt = t + 0.3;
+    const level = Math.min(1, 0.35 + Math.max(0, intensity) * 0.16);
+    const dur = 0.16;
+    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * dur), ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i += 1) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 1600 + intensity * 220;
+    bp.Q.value = 0.9;
+    const ng = ctx.createGain();
+    ng.gain.value = level;
+    src.connect(bp);
+    bp.connect(ng);
+    ng.connect(out);
+    src.start(pt);
+    const th = ctx.createOscillator();
+    th.type = "sine";
+    th.frequency.setValueAtTime(220, pt);
+    th.frequency.exponentialRampToValueAtTime(48, pt + 0.14);
+    const tg = ctx.createGain();
+    tg.gain.setValueAtTime(level * 0.9, pt);
+    tg.gain.exponentialRampToValueAtTime(0.0001, pt + 0.16);
+    th.connect(tg);
+    tg.connect(out);
+    th.start(pt);
+    th.stop(pt + 0.18);
+    [2350, 3170].forEach((f, i) => {
+      const p = ctx.createOscillator();
+      p.type = "sine";
+      p.frequency.value = f + intensity * 60;
+      const pg = ctx.createGain();
+      pg.gain.setValueAtTime(level * 0.22, pt);
+      pg.gain.exponentialRampToValueAtTime(0.0001, pt + 0.22 + i * 0.05);
+      p.connect(pg);
+      pg.connect(out);
+      p.start(pt);
+      p.stop(pt + 0.3);
+    });
   }
 
   get bgmVolume() {
@@ -128,8 +205,8 @@ class AudioManager {
     this.ctx = new Ctx();
     this.bgmGain = this.ctx.createGain();
     this.seGain = this.ctx.createGain();
-    this.bgmGain.gain.value = this._bgmVolume;
-    this.seGain.gain.value = this._seVolume;
+    this.bgmGain.gain.value = this.muted ? 0 : this._bgmVolume;
+    this.seGain.gain.value = this.muted ? 0 : this._seVolume;
     this.bgmGain.connect(this.ctx.destination);
     this.seGain.connect(this.ctx.destination);
   }
