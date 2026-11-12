@@ -262,10 +262,8 @@
   }
 
   function playCard(state, card) {
-    // TODO: Play acoustic-punch sound
-    //   カードがスロットにドロップされた瞬間に鳴らす想定の演出音（未実装プレースホルダー）:
-    //   旧式ダイヤルアップ通信のような短い電子音「ピーーッガガガ…」に続けて、
-    //   金属を打ち抜く物理音「ガシャシャン！」を重ねる。
+    // 音響穿孔サウンド（ピーーッガガガ…＋ガシャシャン！）は UI 側（main.js の onRead）が
+    // AudioManager.playPunch(intensity) で鳴らす。intensity はカードのノイズ値＋警報時+1。
     const check = canPlay(state, card);
     if (!check.ok) return { ok: false, reason: check.reason, log: [] };
     state.player.energy -= Math.max(0, card.cost);
