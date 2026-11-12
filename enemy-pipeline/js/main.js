@@ -281,6 +281,7 @@ const ui = {
   installHow: $("install-how"),
   continueBtn: $("continue-btn"),
   tutorialBtn: $("tutorial-btn"),
+  soundToggle: $("sound-toggle"),
   prologue: $("prologue"),
   prologueTerm: $("prologue-term"),
   prologuePrompt: $("prologue-prompt"),
@@ -810,6 +811,7 @@ function onRead(data) {
       return;
     }
     pushLog(`READ  ${data.code}  ${data.name}`);
+    if (audio && audio.playPunch) audio.playPunch(1);
     openRoute();
     return;
   }
@@ -826,6 +828,11 @@ function onRead(data) {
     return;
   }
   pushLog(`READ  ${data.name}  COST ${data.cost}`);
+  if (audio && audio.playPunch) {
+    const played = Battle.card(data.id);
+    const intensity = Math.max(0, (played ? played.noise || 0 : 0) + (result.breach ? 1 : 0));
+    audio.playPunch(intensity);
+  }
   for (const line of result.log) pushLog(line);
   if (battle.enemy.dead) ui.contact.textContent = "制圧完了";
   ui.note.textContent = battle.hand.length === 0
@@ -1226,6 +1233,18 @@ function loadGame() {
 
 function clearSave() {
   try { window.localStorage.removeItem(SAVE_KEY); } catch { /* noop */ }
+}
+
+function refreshSoundToggle() {
+  if (!ui.soundToggle) return;
+  ui.soundToggle.textContent = audio && audio.muted ? "[ SOUND: OFF ]" : "[ SOUND: ON ]";
+}
+
+function applyVideoMute() {
+  if (!audio) return;
+  for (const v of [ui.introVideo, ui.hackVideo, ui.speechVideo]) {
+    if (v) v.muted = audio.muted;
+  }
 }
 
 function refreshTutorialBtn() {
@@ -2678,8 +2697,8 @@ function primeIntroVideo() {
     if (p && typeof p.then === "function") {
       p.then(() => {
         if (attractStage === "booting") { try { v.pause(); v.currentTime = 0; } catch { /* noop */ } }
-        v.muted = false;
-      }).catch(() => { v.muted = false; });
+        v.muted = audio ? audio.muted : false;
+      }).catch(() => { v.muted = audio ? audio.muted : false; });
     }
   } catch { /* noop */ }
 }
@@ -2794,7 +2813,7 @@ async function playHackTitle(live) {
   // 事前読み込みの進み具合（readyState）には依存しない。play() 自体が読み込みを駆動する
   // （preload が無視されるブラウザでは、従来の readyState 待ちが永遠に実らなかった）。
   const tryPlay = async () => {
-    try { v.muted = false; await v.play(); return true; } catch { /* 音声つき再生が蹴られた */ }
+    try { v.muted = audio ? audio.muted : false; await v.play(); return true; } catch { /* 音声つき再生が蹴られた */ }
     try { v.muted = true; await v.play(); return true; } catch { return false; }
   };
   let started = await tryPlay();
@@ -2821,7 +2840,7 @@ async function playHackTitle(live) {
     return;
   }
   // 無音で始まった場合は、再生中のタップで音を出す
-  const unmuteOnTap = () => { if (attractStage === "video" && v.muted) v.muted = false; };
+  const unmuteOnTap = () => { if (attractStage === "video" && v.muted && !(audio && audio.muted)) v.muted = false; };
   window.addEventListener("pointerdown", unmuteOnTap, true);
   // 終了まで見守る。止まったまま4秒経ったらストールとみなしてプロローグへ切り替える
   let lastT = v.currentTime;
@@ -3296,6 +3315,16 @@ if (ui.continueBtn) {
     restoreRun();
   });
 }
+if (ui.soundToggle) {
+  ui.soundToggle.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (!audio) return;
+    audio.setMuted(!audio.muted);
+    applyVideoMute();
+    refreshSoundToggle();
+  });
+}
+refreshSoundToggle();
 if (ui.tutorialBtn) {
   // チュートリアルから開始: 完了フラグを消してから通常の起動フローへ（BOOT通信から再体験できる）
   ui.tutorialBtn.addEventListener("click", (event) => {
