@@ -1,5 +1,5 @@
 // Enemy Pipeline PWA service worker
-const CACHE = "enemy-pipeline-pwa-v16";
+const CACHE = "enemy-pipeline-pwa-v17";
 const CORE = [
   "./",
   "./index.html",
