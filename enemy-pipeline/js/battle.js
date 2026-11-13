@@ -114,6 +114,8 @@
       enemy,
       noise: 0,
       alertBuff: 0,
+      alertAim: 0,
+      alertTelegraphed: null,
       turn: 1,
       drawPile: shuffle(deck, rng),
       hand: [],
@@ -285,14 +287,16 @@
     // 検収修正 2026-11-10 (PROMPT-19): CQCカテゴリのカードはスタン+1（設計欠落の補完）
     if (card.category === "CQC" && !state.enemy.dead) addStun(state, 1, log, false);
     log.push(`NOISE ${effNoise >= 0 ? "+" : ""}${effNoise}${effNoise !== rawNoise && rawNoise >= 0 ? ` (COVER -${rawNoise - effNoise})` : ""}  TOTAL ${state.noise}`);
-    // PROMPT-18: ノイズ限界で警報発令（敵バフ＋リセット）
+    // PROMPT-18: ノイズ限界で警報発令（敵バフ）
+    // v15.0: BREACH後もノイズは0に戻らず2までしか下がらない（熱が残る＝再発しやすい）
     let breach = false;
     if (state.noise >= NOISE_MAX) {
       breach = true;
-      state.noise = 0;
+      state.noise = 2;
       state.alertBuff = (state.alertBuff || 0) + 3;
       log.push("!! SECURITY BREACH - ENEMY ALERTED !!");
       log.push(`敵攻撃力 +3 (現在 +${state.alertBuff})`);
+      log.push("NOISE 2 (熱が残っている)");
     }
     return { ok: true, reason: "", log, breach };
   }
@@ -388,10 +392,63 @@
     return intent.name;
   }
 
+  // v15.0 警戒段階（ノイズ3〜4）: 敵は追加行動を1つ予告し、敵ターンに通常行動の後で実施する。
+  // 選択は状況依存の純関数（表示と実施で同じ結果になる）。敵ターン開始時にノイズが3未満なら取消。
+  const ALERT_NOISE = 3;
+  const ALERT_EXTRA_LABEL = Object.freeze({
+    pursuit: "追加行動: 追撃",
+    aim: "追加行動: 照準",
+    jam: "追加行動: 攪乱",
+  });
+
+  function alertExtraKind(state) {
+    if (!state || !state.enemy || state.enemy.dead) return null;
+    if ((state.noise || 0) < ALERT_NOISE) return null;
+    if (!state.enemy.immuneToStun && (state.enemy.stun || 0) >= (state.enemy.stunMax || 3)) return null;
+    if ((state.enemy.cancelNextIntent || 0) > 0) return null;
+    if (state.player.stance === "COVER") return "jam";
+    const intent = currentIntent(state.enemy);
+    if (intent && intent.action === "heavy_attack") return "aim";
+    return "pursuit";
+  }
+
+  function executeAlertExtra(state, kind, mainIntent, log, result) {
+    if (kind === "jam") {
+      if (state.player.stance === "COVER") {
+        state.player.stance = "EXPOSE";
+        log.push("追加行動: 攪乱  COVER解除");
+      } else {
+        log.push("追加行動: 攪乱  (潜伏なし)");
+      }
+      return;
+    }
+    if (kind === "aim") {
+      state.alertAim = (state.alertAim || 0) + 2;
+      log.push("追加行動: 照準  次の攻撃+2");
+      return;
+    }
+    // pursuit: 通常攻撃の半分程度の追加攻撃
+    const base = mainIntent && typeof mainIntent.value === "number" ? mainIntent.value : SHOT.damage;
+    const value = Math.max(1, Math.ceil(base / 2));
+    log.push(`追加行動: 追撃 ${value}dmg`);
+    const sub = strikeVolley(state, { action: "attack", name: "追撃", value, hits: 1 }, log);
+    if (sub.damage > 0) {
+      result.damage = (result.damage || 0) + sub.damage;
+      result.outcome = "hit";
+      if (!result.call || result.damage === sub.damage) result.call = `${result.damage} DMG`;
+    }
+  }
+
   function strikeVolley(state, intent, log) {
     // PROMPT-23: 被ダメージ計算順序 = 基本値（+警報バフ）→ 潜伏-2 → 防護で相殺 → HP
     const hits = intent.hits || 1;
-    const value = (intent.value || 0) + (state.alertBuff || 0);
+    let value = (intent.value || 0) + (state.alertBuff || 0);
+    // v15.0: 照準（追加行動）の +2 は次の攻撃で消費される
+    if ((state.alertAim || 0) > 0) {
+      value += state.alertAim;
+      log.push(`照準 +${state.alertAim}`);
+      state.alertAim = 0;
+    }
     let dealt = 0;
     let soakedTotal = 0;
     let evaded = false;
@@ -465,42 +522,66 @@
 
   function enemyTurn(state) {
     const log = [];
+    // v15.0: 警戒の予告（インテント表示時に記録された追加行動の種類）を引き継ぐ
+    const telegraphed = state.alertTelegraphed || null;
+    state.alertTelegraphed = null;
     if (state.enemy.dead) {
       log.push("TARGET DOWN");
-      return { log, outcome: "down", damage: 0, call: "" };
+      return { log, outcome: "down", damage: 0, call: "", alert: { telegraphed, kind: null, cancelled: false } };
     }
     if (state.enemy.cancelNextIntent > 0) {
       state.enemy.cancelNextIntent -= 1;
       advancePattern(state.enemy);
       log.push("INTENT CANCELLED");
-      return { log, outcome: "cancelled", damage: 0, call: "CANCELLED" };
+      return { log, outcome: "cancelled", damage: 0, call: "CANCELLED", alert: { telegraphed, kind: null, cancelled: !!telegraphed } };
     }
     // 検収修正 2026-11-10 (PROMPT-19): スタン最大で敵の行動をショート（設計欠落の補完）
     if (!state.enemy.immuneToStun && (state.enemy.stun || 0) >= (state.enemy.stunMax || 3)) {
       state.enemy.stun = 0;
       advancePattern(state.enemy);
       log.push("STUNNED - 行動ショート");
-      return { log, outcome: "stunned", damage: 0, call: "STUNNED" };
+      return { log, outcome: "stunned", damage: 0, call: "STUNNED", alert: { telegraphed, kind: null, cancelled: !!telegraphed } };
     }
-    const result = resolveIntent(state, currentIntent(state.enemy), log);
+    const mainIntent = currentIntent(state.enemy);
+    const result = resolveIntent(state, mainIntent, log);
     advancePattern(state.enemy);
+    // v15.0: 警戒段階の追加行動（通常行動の後に実施。ノイズが3未満へ下がっていれば取消）
+    const alert = { telegraphed, kind: null, cancelled: false };
+    if (state.player.hp > 0 && !state.enemy.dead) {
+      if ((state.noise || 0) >= ALERT_NOISE) {
+        alert.kind = telegraphed || alertExtraKind(state) || "pursuit";
+        executeAlertExtra(state, alert.kind, mainIntent, log, result);
+      } else if (telegraphed) {
+        alert.cancelled = true;
+        log.push("追加行動 取消 (ノイズ低下)");
+      }
+    }
+    result.alert = alert;
     return result;
   }
 
   function intentView(state) {
-    if (state.enemy.dead) return { label: "無力", action: "" };
+    if (state.enemy.dead) {
+      state.alertTelegraphed = null;
+      return { label: "無力", action: "", extra: null };
+    }
     const intent = currentIntent(state.enemy);
     if (!state.enemy.immuneToStun && (state.enemy.stun || 0) >= (state.enemy.stunMax || 3)) {
       // PROMPT-25: スタン（行動不能）のインテント表記は英字タグ STUNNED に統一する
-      return { label: "STUNNED", action: "stunned" };
+      state.alertTelegraphed = null;
+      return { label: "STUNNED", action: "stunned", extra: null };
     }
-    const buff = state.alertBuff || 0;
+    // v15.0: 表示値は警報バフ＋照準を合算。警戒中は追加行動も予告する（予告は state に記録し、敵ターンが引き継ぐ）
+    const buff = (state.alertBuff || 0) + (state.alertAim || 0);
     const shown = buff > 0 && (intent.action === "attack" || intent.action === "heavy_attack" || intent.action === "attack_stun")
       ? { ...intent, value: (intent.value || 0) + buff }
       : intent;
     const label = intentText(shown);
+    const kind = alertExtraKind(state);
+    state.alertTelegraphed = kind;
+    const extra = kind ? { kind, label: ALERT_EXTRA_LABEL[kind] } : null;
     // PROMPT-25: ラベルが STUNNED のインテント（チュートリアルの強制インテント等）も同じタグ表示にする
-    return { label, action: label === "STUNNED" ? "stunned" : (intent.action || "") };
+    return { label, action: label === "STUNNED" ? "stunned" : (intent.action || ""), extra };
   }
 
   function intentLabel(state) {
@@ -529,6 +610,8 @@
     STUN_MAX,
     HAND_SIZE,
     NOISE_MAX,
+    ALERT_NOISE,
+    alertExtraKind,
     SHOT,
     card: (id) => lookup(id),
     startCombat,
