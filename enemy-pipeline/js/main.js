@@ -18,6 +18,9 @@ function cueSE(name) {
 const SCENE_BGM = {
   TITLE: "title",
   MAP: "map",
+  // v14.3 配線メモ（bgm-prompts-2026-11-12）: EVENT はマップ曲を流用、SAFEHOUSE はマップ曲＋換気扇環境音
+  SAFEHOUSE: "map",
+  EVENT: "map",
   BATTLE: "battle",
   REWARD: "reward",
   GAMEOVER: "gameover",
@@ -58,6 +61,51 @@ const GRAY_T3_A = "画面中央の【騒音値（NOISE）】を見ろ。カー�
 const GRAY_T3_B = "ノイズを抑えたいなら【潜伏（COVER）】の態勢をとれ。ただし、派手な銃撃を行えば潜伏は即座に解けるぞ。";
 const GRAY_T3_C = "安全にいくなら【スタン】ゲージだ。格闘でゲージを最大まで溜めれば、敵をショートさせられる。状況に合わせて選べ。";
 const GRAY_TUT_END = "講義はここまでだ。あとは任せたぞ、パンドラ。敵を完全に沈黙させろ！";
+// v14.3: 廃棄（Exhaust）カードを初めて入手した時だけ流れるGray通信。発火は「実際にデッキへ加わった瞬間」のみ
+// （報酬の回収 claimReward / イベントの add_card）。オファー表示・セーブ復元・手札や捨て札への追加では発火しない。
+const EXHAUST_INTRO_STORE = "enemy-pipeline-exhaust-intro-v1";
+const GRAY_EXHAUST_LINES = [
+  "……待て、パンドラ。今のカード、券面に【廃棄】の刻印があるな。",
+  "あれは一度きりのカードだ。切れば素体の体内で金属箔が打ち抜かれ、そのまま砕け散る。歯車は二度と同じ孔を読まない——箔の打ち直しは利かないんだ。",
+  "だから切る場面は選べ、パンドラ。……まあ、お前なら見極められるさ。ここぞという一手で使えよ。",
+];
+function exhaustIntroSeen() {
+  try { return window.localStorage.getItem(EXHAUST_INTRO_STORE) === "1"; }
+  catch { return false; }
+}
+function markExhaustIntroSeen() {
+  try { window.localStorage.setItem(EXHAUST_INTRO_STORE, "1"); }
+  catch { /* storage unavailable */ }
+}
+// 入手したカードID群の中に未見の廃棄カードがあれば true を返し、その場でフラグを立てる（二度と出さない）
+function takeExhaustIntro(ids) {
+  if (exhaustIntroSeen()) return false;
+  const hit = (ids || []).some((id) => {
+    const card = (window.Rewards && Rewards.card(id)) || (window.Cards && Cards.get(id));
+    return !!(card && card.isExhaust);
+  });
+  if (!hit) return false;
+  markExhaustIntroSeen();
+  return true;
+}
+// v15.0: 警戒段階（ノイズ3〜）に初めて入った時だけ流れるGray通信（廃棄初回通信と同じ初回のみ方式）
+const ALERT_INTRO_STORE = "enemy-pipeline-alert-intro-v1";
+const GRAY_ALERT_LINE = "ノイズが3に達すると警戒段階だ。敵が追加行動を取ってくる。ノイズを下げるか、先に片付けるかだ。";
+function alertIntroSeen() {
+  try { return window.localStorage.getItem(ALERT_INTRO_STORE) === "1"; }
+  catch { return false; }
+}
+function markAlertIntroSeen() {
+  try { window.localStorage.setItem(ALERT_INTRO_STORE, "1"); }
+  catch { /* storage unavailable */ }
+}
+async function maybeAlertIntro() {
+  if (alertIntroSeen() || !battle || session.phase !== "combat") return;
+  if (battle.player.hp <= 0 || battle.enemy.dead) return;
+  if ((battle.noise || 0) < 3) return;
+  markAlertIntroSeen();
+  await presentRadio([GRAY_ALERT_LINE]);
+}
 const GRAY_PINCH = "パンドラ、応答しろ！ ……おい、死ぬんじゃないぞ。作戦よりお前の命が最優先だ！";
 const GRAY_WIN = "見事だ。……昔のようには動かんと言ったが、杞憂だったな。先へ進もう。";
 const GRAY_BOSS = "気をつけろパンドラ。パイプラインの最深部……防壁AIの直属防衛ユニットだ。これまでの雑魚とは火力が違うぞ。";
@@ -199,6 +247,8 @@ const ui = {
   stanceHint: $("stance-hint"),
   hp: $("hp-value"),
   hpBar: $("hp-bar"),
+  hpGhost: $("hp-bar-ghost"),
+  dmgVin: $("dmg-vignette"),
   energy: $("energy-value"),
   energyPips: $("energy-pips"),
   block: $("block-value"),
@@ -281,6 +331,9 @@ const ui = {
   installHow: $("install-how"),
   continueBtn: $("continue-btn"),
   tutorialBtn: $("tutorial-btn"),
+  newgameBtn: $("newgame-btn"),
+  clearScreen: $("clear-screen"),
+  clearReturn: $("clear-return"),
   soundToggle: $("sound-toggle"),
   prologue: $("prologue"),
   prologueTerm: $("prologue-term"),
@@ -319,6 +372,19 @@ function sceneEl(name) {
   return document.getElementById(`scene-${name.toLowerCase()}`);
 }
 
+// v14.7: クリア時は全面黒レイヤーを出す（ゲームUIを覆い隠す）。それ以外では必ず消す
+function syncClearScreen(on) {
+  if (!ui.clearScreen) return;
+  if (on) {
+    ui.clearScreen.hidden = false;
+    void ui.clearScreen.offsetWidth;
+    ui.clearScreen.classList.add("is-on");
+  } else {
+    ui.clearScreen.classList.remove("is-on");
+    ui.clearScreen.hidden = true;
+  }
+}
+
 function changeScene(sceneName) {
   const name = String(sceneName || "").toUpperCase();
   if (name === "OPENING") {
@@ -338,17 +404,20 @@ function changeScene(sceneName) {
     el.style.display = on ? "block" : "none";
   }
   session.phase = SCENE_PHASE[name];
+  syncClearScreen(name === "CLEAR");
   clearCardFocus();
   if (name !== "BATTLE") silenceRadio();
   setMapMode(name === "MAP");
   refreshCommsFold();
   ui.screen.classList.toggle("is-safe", name === "SAFEHOUSE");
   ui.screen.classList.toggle("is-event", name === "EVENT");
+  if (name !== "BATTLE") lowHpBgmActive = false; // 戦闘シーンを離れたら低耐久状態は持ち越さない
   if (audio) {
-    const quiet = name === "SAFEHOUSE" || name === "EVENT";
     // ボス戦BGM: ボス戦とクリア画面では提供曲を流し続ける（同じ曲名なので再開始しない）
-    const track = bossBgm && (name === "BATTLE" || name === "CLEAR") ? "boss" : (SCENE_BGM[name] || null);
-    audio.playBgm(quiet ? null : track);
+    let track = bossBgm && (name === "BATTLE" || name === "CLEAR") ? "boss" : (SCENE_BGM[name] || null);
+    // v14.5 低耐久BGM: 低耐久状態のまま戦闘へ入った場合は最初から低耐久曲
+    if (name === "BATTLE" && !bossBgm && lowHpBgmActive) track = "battle_lowhp";
+    audio.playBgm(track);
     if (name === "SAFEHOUSE") audio.playAmbient("fan");
     else audio.stopAmbient();
   }
@@ -357,6 +426,7 @@ function changeScene(sceneName) {
 function hideScenes() {
   currentScene = null;
   window.currentScene = null;
+  syncClearScreen(false);
   for (const id of SCENE_NAMES) {
     const el = sceneEl(id);
     if (!el) continue;
@@ -364,6 +434,7 @@ function hideScenes() {
     el.style.display = "none";
   }
   ui.screen.classList.remove("is-safe", "is-event");
+  lowHpBgmActive = false;
   if (audio) {
     audio.playBgm(null);
     audio.stopAmbient();
@@ -658,6 +729,8 @@ function renderStance() {
 let lastNoiseShown = 0;
 function renderNoise() {
   const max = (window.Battle && Battle.NOISE_MAX) || 5;
+  // v15.0: ノイズはラン全体の状態。戦闘中の値を run へ同期する（持ち越し・セーブ対象）
+  if (run && session.phase === "combat") run.noise = battle.noise;
   ui.noiseValue.textContent = `${battle.noise}/${max}`;
   const cells = ui.noiseMeter.children;
   const rose = battle.noise > lastNoiseShown;
@@ -673,11 +746,71 @@ function renderNoise() {
   lastNoiseShown = battle.noise;
 }
 
+// v15.0 被弾・攻撃演出（juice）: CSSクラス駆動の軽量実装。SOUND OFF でも映像演出は出る。
+// 被弾 = フレーム小揺れ＋赤ビネットのパルス＋CCTVノイズバースト。攻撃命中 = ヒットストップ＋敵フラッシュ。
+let dmgFxTimer = 0;
+let dmgBurstTimer = 0;
+let hitstopTimer = 0;
+let enemyHitTimer = 0;
+function fxPlayerDamage() {
+  window.__fxDamage = (window.__fxDamage || 0) + 1;
+  if (ui.screen) {
+    ui.screen.classList.remove("is-shake");
+    if (ui.dmgVin) ui.dmgVin.classList.remove("is-on");
+    void ui.screen.offsetWidth;
+    ui.screen.classList.add("is-shake");
+    if (ui.dmgVin) ui.dmgVin.classList.add("is-on");
+    window.clearTimeout(dmgFxTimer);
+    dmgFxTimer = window.setTimeout(() => {
+      ui.screen.classList.remove("is-shake");
+      if (ui.dmgVin) ui.dmgVin.classList.remove("is-on");
+    }, 460);
+  }
+  if (ui.cctvScene) {
+    ui.cctvScene.classList.remove("is-burst");
+    void ui.cctvScene.offsetWidth;
+    ui.cctvScene.classList.add("is-burst");
+    window.clearTimeout(dmgBurstTimer);
+    dmgBurstTimer = window.setTimeout(() => ui.cctvScene.classList.remove("is-burst"), 320);
+  }
+}
+function fxEnemyHit() {
+  window.__fxHitstop = (window.__fxHitstop || 0) + 1;
+  if (ui.screen) {
+    ui.screen.classList.add("is-hitstop");
+    window.clearTimeout(hitstopTimer);
+    hitstopTimer = window.setTimeout(() => ui.screen.classList.remove("is-hitstop"), 85);
+  }
+  if (ui.cctvScene) {
+    ui.cctvScene.classList.remove("is-enemyhit");
+    void ui.cctvScene.offsetWidth;
+    ui.cctvScene.classList.add("is-enemyhit");
+    window.clearTimeout(enemyHitTimer);
+    enemyHitTimer = window.setTimeout(() => ui.cctvScene.classList.remove("is-enemyhit"), 240);
+  }
+}
+
+let lastHpShown = null;
 function renderCombat() {
   const player = battle.player;
   const enemy = battle.enemy;
   ui.hp.textContent = String(player.hp);
-  ui.hpBar.style.width = `${(player.hp / player.hpMax) * 100}%`;
+  const hpPct = Math.max(0, (player.hp / player.hpMax) * 100);
+  ui.hpBar.style.width = `${hpPct}%`;
+  // v15.0: HPバーの残像（削れた分がゴーストとして残り、遅れて追いつく。回復時は即時追随）
+  if (ui.hpGhost) {
+    if (lastHpShown === null || player.hp >= lastHpShown) {
+      ui.hpGhost.style.transition = "none";
+      ui.hpGhost.style.width = `${hpPct}%`;
+    } else {
+      ui.hpGhost.style.transition = "none";
+      ui.hpGhost.style.width = `${Math.max(0, (lastHpShown / player.hpMax) * 100)}%`;
+      void ui.hpGhost.offsetWidth;
+      ui.hpGhost.style.transition = "";
+      ui.hpGhost.style.width = `${hpPct}%`;
+    }
+  }
+  lastHpShown = player.hp;
   ui.energy.textContent = String(player.energy);
   const slots = Math.max(player.energyMax, player.energy, 1);
   while (ui.energyPips.children.length < slots) ui.energyPips.append(document.createElement("i"));
@@ -704,17 +837,23 @@ function renderCombat() {
   renderStance();
   renderNoise();
   renderEnemyIntent();
+  updateLowHpBgm();
 }
 
 function renderEnemyIntent() {
   if (session.phase !== "combat" || !battle) {
     ui.intent.dataset.action = "";
+    ui.intent.dataset.alert = "";
     imprint(ui.intent, "INTENT  —");
     return;
   }
   const view = Battle.intentView(battle);
   ui.intent.dataset.action = view.action || "";
-  imprint(ui.intent, view.label + ((battle.alertBuff || 0) > 0 ? ` 〈警報+${battle.alertBuff}〉` : ""));
+  // v15.0: 警戒段階では追加行動の予告をインテントに明示する
+  ui.intent.dataset.alert = view.extra ? view.extra.kind : "";
+  imprint(ui.intent, view.label
+    + ((battle.alertBuff || 0) > 0 ? ` 〈警報+${battle.alertBuff}〉` : "")
+    + (view.extra ? ` 〈${view.extra.label}〉` : ""));
 }
 
 function renderPiles() {
@@ -822,11 +961,14 @@ function onRead(data) {
   if (session.phase !== "combat" || radioOpen || session.busy) return;
   if (tutorialLock(data.id)) return;
   const beforeHp = battle.player.hp;
+  const beforeEnemyHp = battle.enemy.hp;
   const result = Battle.playFromHand(battle, data.id);
   if (!result.ok) {
     pushLog(`REJECT  ${data.name}  ${reasonText(result.reason)}`);
     return;
   }
+  // v15.0: 敵にダメージが入ったら穿孔と同期したヒットストップ＋敵フラッシュ
+  if (battle.enemy.hp < beforeEnemyHp) fxEnemyHit();
   pushLog(`READ  ${data.name}  COST ${data.cost}`);
   if (audio && audio.playPunch) {
     const played = Battle.card(data.id);
@@ -846,6 +988,8 @@ function onRead(data) {
 }
 
 async function settlePlay(cardId, beforeHp, breached) {
+  // v15.0: 自傷などで自HPが減っていれば被弾演出を出す
+  if (battle.player.hp < beforeHp) fxPlayerDamage();
   if (battle.player.hp <= 0) {
     openGameOver();
     return;
@@ -855,6 +999,9 @@ async function settlePlay(cardId, beforeHp, breached) {
     if (session.phase !== "combat") return;
   }
   await maybePinch(beforeHp);
+  if (session.phase !== "combat") return;
+  // v15.0: 警戒段階に初めて入ったら Gray の説明通信（初回のみ）
+  await maybeAlertIntro();
   if (session.phase !== "combat") return;
   // PROMPT-19 T1: 防護を使った → END TURN 誘導へ
   if (tutorialStep === "t1" && cardId === "defend_cover" && !battle.enemy.dead) {
@@ -912,6 +1059,8 @@ async function runEnemyPhase() {
   const lines = battle.player.hp <= 0 && downAt >= 0 ? result.log.slice(0, downAt + 1) : result.log;
   for (const line of lines) pushLog(line);
   showShotCall(result.enemy);
+  // v15.0: 敵フェーズで被弾したら被弾演出（追加行動の追撃分も result.enemy.damage に含まれる）
+  if (result.enemy && result.enemy.damage > 0) fxPlayerDamage();
   renderCombat();
   if (battle.player.hp <= 0) {
     session.busy = false;
@@ -973,6 +1122,13 @@ function nodeButton(node, openIds, here) {
   const name = document.createElement("span");
   name.textContent = PipelineMap.label(shown);
   button.append(code, name);
+  if (current) {
+    // v14.7: 現在地マーカー（点滅する枠と合わせて所在を示す）
+    const hereMark = document.createElement("small");
+    hereMark.className = "node__here";
+    hereMark.textContent = "▼ 現在地";
+    button.append(hereMark);
+  }
   if (node.revealed && node.isFake) {
     const mark = document.createElement("small");
     mark.textContent = "偽装";
@@ -1048,9 +1204,12 @@ function renderRoute() {
   const here = route.nodes[route.currentId];
   const openIds = new Set(PipelineMap.available(route).map((node) => node.id));
   const shown = PipelineMap.shownType(here);
-  ui.routePos.textContent = here.floor === 0
+  // v15.0: 持ち越しノイズをマップでも表示する（警戒域はデータ属性で色付け）
+  const noiseNow = Math.max(0, Math.min(5, (run && run.noise) || 0));
+  ui.routePos.textContent = (here.floor === 0
     ? "NOW  射出点"
-    : `NOW  F${here.floor}  ${PipelineMap.label(shown)}`;
+    : `NOW  F${here.floor}  ${PipelineMap.label(shown)}`) + `  NOISE ${noiseNow}/5`;
+  ui.routePos.dataset.alert = noiseNow >= 3 ? "1" : "";
   ui.routeHp.textContent = `HP ${run.hp}`;
   ui.scanCount.textContent = String(route.scansLeft);
   ui.scan.disabled = session.busy || radioOpen || tutorialStep === "map" || route.scansLeft <= 0 || openIds.size === 0;
@@ -1154,6 +1313,7 @@ function openRoute() {
     hpMax: seed.player.hpMax,
     relics: Relics.issued(),
     deck: Battle.DECK.map((card) => card.id),
+    noise: 0, // v15.0: ノイズはラン全体で持ち越す（開始時は0）
   };
   route = PipelineMap.generate();
   run.tutorialPending = !tutorialCleared();
@@ -1203,6 +1363,7 @@ function saveGame(pending) {
       v: 1,
       hp: run.hp,
       hpMax: run.hpMax,
+      noise: Math.max(0, Math.min(5, run.noise || 0)), // v15.0: 持ち越しノイズも保存する
       relics: (run.relics || []).slice(),
       deck: (run.deck || []).slice(),
       route: {
@@ -1252,6 +1413,11 @@ function refreshTutorialBtn() {
   ui.tutorialBtn.hidden = session.phase !== "attract";
 }
 
+function refreshNewGameBtn() {
+  if (!ui.newgameBtn) return;
+  ui.newgameBtn.hidden = session.phase !== "attract";
+}
+
 function refreshContinueBtn() {
   if (!ui.continueBtn) return;
   const hasSave = session.phase === "attract" && !!loadGame();
@@ -1283,6 +1449,7 @@ function restoreRun() {
   run = {
     hp: data.hp,
     hpMax: data.hpMax,
+    noise: typeof data.noise === "number" ? Math.max(0, Math.min(5, data.noise)) : 0, // v15.0: 持ち越しノイズを復元
     relics: Array.isArray(data.relics) ? data.relics.slice() : [],
     deck: data.deck.slice(),
     // 復元したランではチュートリアルの脚本は再生しない（新規ラン開始時に改めて行われる）
@@ -1784,6 +1951,27 @@ function setCctvImage(src, targetName, type) {
 // ボス戦BGM（heartbeat_at_the_gate）が有効かどうか
 let bossBgm = false;
 
+// v14.5 低耐久BGM（bgm-prompts-2026-11-12 G節の配線メモが正本）:
+// 戦闘中、素体HPが最大の30%以下で通常戦闘曲→低耐久曲へクロスフェード、
+// 回復して40%以上に戻れば通常戦闘曲へ復帰（ヒステリシス）。ボス戦はボス曲優先。
+let lowHpBgmActive = false;
+
+function updateLowHpBgm() {
+  if (!audio || !battle) return;
+  if (currentScene !== "BATTLE" || bossBgm) { lowHpBgmActive = false; return; }
+  const hp = battle.player.hp;
+  const max = battle.player.hpMax || 1;
+  // 敗北時はGAMEOVER曲が優先（ここでは低耐久へ倒さず、状態だけ畳む）
+  if (hp <= 0) { lowHpBgmActive = false; return; }
+  if (!lowHpBgmActive && hp * 10 <= max * 3) {
+    lowHpBgmActive = true;
+    audio.playBgm("battle_lowhp");
+  } else if (lowHpBgmActive && hp * 10 >= max * 4) {
+    lowHpBgmActive = false;
+    audio.playBgm("battle");
+  }
+}
+
 async function beginCombat(encounter) {
   session.busy = true;
   session.advance = false;
@@ -1793,6 +1981,9 @@ async function beginCombat(encounter) {
   battle = Battle.createState(undefined, { relics: run.relics, deck: run.deck });
   battle.player.hp = Math.max(0, run.hp);
   battle.player.hpMax = run.hpMax;
+  // v15.0: 持ち越しノイズを戦闘の初期値にする
+  battle.noise = Math.max(0, Math.min(Battle.NOISE_MAX, run.noise || 0));
+  lastNoiseShown = battle.noise;
   if (!(encounter.enemyId && Battle.applyEnemy(battle, encounter.enemyId))) {
     battle.enemy.name = encounter.name;
     battle.enemy.hp = encounter.hp;
@@ -1804,6 +1995,8 @@ async function beginCombat(encounter) {
   setTutorialStep(teach ? "t1" : "off");
   // ボス戦では提供曲をゆっくりフェードインさせる（クリア画面まで継続）
   bossBgm = encounter.type === "BOSS";
+  // 低耐久のまま次の戦闘へ入る場合は、開始時点のHPで低耐久状態を初期化する
+  lowHpBgmActive = !bossBgm && battle.player.hp > 0 && battle.player.hp * 10 <= (battle.player.hpMax || 1) * 3;
   if (audio && bossBgm) audio.fadeSeconds = 2.2;
   changeScene("BATTLE");
   if (audio) audio.fadeSeconds = 0.7;
@@ -1830,6 +2023,9 @@ async function beginCombat(encounter) {
       if (!bossOk || session.phase !== "combat") return;
     }
     dealOpeningHand();
+    // v15.0: 持ち越しノイズで警戒段階から始まる戦闘でも、初回なら説明通信を出す
+    await maybeAlertIntro();
+    if (session.phase !== "combat") return;
     session.busy = false;
     syncEndButton();
     return;
@@ -1943,6 +2139,7 @@ function clickZippo(token) {
 
 function openSafehouse() {
   if (!run) return;
+  run.noise = 0; // v15.0: セーフハウス（鉛壁）に入ると持ち越しノイズは0になる
   const token = ++safehouseToken;
   safehouseChosen = false;
   safehouseLeft = false;
@@ -2154,8 +2351,13 @@ function pickEvent(index) {
   ui.eventResult.textContent = "";
   const token = eventToken;
   const live = () => token === eventToken && session.phase === "event";
-  typeText(ui.eventResult, choice.result_text, live, { gap: 22, caret: true, printer: true }).then((ok) => {
+  typeText(ui.eventResult, choice.result_text, live, { gap: 22, caret: true, printer: true }).then(async (ok) => {
     if (!ok || !live()) return;
+    // v14.3: イベントで廃棄カードを初めて入手した場合も、結果表示の後にGray通信を1回だけ挟む
+    if (eventOutcome && takeExhaustIntro(eventOutcome.addedCards)) {
+      await presentRadio(GRAY_EXHAUST_LINES, { phase: "event" });
+      if (!live()) return;
+    }
     ui.eventReturn.hidden = false;
     ui.eventReturn.textContent = eventOutcome && eventOutcome.dead ? "通信途絶" : "経路へ戻る";
     ui.eventReturn.classList.add("is-in");
@@ -2213,6 +2415,13 @@ async function chooseNode(id) {
   const token = ++routeToken;
   const result = PipelineMap.move(route, id);
   if (!result.ok) return;
+  // v15.0: ノード移動ごとに持ち越しノイズが -1 冷める。セーフハウス行きは入室で 0 になる
+  if (run && (run.noise || 0) > 0) {
+    const before = run.noise;
+    run.noise = Math.max(0, run.noise - 1);
+    if (result.encounter && result.encounter.kind === "rest") run.noise = 0;
+    if (run.noise < before) pushLog(`NOISE COOLED  ${before} > ${run.noise}`);
+  }
   saveGame(result.encounter); // PROMPT-24: ノード選択時に保存（復元時はこの区画の開始から）
   session.busy = true;
   renderRoute();
@@ -2343,12 +2552,18 @@ function claimReward(id) {
   pushLog(`DECK +1  ${card.name}`);
   saveGame(); // PROMPT-24: リワード獲得時に保存
   if (audio) audio.playSE("machine_insert");
+  // v14.3: 廃棄カードの初入手なら、回収演出の後にGray通信を1回だけ挟む（閉じれば通常どおり経路へ進む）
+  const firstExhaust = takeExhaustIntro([card.id]);
   session.offer = [];
   if (ui.rewardOffers) ui.rewardOffers.replaceChildren();
   if (ui.rewardSecured) ui.rewardSecured.hidden = false;
-  window.setTimeout(() => {
+  window.setTimeout(async () => {
     if (session.phase !== "reward") return;
     if (ui.rewardSecured) ui.rewardSecured.hidden = true;
+    if (firstExhaust) {
+      await presentRadio(GRAY_EXHAUST_LINES, { phase: "reward" });
+      if (session.phase !== "reward") return;
+    }
     finishCombat();
   }, 950);
 }
@@ -2596,11 +2811,31 @@ async function phaseSpeechVideo(live) {
   ui.broadcast.classList.add("is-speech");
   v.hidden = false;
   try { v.currentTime = 0; } catch { /* noop */ }
+  try { v.volume = 1; } catch { /* noop */ }
   try { await v.play(); } catch { v.muted = true; try { await v.play(); } catch { /* noop */ } }
   const t0 = performance.now();
-  const ok = await waitFor(() => v.ended || session.advance || performance.now() - t0 > 4800, 30000, live);
+  const CAP_MS = 4800;
+  const FADE_MS = VIDEO_TAIL_FADE_SEC * 1000;
+  let bgmStarted = false;
+  while (!v.ended && !session.advance) {
+    if (!live()) break;
+    const elapsed = performance.now() - t0;
+    if (elapsed >= CAP_MS) break;
+    // v15.1: 末尾（再生上限／動画終端のうち早い方）に向けて動画音声をフェードアウトし、
+    // その下で導入BGMを開始してブツ切れをなくす（音量だけを触り muted には触らない）
+    let remainMs = CAP_MS - elapsed;
+    if (Number.isFinite(v.duration) && v.duration > 0) {
+      remainMs = Math.min(remainMs, Math.max(0, (v.duration - v.currentTime) * 1000));
+    }
+    if (remainMs <= FADE_MS) {
+      try { v.volume = Math.min(1, Math.max(0, remainMs / FADE_MS)); } catch { /* noop */ }
+      if (!bgmStarted) { bgmStarted = true; if (audio) audio.playBgm("intro"); }
+    }
+    await delay(100);
+  }
   try { v.pause(); } catch { /* noop */ }
-  return ok && live();
+  try { v.volume = 1; } catch { /* noop */ } // 次に再生する時のために音量を戻す
+  return live();
 }
 
 async function phaseGlitch(live) {
@@ -2777,6 +3012,7 @@ async function beginAttract() {
   refreshInstallCta();
   refreshContinueBtn(); // PROMPT-24: セーブがあれば CONTINUE を出す
   refreshTutorialBtn();
+  refreshNewGameBtn();
 }
 
 // クリック直後：ブートテキストを高速印字し、その裏で動画をプリロードする
@@ -2787,6 +3023,8 @@ async function attractBoot() {
   session.busy = true;
   ui.attractPrompt.hidden = true;
   cueSE("crt_on");
+  // v14.3: 導入BGM開始（起動〜ブート印字）。映像パートでは止め、デスク画面で再開する
+  if (audio) audio.playBgm("intro");
   preloadIntroVideos();
   primeIntroVideo();
   for (const line of BOOT_LINES) {
@@ -2799,10 +3037,31 @@ async function attractBoot() {
   await playHackTitle(live);
 }
 
+// v15.1: 動画末尾の音声クロスフェード。残り時間がこの秒数を切ったら動画の音量を
+// 残り時間に比例して下げていき、同時に bgm:intro を下で鳴らし始める。
+// 動画音声がファイル末尾でブツッと切れず、BGMへ切れ目なく繋ぐための処理。
+// 音量（volume）だけを触り、muted には触らないので SOUND OFF 中に音が復活することはない。
+const VIDEO_TAIL_FADE_SEC = 2.0;
+function armVideoTailFade(v, onTail) {
+  let tailed = false;
+  const iv = window.setInterval(() => {
+    if (!v || v.ended) return;
+    const dur = v.duration;
+    if (!Number.isFinite(dur) || dur <= 0) return;
+    const remain = dur - v.currentTime;
+    if (remain > VIDEO_TAIL_FADE_SEC) return;
+    if (!tailed) { tailed = true; if (onTail) onTail(); }
+    try { v.volume = Math.min(1, Math.max(0, remain / VIDEO_TAIL_FADE_SEC)); } catch { /* noop */ }
+  }, 100);
+  return () => window.clearInterval(iv);
+}
+
 // ハッキング動画を再生し、最終フレーム（ノード画面）で止めて DIVE を出す＝実質タイトル画面
 async function playHackTitle(live) {
   const v = ui.hackVideo;
   if (!v || hackVideoFailed) { startPrologue(); return; }
+  // v14.3: 映像パート（ハッキング動画）は映像自体の音を優先し、導入BGMを止める
+  if (audio) audio.playBgm(null);
   attractStage = "video";
   ui.attract.hidden = true;
   ui.introVideo.hidden = false;
@@ -2813,6 +3072,7 @@ async function playHackTitle(live) {
   // 事前読み込みの進み具合（readyState）には依存しない。play() 自体が読み込みを駆動する
   // （preload が無視されるブラウザでは、従来の readyState 待ちが永遠に実らなかった）。
   const tryPlay = async () => {
+    try { v.volume = 1; } catch { /* noop */ } // v15.1: 前回の末尾フェードが残っていれば戻す
     try { v.muted = audio ? audio.muted : false; await v.play(); return true; } catch { /* 音声つき再生が蹴られた */ }
     try { v.muted = true; await v.play(); return true; } catch { return false; }
   };
@@ -2842,6 +3102,9 @@ async function playHackTitle(live) {
   // 無音で始まった場合は、再生中のタップで音を出す
   const unmuteOnTap = () => { if (attractStage === "video" && v.muted && !(audio && audio.muted)) v.muted = false; };
   window.addEventListener("pointerdown", unmuteOnTap, true);
+  // v15.1: 動画の最後の約2秒で動画音声をフェードアウトし、その下で導入BGMを開始する。
+  // プロローグ側の playBgm("intro") は再生中なら再開しない（AudioManager の仕様）ので二重再生にはならない
+  const stopTailFade = armVideoTailFade(v, () => { if (audio) audio.playBgm("intro"); });
   // 終了まで見守る。止まったまま4秒経ったらストールとみなしてプロローグへ切り替える
   let lastT = v.currentTime;
   let stillMs = 0;
@@ -2849,10 +3112,11 @@ async function playHackTitle(live) {
   const t0 = performance.now();
   while (!v.ended && !hackVideoFailed && performance.now() - t0 < maxMs) {
     await delay(400);
-    if (!live()) { window.removeEventListener("pointerdown", unmuteOnTap, true); return; }
+    if (!live()) { stopTailFade(); window.removeEventListener("pointerdown", unmuteOnTap, true); return; }
     if (v.currentTime !== lastT) { lastT = v.currentTime; stillMs = 0; }
     else if (v.paused) { stillMs += 400; if (stillMs >= 4000) break; }
   }
+  stopTailFade();
   window.removeEventListener("pointerdown", unmuteOnTap, true);
   if (!live()) return;
   if (hackVideoFailed || !v.ended) {
@@ -2972,6 +3236,8 @@ async function playPrologue(live) {
 // プロローグ開始（タイトル画面の DIVE／動画フォールバックから呼ばれる）
 function startPrologue() {
   if (session.phase !== "attract") return;
+  // v14.3: デスク画面（プロローグ表示）で導入BGMを再開する
+  if (audio) audio.playBgm("intro");
   attractStage = "prologue";
   session.busy = true;
   const token = attractToken;
@@ -3000,6 +3266,8 @@ async function opening() {
   const token = ++seq;
   const live = () => token === seq;
   resetToCinema();
+  // v14.3: 演説映像パートでは導入BGMを止めたままにする（再開はデスク表示＝TITLE遷移時）
+  if (audio) audio.playBgm(null);
   session.advance = false;
   if (!await phaseNews(live)) return;
   if (!live()) return;
@@ -3297,9 +3565,17 @@ ui.broadcast.addEventListener("click", (event) => {
   session.advance = true;
 });
 ui.attract.addEventListener("click", () => {
+  // v14.7: 開始導線は NEW GAME ボタンへ一本化。画面クリックは音声アンロックのみ
   if (audio) audio.unlock();
-  launchFromAttract();
 });
+if (ui.newgameBtn) {
+  ui.newgameBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (audio) audio.unlock();
+    if (session.phase !== "attract") return;
+    launchFromAttract();
+  });
+}
 if (ui.installCta) {
   // インストール導線内のタップではゲームを開始しない
   ui.installCta.addEventListener("click", (event) => {
@@ -3411,15 +3687,17 @@ ui.routeReturn.addEventListener("click", () => {
 ui.rewardSkip.addEventListener("click", () => {
   skipReward();
 });
-ui.returnTerminal.addEventListener("click", () => {
+function returnToTerminal() {
   if (audio) audio.unlock();
   if (session.phase !== "clear") return;
   // クリア画面を抜けたらボスBGMは役目を終える（ゆっくりフェードアウト）
   bossBgm = false;
   if (audio) audio.fadeSeconds = 1.6;
-  showTitle();
+  showTitle(); // changeScene("TITLE") 経由で全面黒レイヤーも消える
   if (audio) audio.fadeSeconds = 0.7;
-});
+}
+ui.returnTerminal.addEventListener("click", returnToTerminal);
+if (ui.clearReturn) ui.clearReturn.addEventListener("click", returnToTerminal);
 ui.rewardOffers.addEventListener("pointerover", (event) => {
   if (event.pointerType && event.pointerType !== "mouse") return;
   const card = event.target.closest(".punchcard");
