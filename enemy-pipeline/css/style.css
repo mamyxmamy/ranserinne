@@ -2838,7 +2838,9 @@ body.is-dead .comms {
 
 /* ---------- reward draft（2026-11-10 追加） ---------- */
 
-#scene-reward { position: relative; }
+/* v15.2: #scene-reward の position: relative 上書きを廃止し、他シーンと同じ
+   .scene の absolute; inset: 0 でステージ高さに拘束する（旧指定ではシーンが
+   内容の高さまで伸び、上下が均等に切断されて文字・カードが被っていた） */
 
 .reward-offers {
   display: flex;
@@ -2874,10 +2876,11 @@ body.is-dead .comms {
   text-shadow: 0 0 10px rgba(61, 255, 122, 0.85), 0 0 26px rgba(61, 255, 122, 0.45);
 }
 
+/* v15.2: 絶対配置をやめ、オファー行の下に通常フローで置く（シーンの伸縮で
+   位置がずれ、カード列やターンバーに被る問題の解消） */
 .reward-skip {
-  position: absolute;
-  right: 10px;
-  bottom: 10px;
+  display: block;
+  margin: 10px auto 0;
   border: 1px solid rgba(255, 255, 255, 0.45);
   background: rgba(0, 0, 0, 0.35);
   color: #fff;
@@ -2928,15 +2931,35 @@ body.is-dead .comms {
   .hopper { padding-top: 4px; }
 }
 
+/* v15.2: 高さ481〜560px帯でも報酬シーンは素の寸法だと約35px溢れ、フロー配置にした
+   SKIPがステージ下端の外へ出る（1024x500で実測）。この帯も説明文を畳んで収める */
+@media (max-height: 560px) {
+  #scene-reward .sheet__copy { display: none; }
+  #scene-reward .reward-offers { margin: 8px auto 2px; }
+  #scene-reward .reward-skip { margin-top: 8px; padding: 6px 12px; font-size: 11px; }
+}
+
+/* v15.2: 高さ401〜480px帯（実機の横画面で最も多い帯）にも報酬シーンの圧縮を効かせる。
+   この帯は従来どの圧縮にも掛からず、説明文＋カード＋SKIPがステージから溢れていた。
+   説明文は下段トレイの注記に同じ内容があるため畳み、カードは最大幅を絞って高さを抑える */
+@media (max-height: 480px) {
+  #scene-reward { padding: 6px 10px 4px; }
+  #scene-reward .sheet__copy { display: none; }
+  #scene-reward .reward-offers { margin: 6px auto 2px; gap: 8px; }
+  #scene-reward .reward-offers .punchcard { max-width: 120px; }
+  #scene-reward .reward-secured { margin-top: 6px; font-size: 16px; }
+  #scene-reward .reward-skip { margin-top: 6px; padding: 5px 10px; font-size: 11px; }
+}
+
 /* 低い画面では報酬シーンを詰め、3枚のカードが下段トレイ（リーダ）に重ならないようにする
    （2026-11-11 検収: 568x320でカード中心がリーダのランプに覆われ回収不能だった） */
 @media (max-height: 400px) {
-  #scene-reward { padding: 6px 10px 4px; }
+  #scene-reward { padding: 4px 10px 2px; }
   /* 説明文は下段トレイの注記にも同じ内容があるため、低い画面では畳んでカードをステージ内に収める */
   #scene-reward .sheet__copy { display: none; }
-  #scene-reward .reward-offers { margin: 5px auto 2px; gap: 8px; }
+  #scene-reward .reward-offers { margin: 4px auto 1px; gap: 8px; }
   #scene-reward .reward-secured { margin-top: 4px; font-size: 15px; }
-  #scene-reward .reward-skip { margin-top: 4px; padding: 4px 10px; font-size: 11px; }
+  #scene-reward .reward-skip { margin-top: 3px; padding: 3px 10px; font-size: 11px; }
   /* ステータスバーが2行に折り返すとステージが痩せるので、低い画面では1行に収める */
   .statusbar { font-size: 9px; letter-spacing: 0.08em; gap: 6px; white-space: nowrap; }
 }
@@ -2962,6 +2985,8 @@ body.is-dead .comms {
 @media (max-height: 340px) {
   /* PROMPT-24: 568x320級ではステージ（報酬シーン等）を圧迫しない範囲でトレイを広げる */
   .rig { grid-template-rows: auto minmax(0, 1fr) minmax(118px, 32%); }
+  /* v15.2: 740x320級ではトレイ拡大でステージが約110pxまで痩せるため、報酬カードをさらに絞る */
+  #scene-reward .reward-offers .punchcard { max-width: 104px; }
   .hopper .punchcard__head, .hopper .punchcard__foot { font-size: 9px; }
   .hopper .punchcard__name { font-size: 11px; }
   .hopper .punchcard__rules { font-size: 9px; }
@@ -3001,10 +3026,13 @@ body.is-dead .comms {
   .screen.is-map .log,
   .screen.is-safe .log,
   .screen.is-event .log { height: 2.5em; }
-  /* 敵パネル（メーターズ）も同じ圧縮でステージ内に収める。スタンのピップは数値表示と重複するため畳む */
+  /* 敵パネル（メーターズ）も同じ圧縮でステージ内に収める。
+     v15.2: スタンのピップは本人の要望で数字＋ピップ併記に戻す（v14.6 で畳んでいた）。
+     高さの増加分はピップ自体を小さくして吸収する */
   .meters { padding: 3px 6px; }
   .meters .stat { margin: 1px 0 0; line-height: 1.15; }
-  #stun-pips { display: none; }
+  #stun-pips { gap: 3px; margin-top: 1px; }
+  #stun-pips i { width: 7px; height: 7px; }
   .segments { margin-top: 0; }
   .bar--enemy { height: 5px; }
 }

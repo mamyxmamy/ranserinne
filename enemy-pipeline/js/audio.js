@@ -64,6 +64,7 @@ class AudioManager {
     this.voices = [];
     this.fadeCount = 0;
     this.booted = false;
+    this.seReady = false;
     this.booting = null;
     this.muted = false;
     try { this.muted = window.localStorage.getItem("enemy-pipeline-muted") === "1"; } catch { /* storage unavailable */ }
@@ -187,6 +188,10 @@ class AudioManager {
       else this.kick();
       return Promise.resolve();
     }
+    if (this.seReady) {
+      if (resume) resume.then(() => this.kickAmbient()).catch(() => {});
+      else this.kickAmbient();
+    }
     if (!this.booting) {
       this.booting = this.boot().then(() => {
         this.booting = null;
@@ -210,42 +215,65 @@ class AudioManager {
     this.seGain.connect(this.ctx.destination);
   }
 
+  /* v15.2: 2段構えブート。BGM mp3（実ファイル7曲＋ボス曲）は fetch・デコードが重く、
+     全件完了まで待つと SE が実機で数秒〜十数秒無言になる（v15.1 実機報告の主因）。
+     先に SE＋環境音（小さな wav 群）だけをデコードして seReady で playSE を解放し、
+     BGM は後段デコードが済んでから booted を立てて kick する。 */
   async boot() {
     this.ensureGraph();
     if (!this.ctx) return;
     if (this.ctx.state !== "running") await this.ctx.resume();
     if (this.ctx.state !== "running") throw new Error("audio suspended");
-    await this.loaded;
-    if (this.buffers.size === 0) await this.decodeAll();
+    await this.decodeGroup((key) => key.startsWith("se:") || key.startsWith("amb:"));
+    this.seReady = true;
+    this.kickAmbient();
+    await this.decodeGroup((key) => key.startsWith("bgm:"));
     this.booted = true;
     this.kick();
   }
 
   preload() {
-    const jobs = Object.entries(AUDIO_FILES).map(async ([key, url]) => {
-      try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(String(response.status));
-        this.raw.set(key, await response.arrayBuffer());
-      } catch {
-        this.raw.set(key, null);
-      }
+    this.rawJobs = new Map();
+    const jobs = Object.entries(AUDIO_FILES).map(([key, url]) => {
+      const job = (async () => {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(String(response.status));
+          this.raw.set(key, await response.arrayBuffer());
+        } catch {
+          this.raw.set(key, null);
+        }
+      })();
+      this.rawJobs.set(key, job);
+      return job;
     });
     return Promise.all(jobs);
   }
 
-  async decodeAll() {
-    for (const [key, raw] of this.raw) {
-      let buffer = null;
-      if (raw) {
-        try {
-          buffer = await this.ctx.decodeAudioData(raw.slice(0));
-        } catch {
-          buffer = null;
-        }
+  async decodeKey(key) {
+    if (this.buffers.has(key)) return;
+    const job = this.rawJobs && this.rawJobs.get(key);
+    if (job) await job;
+    const raw = this.raw.get(key);
+    let buffer = null;
+    if (raw) {
+      try {
+        buffer = await this.ctx.decodeAudioData(raw.slice(0));
+      } catch {
+        buffer = null;
       }
-      this.buffers.set(key, buffer || this.synthesize(key));
     }
+    this.buffers.set(key, buffer || this.synthesize(key));
+  }
+
+  async decodeGroup(pred) {
+    for (const key of Object.keys(AUDIO_FILES)) {
+      if (pred(key)) await this.decodeKey(key);
+    }
+  }
+
+  async decodeAll() {
+    await this.decodeGroup(() => true);
   }
 
   synthesize(key) {
@@ -316,7 +344,7 @@ class AudioManager {
   }
 
   kickAmbient() {
-    if (!this.booted || !this.ctx || this.ctx.state !== "running") return;
+    if (!this.seReady || !this.ctx || this.ctx.state !== "running") return;
     if (this.wantedAmb === this.ambName) return;
     this.crossAmbient(this.wantedAmb);
   }
@@ -382,7 +410,7 @@ class AudioManager {
 
   /* A BufferSource can start only once. Each SE clones a fresh source so overlaps keep ringing. */
   playSE(name) {
-    if (!this.booted || !this.ctx || this.ctx.state !== "running") return;
+    if (!this.seReady || !this.ctx || this.ctx.state !== "running") return;
     const key = name === "machine_insert" ? "card_insert" : name;
     const buffer = this.buffers.get(`se:${key}`);
     if (!buffer) return;

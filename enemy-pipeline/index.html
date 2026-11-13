@@ -14,8 +14,48 @@
   <meta name="apple-mobile-web-app-title" content="Enemy Pipeline">
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* v15.2: 読み込みスプラッシュ。外部リソース（CSS/JS/画像/フォント）に一切依存せず
+       最初の描画から表示する。SW更新直後に一式が裏で再DLされる間の真っ黒対策。
+       アトラクト準備完了で main.js が取り除く（保険の自動消去も末尾スクリプトにある） */
+    #boot-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 900;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: #031108;
+      color: #4dff88;
+      font-family: "Noto Sans Mono", "Liberation Mono", ui-monospace, monospace;
+      text-align: center;
+    }
+    #boot-splash .boot-splash__sig {
+      margin: 0;
+      font-size: clamp(13px, 2.4vmin, 18px);
+      letter-spacing: 0.22em;
+      text-shadow: 0 0 8px rgba(60, 255, 130, 0.45);
+      animation: boot-splash-blink 1.1s steps(2, start) infinite;
+    }
+    #boot-splash .boot-splash__sub {
+      margin: 0;
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: #2c7a48;
+    }
+    @keyframes boot-splash-blink { 50% { opacity: 0.35; } }
+    @media (prefers-reduced-motion: reduce) {
+      #boot-splash .boot-splash__sig { animation: none; }
+    }
+  </style>
 </head>
 <body>
+  <div id="boot-splash" role="status" aria-label="読み込み中">
+    <p class="boot-splash__sig">SIGNAL ACQUIRING...</p>
+    <p class="boot-splash__sub">ENEMY PIPELINE - ANALOG ESPIONAGE</p>
+  </div>
   <div class="rotate-notice" id="rotate-notice" role="alert">
     <div class="rotate-notice__icon" aria-hidden="true"></div>
     <p class="rotate-notice__title">ROTATE DEVICE</p>
@@ -325,6 +365,14 @@
         navigator.serviceWorker.register("./sw.js").catch(function () { /* PWA unavailable: play normally */ });
       });
     }
+  </script>
+  <script>
+    // v15.2: 読み込みスプラッシュの保険。本体の初期化が万一止まっても、
+    // 20秒後には必ず消去して画面を真っ暗なままにしない
+    window.setTimeout(function () {
+      var el = document.getElementById("boot-splash");
+      if (el) el.remove();
+    }, 20000);
   </script>
 </body>
 </html>

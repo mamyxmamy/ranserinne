@@ -2982,6 +2982,12 @@ window.addEventListener("appinstalled", () => {
   if (ui.installCta) ui.installCta.hidden = true;
 });
 
+// v15.2: 読み込みスプラッシュの消去（アトラクト準備完了＝タイトル表示可能になった時点）
+function dismissBootSplash() {
+  const el = document.getElementById("boot-splash");
+  if (el) el.remove();
+}
+
 async function beginAttract() {
   const token = ++attractToken;
   attractSession = token;
@@ -3013,6 +3019,7 @@ async function beginAttract() {
   refreshContinueBtn(); // PROMPT-24: セーブがあれば CONTINUE を出す
   refreshTutorialBtn();
   refreshNewGameBtn();
+  dismissBootSplash(); // v15.2: タイトル表示の準備が整ったのでスプラッシュを引き継ぐ
 }
 
 // クリック直後：ブートテキストを高速印字し、その裏で動画をプリロードする
