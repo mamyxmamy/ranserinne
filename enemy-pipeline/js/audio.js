@@ -1,9 +1,6 @@
 /* BGM and SE. Drop real files on these paths to replace the synthesized stand-ins:
-   assets/audio/bgm_title.wav
-   assets/audio/bgm_map.wav
-   assets/audio/bgm_battle.wav
-   assets/audio/bgm_reward.wav
-   assets/audio/bgm_gameover.wav
+   bgm_title.mp3 / bgm_intro.mp3 / bgm_map.mp3 / bgm_battle.mp3 /
+   bgm_battle_lowhp.mp3 / bgm_reward.mp3 / bgm_gameover.mp3 (in assets/audio/)
    assets/audio/se_card_hover.wav
    assets/audio/se_card_drag.wav
    assets/audio/se_machine_insert.wav
@@ -19,11 +16,13 @@
 */
 
 const AUDIO_FILES = {
-  "bgm:title": "assets/audio/bgm_title.wav",
-  "bgm:map": "assets/audio/bgm_map.wav",
-  "bgm:battle": "assets/audio/bgm_battle.wav",
-  "bgm:reward": "assets/audio/bgm_reward.wav",
-  "bgm:gameover": "assets/audio/bgm_gameover.wav",
+  "bgm:title": "assets/audio/bgm_title.mp3",
+  "bgm:intro": "assets/audio/bgm_intro.mp3",
+  "bgm:map": "assets/audio/bgm_map.mp3",
+  "bgm:battle": "assets/audio/bgm_battle.mp3",
+  "bgm:battle_lowhp": "assets/audio/bgm_battle_lowhp.mp3",
+  "bgm:reward": "assets/audio/bgm_reward.mp3",
+  "bgm:gameover": "assets/audio/bgm_gameover.mp3",
   "bgm:boss": "assets/audio/heartbeat_at_the_gate.mp3",
   "se:card_hover": "assets/audio/se_card_hover.wav",
   "se:card_drag": "assets/audio/se_card_drag.wav",
@@ -273,8 +272,10 @@ class AudioManager {
   recipe(key) {
     const table = {
       "bgm:title": { freq: 110, dur: 2.4, noise: 0.05, gain: 0.12, attack: 400, bend: 0 },
+      "bgm:intro": { freq: 98, dur: 2.6, noise: 0.06, gain: 0.11, attack: 600, bend: 4 },
       "bgm:map": { freq: 146, dur: 2.4, noise: 0.04, gain: 0.1, attack: 500, bend: 0 },
       "bgm:battle": { freq: 92, dur: 1.6, noise: 0.08, gain: 0.14, attack: 200, bend: 12 },
+      "bgm:battle_lowhp": { freq: 82, dur: 1.5, noise: 0.14, gain: 0.15, attack: 120, bend: 22 },
       "bgm:reward": { freq: 174, dur: 2.2, noise: 0.03, gain: 0.1, attack: 500, bend: 0 },
       "bgm:gameover": { freq: 70, dur: 2.8, noise: 0.15, gain: 0.12, attack: 300, bend: -8 },
       "se:card_hover": { freq: 1800, dur: 0.045, noise: 0.85, gain: 0.35, attack: 20, bend: 0 },
