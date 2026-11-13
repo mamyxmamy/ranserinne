@@ -1,5 +1,5 @@
 // Enemy Pipeline PWA service worker
-const CACHE = "enemy-pipeline-pwa-v17";
+const CACHE = "enemy-pipeline-pwa-v24";
 const CORE = [
   "./",
   "./index.html",
@@ -30,11 +30,13 @@ const CORE = [
   "./assets/cctv_vessel_cover.png",
   "./assets/cctv_vessel_expose.png",
   "./assets/audio/amb_fan.wav",
-  "./assets/audio/bgm_battle.wav",
-  "./assets/audio/bgm_gameover.wav",
-  "./assets/audio/bgm_map.wav",
-  "./assets/audio/bgm_reward.wav",
-  "./assets/audio/bgm_title.wav",
+  "./assets/audio/bgm_intro.mp3",
+  "./assets/audio/bgm_battle.mp3",
+  "./assets/audio/bgm_battle_lowhp.mp3",
+  "./assets/audio/bgm_gameover.mp3",
+  "./assets/audio/bgm_map.mp3",
+  "./assets/audio/bgm_reward.mp3",
+  "./assets/audio/bgm_title.mp3",
   "./assets/audio/se_alarm.wav",
   "./assets/audio/se_card_drag.wav",
   "./assets/audio/se_card_hover.wav",
