@@ -32,19 +32,31 @@
   </section>
   <section class="attract" id="attract" aria-label="タイトル">
     <div class="attract__term" id="attract-term"></div>
-    <h1 class="attract__logo" id="attract-logo" hidden>
-      <span class="attract__name">ENEMY PIPELINE</span>
-      <span class="attract__sub">- ANALOG ESPIONAGE -</span>
-    </h1>
-    <p class="attract__prompt" id="attract-prompt" hidden>&gt; INSERT PUNCH CARD (CLICK TO START)</p>
-    <button type="button" class="tutorial-btn" id="tutorial-btn" hidden>↺ TUTORIAL — チュートリアルから開始</button>
+    <div class="attract__center">
+      <h1 class="attract__logo" id="attract-logo" hidden>
+        <span class="attract__name">ENEMY PIPELINE</span>
+        <span class="attract__sub">- ANALOG ESPIONAGE -</span>
+      </h1>
+      <nav class="attract__menu" id="attract-menu" aria-label="メニュー">
+        <button type="button" class="menu-btn menu-btn--new" id="newgame-btn" hidden>▶ NEW GAME — はじめから</button>
+        <button type="button" class="menu-btn continue-btn" id="continue-btn" hidden>▶ CONTINUE — 前回の記録から再開</button>
+        <button type="button" class="menu-btn tutorial-btn" id="tutorial-btn" hidden>↺ TUTORIAL — チュートリアルから開始</button>
+        <p class="attract__prompt" id="attract-prompt" hidden>&gt; INSERT PUNCH CARD</p>
+      </nav>
+    </div>
     <div class="install-cta" id="install-cta" hidden>
       <p class="install-cta__note">[ PWA READY ] このゲームはアプリとしてインストールできます。全画面表示で、より深い没入感を。</p>
       <button type="button" class="install-cta__btn" id="install-btn">⬇ INSTALL — アプリをインストール</button>
       <p class="install-cta__how" id="install-how" hidden>ブラウザのメニューから「アプリをインストール」または「ホーム画面に追加」を選んでください。</p>
     </div>
-    <button type="button" class="continue-btn" id="continue-btn" hidden>▶ CONTINUE — 前回の記録から再開</button>
     <div class="attract__flash" aria-hidden="true"></div>
+  </section>
+
+  <section class="clear-screen" id="clear-screen" hidden aria-label="クリア">
+    <p class="clear-screen__kicker">【 MISSION ACCOMPLISHED 】</p>
+    <h2 class="clear-screen__title">THANK YOU FOR PLAYING</h2>
+    <p class="clear-screen__sub">- DEMO VERSION -</p>
+    <button type="button" class="clear-screen__return" id="clear-return">RETURN TO TERMINAL（タイトルへ戻る）</button>
   </section>
 
   <section class="intro-video" id="intro-video" hidden aria-label="ハッキング映像">
@@ -84,12 +96,13 @@
       </header>
 
       <div class="screen crt" id="screen">
+        <div class="dmg-vignette" id="dmg-vignette" aria-hidden="true"></div>
         <div class="screen__content">
           <aside class="status-bay" aria-label="素体の状態">
             <section class="dossier">
               <h2>VESSEL 07</h2>
               <p class="stat"><span>耐久 HP</span><b id="hp-value">60</b></p>
-              <div class="bar" aria-hidden="true"><span id="hp-bar"></span></div>
+              <div class="bar" aria-hidden="true"><span id="hp-bar-ghost"></span><span id="hp-bar"></span></div>
               <p class="stat" id="energy-row"><span>電力 PWR</span><b id="energy-value">3</b><span class="dim">/ 3</span></p>
               <div class="pips" id="energy-pips" aria-hidden="true"><i></i><i></i><i></i></div>
               <div class="buffs" aria-label="バフとデバフ">
