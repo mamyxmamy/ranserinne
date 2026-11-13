@@ -77,7 +77,7 @@ button { color: inherit; }
   cursor: default;
 }
 
-.attract.is-live { cursor: pointer; }
+.attract.is-live { cursor: default; } /* v14.7: 開始はボタン導線のみ */
 
 .attract::before,
 .attract::after {
@@ -124,17 +124,56 @@ button { color: inherit; }
   animation: blink 1.05s steps(1) infinite;
 }
 
-.attract__logo {
+/* v14.7: ロゴとメニューを1カラムに束ね、どのサイズでも重ならないようにする */
+.attract__center {
   position: absolute;
   inset: 0;
-  z-index: 2;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px, 4vh, 28px);
+  padding: 10px 12px;
+}
+
+.attract__logo {
   display: grid;
-  align-content: center;
   justify-items: center;
   margin: 0;
   text-align: center;
   pointer-events: none;
 }
+
+.attract__menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 9px;
+}
+
+.attract__menu [hidden] { display: none !important; }
+
+.menu-btn {
+  min-width: min(80vw, 350px);
+  font-family: var(--font-mono);
+  letter-spacing: 0.12em;
+  padding: 10px 22px;
+  text-align: center;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.menu-btn--new {
+  border: 1px solid rgba(140, 255, 180, 0.8);
+  background: #06210f;
+  color: var(--phosphor-hot);
+  font-size: clamp(13px, 1.7vw, 17px);
+  box-shadow: 0 0 12px rgba(0, 255, 80, 0.25);
+}
+
+.menu-btn--new:hover,
+.menu-btn--new:focus-visible { border-color: var(--phosphor-hot); box-shadow: 0 0 16px rgba(0, 255, 80, 0.45); }
 
 .attract__name {
   font-size: clamp(42px, 7vw, 92px);
@@ -164,12 +203,7 @@ button { color: inherit; }
 }
 
 .attract__prompt {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 12%;
-  z-index: 3;
-  margin: 0;
+  margin: 2px 0 0;
   text-align: center;
   color: #c8ffd4;
   font-size: clamp(13px, 1.6vw, 18px);
@@ -183,7 +217,7 @@ button { color: inherit; }
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 20%;
+  bottom: 6px;
   z-index: 4;
   display: grid;
   justify-items: center;
@@ -217,49 +251,35 @@ button { color: inherit; }
 .install-cta__btn:hover,
 .install-cta__btn:focus-visible { border-color: var(--phosphor-hot); }
 
-/* PROMPT-24: セーブデータがある時だけタイトルに出る再開ボタン */
+/* PROMPT-24: セーブデータがある時だけタイトルに出る再開ボタン（v14.7: メニュー内へ移設） */
 .continue-btn {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 30%;
-  z-index: 4;
   border: 1px solid rgba(255, 210, 122, 0.75);
   background: #241a04;
   color: var(--amber);
-  font-family: var(--font-mono);
   font-size: clamp(13px, 1.6vw, 16px);
-  letter-spacing: 0.12em;
-  padding: 10px 22px;
-  cursor: pointer;
-  white-space: nowrap;
 }
 
 .continue-btn:hover,
 .continue-btn:focus-visible { border-color: var(--amber); box-shadow: 0 0 14px rgba(255, 210, 122, 0.35); }
 
 .tutorial-btn {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  bottom: 2.5%;
-  z-index: 4;
   border: 1px solid rgba(143, 227, 174, 0.45);
   background: rgba(3, 17, 8, 0.85);
   color: #8fe3ae;
-  font-family: var(--font-mono);
   font-size: clamp(11px, 1.3vw, 13px);
-  letter-spacing: 0.1em;
   padding: 7px 16px;
-  cursor: pointer;
-  white-space: nowrap;
 }
 
 .tutorial-btn:hover,
 .tutorial-btn:focus-visible { border-color: #8fe3ae; box-shadow: 0 0 12px rgba(143, 227, 174, 0.3); }
 
 @media (max-height: 400px) {
+  .attract__center { gap: 8px; padding: 6px 10px; }
+  .attract__menu { gap: 6px; }
+  .menu-btn { padding: 6px 14px; }
   .tutorial-btn { padding: 5px 12px; font-size: 11px; }
+  .attract__sub { margin-top: 8px; }
+  .install-cta__note { display: none; } /* 低い画面ではメニューと干渉させない */
 }
 
 .install-cta__how {
@@ -1355,6 +1375,7 @@ button { color: inherit; }
 .dim { color: var(--phosphor-dim); font-size: 11px; }
 
 .bar {
+  position: relative;
   height: 6px;
   background: #06210f;
   box-shadow: inset 0 0 0 1px rgba(150, 255, 180, 0.28);
@@ -1365,6 +1386,17 @@ button { color: inherit; }
   height: 100%;
   width: 100%;
   background: linear-gradient(90deg, #145c32, #d8ffe6);
+}
+
+/* v15.0: HPバーの残像（ゴースト）。実バーの下に残り、遅れて追いつく */
+#hp-bar { position: relative; z-index: 1; }
+#hp-bar-ghost {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 0;
+  background: rgba(255, 112, 88, 0.55);
+  transition: width 0.8s ease 0.5s;
 }
 
 .bar--enemy span {
@@ -1412,6 +1444,8 @@ button { color: inherit; }
 
 .glass {
   position: relative;
+  /* v14.6: フラッシュ文言のフォントをガラス幅連動にするためコンテナ化 */
+  container-type: inline-size;
   border: 1px solid rgba(150, 255, 180, 0.22);
   background: #03140c;
   overflow: hidden;
@@ -1760,7 +1794,28 @@ button { color: inherit; }
 .node.is-current {
   background: #123822;
   border-color: var(--phosphor-hot);
+  /* v14.7: 現在地は枠の明滅で示す（進めるノードの定常グローとは系統を変える） */
+  animation: node-current-pulse 1.5s ease-in-out infinite;
 }
+
+.node__here {
+  color: var(--amber);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-shadow: 0 0 6px rgba(255, 210, 122, 0.6);
+}
+
+@keyframes node-current-pulse {
+  0%, 100% { box-shadow: 0 0 3px 0 rgba(140, 255, 180, 0.25); }
+  50% { box-shadow: 0 0 15px 4px rgba(140, 255, 180, 0.8); }
+}
+
+@keyframes node-current-pulse-red {
+  0%, 100% { box-shadow: 0 0 3px 0 rgba(255, 90, 70, 0.3); }
+  50% { box-shadow: 0 0 15px 4px rgba(255, 90, 70, 0.85); }
+}
+
+.node.is-current.is-revealed { animation-name: node-current-pulse-red; }
 
 .node.is-past { opacity: 0.62; }
 
@@ -2640,6 +2695,74 @@ button { color: inherit; }
 
 .fade-mask.is-on { opacity: 1; }
 
+/* v14.7: ボス撃破後のクリア表示は全面黒。ゲームUIを一切見せない */
+.clear-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: #000;
+  color: #9dffb0;
+  font-family: var(--font-mono);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 3.5vh, 22px);
+  padding: 16px;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+
+.clear-screen[hidden] { display: none; }
+
+.clear-screen.is-on { opacity: 1; }
+
+.clear-screen__kicker {
+  margin: 0;
+  font-size: clamp(12px, 1.8vw, 17px);
+  letter-spacing: 0.18em;
+  color: #3dff7a;
+  text-shadow: 0 0 10px rgba(61, 255, 122, 0.8);
+}
+
+.clear-screen__title {
+  margin: 0;
+  font-size: clamp(26px, 5.2vw, 54px);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  line-height: 1.1;
+  color: #d8ffe4;
+  text-shadow:
+    0 0 6px rgba(210, 255, 220, 0.95),
+    0 0 18px rgba(40, 255, 110, 0.8),
+    0 0 42px rgba(0, 255, 70, 0.45);
+}
+
+.clear-screen__sub {
+  margin: 0;
+  font-size: clamp(12px, 1.8vw, 18px);
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  color: #8dffb0;
+  text-shadow: 0 0 8px rgba(0, 255, 80, 0.55);
+}
+
+.clear-screen__return {
+  margin-top: clamp(8px, 3vh, 20px);
+  border: 1px solid rgba(150, 255, 180, 0.65);
+  background: rgba(3, 17, 8, 0.9);
+  color: var(--phosphor-hot);
+  font-family: var(--font-mono);
+  font-size: clamp(12px, 1.5vw, 15px);
+  letter-spacing: 0.12em;
+  padding: 10px 22px;
+  cursor: pointer;
+}
+
+.clear-screen__return:hover,
+.clear-screen__return:focus-visible { border-color: var(--phosphor-hot); box-shadow: 0 0 14px rgba(0, 255, 80, 0.35); }
+
 body.is-dead .comms {
   position: relative;
   z-index: 1001;
@@ -2693,8 +2816,10 @@ body.is-dead .comms {
   background: rgba(0, 20, 8, 0.6);
   font-family: var(--font-mono);
   font-size: clamp(17px, 3.2vw, 28px);
+  /* v14.6: vw基準だとガラス幅（画面の約半分）に対して大きすぎ左右が見切れたため、ガラス幅(cqw)連動に変更 */
+  font-size: clamp(12px, 5.6cqw, 28px);
   font-weight: 800;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.16em;
   white-space: nowrap;
   color: #3dff7a;
   text-shadow: 0 0 8px rgba(61, 255, 122, 0.9), 0 0 22px rgba(61, 255, 122, 0.5);
@@ -2703,6 +2828,7 @@ body.is-dead .comms {
 
 .glass-flash--breach {
   font-size: clamp(19px, 3.8vw, 34px);
+  font-size: clamp(13px, 6.4cqw, 34px);
 }
 
 @keyframes glass-flash-blink {
@@ -2851,6 +2977,54 @@ body.is-dead .comms {
   .relics .relic-chip, .relics .relic-empty { font-size: 9px; line-height: 1.1; padding: 1px 3px; }
   .relics-label { font-size: 8px; margin-top: 3px; }
   .piles { padding: 1px 3px; }
+}
+
+/* ---------- v14.6: 低い画面での見切れ対策（実機報告 2026-11-12） ---------- */
+/* 左パネル（ステータスベイ）の縦・横はみ出しと、シート系シーンのボタンの画面外落ちを解消する */
+@media (max-height: 480px) {
+  /* デッキ表の見出しラベルは中身（山札/手札…）と重複するため低い画面では畳む */
+  .counters__label { display: none; }
+  .counters { padding: 2px 4px; }
+  /* パイルスは1行nowrapだと約166px必要でベイ幅（約132〜150px）から横にはみ出すため、折り返しを許可する */
+  .piles { flex-wrap: wrap; row-gap: 0; column-gap: 4px; }
+  .dossier .bar { height: 5px; }
+  .status-bay .stat { margin: 1px 0 0; }
+  .buffs { gap: 2px; }
+  /* 空き枠チップの文字がセル幅に収まるよう、空き枠だけ僅かに詰める */
+  .relics .relic-empty { font-size: 8px; padding: 1px 1px; }
+  /* シート系シーン（CLEAR/GAMEOVER等）をステージ内に収める */
+  .scene--sheet { padding: 6px 10px 4px; }
+  .sheet__copy { font-size: 14px; line-height: 1.45; margin-bottom: 8px; }
+  .sheet__go { padding: 6px 12px; }
+  /* ログを少し低くし、ステージ側へ高さを回す */
+  .log { height: 2.5em; }
+  .screen.is-map .log,
+  .screen.is-safe .log,
+  .screen.is-event .log { height: 2.5em; }
+  /* 敵パネル（メーターズ）も同じ圧縮でステージ内に収める。スタンのピップは数値表示と重複するため畳む */
+  .meters { padding: 3px 6px; }
+  .meters .stat { margin: 1px 0 0; line-height: 1.15; }
+  #stun-pips { display: none; }
+  .segments { margin-top: 0; }
+  .bar--enemy { height: 5px; }
+}
+
+@media (max-height: 400px) {
+  /* 320px級では追加で詰める（文字サイズは維持し、行間・余白のみ） */
+  .status-bay .stat { line-height: 1.15; }
+  .dossier h2 { font-size: 11px; }
+  .piles { line-height: 1.1; }
+  .relics { gap: 2px; }
+  .relics .relic-chip, .relics .relic-empty { padding: 0 2px; line-height: 1; }
+  .sheet__go { font-size: 12px; letter-spacing: 0.06em; }
+  .scene--sheet { padding-bottom: 2px; }
+  .sheet__copy { margin-bottom: 6px; }
+}
+
+@media (max-height: 400px) {
+  /* 経路盤の行間を詰め、内部スクロール量を減らす（盤自体のスクロールは設計として維持） */
+  .route__floors { gap: 5px; }
+  .route__bar { font-size: 12px; }
 }
 
 /* ---------- prologue（世界観テキスト印字） ---------- */
@@ -3050,3 +3224,64 @@ body.is-dead .comms {
 /* noise segment rise pulse */
 .segments i.pulse { animation: seg-pulse .45s ease-out; }
 @keyframes seg-pulse { 0% { transform: scale(1.45); filter: brightness(2.1); } 100% { transform: scale(1); filter: none; } }
+
+/* ---------- v15.0 juice（被弾・攻撃演出）＋警戒表示 ---------- */
+/* 被弾: フレームの小揺れ */
+.screen.is-shake { animation: dmg-shake 0.09s linear 2; }
+@keyframes dmg-shake {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(3px, -2px); }
+  50% { transform: translate(-3px, 2px); }
+  75% { transform: translate(2px, 1px); }
+  100% { transform: translate(0, 0); }
+}
+/* 被弾: 赤ビネットのパルス */
+.dmg-vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 55;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 90px 18px rgba(255, 32, 18, 0.55);
+}
+.dmg-vignette.is-on { animation: dmg-pulse 0.45s ease-out; }
+@keyframes dmg-pulse {
+  0% { opacity: 0; }
+  18% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* 被弾: CCTV映像のノイズバースト */
+.cctv-monitor__scene.is-burst { animation: cctv-burst 0.28s steps(4); }
+@keyframes cctv-burst {
+  0% { transform: translate(0, 0); filter: none; }
+  25% { transform: translate(-3px, 1px); filter: contrast(1.7) brightness(1.5) saturate(0.4); }
+  50% { transform: translate(3px, -2px); filter: contrast(0.7) brightness(1.9); }
+  75% { transform: translate(-2px, 0); filter: contrast(1.4) brightness(0.8) saturate(1.6); }
+  100% { transform: translate(0, 0); filter: none; }
+}
+/* 攻撃命中: 敵のヒットフラッシュ */
+.cctv-monitor__scene.is-enemyhit .cctv-monitor__enemy { animation: enemy-hitflash 0.22s steps(2); }
+@keyframes enemy-hitflash {
+  0% { filter: brightness(2.4) saturate(0.3); transform: translateX(0); }
+  50% { filter: brightness(0.6) invert(0.25); transform: translateX(3px); }
+  100% { filter: none; transform: translateX(0); }
+}
+/* 攻撃命中: ヒットストップ（全アニメーションを一瞬止める） */
+.screen.is-hitstop .screen__content *,
+.screen.is-hitstop .screen__content *::before,
+.screen.is-hitstop .screen__content *::after { animation-play-state: paused !important; }
+/* v15.0: 警戒段階の追加行動予告つきインテント */
+.intent-badge[data-alert]:not([data-alert=""]) {
+  color: #ffb27a;
+  border-color: rgba(255, 150, 90, 0.75);
+  text-shadow: 0 0 8px rgba(255, 120, 60, 0.55);
+}
+/* v15.0: マップの持ち越しノイズ表示（警戒域は警告色） */
+#route-pos[data-alert="1"] { color: #ff9d8a; }
+
+@media (prefers-reduced-motion: reduce) {
+  .screen.is-shake { animation: none; }
+  .dmg-vignette.is-on { animation: none; }
+  .cctv-monitor__scene.is-burst { animation: none; }
+  .cctv-monitor__scene.is-enemyhit .cctv-monitor__enemy { animation: none; }
+}
