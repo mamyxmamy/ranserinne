@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Enemy Pipeline: Analog Espionage</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect fill='%23031108' width='16' height='16'/%3E%3Crect fill='%2339ff6a' x='3' y='3' width='10' height='8'/%3E%3C/svg%3E">
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#031108">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Enemy Pipeline">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    /* v15.2: 読み込みスプラッシュ。外部リソース（CSS/JS/画像/フォント）に一切依存せず
+       最初の描画から表示する。SW更新直後に一式が裏で再DLされる間の真っ黒対策。
+       アトラクト準備完了で main.js が取り除く（保険の自動消去も末尾スクリプトにある） */
+    #boot-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 900;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      background: #031108;
+      color: #4dff88;
+      font-family: "Noto Sans Mono", "Liberation Mono", ui-monospace, monospace;
+      text-align: center;
+    }
+    #boot-splash .boot-splash__sig {
+      margin: 0;
+      font-size: clamp(13px, 2.4vmin, 18px);
+      letter-spacing: 0.22em;
+      text-shadow: 0 0 8px rgba(60, 255, 130, 0.45);
+      animation: boot-splash-blink 1.1s steps(2, start) infinite;
+    }
+    #boot-splash .boot-splash__sub {
+      margin: 0;
+      font-size: 10px;
+      letter-spacing: 0.3em;
+      color: #2c7a48;
+    }
+    @keyframes boot-splash-blink { 50% { opacity: 0.35; } }
+    @media (prefers-reduced-motion: reduce) {
+      #boot-splash .boot-splash__sig { animation: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="boot-splash" role="status" aria-label="読み込み中">
+    <p class="boot-splash__sig">SIGNAL ACQUIRING...</p>
+    <p class="boot-splash__sub">ENEMY PIPELINE - ANALOG ESPIONAGE</p>
+  </div>
+  <div class="rotate-notice" id="rotate-notice" role="alert">
+    <div class="rotate-notice__icon" aria-hidden="true"></div>
+    <p class="rotate-notice__title">ROTATE DEVICE</p>
+    <p class="rotate-notice__text">このゲームは横画面（16:9）専用です。<br>スマートフォンを横向きにしてください。</p>
+    <p class="rotate-notice__sub">LANDSCAPE MODE ONLY</p>
+  </div>
+  <div class="death-mask" id="death-mask" hidden></div>
+  <div class="fade-mask" id="fade-mask" hidden></div>
+  <section class="prologue" id="prologue" hidden aria-label="プロローグ">
+    <div class="prologue__wrap">
+      <div class="prologue__term" id="prologue-term"></div>
+      <p class="prologue__prompt" id="prologue-prompt" hidden>&gt; CLICK TO CONTINUE</p>
+    </div>
+  </section>
+  <section class="attract" id="attract" aria-label="タイトル">
+    <div class="attract__term" id="attract-term"></div>
+    <div class="attract__center">
+      <h1 class="attract__logo" id="attract-logo" hidden>
+        <span class="attract__name">ENEMY PIPELINE</span>
+        <span class="attract__sub">- ANALOG ESPIONAGE -</span>
+      </h1>
+      <nav class="attract__menu" id="attract-menu" aria-label="メニュー">
+        <button type="button" class="menu-btn menu-btn--new" id="newgame-btn" hidden>▶ NEW GAME — はじめから</button>
+        <button type="button" class="menu-btn continue-btn" id="continue-btn" hidden>▶ CONTINUE — 前回の記録から再開</button>
+        <button type="button" class="menu-btn tutorial-btn" id="tutorial-btn" hidden>↺ TUTORIAL — チュートリアルから開始</button>
+        <p class="attract__prompt" id="attract-prompt" hidden>&gt; INSERT PUNCH CARD</p>
+      </nav>
+    </div>
+    <div class="install-cta" id="install-cta" hidden>
+      <p class="install-cta__note">[ PWA READY ] このゲームはアプリとしてインストールできます。全画面表示で、より深い没入感を。</p>
+      <button type="button" class="install-cta__btn" id="install-btn">⬇ INSTALL — アプリをインストール</button>
+      <p class="install-cta__how" id="install-how" hidden>ブラウザのメニューから「アプリをインストール」または「ホーム画面に追加」を選んでください。</p>
+    </div>
+    <div class="attract__flash" aria-hidden="true"></div>
+  </section>
+
+  <!-- v15.3: 製作者クレジットカード。スプラッシュの後・タイトル画面の前に挟み、
+       タップで音声アンロックしてタイトルBGMが鳴る状態でタイトルへ入る -->
+  <section class="credit-card" id="credit-card" hidden aria-label="クレジット">
+    <div class="credit-card__lines">
+      <p class="credit-card__by" id="credit-by"></p>
+      <p class="credit-card__name" id="credit-name"></p>
+    </div>
+    <p class="credit-card__start" id="credit-start" hidden>&gt; TAP TO START</p>
+  </section>
+
+  <section class="clear-screen" id="clear-screen" hidden aria-label="クリア">
+    <p class="clear-screen__kicker">【 MISSION ACCOMPLISHED 】</p>
+    <h2 class="clear-screen__title">THANK YOU FOR PLAYING</h2>
+    <p class="clear-screen__sub">- FORMAL VERSION -</p>
+    <div class="clear-screen__actions">
+      <button type="button" class="clear-screen__return" id="clear-return">RETURN TO TERMINAL（タイトルへ戻る）</button>
+      <a class="clear-screen__return clear-screen__share" id="clear-share" href="https://x.com/intent/post" target="_blank" rel="noopener">POST TO X</a>
+    </div>
+  </section>
+
+  <section class="intro-video" id="intro-video" hidden aria-label="ハッキング映像">
+    <video class="intro-video__media" id="hack-video" src="assets/old_gray_hack.mp4" preload="auto" playsinline></video>
+    <button type="button" class="dive-btn" id="dive-btn" hidden>DIVE<span class="dive-btn__sub">- 接続 -</span></button>
+  </section>
+
+  <section class="broadcast" id="broadcast" aria-label="臨時放送" hidden>
+    <div class="broadcast__stage">
+      <img id="broadcast-img" class="broadcast__img" src="assets/7544.jpg" alt="臨時放送">
+      <video id="speech-video" class="broadcast__video" preload="auto" playsinline hidden></video>
+      <div class="broadcast__noise" aria-hidden="true"></div>
+      <p class="news__live">LIVE</p>
+      <p class="broadcast__note">※あくまでゲームとしての映像です</p>
+      <div class="news">
+        <p class="news__tag">臨時放送</p>
+        <p class="news__line" id="caption" aria-live="polite"></p>
+      </div>
+    </div>
+    <div class="warning" id="warning">
+      <p>WARNING: DEEPFAKE DETECTED</p>
+    </div>
+    <div class="broadcast__grayline" id="grayline" hidden></div>
+    <button type="button" class="skip" id="skip">SKIP</button>
+  </section>
+
+  <main class="desk" id="desk" hidden>
+    <div class="rig">
+      <header class="bezel__top">
+        <span class="brand">PIPELINE SYSTEMS <b>FG-7</b></span>
+        <span class="chin">
+          <span>FIELD GLASS</span>
+          <span class="led" aria-hidden="true"></span>
+          <span>CH-07</span>
+          <button type="button" class="sound-toggle" id="sound-toggle" aria-label="サウンドのオン・オフ">[ SOUND: ON ]</button>
+        </span>
+      </header>
+
+      <div class="screen crt" id="screen">
+        <div class="dmg-vignette" id="dmg-vignette" aria-hidden="true"></div>
+        <div class="boss-pulse" id="boss-pulse" hidden aria-hidden="true"></div>
+        <div class="screen__content">
+          <aside class="status-bay" aria-label="素体の状態">
+            <section class="dossier">
+              <h2 id="vessel-name">VESSEL 07</h2>
+              <p class="stat"><span>耐久 HP</span><b id="hp-value">60</b></p>
+              <div class="bar" aria-hidden="true"><span id="hp-bar-ghost"></span><span id="hp-bar"></span></div>
+              <p class="stat" id="energy-row"><span>電力 PWR</span><b id="energy-value">3</b><span class="dim">/ 3</span></p>
+              <div class="pips" id="energy-pips" aria-hidden="true"><i></i><i></i><i></i></div>
+              <div class="buffs" aria-label="バフとデバフ">
+                <p class="stat stat--icon stat--block"><span>防護 BLK</span><b id="block-value">0</b></p>
+                <p class="stat stat--icon stat--stance"><span>態勢</span><b id="stance" data-mode="COVER">COVER</b></p>
+              </div>
+              <p class="hint" id="stance-hint">カバー中は攻撃を回避する。</p>
+            </section>
+            <div class="counters">
+              <p class="counters__label">DECK / DISCARD</p>
+              <p class="piles" id="piles" hidden></p>
+              <p class="counters__idle" aria-hidden="true">山札 —  /  捨て札 —</p>
+            </div>
+            <p class="relics-label" id="relics-label" hidden>特殊装備 RELICS</p>
+            <p class="relics" id="relics" hidden></p>
+          </aside>
+
+          <div class="mainview">
+            <header class="statusbar">
+              <span>ENEMY PIPELINE</span>
+              <span>ANALOG ESPIONAGE</span>
+              <span id="link-state">NO CARRIER</span>
+            </header>
+
+            <div class="stage">
+              <div class="scene scene--sheet" id="scene-title" hidden>
+                <p class="sheet__kicker">ANALOG ESPIONAGE</p>
+                <h2 class="sheet__title">ENEMY PIPELINE</h2>
+                <p class="mission" id="mission"></p>
+                <button type="button" class="sheet__go" id="start-run" hidden>初期化＆起動</button>
+              </div>
+
+              <!-- 正式版フェーズ1: キャラ選択（設計書 §A）。格納庫の回転台（カルーセル）を回して素体を選ぶ。
+                   中央の選択中素体を大きく見せ、CRT側パネルに固有特性・HP・PWR回復・初期デッキ・
+                   フレーバーテキストを出す。未解禁はシルエット＋LOCKEDで詳細を出さない。
+                   構築は main.js の renderVesselSelect -->
+              <div class="scene scene--sheet" id="scene-vessel" hidden>
+                <p class="sheet__kicker">VESSEL SELECT — ROTARY CAROUSEL</p>
+                <h2 class="sheet__title">素体を選択</h2>
+                <div class="vessel-layout">
+                  <div class="vessel-stage-wrap">
+                    <div class="vessel-stage" id="vessel-stage"></div>
+                    <div class="vessel-controls">
+                      <button type="button" class="vessel-rot" id="vessel-prev">◀ ROTATE</button>
+                      <p class="vessel-pos" id="vessel-pos"></p>
+                      <button type="button" class="vessel-rot" id="vessel-next">ROTATE ▶</button>
+                    </div>
+                  </div>
+                  <div class="vessel-info">
+                    <p class="vessel-info__name" id="vessel-info-name"></p>
+                    <p class="vessel-info__sys" id="vessel-info-sys"></p>
+                    <p class="vessel-info__stats" id="vessel-info-stats"></p>
+                    <p class="vessel-info__deck" id="vessel-info-deck"></p>
+                    <p class="vessel-info__flavor" id="vessel-info-flavor"></p>
+                    <button type="button" class="sheet__go vessel-launch" id="vessel-launch">この素体でダイブ</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="scene" id="scene-map" hidden>
+                <div class="route" id="route">
+                  <div class="route__bar">
+                    <p id="route-pos">NOW  射出点</p>
+                    <p id="route-hp">HP 60</p>
+                    <button type="button" class="scan" id="scan">アナログスキャン <b id="scan-count">3</b></button>
+                  </div>
+                  <div class="route__board" id="route-map">
+                    <div class="route__floors" id="route-floors"></div>
+                    <svg class="route__links" id="route-links" aria-hidden="true"></svg>
+                  </div>
+                  <p class="ambush" id="ambush" role="alert" hidden>
+                    <b>WARNING: AMBUSH</b>
+                    <span id="ambush-detail"></span>
+                  </p>
+                </div>
+              </div>
+
+              <div class="scene" id="scene-battle" hidden>
+                <div class="tactical" id="tactical">
+                  <section class="glass" aria-label="現場映像">
+                    <canvas id="glass-canvas"></canvas>
+                    <div class="cctv-monitor" id="cctv-monitor" aria-hidden="true">
+                      <div class="cctv-monitor__scene" id="cctv-scene" hidden>
+                        <img class="cctv-monitor__room" id="cctv-room" alt="">
+                        <img class="cctv-monitor__enemy" id="cctv-enemy" alt="">
+                        <img class="cctv-monitor__vessel" id="cctv-vessel" alt="">
+                      </div>
+                      <div class="cctv-monitor__dummy" id="cctv-dummy"><span>NO SIGNAL</span></div>
+                      <div class="cctv-monitor__scan"></div>
+                      <span class="cctv-monitor__tag cctv-monitor__tag--rec"><span class="cctv-monitor__dot">●</span> REC</span>
+                      <span class="cctv-monitor__tag cctv-monitor__tag--cam">CAM 07</span>
+                      <span class="cctv-monitor__tag cctv-monitor__tag--target" id="cctv-target">TARGET: —</span>
+                      <span class="cctv-monitor__tag cctv-monitor__tag--time" id="cctv-time">--:--:--</span>
+                    </div>
+                    <p class="glass-flash" id="silenced" hidden>TARGET SILENCED</p>
+                    <p class="glass-flash glass-flash--breach" id="breached" hidden>PIPELINE BREACHED</p>
+                    <p id="intent" class="intent-badge">INTENT  —</p>
+                    <p id="shot-call" class="shot-call" hidden></p>
+                    <p class="enemy-action" id="enemy-action" hidden></p>
+                    <p class="intent-banner" id="intent-banner" hidden>INTENT  —</p>
+                    <div class="glass__readout">
+                      <p id="contact-name">NO CARRIER</p>
+                    </div>
+                  </section>
+
+                  <section class="meters" aria-label="標的と騒音">
+                    <h2 id="enemy-name">哨戒兵</h2>
+                    <p class="stat" id="enemy-hp-row"><span>耐久 HP</span><b id="enemy-hp-value">30</b><span class="dim">/ <span id="enemy-hp-max">30</span></span></p>
+                    <div class="bar bar--enemy" aria-hidden="true"><span id="enemy-hp-bar"></span></div>
+                    <p class="stat"><span>スタン</span><b id="stun-value">0/3</b></p>
+                    <div class="pips pips--stun" id="stun-pips" aria-hidden="true"><i class="is-off"></i><i class="is-off"></i><i class="is-off"></i></div>
+                    <p class="stat"><span>防護 BLK</span><b id="enemy-block-value">0</b></p>
+                    <p class="stat"><span>騒音 NOISE</span><b id="noise-value">0</b></p>
+                    <div class="segments" id="noise-meter" aria-hidden="true"></div>
+                    <p class="stat"><span>警報帯域</span><b id="noise-band">静穏</b></p>
+                  </section>
+                </div>
+              </div>
+
+              <div class="scene scene--sheet" id="scene-reward" hidden>
+                <p class="sheet__kicker">[ DATA EXTRACTION: PUNCH CARD ]</p>
+                <h2 class="sheet__title">データ抽出</h2>
+                <p class="sheet__copy">戦闘は終わった。抽出された3枚から1枚を選べ。カードに触れれば効果を解析でき、ダブルクリック、またはリーダへドラッグするとデッキに加わる。</p>
+                <div class="reward-offers" id="reward-offers"></div>
+                <p class="reward-secured" id="reward-secured" hidden>DATA SECURED</p>
+                <button type="button" class="reward-skip" id="reward-skip">SKIP (抽出放棄)</button>
+              </div>
+
+              <div class="scene scene--sheet" id="scene-safehouse" hidden>
+                <p class="sheet__kicker">LEAD WALL</p>
+                <h2 class="sheet__title">休憩区画</h2>
+                <p class="safehouse__line" id="safehouse-line" aria-live="polite"></p>
+                <div class="safehouse__choices" id="safehouse-choices" hidden>
+                  <button type="button" class="safehouse__act" id="safehouse-vent">
+                    <b>排熱 (VENT)</b>
+                    <span>素体に溜まった熱とノイズを排熱する。油と血の匂いが混ざる。</span>
+                    <small>耐久を最大値の30%回復</small>
+                  </button>
+                  <button type="button" class="safehouse__act" id="safehouse-sever">
+                    <b>切断 (SEVER)</b>
+                    <span>不要な思考（ノイズ）を物理的に切り刻む。フラッシュバックを消す唯一の手段。</span>
+                    <small>マスターデッキからカードを1枚削除</small>
+                  </button>
+                </div>
+                <div class="deck-modal" id="deck-modal" hidden role="dialog" aria-modal="true" aria-labelledby="deck-modal-title">
+                  <div class="deck-modal__panel">
+                    <p class="sheet__kicker">MASTER DECK</p>
+                    <h3 class="deck-modal__title" id="deck-modal-title">思考を1枚、切断する</h3>
+                    <p class="deck-modal__hint">呪装も残さず切れる。同じ名前が複数あっても、選んだ1枚だけが消える。</p>
+                    <ul class="deck-modal__list" id="deck-modal-list"></ul>
+                  </div>
+                </div>
+              </div>
+
+              <div class="scene scene--sheet" id="scene-event" hidden>
+                <p class="sheet__kicker" id="event-kicker">INCOMING</p>
+                <h2 class="sheet__title" id="event-title"></h2>
+                <div class="event__body" id="event-body">
+                  <p class="event__line" id="event-line" aria-live="polite"></p>
+                  <div class="safehouse__choices event__choices" id="event-choices" hidden></div>
+                  <p class="event__aftermath" id="event-aftermath" hidden>後日談</p>
+                  <p class="event__result" id="event-result" hidden></p>
+                  <button type="button" class="sheet__go" id="event-return" hidden>経路へ戻る</button>
+                </div>
+              </div>
+
+              <div class="scene scene--sheet" id="scene-gameover" hidden>
+                <p class="sheet__kicker">CARRIER LOST</p>
+                <h2 class="sheet__title">VESSEL DOWN</h2>
+                <p class="sheet__copy">通信途絶。素体は失われた。</p>
+                <button type="button" class="sheet__go" id="restart-run">通信途絶 (CONNECTION LOST)</button>
+              </div>
+
+              <div class="scene scene--sheet" id="scene-clear" hidden>
+                <p class="sheet__kicker sheet__kicker--clear">【 MISSION ACCOMPLISHED 】</p>
+                <h2 class="sheet__title">PIPELINE BREACHED</h2>
+                <p class="sheet__copy">THANK YOU FOR PLAYING - FORMAL VERSION</p>
+                <button type="button" class="sheet__go" id="return-terminal">RETURN TO TERMINAL（タイトルへ戻る）</button>
+              </div>
+            </div>
+
+            <div class="turnbar">
+              <div class="log" id="log" aria-live="polite"></div>
+              <button type="button" class="end-turn" id="route-return" hidden>経路へ戻る</button>
+              <button type="button" class="end-turn" id="end-turn" hidden>ターン終了 (END TURN)</button>
+            </div>
+            <div class="screen__glass" aria-hidden="true"></div>
+            <div class="crt__curve" aria-hidden="true"></div>
+          </div>
+
+          <aside class="comms" aria-label="通信とシステム">
+            <div class="comms__bar">
+              <span>OLD GRAY</span>
+              <button type="button" class="power" id="power" title="電源。放送からやり直す">PWR</button>
+            </div>
+            <div class="comms__well">
+              <p class="comms__idle">NO CARRIER</p>
+              <div class="breach" id="breach" hidden role="alert" aria-live="assertive">
+              <p>[ SECURITY BREACH - ENEMY ALERTED ]</p>
+              <span>敵の攻撃力が上昇した</span>
+            </div>
+            <div class="radio" id="radio" hidden role="dialog" aria-label="オールド・グレイからの無線">
+                <p class="radio__from">[INCOMING TRANSMISSION: OLD GRAY]</p>
+                <p class="radio__line" id="radio-line" aria-live="polite"></p>
+                <button type="button" class="radio__next" id="radio-next" hidden>NEXT</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+
+      <div class="tray">
+        <div class="reader" id="slot">
+          <div class="reader__lamps" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="reader__mouth" aria-label="パンチカードリーダ">
+            <span id="slot-label">INSERT PUNCH CARD</span>
+          </div>
+        </div>
+        <p class="sr-only" id="hopper-help">パンチカードをドラッグし、モニタ下部のスリットへ落とす。Enterキーでも挿入できる。</p>
+        <section class="hopper" id="hopper" aria-labelledby="hopper-help"></section>
+        <p class="hopper-note" id="hopper-note"></p>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/cards.js"></script>
+  <script src="js/relics.js"></script>
+  <script src="js/enemies.js"></script>
+  <!-- カード解析パネルは body 直下に置き、fixed で最前面に出す（親の overflow で切らない） -->
+  <div class="card-inspect" id="card-inspect" hidden>
+    <p class="card-inspect__name" id="card-inspect-name"></p>
+    <p class="card-inspect__body" id="card-inspect-body"></p>
+    <p class="card-inspect__flavor" id="card-inspect-flavor"></p>
+  </div>
+  <!-- レリック詳細ツールチップ（PROMPT-28）: チップのタップで開閉、他所タップで閉じる -->
+  <div class="relic-tip" id="relic-tip" hidden>
+    <p class="relic-tip__name" id="relic-tip-name"></p>
+    <p class="relic-tip__body" id="relic-tip-body"></p>
+    <p class="relic-tip__effect" id="relic-tip-effect"></p>
+  </div>
+  <script src="js/rewards.js"></script>
+  <script src="js/events.js"></script>
+  <script src="js/battle.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/main.js"></script>
+  <script>
+    if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("./sw.js").catch(function () { /* PWA unavailable: play normally */ });
+      });
+    }
+  </script>
+  <script>
+    // v15.2: 読み込みスプラッシュの保険。本体の初期化が万一止まっても、
+    // 20秒後には必ず消去して画面を真っ暗なままにしない
+    window.setTimeout(function () {
+      var el = document.getElementById("boot-splash");
+      if (el) el.remove();
+    }, 20000);
+  </script>
+  <!-- 正式版フェーズ1: デモ版の GoatCounter 計測は分離のため外した（main.js の trackEvent は送信先なしで無害に空転する） -->
+</body>
+</html>

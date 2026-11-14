@@ -1,0 +1,31 @@
+{
+  "name": "Enemy Pipeline: Analog Espionage（正式版）",
+  "short_name": "Enemy Pipeline 正式版",
+  "description": "レトロフューチャーCRT端末で繰り広げる、デッキ構築型ローグライク潜入ゲーム。",
+  "lang": "ja",
+  "start_url": "https://mamyxmamy.github.io/ranserinne/enemy-pipeline-formal/",
+  "scope": "https://mamyxmamy.github.io/ranserinne/enemy-pipeline-formal/",
+  "display": "standalone",
+  "background_color": "#031108",
+  "theme_color": "#031108",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
