@@ -92,11 +92,24 @@
     <div class="attract__flash" aria-hidden="true"></div>
   </section>
 
+  <!-- v15.3: 製作者クレジットカード。スプラッシュの後・タイトル画面の前に挟み、
+       タップで音声アンロックしてタイトルBGMが鳴る状態でタイトルへ入る -->
+  <section class="credit-card" id="credit-card" hidden aria-label="クレジット">
+    <div class="credit-card__lines">
+      <p class="credit-card__by" id="credit-by"></p>
+      <p class="credit-card__name" id="credit-name"></p>
+    </div>
+    <p class="credit-card__start" id="credit-start" hidden>&gt; TAP TO START</p>
+  </section>
+
   <section class="clear-screen" id="clear-screen" hidden aria-label="クリア">
     <p class="clear-screen__kicker">【 MISSION ACCOMPLISHED 】</p>
     <h2 class="clear-screen__title">THANK YOU FOR PLAYING</h2>
     <p class="clear-screen__sub">- DEMO VERSION -</p>
-    <button type="button" class="clear-screen__return" id="clear-return">RETURN TO TERMINAL（タイトルへ戻る）</button>
+    <div class="clear-screen__actions">
+      <button type="button" class="clear-screen__return" id="clear-return">RETURN TO TERMINAL（タイトルへ戻る）</button>
+      <a class="clear-screen__return clear-screen__share" id="clear-share" href="https://x.com/intent/post" target="_blank" rel="noopener">POST TO X</a>
+    </div>
   </section>
 
   <section class="intro-video" id="intro-video" hidden aria-label="ハッキング映像">
@@ -137,6 +150,7 @@
 
       <div class="screen crt" id="screen">
         <div class="dmg-vignette" id="dmg-vignette" aria-hidden="true"></div>
+        <div class="boss-pulse" id="boss-pulse" hidden aria-hidden="true"></div>
         <div class="screen__content">
           <aside class="status-bay" aria-label="素体の状態">
             <section class="dossier">
@@ -214,6 +228,8 @@
                     <p class="glass-flash glass-flash--breach" id="breached" hidden>PIPELINE BREACHED</p>
                     <p id="intent" class="intent-badge">INTENT  —</p>
                     <p id="shot-call" class="shot-call" hidden></p>
+                    <p class="enemy-action" id="enemy-action" hidden></p>
+                    <p class="intent-banner" id="intent-banner" hidden>INTENT  —</p>
                     <div class="glass__readout">
                       <p id="contact-name">NO CARRIER</p>
                     </div>

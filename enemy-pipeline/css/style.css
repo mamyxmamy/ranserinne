@@ -2695,6 +2695,82 @@ button { color: inherit; }
 
 .fade-mask.is-on { opacity: 1; }
 
+/* v15.3: 起動時クレジットカード（黒画面＋タイプライター印字）。スプラッシュ(900)より下、
+   アトラクト(8)より上に置き、タップでタイトルへ進むまで全画面を覆う */
+.credit-card {
+  position: fixed;
+  inset: 0;
+  z-index: 850;
+  background: #000;
+  color: #9dffb0;
+  font-family: var(--font-mono);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(20px, 7vh, 48px);
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.credit-card[hidden] { display: none; }
+
+.credit-card__lines {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(8px, 2.4vh, 16px);
+}
+
+.credit-card__by {
+  margin: 0;
+  min-height: 1.25em;
+  font-size: clamp(11px, 2.2vmin, 15px);
+  letter-spacing: 0.5em;
+  text-indent: 0.5em; /* letter-spacing の右寄りを相殺 */
+  color: #5da873;
+}
+
+.credit-card__name {
+  margin: 0;
+  min-height: 1.2em;
+  font-size: clamp(21px, 5.6vmin, 42px);
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #d8ffe4;
+  text-shadow:
+    0 0 6px rgba(210, 255, 220, 0.9),
+    0 0 18px rgba(40, 255, 110, 0.65);
+}
+
+.credit-card__caret {
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  margin-left: 3px;
+  vertical-align: -0.1em;
+  background: #4dff88;
+  animation: credit-blink 0.9s steps(2, start) infinite;
+}
+
+.credit-card__start {
+  margin: 0;
+  font-size: clamp(12px, 2.4vmin, 16px);
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  color: #4dff88;
+  text-shadow: 0 0 8px rgba(60, 255, 130, 0.45);
+  animation: credit-blink 1.1s steps(2, start) infinite;
+}
+
+@keyframes credit-blink { 50% { opacity: 0.25; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .credit-card__caret,
+  .credit-card__start { animation: none; }
+}
+
 /* v14.7: ボス撃破後のクリア表示は全面黒。ゲームUIを一切見せない */
 .clear-screen {
   position: fixed;
@@ -2762,6 +2838,20 @@ button { color: inherit; }
 
 .clear-screen__return:hover,
 .clear-screen__return:focus-visible { border-color: var(--phosphor-hot); box-shadow: 0 0 14px rgba(0, 255, 80, 0.35); }
+
+/* v15.3: RETURN と POST TO X を横並びにする */
+.clear-screen__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.clear-screen__share {
+  display: inline-block;
+  text-decoration: none;
+}
 
 body.is-dead .comms {
   position: relative;
@@ -3312,4 +3402,159 @@ body.is-dead .comms {
   .dmg-vignette.is-on { animation: none; }
   .cctv-monitor__scene.is-burst { animation: none; }
   .cctv-monitor__scene.is-enemyhit .cctv-monitor__enemy { animation: none; }
+}
+
+/* ---------- v15.3 案A: 敵インテント視認性強化＋ボス低耐久警告層 ---------- */
+/* 敵ターン開始時、CCTV中央に実行行動を大きく出すバナー。
+   フォントはガラス幅（cqw）連動（v14.6 の glass-flash と同じ流儀） */
+.enemy-action {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  margin: 0;
+  box-sizing: border-box;
+  transform: translate(-50%, -50%);
+  padding: 7px 16px;
+  border: 1px solid rgba(255, 141, 122, 0.85);
+  background: rgba(24, 5, 2, 0.88);
+  color: #ffb1a3;
+  font-family: var(--font-mono);
+  font-size: clamp(14px, 5.4cqw, 26px);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  max-width: calc(100% - 10px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 0 10px rgba(255, 80, 60, 0.55);
+  box-shadow: 0 0 18px rgba(255, 60, 40, 0.3), inset 0 0 12px rgba(255, 60, 40, 0.12);
+}
+.enemy-action[data-kind="buff"],
+.enemy-action[data-kind="stealth"],
+.enemy-action[data-kind="wait"] {
+  color: var(--phosphor-hot);
+  border-color: rgba(180, 255, 200, 0.8);
+  background: rgba(2, 22, 10, 0.88);
+  text-shadow: 0 0 10px rgba(140, 255, 180, 0.55);
+  box-shadow: 0 0 18px rgba(60, 255, 130, 0.25), inset 0 0 12px rgba(60, 255, 130, 0.1);
+}
+.enemy-action[data-kind="stunned"],
+.enemy-action[data-kind="cancelled"] {
+  color: #8ef6ff;
+  border-color: rgba(142, 246, 255, 0.85);
+  background: rgba(3, 22, 28, 0.88);
+  text-shadow: 0 0 10px rgba(142, 246, 255, 0.6);
+  box-shadow: 0 0 18px rgba(80, 220, 255, 0.28), inset 0 0 12px rgba(80, 220, 255, 0.12);
+}
+.enemy-action.is-in { animation: enemy-action-in 0.18s ease-out; }
+@keyframes enemy-action-in {
+  /* 拡大方向に振ると小さいガラスでは一瞬はみ出すため、縮小→等倍で出す */
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.enemy-action[hidden] { display: none !important; }
+
+/* インテント予告の常時表示（CCTV中央下・大きめ）。上部バッジ #intent と同内容 */
+.intent-banner {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  z-index: 2;
+  margin: 0;
+  box-sizing: border-box;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border: 1px solid rgba(255, 210, 122, 0.7);
+  background: rgba(4, 16, 8, 0.85);
+  color: var(--amber);
+  font-family: var(--font-mono);
+  font-size: clamp(13px, 4.4cqw, 19px);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  max-width: calc(100% - 10px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-shadow: 0 0 8px rgba(255, 200, 90, 0.4);
+}
+.intent-banner[data-action="buff"],
+.intent-banner[data-action="stealth"],
+.intent-banner[data-action="wait"] {
+  color: var(--phosphor-hot);
+  border-color: rgba(180, 255, 200, 0.75);
+}
+.intent-banner[data-action="hack"],
+.intent-banner[data-action="debuff"] {
+  color: #ff8d7a;
+  border-color: rgba(255, 141, 122, 0.75);
+}
+.intent-banner[data-action="stunned"] {
+  color: #8ef6ff;
+  border-color: rgba(142, 246, 255, 0.85);
+  background: rgba(3, 22, 28, 0.88);
+  text-shadow: 0 0 8px rgba(142, 246, 255, 0.6);
+}
+.intent-banner[data-alert]:not([data-alert=""]) {
+  color: #ffb27a;
+  border-color: rgba(255, 150, 90, 0.8);
+  text-shadow: 0 0 8px rgba(255, 120, 60, 0.55);
+}
+.intent-banner[hidden] { display: none !important; }
+
+/* ログの敵行動の色分け（「何をされたか」を後から追えるようにする） */
+.term-line.is-enemy,
+.term-line.is-enemy:last-child { color: #ff9d8a; }
+.term-line.is-enemy-head,
+.term-line.is-enemy-head:last-child { color: #ffb27a; font-weight: 700; letter-spacing: 0.08em; }
+.term-line.is-enemy-extra,
+.term-line.is-enemy-extra:last-child { color: #ffc46b; font-weight: 700; }
+
+/* ボス戦低耐久: 画面端の赤い鼓動（心拍音ループと同期する周期 1.0s） */
+.boss-pulse {
+  position: absolute;
+  inset: 0;
+  z-index: 56;
+  pointer-events: none;
+  opacity: 0;
+  box-shadow: inset 0 0 110px 26px rgba(255, 30, 20, 0.65);
+}
+.boss-pulse:not([hidden]) { animation: boss-heartbeat 1s ease-in-out infinite; }
+@keyframes boss-heartbeat {
+  0%, 100% { opacity: 0; }
+  10% { opacity: 1; }
+  22% { opacity: 0.25; }
+  34% { opacity: 0.85; }
+  52% { opacity: 0; }
+}
+.boss-pulse[hidden] { display: none !important; }
+
+/* 低丈画面ではバナーを詰めて少し上へ寄せる（はみ出し・重なり防止。
+   stage71 実測: 素の寸法では中央バナーが padding 込みでガラス幅を超え、
+   下端がインテントバナーへ数px重なった） */
+@media (max-height: 480px) {
+  .enemy-action {
+    top: 42%;
+    padding: 4px 10px;
+    font-size: clamp(12px, 4.4cqw, 19px);
+    letter-spacing: 0.08em;
+  }
+  .intent-banner {
+    bottom: 26px;
+    padding: 3px 9px;
+    font-size: clamp(11px, 3.9cqw, 15px);
+  }
+}
+
+/* 568x320 級の極低丈では中央バナーをさらに詰める（stage71 実測で幅超過）。
+   あわせて上部バッジも詰め、3要素（バッジ／中央バナー／インテントバナー）の
+   縦の隙間を確保する（stage71 実測で 1px の接触があった） */
+@media (max-height: 400px) {
+  .enemy-action { font-size: 11px; padding: 3px 8px; letter-spacing: 0.05em; line-height: 1.25; }
+  .intent-badge { font-size: 11px; padding: 2px 6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enemy-action.is-in { animation: none; }
+  .boss-pulse:not([hidden]) { animation: none; opacity: 0.45; }
 }

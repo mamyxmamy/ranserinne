@@ -11,6 +11,7 @@
    assets/audio/se_radio_noise.wav
    assets/audio/se_crt_on.wav
    assets/audio/se_switch.wav
+   assets/audio/se_heartbeat.wav (v15.3: boss low-HP warning layer)
    assets/audio/amb_fan.wav
    machine_insert reuses se_machine_insert.wav (the card-insert buffer).
 */
@@ -34,6 +35,7 @@ const AUDIO_FILES = {
   "se:zippo_click": "assets/audio/se_zippo_click.wav",
   "se:radio_noise": "assets/audio/se_radio_noise.wav",
   "se:alarm": "assets/audio/se_alarm.wav",
+  "se:heartbeat": "assets/audio/se_heartbeat.wav",
   "se:crt_on": "assets/audio/se_crt_on.wav",
   "se:switch": "assets/audio/se_switch.wav",
   "amb:fan": "assets/audio/amb_fan.wav",
@@ -62,6 +64,10 @@ class AudioManager {
     this.buffers = new Map();
     this.raw = new Map();
     this.voices = [];
+    this.heartbeatOn = false;
+    this.heartbeatPulses = 0;
+    this._hbTimer = 0;
+    this._hbVoices = [];
     this.fadeCount = 0;
     this.booted = false;
     this.seReady = false;
@@ -218,15 +224,18 @@ class AudioManager {
   /* v15.2: 2段構えブート。BGM mp3（実ファイル7曲＋ボス曲）は fetch・デコードが重く、
      全件完了まで待つと SE が実機で数秒〜十数秒無言になる（v15.1 実機報告の主因）。
      先に SE＋環境音（小さな wav 群）だけをデコードして seReady で playSE を解放し、
-     BGM は後段デコードが済んでから booted を立てて kick する。 */
+     BGM は後段デコードが済んでから booted を立てて kick する。
+     v15.3: タイトル曲（bgm:title、71.6秒）だけは第1段に含める。クレジットカードの
+     タップ時点で確実に再生可能にし、タイトル画面へ BGM が鳴った状態で入るため。 */
   async boot() {
     this.ensureGraph();
     if (!this.ctx) return;
     if (this.ctx.state !== "running") await this.ctx.resume();
     if (this.ctx.state !== "running") throw new Error("audio suspended");
-    await this.decodeGroup((key) => key.startsWith("se:") || key.startsWith("amb:"));
+    await this.decodeGroup((key) => key.startsWith("se:") || key.startsWith("amb:") || key === "bgm:title");
     this.seReady = true;
     this.kickAmbient();
+    this.kick(); // v15.3: wanted がタイトル曲なら、この時点で開始できる
     await this.decodeGroup((key) => key.startsWith("bgm:"));
     this.booted = true;
     this.kick();
@@ -313,6 +322,7 @@ class AudioManager {
       "se:glitch": { freq: 740, dur: 0.18, noise: 0.7, gain: 0.45, attack: 5, bend: 220 },
       "se:heavy_glitch": { freq: 130, dur: 0.75, noise: 1.0, gain: 0.85, attack: 2, bend: 45 },
       "se:alarm": { freq: 920, dur: 0.85, noise: 0.3, gain: 0.8, attack: 2, bend: -260 },
+      "se:heartbeat": { freq: 55, dur: 1.0, noise: 0.08, gain: 0.55, attack: 8, bend: -18 },
       "se:printer": { freq: 2400, dur: 0.018, noise: 0.55, gain: 0.28, attack: 2, bend: 0 },
       "se:zippo_click": { freq: 2100, dur: 0.04, noise: 0.7, gain: 0.55, attack: 2, bend: -600 },
       "se:radio_noise": { freq: 1800, dur: 0.04, noise: 0.92, gain: 0.2, attack: 1, bend: 40 },
@@ -338,8 +348,15 @@ class AudioManager {
   }
 
   kick() {
-    if (!this.booted || !this.ctx || this.ctx.state !== "running") return;
-    if (this.wanted !== this.currentName) this.crossTo(this.wanted);
+    if (!this.ctx || this.ctx.state !== "running") return;
+    if (this.wanted !== this.currentName) {
+      // v15.3: booted 前でも、wanted トラックのバッファが既にあれば開始できる
+      // （第1段で先行デコードしたタイトル曲用）。バッファが無いトラックへの切替は
+      // 従来どおり booted 後の kick（boot 完了時）に委ね、再生中の曲も止めない。
+      // wanted が null（停止）の場合はバッファ不要なので即座にフェードアウトする。
+      const ready = this.booted || !this.wanted || !!this.buffers.get(`bgm:${this.wanted}`);
+      if (ready) this.crossTo(this.wanted);
+    }
     this.kickAmbient();
   }
 
@@ -406,6 +423,49 @@ class AudioManager {
     } catch {
       /* already stopped */
     }
+  }
+
+  /* v15.3: ボス戦の低耐久警告層。BGM（ボス曲）は切り替えず、心拍ループだけを
+     SE バスへ重ねる。音源 se_heartbeat.wav は「ドクン」1周期（1.0秒）で、
+     周期ごとに新しい BufferSource を起こして再生する（playSE と同じ流儀）。
+     SOUND OFF（ミュート）は seGain 経由でそのまま効く。 */
+  startHeartbeat() {
+    if (this.heartbeatOn) return;
+    this.heartbeatOn = true;
+    this._heartbeatPulse();
+  }
+
+  stopHeartbeat() {
+    this.heartbeatOn = false;
+    if (this._hbTimer) {
+      window.clearTimeout(this._hbTimer);
+      this._hbTimer = 0;
+    }
+    for (const voice of this._hbVoices.splice(0)) {
+      try { voice.stop(); } catch { /* already ended */ }
+    }
+  }
+
+  _heartbeatPulse() {
+    if (!this.heartbeatOn) return;
+    if (this.seReady && this.ctx && this.ctx.state === "running") {
+      const buffer = this.buffers.get("se:heartbeat");
+      if (buffer) {
+        const voice = this.ctx.createBufferSource();
+        voice.buffer = buffer;
+        const gain = this.ctx.createGain();
+        gain.gain.value = 0.9;
+        voice.connect(gain).connect(this.seGain);
+        voice.onended = () => {
+          const index = this._hbVoices.indexOf(voice);
+          if (index >= 0) this._hbVoices.splice(index, 1);
+        };
+        this._hbVoices.push(voice);
+        voice.start();
+        this.heartbeatPulses += 1;
+      }
+    }
+    this._hbTimer = window.setTimeout(() => this._heartbeatPulse(), 1000);
   }
 
   /* A BufferSource can start only once. Each SE clones a fresh source so overlaps keep ringing. */

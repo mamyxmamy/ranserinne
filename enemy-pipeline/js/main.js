@@ -263,6 +263,9 @@ const ui = {
   contact: $("contact-name"),
   intent: $("intent"),
   shotCall: $("shot-call"),
+  enemyAction: $("enemy-action"),
+  intentBanner: $("intent-banner"),
+  bossPulse: $("boss-pulse"),
   endTurn: $("end-turn"),
   routeReturn: $("route-return"),
   piles: $("piles"),
@@ -334,6 +337,11 @@ const ui = {
   newgameBtn: $("newgame-btn"),
   clearScreen: $("clear-screen"),
   clearReturn: $("clear-return"),
+  clearShare: $("clear-share"),
+  creditCard: $("credit-card"),
+  creditBy: $("credit-by"),
+  creditName: $("credit-name"),
+  creditStart: $("credit-start"),
   soundToggle: $("sound-toggle"),
   prologue: $("prologue"),
   prologueTerm: $("prologue-term"),
@@ -372,10 +380,27 @@ function sceneEl(name) {
   return document.getElementById(`scene-${name.toLowerCase()}`);
 }
 
+// v15.3: クリア画面のX投稿（intent）。本文にURLは入れず、ゲームURLは url パラメータに分ける
+// （本人のX運用「本文にURLを入れない」方針と整合させる）
+const GAME_PAGE_URL = "https://mamyxmamy.github.io/ranserinne/enemy-pipeline/";
+function buildShareUrl() {
+  const hp = run ? Math.max(0, Math.floor(run.hp || 0)) : 0;
+  const hpMax = run ? (run.hpMax || 0) : 0;
+  const kills = run && run.kills ? run.kills : 0;
+  const text = `『Enemy Pipeline: Analog Espionage』デモ版をクリア！ 第一防壁を突破した。残りHP ${hp}/${hpMax}・撃破${kills}体。\n#EnemyPipeline #個人ゲーム開発`;
+  return `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(GAME_PAGE_URL)}`;
+}
+
+function refreshClearShare() {
+  if (!ui.clearShare) return;
+  ui.clearShare.href = buildShareUrl();
+}
+
 // v14.7: クリア時は全面黒レイヤーを出す（ゲームUIを覆い隠す）。それ以外では必ず消す
 function syncClearScreen(on) {
   if (!ui.clearScreen) return;
   if (on) {
+    refreshClearShare(); // v15.3: 表示時点の戦績で投稿URLを組み直す
     ui.clearScreen.hidden = false;
     void ui.clearScreen.offsetWidth;
     ui.clearScreen.classList.add("is-on");
@@ -412,6 +437,8 @@ function changeScene(sceneName) {
   ui.screen.classList.toggle("is-safe", name === "SAFEHOUSE");
   ui.screen.classList.toggle("is-event", name === "EVENT");
   if (name !== "BATTLE") lowHpBgmActive = false; // 戦闘シーンを離れたら低耐久状態は持ち越さない
+  updateBossAlert(); // v15.3: 戦闘シーンを離れたらボス低耐久の警告層も確実に止める
+  if (name !== "BATTLE") hideEnemyAction();
   if (audio) {
     // ボス戦BGM: ボス戦とクリア画面では提供曲を流し続ける（同じ曲名なので再開始しない）
     let track = bossBgm && (name === "BATTLE" || name === "CLEAR") ? "boss" : (SCENE_BGM[name] || null);
@@ -435,6 +462,8 @@ function hideScenes() {
   }
   ui.screen.classList.remove("is-safe", "is-event");
   lowHpBgmActive = false;
+  setBossAlert(false); // v15.3: 全シーン消去時も心拍層を止める
+  hideEnemyAction();
   if (audio) {
     audio.playBgm(null);
     audio.stopAmbient();
@@ -600,11 +629,13 @@ function noteImpact(text) {
   if (dealt && Number(dealt[1]) > 0) audio.playSE("hit");
 }
 
-function pushLog(text) {
+function pushLog(text, kind) {
   noteImpact(text);
   const line = document.createElement("p");
   line.className = "term-line";
   if (String(text).startsWith("WARNING")) line.classList.add("is-alert");
+  // v15.3 案A: 敵の行動行は色分けクラスを付ける（enemy / enemy-head / enemy-extra）
+  if (kind) line.classList.add(`is-${kind}`);
   ui.log.append(line);
   const cap = session.phase === "map" ? 8 : (session.linked ? 8 : 3);
   while (ui.log.children.length > cap) ui.log.firstElementChild.remove();
@@ -838,6 +869,7 @@ function renderCombat() {
   renderNoise();
   renderEnemyIntent();
   updateLowHpBgm();
+  updateBossAlert();
 }
 
 function renderEnemyIntent() {
@@ -845,15 +877,30 @@ function renderEnemyIntent() {
     ui.intent.dataset.action = "";
     ui.intent.dataset.alert = "";
     imprint(ui.intent, "INTENT  —");
+    if (ui.intentBanner) {
+      ui.intentBanner.hidden = true;
+      ui.intentBanner.dataset.action = "";
+      ui.intentBanner.dataset.alert = "";
+      ui.intentBanner.textContent = "INTENT  —";
+    }
     return;
   }
   const view = Battle.intentView(battle);
   ui.intent.dataset.action = view.action || "";
   // v15.0: 警戒段階では追加行動の予告をインテントに明示する
   ui.intent.dataset.alert = view.extra ? view.extra.kind : "";
-  imprint(ui.intent, view.label
+  const label = view.label
     + ((battle.alertBuff || 0) > 0 ? ` 〈警報+${battle.alertBuff}〉` : "")
-    + (view.extra ? ` 〈${view.extra.label}〉` : ""));
+    + (view.extra ? ` 〈${view.extra.label}〉` : "");
+  imprint(ui.intent, label);
+  // v15.3 案A: インテント予告は CCTV 中央下にも常時大きめに表示する
+  // （上部バッジと同じ内容を、即時反映で大きく出す）
+  if (ui.intentBanner) {
+    ui.intentBanner.hidden = false;
+    ui.intentBanner.dataset.action = view.action || "";
+    ui.intentBanner.dataset.alert = view.extra ? view.extra.kind : "";
+    ui.intentBanner.textContent = `INTENT  ${label}`;
+  }
 }
 
 function renderPiles() {
@@ -894,6 +941,48 @@ function showShotCall(enemy) {
   shotTimer = window.setTimeout(() => {
     ui.shotCall.hidden = true;
   }, 1100);
+}
+
+// v15.3 案A: 敵ターン開始時、CCTV中央に実行行動を大きくバナー表示する。
+// 文言形式は「ENEMY ACTION — 射撃 8dmg」（警戒の追加行動があれば末尾に付記）。
+const ALERT_EXTRA_SHORT = Object.freeze({ pursuit: "追撃", aim: "照準", jam: "攪乱" });
+let enemyActionTimer = 0;
+
+function enemyActionText(enemy) {
+  if (!enemy || !enemy.action) return "";
+  let text = `ENEMY ACTION — ${enemy.action.label}`;
+  const kind = enemy.alert && enemy.alert.kind;
+  if (kind && ALERT_EXTRA_SHORT[kind]) text += ` / 追加行動: ${ALERT_EXTRA_SHORT[kind]}`;
+  return text;
+}
+
+function showEnemyAction(enemy) {
+  if (!ui.enemyAction) return;
+  window.clearTimeout(enemyActionTimer);
+  const text = enemyActionText(enemy);
+  if (!text) {
+    ui.enemyAction.hidden = true;
+    return;
+  }
+  window.__lastEnemyAction = { text, kind: enemy.action.kind || "", outcome: enemy.outcome || "" };
+  ui.enemyAction.textContent = text;
+  ui.enemyAction.dataset.kind = enemy.action.kind || "";
+  ui.enemyAction.hidden = false;
+  ui.enemyAction.classList.remove("is-in");
+  void ui.enemyAction.offsetWidth;
+  ui.enemyAction.classList.add("is-in");
+  enemyActionTimer = window.setTimeout(() => {
+    ui.enemyAction.hidden = true;
+    ui.enemyAction.classList.remove("is-in");
+  }, 1700);
+}
+
+function hideEnemyAction() {
+  window.clearTimeout(enemyActionTimer);
+  if (ui.enemyAction) {
+    ui.enemyAction.hidden = true;
+    ui.enemyAction.classList.remove("is-in");
+  }
 }
 
 function refreshHand() {
@@ -1057,7 +1146,22 @@ async function runEnemyPhase() {
   ui.hopper.replaceChildren();
   const downAt = result.log.indexOf("VESSEL DOWN");
   const lines = battle.player.hp <= 0 && downAt >= 0 ? result.log.slice(0, downAt + 1) : result.log;
-  for (const line of lines) pushLog(line);
+  // v15.3 案A: 敵ターン開始の中央バナー＋敵行動ログの色分け。
+  // endTurn のログは [DISCARD行, ...敵ログ, ...自ターン開始ログ] の順で組まれているため、
+  // 敵ログの区間を位置で特定して色分けする。区間の先頭には見出し行も残す。
+  showEnemyAction(result.enemy);
+  const enemyLog = (result.enemy && result.enemy.log) || [];
+  const enemyStart = 1;
+  const enemyEnd = enemyStart + enemyLog.length;
+  const headline = enemyActionText(result.enemy);
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (i === enemyStart && headline) pushLog(headline, "enemy-head");
+    const isEnemyLine = i >= enemyStart && i < enemyEnd;
+    const kind = !isEnemyLine ? undefined
+      : (line.startsWith("追加行動") ? "enemy-extra" : "enemy");
+    pushLog(line, kind);
+  }
   showShotCall(result.enemy);
   // v15.0: 敵フェーズで被弾したら被弾演出（追加行動の追撃分も result.enemy.damage に含まれる）
   if (result.enemy && result.enemy.damage > 0) fxPlayerDamage();
@@ -1314,6 +1418,7 @@ function openRoute() {
     relics: Relics.issued(),
     deck: Battle.DECK.map((card) => card.id),
     noise: 0, // v15.0: ノイズはラン全体で持ち越す（開始時は0）
+    kills: 0, // v15.3: 撃破数（クリア画面のX投稿サマリ用）
   };
   route = PipelineMap.generate();
   run.tutorialPending = !tutorialCleared();
@@ -1364,6 +1469,7 @@ function saveGame(pending) {
       hp: run.hp,
       hpMax: run.hpMax,
       noise: Math.max(0, Math.min(5, run.noise || 0)), // v15.0: 持ち越しノイズも保存する
+      kills: run.kills || 0, // v15.3: 撃破数も保存する
       relics: (run.relics || []).slice(),
       deck: (run.deck || []).slice(),
       route: {
@@ -1450,6 +1556,7 @@ function restoreRun() {
     hp: data.hp,
     hpMax: data.hpMax,
     noise: typeof data.noise === "number" ? Math.max(0, Math.min(5, data.noise)) : 0, // v15.0: 持ち越しノイズを復元
+    kills: typeof data.kills === "number" ? data.kills : 0, // v15.3: 撃破数を復元
     relics: Array.isArray(data.relics) ? data.relics.slice() : [],
     deck: data.deck.slice(),
     // 復元したランではチュートリアルの脚本は再生しない（新規ラン開始時に改めて行われる）
@@ -1972,6 +2079,40 @@ function updateLowHpBgm() {
   }
 }
 
+// v15.3: ボス戦の低耐久演出（DESIGN-QUALITY-UP.md「ボス戦の低耐久演出」節）。
+// ボス曲は維持したまま（低耐久曲へは切り替えない）、警告音の層だけを足す:
+// 心拍音ループ（AudioManager の SE バス）＋画面端の赤い鼓動（#boss-pulse）。
+// 閾値は低耐久BGM判定と同一のヒステリシス（入り HP30%以下／復帰 HP40%以上）。
+// ボス戦以外では絶対に発火せず、戦闘離脱・ボス撃破・ゲームオーバーで確実に止める。
+let bossLowHpAlert = false;
+window.__bossAlert = false;
+
+function setBossAlert(on) {
+  const next = !!on;
+  if (bossLowHpAlert === next) {
+    if (ui.bossPulse) ui.bossPulse.hidden = !next;
+    return;
+  }
+  bossLowHpAlert = next;
+  window.__bossAlert = next;
+  if (ui.bossPulse) ui.bossPulse.hidden = !next;
+  if (ui.screen) ui.screen.classList.toggle("is-boss-lowhp", next);
+  if (audio) {
+    if (next) audio.startHeartbeat();
+    else audio.stopHeartbeat();
+  }
+}
+
+function updateBossAlert() {
+  if (!battle || !battle.player) { setBossAlert(false); return; }
+  const hp = battle.player.hp;
+  const max = battle.player.hpMax || 1;
+  const inBossCombat = bossBgm && currentScene === "BATTLE" && session.phase === "combat" && hp > 0;
+  if (!inBossCombat) { setBossAlert(false); return; }
+  if (!bossLowHpAlert && hp * 10 <= max * 3) setBossAlert(true);
+  else if (bossLowHpAlert && hp * 10 >= max * 4) setBossAlert(false);
+}
+
 async function beginCombat(encounter) {
   session.busy = true;
   session.advance = false;
@@ -2457,6 +2598,10 @@ function onScan() {
 
 async function openReward() {
   if (session.phase !== "combat" || !battle || battle.player.hp <= 0 || !battle.enemy.dead) return;
+  setBossAlert(false); // v15.3: 敵を撃破したら心拍層は即座に止める（ボス撃破含む）
+  // v15.3: 撃破数カウント（クリア画面のX投稿サマリ用）。openReward は勝利確定後の単一入口
+  // （チュートリアル完了戦闘も victoryRadio 経由でここに合流する）で、戦闘ごとに1回だけ数える
+  if (run && !battle.killCounted) { battle.killCounted = true; run.kills = (run.kills || 0) + 1; }
   if (!window.Rewards) {
     finishCombat();
     return;
@@ -2610,6 +2755,7 @@ async function openGameOver() {
   silenceRadio();
   pinchQueued = false;
   bossBgm = false;
+  setBossAlert(false); // v15.3: ゲームオーバーでは心拍層を確実に止める
   if (audio) {
     audio.playBgm(null);
     audio.playSE("heavy_glitch");
@@ -2988,6 +3134,78 @@ function dismissBootSplash() {
   if (el) el.remove();
 }
 
+// v15.3: 製作者クレジットカード（DESIGN-QUALITY-UP.md「タイトル前クレジットカード」節）。
+// 起動フローの一部として毎回（再訪・CONTINUE勢含む）スプラッシュの後・タイトル画面の前に出す。
+// 役割は2つ：クレジット表示と、タイトルBGMの開始タイミングの確保。タップが音声アンロックに
+// なり、タイトル曲は第1段デコード済み（audio.js boot）なので、タイトルへ鳴った状態で入れる。
+// 印字はDOMテキストのみ（素材読み込みなし）で、印字SEはアンロック前なので付けない。
+const CREDIT_LINES = ["A GAME BY", "Yakizakana Yaitaro"];
+let creditPhase = "idle"; // idle | typing | ready | done
+let creditToken = 0;
+
+function creditCardActive() {
+  return creditPhase === "typing" || creditPhase === "ready";
+}
+
+function completeCreditTyping() {
+  if (creditPhase !== "typing") return;
+  creditToken += 1; // 印字ループを止める
+  ui.creditBy.textContent = CREDIT_LINES[0];
+  ui.creditName.textContent = CREDIT_LINES[1];
+  ui.creditStart.hidden = false;
+  creditPhase = "ready";
+}
+
+async function showCreditCard() {
+  if (!ui.creditCard || creditPhase !== "idle") return;
+  creditPhase = "typing";
+  const token = ++creditToken;
+  const live = () => token === creditToken && creditPhase === "typing";
+  ui.creditCard.hidden = false;
+  ui.creditStart.hidden = true;
+  ui.creditBy.textContent = "";
+  ui.creditName.textContent = "";
+  if (reducedMotion()) { completeCreditTyping(); return; }
+  const caret = document.createElement("span");
+  caret.className = "credit-card__caret";
+  caret.setAttribute("aria-hidden", "true");
+  const nodes = [ui.creditBy, ui.creditName];
+  for (let i = 0; i < CREDIT_LINES.length; i += 1) {
+    const node = nodes[i];
+    node.textContent = "";
+    node.append(caret);
+    let typed = "";
+    for (const ch of CREDIT_LINES[i]) {
+      if (!live()) { caret.remove(); return; }
+      typed += ch;
+      node.textContent = typed;
+      node.append(caret);
+      await delay(30); // 26字で約0.8秒＋行間の間
+    }
+    if (!live()) { caret.remove(); return; }
+    if (i === 0) await delay(180);
+  }
+  caret.remove();
+  completeCreditTyping();
+}
+
+function dismissCreditCard() {
+  if (creditPhase !== "ready") return;
+  creditPhase = "done";
+  ui.creditCard.hidden = true;
+  if (audio) {
+    // 既存の unlock フローに接続し、タイトル曲を開始する（kick の条件が整えば即再生）
+    const p = audio.unlock();
+    audio.playBgm("title");
+    if (p && typeof p.then === "function") p.then(() => audio.playBgm("title")).catch(() => {});
+  }
+}
+
+function creditCardTap() {
+  if (creditPhase === "typing") { completeCreditTyping(); return; }
+  if (creditPhase === "ready") dismissCreditCard();
+}
+
 async function beginAttract() {
   const token = ++attractToken;
   attractSession = token;
@@ -3020,6 +3238,7 @@ async function beginAttract() {
   refreshTutorialBtn();
   refreshNewGameBtn();
   dismissBootSplash(); // v15.2: タイトル表示の準備が整ったのでスプラッシュを引き継ぐ
+  void showCreditCard(); // v15.3: スプラッシュの次にクレジットカードを挟む
 }
 
 // クリック直後：ブートテキストを高速印字し、その裏で動画をプリロードする
@@ -3546,6 +3765,14 @@ ui.hopper.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("keydown", (event) => {
+  // v15.3: クレジットカード表示中は Enter/ Space をカード操作に回す（アトラクト開始と競合させない）
+  if (creditCardActive()) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      creditCardTap();
+    }
+    return;
+  }
   if (event.key === "Enter" && session.phase === "attract") {
     event.preventDefault();
     launchFromAttract();
@@ -3705,6 +3932,9 @@ function returnToTerminal() {
 }
 ui.returnTerminal.addEventListener("click", returnToTerminal);
 if (ui.clearReturn) ui.clearReturn.addEventListener("click", returnToTerminal);
+// v15.3: クレジットカードのタップ（印字中＝スキップ／完了後＝アンロックしてタイトルへ）
+if (ui.creditCard) ui.creditCard.addEventListener("click", () => { creditCardTap(); });
+refreshClearShare(); // v15.3: POST TO X の href を初期状態でも戦績なし文面で用意しておく
 ui.rewardOffers.addEventListener("pointerover", (event) => {
   if (event.pointerType && event.pointerType !== "mouse") return;
   const card = event.target.closest(".punchcard");

@@ -527,23 +527,32 @@
     state.alertTelegraphed = null;
     if (state.enemy.dead) {
       log.push("TARGET DOWN");
-      return { log, outcome: "down", damage: 0, call: "", alert: { telegraphed, kind: null, cancelled: false } };
+      return { log, outcome: "down", damage: 0, call: "", action: null, alert: { telegraphed, kind: null, cancelled: false } };
     }
     if (state.enemy.cancelNextIntent > 0) {
       state.enemy.cancelNextIntent -= 1;
       advancePattern(state.enemy);
       log.push("INTENT CANCELLED");
-      return { log, outcome: "cancelled", damage: 0, call: "CANCELLED", alert: { telegraphed, kind: null, cancelled: !!telegraphed } };
+      return { log, outcome: "cancelled", damage: 0, call: "CANCELLED", action: { label: "CANCELLED", kind: "cancelled" }, alert: { telegraphed, kind: null, cancelled: !!telegraphed } };
     }
     // 検収修正 2026-11-10 (PROMPT-19): スタン最大で敵の行動をショート（設計欠落の補完）
     if (!state.enemy.immuneToStun && (state.enemy.stun || 0) >= (state.enemy.stunMax || 3)) {
       state.enemy.stun = 0;
       advancePattern(state.enemy);
       log.push("STUNNED - 行動ショート");
-      return { log, outcome: "stunned", damage: 0, call: "STUNNED", alert: { telegraphed, kind: null, cancelled: !!telegraphed } };
+      return { log, outcome: "stunned", damage: 0, call: "STUNNED", action: { label: "STUNNED", kind: "stunned" }, alert: { telegraphed, kind: null, cancelled: !!telegraphed } };
     }
     const mainIntent = currentIntent(state.enemy);
+    // v15.3 案A: 中央バナー用の「実行された行動」ラベル。表示中のインテント予告
+    // （intentView）と同じく警報バフ＋照準を合算した実効値で組む。
+    const effBuff = (state.alertBuff || 0) + (state.alertAim || 0);
+    const shownIntent = effBuff > 0
+      && (mainIntent.action === "attack" || mainIntent.action === "heavy_attack" || mainIntent.action === "attack_stun")
+      ? { ...mainIntent, value: (mainIntent.value || 0) + effBuff }
+      : mainIntent;
+    const actionInfo = { label: intentText(shownIntent), kind: mainIntent.action || "" };
     const result = resolveIntent(state, mainIntent, log);
+    result.action = actionInfo;
     advancePattern(state.enemy);
     // v15.0: 警戒段階の追加行動（通常行動の後に実施。ノイズが3未満へ下がっていれば取消）
     const alert = { telegraphed, kind: null, cancelled: false };

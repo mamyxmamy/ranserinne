@@ -1,5 +1,5 @@
 // Enemy Pipeline PWA service worker
-const CACHE = "enemy-pipeline-pwa-v25";
+const CACHE = "enemy-pipeline-pwa-v26";
 const CORE = [
   "./",
   "./index.html",
@@ -38,6 +38,7 @@ const CORE = [
   "./assets/audio/bgm_reward.mp3",
   "./assets/audio/bgm_title.mp3",
   "./assets/audio/se_alarm.wav",
+  "./assets/audio/se_heartbeat.wav",
   "./assets/audio/se_card_drag.wav",
   "./assets/audio/se_card_hover.wav",
   "./assets/audio/se_crt_on.wav",
