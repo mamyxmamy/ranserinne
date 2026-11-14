@@ -3559,37 +3559,28 @@ body.is-dead .comms {
   .boss-pulse:not([hidden]) { animation: none; opacity: 0.45; }
 }
 
-/* ==== 正式版フェーズ1＋レイアウト修正: キャラ選択（専用フル画面シーン） ==== */
+/* ==== 正式版フェーズ1＋レイアウト修正＋アート組み込み: キャラ選択（専用フル画面シーン） ==== */
 /* タイトル／プロローグと同じく body 直下の fixed シーンとして全画面表示する。
    表示中は changeScene が desk（HUD）を隠すため、HUD要素は一切出ない。
-   構図は承認済みコンセプト画準拠: 管制デスク越しに格納庫の円形回転台を臨み、
-   選択中の素体が中央に大きく、両脇は小さく減光、未解禁はシルエット＋LOCKED。
-   右にCRT情報パネル、ROTATEと決定は大きく押しやすく。 */
+   構図は承認済みコンセプト画準拠: 格納庫の背景画（assets/vessel_hangar_bg.webp）を
+   ステージに cover で敷き、素体フィギュアを画の回転台／左右台座の上に絶対配置する。
+   右は物理モニタ風CRTパネル、ROTATEは無骨なハードウェア風ボタン。 */
 .vessel-screen {
   position: fixed;
   inset: 0;
   z-index: 40;
   overflow: hidden;
   background:
-    radial-gradient(ellipse 62% 40% at 50% -6%, rgba(150, 255, 190, 0.14), transparent 70%),
-    radial-gradient(ellipse 90% 60% at 50% 115%, rgba(70, 200, 120, 0.07), transparent 70%),
-    linear-gradient(180deg, #07130c 0%, #030b06 55%, #010403 100%);
+    radial-gradient(ellipse 55% 38% at 82% -6%, rgba(255, 176, 92, 0.05), transparent 70%),
+    radial-gradient(ellipse 62% 40% at 50% -6%, rgba(150, 255, 190, 0.08), transparent 70%),
+    linear-gradient(180deg, #081009 0%, #030805 55%, #010302 100%);
   color: var(--phosphor);
   font-family: var(--font-mono);
 }
 
-/* 格納庫の金網フェンスを両脇に薄く敷く */
+/* 旧・金網メッシュ装飾は背景画と二重になるため廃止（残置は ::after の走査線のみ） */
 .vessel-screen::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.16;
-  background-image:
-    repeating-linear-gradient(45deg, rgba(160, 255, 190, 0.13) 0 1px, transparent 1px 9px),
-    repeating-linear-gradient(-45deg, rgba(160, 255, 190, 0.13) 0 1px, transparent 1px 9px);
-  -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 26%, transparent 74%, #000 100%);
-  mask-image: linear-gradient(90deg, #000 0%, transparent 26%, transparent 74%, #000 100%);
+  content: none;
 }
 
 /* 走査線とビネット（attract と同じ作法） */
@@ -3619,8 +3610,9 @@ body.is-dead .comms {
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  border-bottom: 1px solid rgba(180, 255, 200, 0.28);
-  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(180, 255, 200, 0.16);
+  padding: 2px 4px 6px;
+  background: linear-gradient(180deg, rgba(2, 8, 4, 0.5), rgba(2, 8, 4, 0));
 }
 
 .vessel-screen__kicker {
@@ -3677,82 +3669,87 @@ body.is-dead .comms {
   min-height: 0;
 }
 
-/* 回転台ステージ: 上からのスポットライト＋足元の同心円プラットフォーム */
+/* 回転台ステージ: 格納庫の背景画を cover で敷く「格納庫の窓」。
+   ステージのアスペクト比は画（16:9）より縦長寄りのため cover は高さ基準で効き、
+   画の縦位置はステージ全高にそのまま対応する（回転台ディスク中心 ≒ 縦57%）。
+   フィギュアは画の台座位置に合わせて絶対配置する。 */
 .vessel-stage {
   position: relative;
   flex: 1;
   min-height: 0;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 4px;
-  padding: 12px 8px 4px;
-  border: 1px solid rgba(180, 255, 200, 0.22);
-  background:
-    radial-gradient(ellipse 58% 44% at 50% 0%, rgba(170, 255, 200, 0.13), transparent 70%),
-    linear-gradient(180deg, rgba(12, 30, 18, 0.55), rgba(0, 0, 0, 0.4)),
-    #030b06;
-  box-shadow: inset 0 0 34px rgba(80, 255, 140, 0.06);
+  border: 1px solid rgba(180, 255, 200, 0.14);
+  background: #05080a url("../assets/vessel_hangar_bg.webp") center / cover no-repeat;
+  box-shadow: inset 0 0 64px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
 
-/* 円形回転台: 同心円の楕円リングで台座を描く */
+/* 中央フィギュアの接地シャドウ: 画の回転台ディスク上（縦 約64%）に薄い楕円の影 */
 .vessel-stage::before {
   content: "";
   position: absolute;
   left: 50%;
-  bottom: 12px;
+  top: 60.5%;
   transform: translateX(-50%);
-  width: 88%;
-  height: 18%;
-  border: 2px solid rgba(180, 255, 200, 0.35);
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(120, 255, 170, 0.1), rgba(10, 24, 14, 0.55) 72%);
-  box-shadow: 0 0 24px rgba(90, 255, 150, 0.12), inset 0 0 18px rgba(90, 255, 150, 0.1);
+  width: 54%;
+  height: 12%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0) 68%);
   pointer-events: none;
 }
 
+/* 脇フィギュアの接地シャドウ: 画の左右台座（縦 約52%）に合わせた小さな楕円2つ */
 .vessel-stage::after {
   content: "";
   position: absolute;
-  left: 50%;
-  bottom: calc(12px + 3.4%);
-  transform: translateX(-50%);
-  width: 60%;
-  height: 11.5%;
-  border: 1px dashed rgba(180, 255, 200, 0.3);
-  border-radius: 50%;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 15% 5.5% at 11% 54.5%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0) 70%),
+    radial-gradient(ellipse 15% 5.5% at 89% 54.5%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0) 70%);
   pointer-events: none;
 }
 
+/* フィギュアは画の台座に「立たせる」ため絶対配置する。
+   bottom はステージ高さ基準（%）: 中央は回転台の前面（足元 ≒ 縦65%）、
+   脇は左右台座の天面（足元 ≒ 縦53%）に合わせる（キャプション高さ分を含む値）。
+   GOLIATH の立ち絵は実コンテンツが画の下端 91.2% で終わる（下にソフトな裾がある）ため、
+   足元を揃えるぶん bottom を小さくして全体を下げる。 */
 .vessel-figure {
-  position: relative;
+  position: absolute;
+  bottom: 40%;
+  width: 24%;
   z-index: 1;
-  flex: 0 0 26%;
   text-align: center;
-  opacity: 0.52;
-  filter: brightness(0.75);
-  transform: scale(0.8);
+  opacity: 0.55;
+  filter: brightness(0.78);
+  transform: scale(0.85);
   transform-origin: bottom center;
-  transition: transform 380ms ease, opacity 380ms ease, filter 380ms ease;
+  transition: opacity 380ms ease, filter 380ms ease;
 }
 
+.vessel-figure.is-left { left: 0.5%; }
+.vessel-figure.is-right { right: 0.5%; }
+
 .vessel-figure.is-center {
-  flex-basis: 44%;
+  left: 50%;
+  width: 42%;
+  bottom: 28%;
+  z-index: 2;
   opacity: 1;
   filter: none;
-  transform: scale(1);
+  transform: translateX(-50%);
 }
+
+.vessel-figure[data-vessel="vessel04"] { bottom: 36%; }
+.vessel-figure.is-center[data-vessel="vessel04"] { bottom: 22%; }
 
 .vessel-figure__visual {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  height: min(27vh, 210px);
+  height: min(30vh, 250px);
   position: relative;
 }
 
-.vessel-figure.is-center .vessel-figure__visual { height: min(50vh, 430px); }
+.vessel-figure.is-center .vessel-figure__visual { height: min(46vh, 440px); }
 
 .vessel-figure__visual img {
   max-height: 100%;
@@ -3761,10 +3758,11 @@ body.is-dead .comms {
   filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
 }
 
-/* 未解禁シルエット: 素体画像を真っ黒に潰し、形だけを匂わせる */
+/* 未解禁シルエット: 素体画像を真っ黒に潰し、形だけを匂わせる。
+   背景画が暗いため、赤いリムのグローを落として輪郭だけは判読できるようにする */
 .vessel-figure__visual img.vessel-figure__silhouette {
-  filter: brightness(0);
-  opacity: 0.88;
+  filter: brightness(0) drop-shadow(0 0 9px rgba(150, 30, 10, 0.55)) drop-shadow(0 -1px 1px rgba(255, 120, 90, 0.5));
+  opacity: 0.94;
 }
 
 .vessel-figure__glyph {
@@ -3794,6 +3792,8 @@ body.is-dead .comms {
   background: rgba(30, 4, 2, 0.65);
 }
 
+/* キャプションは台座の銘板として読ませる: 暗いプレートを敷き、
+   背景画の上でも文字が埋もれないようにする */
 .vessel-figure__caption {
   margin: 6px 0 0;
   font-family: var(--font-mono);
@@ -3801,7 +3801,11 @@ body.is-dead .comms {
   letter-spacing: 0.12em;
   color: var(--phosphor);
   border-top: 2px solid rgba(180, 255, 200, 0.3);
-  padding-top: 5px;
+  background: rgba(2, 8, 4, 0.62);
+  border-left: 1px solid rgba(180, 255, 200, 0.18);
+  border-right: 1px solid rgba(180, 255, 200, 0.18);
+  border-bottom: 1px solid rgba(180, 255, 200, 0.18);
+  padding: 5px 4px 4px;
 }
 
 .vessel-figure.is-center .vessel-figure__caption {
@@ -3815,15 +3819,17 @@ body.is-dead .comms {
 .vessel-figure.is-left,
 .vessel-figure.is-right { cursor: pointer; }
 
-/* 回転を示す動き: 回転方向からフィギュアが滑り込む */
+/* 回転を示す動き: 回転方向からフィギュアが滑り込む。
+   中央フィギュアの transform（translateX(-50%)）を壊さないよう、
+   独立プロパティ translate でアニメーションする */
 @keyframes vessel-in-r {
-  from { transform: translateX(30px); opacity: 0.15; }
-  to { transform: translateX(0); opacity: 1; }
+  from { translate: 34px 0; opacity: 0.15; }
+  to { translate: 0 0; opacity: 1; }
 }
 
 @keyframes vessel-in-l {
-  from { transform: translateX(-30px); opacity: 0.15; }
-  to { transform: translateX(0); opacity: 1; }
+  from { translate: -34px 0; opacity: 0.15; }
+  to { translate: 0 0; opacity: 1; }
 }
 
 .vessel-stage.spin-r .vessel-figure { animation: vessel-in-r 380ms ease; }
@@ -3835,33 +3841,53 @@ body.is-dead .comms {
   .vessel-figure { transition: none; }
 }
 
-/* ROTATE レバー風ボタン: 大きく押しやすく */
+/* 操作プレート: 画の手前デスクに置かれた実機コンソールのような金属盤 */
 .vessel-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, rgba(26, 32, 27, 0.9), rgba(9, 11, 9, 0.94));
+  border: 1px solid rgba(0, 0, 0, 0.85);
+  outline: 1px solid rgba(190, 220, 195, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
+/* ROTATE レバー風ボタン: 鋳物の無骨なハードウェアボタン */
 .vessel-rot {
   font: inherit;
   font-family: var(--font-mono);
   font-size: clamp(12px, 1.7vmin, 14px);
   letter-spacing: 0.16em;
-  color: var(--phosphor);
-  background: linear-gradient(180deg, #0a2415, #04140c);
-  border: 1px solid rgba(180, 255, 200, 0.45);
-  padding: 12px 20px;
-  min-height: 48px;
+  color: #d9ffe3;
+  text-shadow: 0 0 6px rgba(90, 255, 150, 0.35);
+  background: linear-gradient(180deg, #48564c, #262e28 55%, #1a201c);
+  border: 1px solid #05070a;
+  border-radius: 7px;
+  padding: 12px 22px;
+  min-height: 50px;
   cursor: pointer;
-  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 4px 0 #0b0e0c,
+    0 7px 12px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -6px 10px rgba(0, 0, 0, 0.35);
 }
 
 .vessel-rot:hover,
-.vessel-rot:focus-visible { border-color: var(--phosphor-hot); color: var(--phosphor-hot); }
+.vessel-rot:focus-visible { color: #ffffff; border-color: rgba(160, 255, 190, 0.4); }
 
-.vessel-rot:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5); }
+.vessel-rot:active {
+  transform: translateY(3px);
+  box-shadow:
+    0 1px 0 #0b0e0c,
+    0 3px 6px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -4px 8px rgba(0, 0, 0, 0.4);
+}
 
 .vessel-pos {
   margin: 0;
@@ -3872,19 +3898,64 @@ body.is-dead .comms {
   white-space: nowrap;
 }
 
-/* CRT情報パネル: 太いベゼルと内側のグローでモニタらしく */
+/* CRT情報パネル: デスクに置かれた物理モニタとして作り込む。
+   太い金属ベゼル（グラデーション＋コーナーネジ）の中に、緑燐光スクリーン
+   （走査線＋グロー）を背景レイヤーの inset 矩形として描く。
+   スクリーンの inset 量は CSS 変数で持ち、低丈レイアウトでは変数だけ詰める。
+   下辺の「アゴ」には型番（::before）と電源LED（::after）を置く。 */
 .vessel-info {
-  border: 2px solid rgba(180, 255, 200, 0.4);
+  --vx: 12px; /* スクリーンの左右 inset */
+  --vy: 12px; /* スクリーンの上 inset */
+  --vb: 24px; /* スクリーンの下 inset（アゴぶん） */
+  position: relative;
+  border: 1px solid #04060a;
+  border-radius: 14px;
   background:
-    linear-gradient(180deg, rgba(18, 48, 28, 0.32), rgba(0, 0, 0, 0.25)),
-    #04140c;
-  box-shadow: inset 0 0 22px rgba(80, 255, 140, 0.07), 0 6px 18px rgba(0, 0, 0, 0.45);
-  padding: clamp(10px, 2vh, 16px) clamp(12px, 1.6vw, 18px);
+    radial-gradient(circle, #0d100d 0 2px, #5a665c 2.5px 3.5px, #232a24 4px 5px, rgba(0, 0, 0, 0) 5.5px) left 5px top 5px / 11px 11px no-repeat,
+    radial-gradient(circle, #0d100d 0 2px, #5a665c 2.5px 3.5px, #232a24 4px 5px, rgba(0, 0, 0, 0) 5.5px) right 5px top 5px / 11px 11px no-repeat,
+    radial-gradient(circle, #0d100d 0 2px, #5a665c 2.5px 3.5px, #232a24 4px 5px, rgba(0, 0, 0, 0) 5.5px) left 5px bottom 5px / 11px 11px no-repeat,
+    radial-gradient(circle, #0d100d 0 2px, #5a665c 2.5px 3.5px, #232a24 4px 5px, rgba(0, 0, 0, 0) 5.5px) right 5px bottom 5px / 11px 11px no-repeat,
+    radial-gradient(ellipse 130% 95% at 50% 36%, rgba(120, 255, 175, 0.14), rgba(120, 255, 175, 0) 72%) left var(--vx) top var(--vy) / calc(100% - var(--vx) * 2) calc(100% - var(--vy) - var(--vb)) no-repeat,
+    repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0 1px, rgba(0, 0, 0, 0) 1px 3px) left var(--vx) top var(--vy) / calc(100% - var(--vx) * 2) calc(100% - var(--vy) - var(--vb)) no-repeat,
+    linear-gradient(180deg, #082a13, #020d05) left var(--vx) top var(--vy) / calc(100% - var(--vx) * 2) calc(100% - var(--vy) - var(--vb)) no-repeat,
+    linear-gradient(155deg, #3d4740, #232b24 55%, #141916);
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(230, 255, 235, 0.1),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.5);
+  padding: 20px 18px 30px;
   display: grid;
   gap: 6px;
   align-content: start;
   min-height: 0;
   overflow-y: auto;
+}
+
+/* アゴの型番刻印 */
+.vessel-info::before {
+  content: "PIPELINE SYSTEMS FG-7";
+  position: absolute;
+  left: 16px;
+  bottom: 7px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.3em;
+  color: rgba(205, 225, 210, 0.38);
+  pointer-events: none;
+}
+
+/* 電源LED */
+.vessel-info::after {
+  content: "";
+  position: absolute;
+  right: 16px;
+  bottom: 8px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #57ff9a;
+  box-shadow: 0 0 8px 2px rgba(87, 255, 154, 0.55);
+  pointer-events: none;
 }
 
 .vessel-info__name {
@@ -3947,13 +4018,19 @@ body.is-dead .comms {
   .vessel-screen__head { padding-bottom: 4px; }
   .vessel-screen__title { font-size: 15px; }
   .vessel-screen__hint { font-size: 10px; }
-  .vessel-figure__visual { height: min(22vh, 210px); }
-  .vessel-figure.is-center .vessel-figure__visual { height: min(40vh, 430px); }
+  .vessel-figure__visual { height: min(22vh, 180px); }
+  .vessel-figure.is-left { left: 4%; }
+  .vessel-figure.is-right { right: 4%; }
+  .vessel-figure__caption { font-size: 9.5px; letter-spacing: 0.06em; }
+  .vessel-figure.is-center { bottom: 30%; }
+  .vessel-figure.is-center .vessel-figure__visual { height: min(34vh, 300px); }
+  .vessel-figure[data-vessel="vessel04"] { bottom: 37%; }
+  .vessel-figure.is-center[data-vessel="vessel04"] { bottom: 25%; }
   .vessel-figure__glyph { font-size: clamp(64px, 17vh, 168px); }
-  .vessel-controls { margin-top: 6px; }
+  .vessel-controls { margin-top: 6px; padding: 6px 8px; }
   .vessel-rot { min-height: 40px; padding: 8px 14px; }
   .vessel-launch { min-height: 42px; padding: 9px 12px; font-size: 13px; }
-  .vessel-info { gap: 4px; padding: 8px 10px; }
+  .vessel-info { --vx: 9px; --vy: 9px; --vb: 20px; gap: 4px; padding: 12px 12px 24px; }
   .vessel-info__flavor { font-size: 11px; line-height: 1.5; }
 }
 
@@ -3963,7 +4040,7 @@ body.is-dead .comms {
   .vessel-screen__frame { height: auto; min-height: 100%; }
   .vessel-layout { grid-template-columns: 1fr; flex: none; }
   .vessel-stage { min-height: 240px; }
-  .vessel-figure.is-center .vessel-figure__visual { height: min(36vh, 400px); }
+  .vessel-figure.is-center .vessel-figure__visual { height: min(38vh, 380px); }
 }
 
 /* 規格外巨体: 置換対象カードの解析パネルをグリッチ調に */

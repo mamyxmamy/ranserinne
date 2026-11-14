@@ -1496,7 +1496,7 @@ const VESSEL_PROFILES = {
   vessel04: {
     sys: "[SYS] VESSEL 04 \"GOLIATH\" LINKED.\nWARNING: STEALTH MODULE NOT FOUND. MASS: CRITICAL.\n> 警告：隠蔽機構が欠損しています。総質量、規定値を大幅に超過。",
     flavor: "「これを潜伏作戦と呼ぶのは、上層部のひどい冗談だ。坑道採掘用のバカげた質量で、見つかる前にすべての防壁と警備AIを粉砕する。起動するだけで施設中に爆音が響き渡るが、気にするな。最後に立っているのがこちらなら、それは完璧なステルスだ。」",
-    img: null, // 専用画像は未用意のため、機体番号のタイポグラフィで表現する
+    img: "assets/vessel04_goliath.webp", // 専用立ち絵（楕円ソフトアルファ済み）
   },
 };
 
