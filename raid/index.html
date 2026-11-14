@@ -391,7 +391,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 52.0</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 52.1</span></div>
             </div>
 
             <div class="hidden">
@@ -444,12 +444,6 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     <span class="text-[11px] font-bold tracking-[0.25em] text-[#A8CDD8]">🔗 前世の因果：<span id="karma-link-state">宿す</span></span>
                     <span class="block text-[9px] text-gray-500 tracking-widest mt-0.5">前世の死に様と二つ名が、次の生に小さな恵みを残す</span>
                 </button>
-                <!-- utakata-event-banner -->
-                <div onclick="window.openRaidRank(event)" class="w-full border border-purple-800/80 bg-[#160D1A]/85 rounded-sm px-3 py-2 text-center shadow-[0_0_14px_rgba(88,28,135,0.35)] cursor-pointer">
-                    <p class="text-[12px] font-bold tracking-[0.2em] text-purple-200">共討戦 ― 泡沫夢幻 ― 閉幕</p>
-                    <p class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">降臨は終わりました。挑んだ皆さまに、冥府よりの礼を。</p>
-                    <p class="text-[10px] text-[#F5D97E]/90 tracking-[0.25em] mt-1 font-bold">― 共討戦績（与ダメージ番付）を見る ―</p>
-                </div>
 
                 <button id="resume-btn" type="button" onclick="window.resumeGame(event)" class="hidden action-button-main w-full bg-[#1A331A] hover:bg-[#204020] text-green-200 border border-green-800 py-3 text-sm sm:text-base font-bold active:scale-95 transition-all shadow-[0_0_15px_rgba(0,100,0,0.4)] tracking-[0.2em] rounded-sm">
                     続きから遊ぶ
@@ -847,6 +841,41 @@ body.pc-on #ranking-screen { font-size: 15px; }
                         <li><span class="font-bold">総合ランク</span>: 死後にE〜SSSの8段階で評価（全能力値＋享年×2）。銭の大きさは富国長者で競います。表示専用で、報酬には影響しません。</li>
                         <li><span class="font-bold">大往生</span>: 60歳到達で達成。大往生10回ごとに寿命限界が+5歳に延びます。還暦・古希・米寿・百寿など、長く生きるほど節目の祝いも訪れます。</li>
                         <li>合戦・逃亡の最中は、月・日単位で濃密に時間が流れます。</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 大勝負（v52新要素）</h3>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li>20歳以上で看板の能力が30を超えると、身分ごとに異なる<span class="font-bold">大勝負</span>の出来事が、およそ10年に一度訪れます。</li>
+                        <li>成功すれば看板の能力が大きく伸び（+40%、最低でも+10）、失敗すれば能力が下がるうえ、身分ならではの痛手（大怪我や財産の損失など）を受けます。成功率は能力が高いほど上がります。</li>
+                        <li>見送ることもできます。見送った場合は、次の巡りでまた機会が来ます。商人の大勝負は、従来どおり朱印船です。</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 今日の瓦版（v52新要素）</h3>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li>タイトル画面の「📰 今日の瓦版」から、1日に1回読めます。輪廻子の一言と、その日の家宝・二つ名の由来が載っています。</li>
+                        <li>読んだ日の特典：<span class="font-bold">その日に始める人生は寿命限界+5歳</span>（素寒貧の人生は除く）、さらに冥銭+5が届きます。</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 前世の因果（v52新要素）</h3>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li>直前の前世の<span class="font-bold">死に様と二つ名</span>が、次の人生の始まりに小さな恵みを残します。文章は年表の先頭に記され、補正はその人生かぎりです。重ねがけはしません。</li>
+                        <li>大往生した前世 → 運+5／戦死した前世 → 武功+8／病死した前世 → 人徳+5／餓えや貧しさで死んだ前世 → 初期所持金+50文／非業の死（処刑・落武者狩りなど）→ 知略+5 か 悪逆+5。</li>
+                        <li>華々しい二つ名で死んだ前世は、その二つ名にちなむ能力が+10されます（死因の補正より優先）。</li>
+                        <li>タイトル画面の「🔗 前世の因果」で、宿す／断ち切るを切り替えられます。素寒貧の人生には因果は宿りません。前世の記録がない最初の人生では、何も起こりません。</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 極・二つ名（v52新要素）</h3>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li>通常の二つ名のさらに上にある称号で、全10種。生涯を終えた瞬間に、最終的な能力や生き様が条件を満たしていれば獲得できます（複数同時もあり）。</li>
+                        <li>例：武功5,000以上「修羅の化身」／享年150歳以上で大往生「生ける伝説」／能力5種すべて250以上「万能の奇才」／素寒貧のまま享年120歳以上「貧しき神」など。条件の一覧は絵巻図鑑の二つ名タブ末尾で見られます。</li>
                     </ul>
                 </section>
 
