@@ -396,10 +396,31 @@ function refreshClearShare() {
   ui.clearShare.href = buildShareUrl();
 }
 
+// v15.4: GoatCounter イベント送信。計測は補助機能なので、失敗してもゲームは止めない。
+// count.js は async 読み込みのため、未ロードなら短時間だけ再試行する。
+function trackEvent(path, title) {
+  try {
+    let tries = 0;
+    const send = () => {
+      if (window.goatcounter && typeof window.goatcounter.count === "function") {
+        window.goatcounter.count({ path, title, event: true });
+        return true;
+      }
+      return false;
+    };
+    if (send()) return;
+    const timer = window.setInterval(() => {
+      tries += 1;
+      if (send() || tries >= 20) window.clearInterval(timer);
+    }, 250);
+  } catch { /* noop */ }
+}
+
 // v14.7: クリア時は全面黒レイヤーを出す（ゲームUIを覆い隠す）。それ以外では必ず消す
 function syncClearScreen(on) {
   if (!ui.clearScreen) return;
   if (on) {
+    if (ui.clearScreen.hidden) trackEvent("/event/ep-clear", "EP Clear"); // v15.4: 表示遷移のときだけ数える
     refreshClearShare(); // v15.3: 表示時点の戦績で投稿URLを組み直す
     ui.clearScreen.hidden = false;
     void ui.clearScreen.offsetWidth;
@@ -2750,6 +2771,7 @@ async function openGameOver() {
   if (!battle || battle.player.hp > 0 || session.phase === "gameover" || session.dead) return;
   clearSave(); // PROMPT-24: ゲームオーバーでセーブ消去
   session.dead = true;
+  trackEvent("/event/ep-gameover", "EP Game Over"); // v15.4（この関数は撃沈ごとに1回だけ通る）
   if (run) run.hp = battle.player.hp;
   session.busy = true;
   silenceRadio();
@@ -3775,6 +3797,7 @@ window.addEventListener("keydown", (event) => {
   }
   if (event.key === "Enter" && session.phase === "attract") {
     event.preventDefault();
+    trackEvent("/event/ep-game-start", "EP Game Start"); // v15.4
     launchFromAttract();
     return;
   }
@@ -3807,6 +3830,7 @@ if (ui.newgameBtn) {
     event.stopPropagation();
     if (audio) audio.unlock();
     if (session.phase !== "attract") return;
+    trackEvent("/event/ep-game-start", "EP Game Start"); // v15.4: プレイ開始を数える
     launchFromAttract();
   });
 }
@@ -3822,6 +3846,7 @@ if (ui.continueBtn) {
     event.stopPropagation();
     if (audio) audio.unlock();
     if (session.phase !== "attract") return;
+    trackEvent("/event/ep-continue", "EP Continue"); // v15.4
     restoreRun();
   });
 }
@@ -3841,6 +3866,7 @@ if (ui.tutorialBtn) {
     event.stopPropagation();
     if (audio) audio.unlock();
     if (session.phase !== "attract") return;
+    trackEvent("/event/ep-tutorial-start", "EP Tutorial Start"); // v15.4
     try { localStorage.removeItem(TUTORIAL_STORE); } catch { /* noop */ }
     launchFromAttract();
   });
