@@ -391,7 +391,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 51.5</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 52.0</span></div>
             </div>
 
             <div class="hidden">
@@ -436,6 +436,14 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     </div>
                 </div>
                 <p class="w-full text-center text-[10px] text-gray-400 tracking-widest">寿命限界: <span id="ui-max-age-limit" class="text-red-400 font-bold">70</span>歳（老衰開始: <span id="ui-random-death-start">60</span>歳）</p>
+                <button id="kawara-btn" type="button" onclick="window.openKawara(event)" class="w-full border border-[#6B5A2E] bg-[#171208]/85 rounded-sm px-3 py-2 text-center shadow-md cursor-pointer">
+                    <span class="text-[12px] font-bold tracking-[0.25em] text-[#E8D9A8]">📰 今日の瓦版</span>
+                    <span id="kawara-btn-note" class="block text-[10px] text-gray-400 tracking-widest mt-0.5">本日の瓦版はまだ届いていない</span>
+                </button>
+                <button id="karma-link-btn" type="button" onclick="window.toggleKarmaLink(event)" class="w-full border border-[#2E4A5A] bg-[#0D1417]/85 rounded-sm px-3 py-1.5 text-center shadow-md cursor-pointer">
+                    <span class="text-[11px] font-bold tracking-[0.25em] text-[#A8CDD8]">🔗 前世の因果：<span id="karma-link-state">宿す</span></span>
+                    <span class="block text-[9px] text-gray-500 tracking-widest mt-0.5">前世の死に様と二つ名が、次の生に小さな恵みを残す</span>
+                </button>
                 <!-- utakata-event-banner -->
                 <div onclick="window.openRaidRank(event)" class="w-full border border-purple-800/80 bg-[#160D1A]/85 rounded-sm px-3 py-2 text-center shadow-[0_0_14px_rgba(88,28,135,0.35)] cursor-pointer">
                     <p class="text-[12px] font-bold tracking-[0.2em] text-purple-200">共討戦 ― 泡沫夢幻 ― 閉幕</p>
@@ -616,6 +624,10 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div id="new-heirloom-notice" class="hidden mb-3 w-full max-w-sm border border-gold/60 bg-yellow-950/20 p-1.5 text-center rounded-sm">
                 <span class="text-[10px] text-gold font-bold mb-0.5">【次世への家宝】を感得！</span><span id="new-heirloom-text" class="text-white text-[11px] font-bold"></span>
             </div>
+            <div id="go-kiwami-notice" class="hidden mb-3 w-full max-w-sm border-2 border-gold bg-yellow-950/40 p-2.5 text-center rounded-sm shadow-[0_0_18px_rgba(197,160,89,0.45)]">
+                <span class="text-[10px] text-gold font-bold tracking-[0.3em] block mb-1">【 極 ・ 二 つ 名 獲 得 】</span>
+                <span id="go-kiwami-text" class="text-yellow-100 text-sm font-black block"></span>
+            </div>
             
             <button type="button" id="go-raid-btn" onclick="window.openRaid(event)" class="hidden mb-3 action-button-main w-full max-w-sm bg-[#160D1A] border border-purple-800 text-purple-200 hover:bg-[#241231] py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all items-center justify-center gap-2 z-50">⚔ 共討戦 ― 輪廻の番人に挑む</button>
             <button type="button" onclick="window.shareResult(false)" class="mb-3 action-button-main w-full max-w-sm bg-black border border-gray-600 text-white hover:bg-gray-900 py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all flex items-center justify-center gap-2 z-50">
@@ -660,6 +672,10 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div id="premium-club-notice" class="hidden anim-slide-up mb-3 w-full max-w-sm border-2 border-gold bg-yellow-950/50 px-5 py-2.5 rounded-sm shadow-[0_0_18px_rgba(197,160,89,0.45)]" style="animation-delay: 3.7s;">
                     <span class="text-[10px] text-gold font-bold tracking-[0.3em] block mb-1">【 棍 棒 強 化 】</span>
                     <span id="premium-club-text" class="text-xs sm:text-sm text-yellow-100 font-bold block leading-relaxed"></span>
+                </div>
+                <div id="premium-kiwami-notice" class="hidden anim-slide-up mb-3 w-full max-w-sm border-2 border-gold bg-yellow-950/50 px-5 py-2.5 rounded-sm shadow-[0_0_22px_rgba(197,160,89,0.6)]" style="animation-delay: 3.8s;">
+                    <span class="text-[10px] text-gold font-bold tracking-[0.3em] block mb-1">【 極 ・ 二 つ 名 獲 得 】</span>
+                    <span id="premium-kiwami-text" class="text-sm sm:text-base text-yellow-100 font-black block leading-relaxed"></span>
                 </div>
                 
                 <button type="button" id="pm-raid-btn" onclick="window.openRaid(event)" class="hidden mb-2 action-button-main w-full max-w-sm bg-[#160D1A] border border-purple-800 text-purple-200 hover:bg-[#241231] py-2.5 text-sm font-bold tracking-widest rounded-sm shadow-md transition-all items-center justify-center gap-2 z-30">⚔ 共討戦 ― 輪廻の番人に挑む</button>
@@ -943,6 +959,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
         window.activeHeirlooms = [];
         window.unlockedDeaths = [];
         window.unlockedTitles = []; // 追加：称号の保存用
+        window.unlockedKiwami = []; // v52: 極・二つ名の保存用
         
         window.meisen = 0;
         window.inventory = {}; 
@@ -971,6 +988,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 localStorage.setItem('sengoku_equipped_heirlooms', JSON.stringify(window.activeHeirlooms));
                 localStorage.setItem('sengoku_unlocked_deaths', JSON.stringify(window.unlockedDeaths));
                 localStorage.setItem('sengoku_unlocked_titles', JSON.stringify(window.unlockedTitles)); // 追加：称号セーブ
+                localStorage.setItem('sengoku_unlocked_kiwami', JSON.stringify(window.unlockedKiwami || [])); // v52: 極・二つ名セーブ
                 localStorage.setItem('sengoku_meisen', window.meisen);
                 localStorage.setItem('sengoku_inventory', JSON.stringify(window.inventory));
                 if (window.activeConsumable) localStorage.setItem('sengoku_active_consumable', JSON.stringify(window.activeConsumable));
@@ -998,6 +1016,9 @@ body.pc-on #ranking-screen { font-size: 15px; }
             if (savedDeaths) window.unlockedDeaths = JSON.parse(savedDeaths);
             const savedTitles = localStorage.getItem('sengoku_unlocked_titles');
             if (savedTitles) window.unlockedTitles = JSON.parse(savedTitles); // 追加：称号ロード
+            const savedKiwami = localStorage.getItem('sengoku_unlocked_kiwami'); // v52: 極・二つ名ロード（旧セーブではキー自体が無い＝空で開始）
+            if (savedKiwami) { try { window.unlockedKiwami = JSON.parse(savedKiwami); } catch(e) {} }
+            if (!Array.isArray(window.unlockedKiwami)) window.unlockedKiwami = [];
             const savedMeisen = localStorage.getItem('sengoku_meisen');
             if (savedMeisen) window.meisen = parseInt(savedMeisen, 10) || 0;
             const savedInv = localStorage.getItem('sengoku_inventory');
@@ -1005,6 +1026,94 @@ body.pc-on #ranking-screen { font-size: 15px; }
             const savedCons = localStorage.getItem('sengoku_active_consumable');
             if (savedCons) window.activeConsumable = JSON.parse(savedCons);
         } catch (e) {}
+
+        // v52: 今日の瓦版（デイリー）。その日初めて読むと特典を1日1回付与（冥銭+5／その日に始める人生は寿命限界+5・素寒貧を除く）
+        window.__kawaraTodayStr = function() {
+            const d = new Date();
+            const m = ('0' + (d.getMonth() + 1)).slice(-2);
+            const day = ('0' + d.getDate()).slice(-2);
+            return d.getFullYear() + '-' + m + '-' + day;
+        };
+        window.__kawaraSeed = function() {
+            const d = new Date();
+            return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+        };
+        window.__kawaraRecord = function() {
+            try { const raw = localStorage.getItem('sengoku_daily_kawara'); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+        };
+        window.__kawaraClaimedToday = function() {
+            const rec = window.__kawaraRecord();
+            return !!(rec && rec.date === window.__kawaraTodayStr() && rec.granted);
+        };
+        // 開始画面の寿命プレビュー用: 本日特典を受けていれば +5
+        window.__kawaraDailyAge = function() { return window.__kawaraClaimedToday() ? 5 : 0; };
+        window.KAWARA_WORDS = {
+            spring: [
+                '桜は散るから美しいの。……今日を始めるあなたも、ね',
+                '新しい命の匂いがするわ。今日の輪廻は、きっと賑やか',
+                '春の川は穏やか。でも、油断して足を取られちゃ駄目よ'
+            ],
+            summer: [
+                '暑い日は、無理をしないこと。長生きの秘訣はそれだけ',
+                '蝉の声が聞こえる。短い命ほど、精一杯鳴くのね',
+                '夕立のあとの空は綺麗よ。人生も、雨のあとが肝心'
+            ],
+            autumn: [
+                '実りの秋。積み重ねてきたものが、実を結ぶ季節よ',
+                '月が綺麗ね。長く生きた者だけが知る、静かな贅沢',
+                '紅葉は散り際が一番鮮やか。最期の見せ場は、大事にね'
+            ],
+            winter: [
+                '寒い日は、温かいものの側にいること。それが養生よ',
+                '雪の下では、春の芽が静かに待っているわ',
+                '一年の終わりは、輪廻の節目。今日の一生を、大切に'
+            ]
+        };
+        window.__kawaraContent = function() {
+            const seed = window.__kawaraSeed();
+            const month = new Date().getMonth() + 1;
+            const season = (month >= 3 && month <= 5) ? 'spring' : (month >= 6 && month <= 8) ? 'summer' : (month >= 9 && month <= 11) ? 'autumn' : 'winter';
+            const pool = window.KAWARA_WORDS[season];
+            const word = pool[seed % pool.length];
+            const hl = HEIRLOOMS_DB[seed % HEIRLOOMS_DB.length];
+            const firstSentence = (hl.flavor || '').split('。')[0] + '。';
+            return { word: word, itemName: hl.name, itemText: firstSentence };
+        };
+        window.__refreshKawaraBtn = function() {
+            const note = document.getElementById('kawara-btn-note');
+            if (!note) return;
+            note.innerText = window.__kawaraClaimedToday()
+                ? '本日の特典は受取済み ― 瓦版は再読できます'
+                : '本日の特典あり ― 読むと冥銭+5／本日始める人生は寿命限界+5';
+        };
+        window.openKawara = function(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            const content = window.__kawaraContent();
+            const firstToday = !window.__kawaraClaimedToday();
+            let rewardText;
+            if (firstToday) {
+                window.meisen = (window.meisen || 0) + 5;
+                try { localStorage.setItem('sengoku_daily_kawara', JSON.stringify({ date: window.__kawaraTodayStr(), granted: true })); } catch (err) {}
+                saveMetaProgress();
+                rewardText = '【読んだ印】冥銭 +5 ／ 本日始める人生は寿命限界 +5（素寒貧の人生を除く）';
+            } else {
+                rewardText = '本日の特典は受け取り済みです。寿命限界+5は、本日始める人生に有効です';
+            }
+            const setText = (id, txt) => { const el = document.getElementById(id); if (el) el.innerText = txt; };
+            setText('kawara-date', window.__kawaraTodayStr());
+            setText('kawara-word', content.word);
+            setText('kawara-item-name', '家宝『' + content.itemName + '』');
+            setText('kawara-item-text', content.itemText);
+            setText('kawara-reward', rewardText);
+            const scr = document.getElementById('kawara-screen');
+            if (scr) scr.classList.remove('hidden');
+            if (typeof window.updateStartScreenUI === 'function') window.updateStartScreenUI();
+        };
+        window.closeKawara = function(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            const scr = document.getElementById('kawara-screen');
+            if (scr) scr.classList.add('hidden');
+        };
 
         const CLASSES = [
             { id: 'peasant', name: '農民', weight: 60, initHealth: 80, initMoney: 5, intro: '泥にまみれ、草のように這いつくばって生きる下賤な生を受けた。この世は奪われるだけの地獄か、それとも。' },
@@ -1326,6 +1435,31 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 ] }
         ];
 
+        // v52: 極・二つ名（通常の二つ名の上位層。全10種。閾値は2026-11-14に実番付の現在トップを実測して設定した）
+        window.KIWAMI_DB = [
+            { id: 'kw_densetsu', name: '生ける伝説', cond: '享年150歳以上で大往生を遂げる', check: (s) => (s.age || 0) >= 150 },
+            { id: 'kw_bannou', name: '万能の奇才', cond: '能力5種すべて250以上で生涯を終える', check: (s) => (s.valor || 0) >= 250 && (s.karma || 0) >= 250 && (s.luck || 0) >= 250 && (s.strategy || 0) >= 250 && (s.virtue || 0) >= 250 },
+            { id: 'kw_hin', name: '貧しき神', cond: '素寒貧のまま享年120歳以上で生涯を終える', check: (s) => s.classInfo && s.classInfo.id === 'sukanpin' && (s.age || 0) >= 120 },
+            { id: 'kw_shura', name: '修羅の化身', cond: '武功5000以上で生涯を終える', check: (s) => (s.valor || 0) >= 5000 },
+            { id: 'kw_sakushi', name: '稀代の策士', cond: '知略2500以上で生涯を終える', check: (s) => (s.strategy || 0) >= 2500 },
+            { id: 'kw_daitoku', name: '大徳の化身', cond: '人徳3000以上で生涯を終える', check: (s) => (s.virtue || 0) >= 3000 },
+            { id: 'kw_aku', name: '悪の華', cond: '悪逆1800以上で生涯を終える', check: (s) => (s.karma || 0) >= 1800 },
+            { id: 'kw_tenun', name: '天運の覇者', cond: '運1500以上で生涯を終える', check: (s) => (s.luck || 0) >= 1500 },
+            { id: 'kw_zengami', name: '銭の神', cond: '所持金200万文以上で生涯を終える', check: (s) => (s.money || 0) >= 2000000 },
+            { id: 'kw_gamble', name: '大勝負の覇者', cond: '同じ人生で大勝負に3回成功する', check: (s) => ((s.flags && s.flags.gambleWins) || 0) >= 3 }
+        ];
+        // v52: 最終ステータスから極・二つ名を判定する（大往生の認定は既存仕様どおり60歳到達が前提。生ける伝説の150歳はそれを内包する）
+        // 戻り値 { earned: 今回の人生で条件を満たした極すべて, fresh: そのうち新規獲得 }
+        window.evaluateKiwami = function(s) {
+            const earned = []; const fresh = [];
+            if (!Array.isArray(window.unlockedKiwami)) window.unlockedKiwami = [];
+            (window.KIWAMI_DB || []).forEach(k => {
+                let ok = false; try { ok = !!k.check(s); } catch (e) {}
+                if (ok) { earned.push(k.name); if (!window.unlockedKiwami.includes(k.name)) { window.unlockedKiwami.push(k.name); fresh.push(k.name); } }
+            });
+            return { earned: earned, fresh: fresh };
+        };
+
         const BATTLE_EVENTS = [
             { id: 'battle_front', mode: ['battle'], weight: 50, condition: () => true,
                 title: '【合戦】激突の陣', text: '天地を揺るがすような法螺貝の音と、むせ返るような血と火薬の匂いが戦場を支配している。敵の精鋭騎馬隊が肉薄してきた！',
@@ -1566,6 +1700,47 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '山中に潜伏し、ほとぼりが冷めるのを待つ', condition: () => true, hint: '体力減少・逃亡継続', effect: (s) => { return { hp: -15, log: '息を殺して山中に潜む日々。寒さと飢えに耐え、検問が緩むのをじっと待ち続けた。' }; } }
                 ] }
         ];
+
+
+// ==========================================
+// v52: 大勝負イベント（能力アップ型）共通処理
+// 成功率 p = min(0.85, max(0.35, 0.5 + 主能力×0.002 + 副能力×0.001))
+// 成功: 看板能力 += max(10, 現在値×40%) / 失敗: 看板能力 -= max(3, 現在値×25%) ＋身分別 の痛手
+// 間隔10年は「挑戦した時」だけ記録する（見送りでは記録しない）。素寒貧は身分ID時点で対象外。
+// ティア補正・大名の方針倍化など既存の全体補正と干渉させないため、判定は critRoll を使わず素の乱数で行う。
+// ==========================================
+const GAMBLE_STAT_LABEL = { valor: '武功', karma: '悪逆', strategy: '知略', virtue: '人徳', luck: '運'};
+function gambleReady(s, classId, mainKey) {
+if (!s ||!s.classInfo || s.classInfo.id!== classId) return false;
+if (s.classInfo.id === 'sukanpin') return false;
+if (s.age < 20) return false;
+if ((s[mainKey] || 0) < 30) return false;
+const last = s.flags && s.flags.gambleLast && s.flags.gambleLast[classId];
+if (typeof last === 'number' && s.age - last < 10) return false;
+return true;
+}
+function resolveGrandGamble(s, cfg) {
+s.flags.gambleLast = s.flags.gambleLast || {};
+s.flags.gambleLast[cfg.classId] = s.age;
+const mainVal = s[cfg.main] || 0;
+const subVal = s[cfg.sub] || 0;
+const p = Math.min(0.85, Math.max(0.35, 0.5 + mainVal * 0.002 + subVal * 0.001));
+const label = GAMBLE_STAT_LABEL[cfg.main];
+if (Math.random() < p) {
+const gain = Math.max(10, Math.floor(mainVal * 0.4));
+s[cfg.main] = mainVal + gain;
+s.flags.gambleWins = (s.flags.gambleWins || 0) + 1;
+recordChronology(cfg.chronWin);
+return { hp: 0, log: cfg.logWin(gain, label)};
+}
+const loss = Math.max(3, Math.floor(mainVal * 0.25));
+s[cfg.main] = Math.max(0, mainVal - loss);
+if (cfg.painVirtue) s.virtue = Math.max(0, (s.virtue || 0) - cfg.painVirtue);
+recordChronology(cfg.chronFail);
+const res = { hp: cfg.painHp || 0, log: cfg.logFail(loss, label)};
+if (cfg.painMoneyRate) res.money = -Math.floor((s.money || 0) * cfg.painMoneyRate);
+return res;
+}
 
         const CLASS_EVENTS = [
             { id: 'katana_gari', mode: ['normal'], weight: 25, condition: (s) => s.classInfo.id === 'peasant' && s.age >= 25 && !s.flags.katana,
@@ -2428,7 +2603,89 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '荷持ちを買って出る', condition: () => true, hint: '人徳上昇・体力減少', effect: (s) => { s.virtue += 15; return { hp: -5, log: '重い荷を代わって担いだ。仲間の感謝が疲れを癒す。'};}},
                     { text: '先頭で隊列を引っ張る', condition: () => true, hint: '武功上昇・体力減少', effect: (s) => { s.valor += 10; return { hp: -10, log: '声を張り上げて隊を鼓舞した。その働きは上役の目に留まった。'};}},
                     { text: '近道を探す', condition: () => true, hint: '運で判定', effect: (s) => { if (critRoll('luck', 0.45 + (s.luck * 0.003))) { s.strategy += 10; return { hp: 5, log: '山勘が的中し、隊は半日も早く宿場に着いた。温かい飯にありつけた。' }; } return { hp: -15, log: '近道は獣道だった。余計に疲れ果て、本隊に追いつくのに苦労した。' }; } }
-            ]}
+            ]},
+,
+{ id: 'peasant_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'peasant', 'virtue'),
+title: '\u3010大勝負\u3011地主への道', text: '村の有力者が、広大な田畑を手放すという話が舞い込んだ。買い取れば一代で大地主へ成り上がれるが、実らなければ人徳も信も地に落ちる。一世一代の大勝負である。',
+choices: [
+{ text: '田畑を買い取り、地主への道に賭ける', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（人徳・運で変動）・成功で人徳+40%、失敗で人徳-25%＋凶作で所持金の2割減', effect: (s) => resolveGrandGamble(s, { classId: 'peasant', main: 'virtue', sub: 'luck', painMoneyRate: 0.2,
+chronWin: '村の田畑を買い取り、大地主として名を馳せる', chronFail: '地主への夢破れ、凶作と借りに泣く',
+logWin: (g, l) => '買い取った田は豊かに実り、小作の人々が次々と門を叩いた。' + l + 'が大きく伸びた（+' + g + '）。今や村にその名を知らぬ者はない。',
+logFail: (g, l) => 'その年に限って大凶作。田は実らず、借りだけが残った。' + l + 'も地に落ちた（-' + g + '）。'})},
+{ text: '身の丈に合った百姓仕事を続ける', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '夢は見ず、今日も鍬を振るう。堅実な暮らしぶりが、村の信を集めた。'};}}
+]},
+{ id: 'ashigaru_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'ashigaru', 'valor'),
+title: '\u3010大勝負\u3011一旗挙げる大勝負', text: '大合戦の気配。先鋒の大役に名乗りを上げれば、一躍名を挙げる好機だが、討ち死にも覚悟の上。一旗挙げるか、堅実に槍働きを続けるか、一世一代の大勝負である。',
+choices: [
+{ text: '先鋒の大役に名乗りを上げる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（武功・運で変動）・成功で武功+40%、失敗で武功-25%＋大怪我（体力-30）', effect: (s) => resolveGrandGamble(s, { classId: 'ashigaru', main: 'valor', sub: 'luck', painHp: -30,
+chronWin: '大合戦の先鋒を務め上げ、一旗挙げる', chronFail: '先鋒の大勝負に敗れ、大怪我を負う',
+logWin: (g, l) => '先鋒として敵陣を切り崩し、味方の大勝を呼び込んだ！' + l + 'が大きく伸びた（+' + g + '）。その名は軍中に轟いた。',
+logFail: (g, l) => '敵の猛攻に先鋒は崩れ、深手を負って担ぎ出された。' + l + 'も挫けた（-' + g + '）。'})},
+{ text: '名乗りを上げず、持ち場を守る', condition: () => true, hint: '武功上昇', effect: (s) => { s.valor += 5; return { hp: 0, log: '華々しさはないが、持ち場を守り抜くのも戦の務め。腕は着実に磨かれた。'};}}
+]},
+{ id: 'bushou_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'bushou', 'valor'),
+title: '\u3010大勝負\u3011所領経営の大普請', text: '検地と城下の大普請に、蓄えた資産と人手の全てを投じる案がまとまった。成れば所領は盤石となるが、しくじれば一揆と困窮が待つ。一世一代の大勝負である。',
+choices: [
+{ text: '資産の全てを投じて大普請に打って出る', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（武功・知略で変動）・成功で武功+40%、失敗で武功-25%＋体力-20・人徳-5', effect: (s) => resolveGrandGamble(s, { classId: 'bushou', main: 'valor', sub: 'strategy', painHp: -20, painVirtue: 5,
+chronWin: '所領の大普請を成し遂げ、領地を盤石とする', chronFail: '大普請が頓挫し、所領に綻びが生じる',
+logWin: (g, l) => '普請は見事に成り、城下は活況に沸いた。武威はいや増し、' + l + 'が大きく伸びた（+' + g + '）。',
+logFail: (g, l) => '普請は頓挫し、自ら陣頭に立っての収拾で身を削った。人々の信も少し揺らぎ、' + l + 'も挫けた（-' + g + '）。'})},
+{ text: '普請は小規模に留め、様子を見る', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 5; return { hp: 0, log: '急がば回れ。領地の様子を見ながら、少しずつ手を入れることにした。'};}}
+]},
+{ id: 'daimyo_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'daimyo', 'strategy'),
+title: '\u3010大勝負\u3011楽市楽座と城下町整備', text: '国庫の半分を投じ、楽市楽座と城下町の大整備を行う大号令が議に上がった。成れば税収と国力は跳ね上がるが、失敗すれば重臣の不満は爆発する。一世一代の大勝負である。',
+choices: [
+{ text: '国庫を投じて大改革を断行する', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（知略・運で変動）・成功で知略+40%、失敗で知略-25%＋重臣の不満（人徳-10）', effect: (s) => resolveGrandGamble(s, { classId: 'daimyo', main: 'strategy', sub: 'luck', painVirtue: 10,
+chronWin: '楽市楽座と城下町整備を成し遂げ、国力を飛躍させる', chronFail: '城下町整備が失敗し、重臣の不満が募る',
+logWin: (g, l) => '城下は商いで溢れ、税収は跳ね上がった。采配の冴えに諸国が震え、' + l + 'が大きく伸びた（+' + g + '）。',
+logFail: (g, l) => '整備は混乱を招き、重臣たちの不満が一斉に噴き出した。采配への信が揺らぎ、' + l + 'も挫けた（-' + g + '）。'})},
+{ text: '大改革は見送り、現状を維持する', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '国を動かすのは勢いだけではない。重臣たちの声に耳を澄まし、時を待つことにした。'};}}
+]},
+{ id: 'ninja_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'ninja', 'karma'),
+title: '\u3010大勝負\u3011闇の大仕事', text: '敵国の大名の首――前代未聞の大仕事の依頼が、闇の回路から届いた。成せば闇の世界にその名が轟くが、失敗すれば返り討ちで大怪我、最悪死ぬ。一世一代の大勝負である。',
+choices: [
+{ text: '闇の大仕事に身を投じる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（悪逆・知略で変動）・成功で悪逆+40%、失敗で悪逆-25%＋返り討ちで大怪我（体力-40）、最悪死ぬ', effect: (s) => resolveGrandGamble(s, { classId: 'ninja', main: 'karma', sub: 'strategy', painHp: -40,
+chronWin: '闇の大仕事を成し遂げ、裏の世界に名を轟かせる', chronFail: '闇の大仕事に失敗し、返り討ちで大怪我を負う',
+logWin: (g, l) => '影は音もなく的の命を絶った。誰も真相を知らぬまま、' + l + 'の名だけが闇に轟いた（+' + g + '）。',
+logFail: (g, l) => '罠だった。返り討ちの刃に深手を負い、辛くも闇に逃れた。' + l + 'の威信も地に落ちた（-' + g + '）。'})},
+{ text: '割に合わぬと、依頼を闇に返す', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 5; return { hp: 0, log: '命あっての忍び。釣り合わぬ仕事は受けぬのが、長生きの秘訣である。'};}}
+]},
+{ id: 'monk_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'monk', 'virtue'),
+title: '\u3010大勝負\u3011大勧進', text: '大寺の建立と諸国を巡る大勧進の話が持ち上がった。成功すれば寄進が各地から集まり、その徳は天下に知れ渡る。失敗しても損なうのは積年の徳のみ。一世一代の大勝負である。',
+choices: [
+{ text: '大勧進に身を投じる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（人徳・知略で変動）・成功で人徳+40%、失敗で人徳-25%のみ（他の痛手なし）', effect: (s) => resolveGrandGamble(s, { classId: 'monk', main: 'virtue', sub: 'strategy',
+chronWin: '大勧進を成し遂げ、各地から寄進が集まる', chronFail: '大勧進が不発に終わり、静かに寺へ戻る',
+logWin: (g, l) => '勧進の声は諸国に届き、寄進の列は絶えなかった。その徳は天下に知れ渡り、' + l + 'が大きく伸びた（+' + g + '）。',
+logFail: (g, l) => '勧進は実を結ばなかった。だが損なったのは徳のみ。静かに読経へ戻った（' + l + ' -' + g + '）。'})},
+{ text: '勧進には出ず、寺の務めに励む', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '名声は求めず、日々の務めを誠実に果たした。それもまた徳の積み方である。'};}}
+]},
+{ id: 'kuge_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'kuge', 'strategy'),
+title: '\u3010大勝負\u3011荘園への投資', text: '荘園の買い増しと、朝廷への献金工作を束ねた大きな企てが持ち上がった。成れば荘園からの収入と発言力は倍増するが、しくじれば面子と蓄えを同時に失う。一世一代の大勝負である。',
+choices: [
+{ text: '荘園と工作に蓄えを投じる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（知略・運で変動）・成功で知略+40%、失敗で知略-25%＋面子を失う（人徳-5）', effect: (s) => resolveGrandGamble(s, { classId: 'kuge', main: 'strategy', sub: 'luck', painVirtue: 5,
+chronWin: '荘園への投資が実り、朝廷での発言力を増す', chronFail: '荘園への投資に失敗し、面子と蓄えを失う',
+logWin: (g, l) => '工作は水面下で実を結び、荘園の収入は倍増した。朝廷での発言力も増し、' + l + 'が大きく伸びた（+' + g + '）。',
+logFail: (g, l) => '工作は裏目に出て、面子も蓄えも失った。宮中の笑い話にされる屈辱に、' + l + 'も挫けた（-' + g + '）。'})},
+{ text: '企てには乗らず、雅な日々を守る', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '欲に駆られて雅を失うのは、公家の道にあらず。静かに歌を詠む日々を選んだ。'};}}
+]},
+{ id: 'bandit_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'bandit', 'karma'),
+title: '\u3010大勝負\u3011大口の襲撃', text: '大名の金銀輸送隊が峠を通るという、大口の襲撃の機が巡ってきた。武器と手下の手配に蓄えを投じれば、一山当てて名も上がるが、討伐隊の返り討ちも覚悟の上。一世一代の大勝負である。',
+choices: [
+{ text: '輸送隊の大襲撃に打って出る', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（悪逆・武功で変動）・成功で悪逆+40%、失敗で悪逆-25%＋討伐隊に痛手（体力-30）', effect: (s) => resolveGrandGamble(s, { classId: 'bandit', main: 'karma', sub: 'valor', painHp: -30,
+chronWin: '大名の輸送隊を襲い、大口の戦果を挙げる', chronFail: '大口の襲撃に失敗し、討伐隊に痛手を負う',
+logWin: (g, l) => '襲撃は大成功。金銀は山分けされ、その凶名は街道に轟いた。' + l + 'が大きく伸びた（+' + g + '）。',
+logFail: (g, l) => '輸送隊には討伐隊が張り付いていた。痛手を負って山へ逃げ戻り、' + l + 'の威信も地に落ちた（-' + g + '）。'})},
+{ text: '大口は避け、小口の稼ぎに徹する', condition: () => true, hint: '武功上昇', effect: (s) => { s.valor += 5; return { hp: 0, log: 'デカい山ほど罠も深い。身の丈の稼ぎで、山の暮らしを守った。'};}}
+]},
+{ id: 'ronin_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'ronin', 'luck'),
+title: '\u3010大勝負\u3011一攫千金の渡世', text: '大商人の護衛請負か、流れ者の大博打か――一攫千金の話が、渡世の風に乗って耳に届いた。当たれば名と銭が転がり込むが、外れれば傷と借金が残る。一世一代の大勝負である。',
+choices: [
+{ text: '一攫千金の渡世に身を投じる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（運・武功で変動）・成功で運+40%、失敗で運-25%＋傷（体力-15）と所持金の2割減', effect: (s) => resolveGrandGamble(s, { classId: 'ronin', main: 'luck', sub: 'valor', painHp: -15, painMoneyRate: 0.2,
+chronWin: '一攫千金の渡世をものにし、名を上げる', chronFail: '一攫千金の夢破れ、傷と借金を負う',
+logWin: (g, l) => '渡世の賭けは当たった！礼金と儲けが転がり込み、天の配剤に身を震わせた。' + l + 'が大きく伸びた（+' + g + '）。',
+logFail: (g, l) => '夢は破れ、傷と借金だけが残った。それでも渡世人は、明日を笑って歩く（' + l + ' -' + g + '）。'})},
+{ text: '話には乗らず、日銭を稼ぐ', condition: () => true, hint: '武功上昇', effect: (s) => { s.valor += 5; return { hp: 0, log: '甘い話には毒がある。用心棒の日銭で、今日も食いつないだ。'};}}
+]}
         ];
 
         const AGE_EVENTS = [
@@ -2504,7 +2761,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 choices: [
                     { text: '家督を譲り、現役を退く', condition: () => true, hint: '即座に大往生クリア', effect: (s) => { 
                         s.flags.inherit50 = true; s.deathCause = 'oldage'; 
-                        const absoluteMaxAge = 70 + Math.floor((window.greatDeathCount || 0) / 10) * 5;
+                        const absoluteMaxAge = 70 + Math.floor((window.greatDeathCount || 0) / 10) * 5 + ((s.flags && s.flags.dailyAgeBonus) || 0);
                         s.age = absoluteMaxAge; 
                         return { hp: -999, log: 'すべてを後進に託し、戦乱の世から完全に身を引いた。縁側で茶をすする平和な余生が始まった……。' }; 
                     } },
@@ -3015,13 +3272,16 @@ body.pc-on #ranking-screen { font-size: 15px; }
 
             const bonusAge = Math.floor((window.greatDeathCount || 0) / 10) * 5;
             const raidPendingAge = parseInt((function(){ try { return localStorage.getItem('sengoku_raid_lifebonus'); } catch (e) { return null; } })() || '0', 10) || 0;
-            const absoluteMaxAge = 70 + bonusAge + raidPendingAge + (window.__raidPermAge ? window.__raidPermAge() : 0);
-            const randomDeathStart = 60 + bonusAge + raidPendingAge + (window.__raidPermAge ? window.__raidPermAge() : 0);
+            const dailyAge = window.__kawaraDailyAge ? window.__kawaraDailyAge() : 0;
+            const absoluteMaxAge = 70 + bonusAge + raidPendingAge + (window.__raidPermAge ? window.__raidPermAge() : 0) + dailyAge;
+            const randomDeathStart = 60 + bonusAge + raidPendingAge + (window.__raidPermAge ? window.__raidPermAge() : 0) + dailyAge;
 
             const maxAgeElem = document.getElementById('ui-max-age-limit');
             if (maxAgeElem) maxAgeElem.innerText = absoluteMaxAge;
             const randomDeathElem = document.getElementById('ui-random-death-start');
             if (randomDeathElem) randomDeathElem.innerText = randomDeathStart;
+            if (window.__refreshKawaraBtn) window.__refreshKawaraBtn();
+            if (window.__refreshKarmaBtn) window.__refreshKarmaBtn();
 
             const maxSlots = window.getMaxHeirloomSlots();
             const slotsCountEl = document.getElementById('hl-slots-count');
@@ -3292,6 +3552,17 @@ body.pc-on #ranking-screen { font-size: 15px; }
                         html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-center gap-3 shadow-md"><div class="w-10 h-10 bg-blue-900/30 border border-blue-800 flex items-center justify-center rounded text-blue-400 font-bold text-sm flex-shrink-0">銘</div><div><div class="font-bold text-blue-300 text-sm">${t.name}</div><div class="text-xs text-gray-300 mt-0.5">取得済み</div></div></div>`;
                     } else {
                         html += `<div class="bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60"><div class="w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-sm font-bold flex-shrink-0">？</div><div><div class="font-bold text-gray-500 text-sm">未収得の称号</div><div class="text-[10px] text-gray-600 mt-0.5">【ヒント】 ${t.hint}</div></div></div>`;
+                    }
+                });
+                // v52: 極・二つ名の枠（金枠・別枠。通常の二つ名と同じ作法で、未収得は名前を伏せて条件だけ出す）
+                html += '<div class="mt-5 mb-2"><span class="text-gold font-black tracking-[0.3em] text-xs">― 極・二つ名 ―</span><span class="text-[9px] text-gray-500 ml-2">全10種</span></div>';
+                html += '<div class="text-[10px] text-gray-400 mb-2">※通常の二つ名を超えた、輪廻の極みにのみ届く称号が記録されます</div>';
+                (window.KIWAMI_DB || []).forEach(k => {
+                    const isKw = window.unlockedKiwami && window.unlockedKiwami.includes(k.name);
+                    if (isKw) {
+                        html += `<div class=\"bg-yellow-950/30 border-2 border-gold p-3 rounded-sm flex items-center gap-3 shadow-[0_0_14px_rgba(197,160,89,0.35)]\"><div class=\"w-10 h-10 bg-gold/25 border border-gold flex items-center justify-center rounded text-gold font-black text-sm flex-shrink-0\">極</div><div><div class=\"font-black text-gold text-sm\">${k.name}</div><div class=\"text-[10px] text-gray-300 mt-0.5\">【条件】 ${k.cond}</div></div></div>`;
+                    } else {
+                        html += `<div class=\"bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60\"><div class=\"w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-sm font-bold flex-shrink-0\">？</div><div><div class=\"font-bold text-gray-500 text-sm\">未収得の極</div><div class=\"text-[10px] text-gray-600 mt-0.5\">【条件】 ${k.cond}</div></div></div>`;
                     }
                 });
                 content.innerHTML = html;
@@ -4111,6 +4382,60 @@ cv.toBlob((b) => resolve(b), 'image/png');
             if (valEl && name) valEl.innerText = name;
         };
 
+        // v52: 前世の因果（機能3）― 直前の人生（sengoku_past_lives の先頭）だけから因果を1つ生成し、
+        // 人生開始時の初期値へ小さな補正＋年表の冒頭に1文を残す。断ち切り設定・素寒貧では無効。
+        window.__karmaLinkEnabled = function() {
+            try { return localStorage.getItem('sengoku_karma_link') !== 'off'; } catch (e) { return true; }
+        };
+        window.toggleKarmaLink = function(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            try { localStorage.setItem('sengoku_karma_link', window.__karmaLinkEnabled() ? 'off' : 'on'); } catch (err) {}
+            if (window.__refreshKarmaBtn) window.__refreshKarmaBtn();
+        };
+        window.__refreshKarmaBtn = function() {
+            const el = document.getElementById('karma-link-state');
+            if (el) el.innerText = window.__karmaLinkEnabled() ? '宿す' : '断ち切る';
+        };
+        // 二つ名（華々しいもの）→ 対応能力+10。二つ名の判定を死因より優先する
+        const KARMA_TITLE_MAP = {
+            '天下無双の軍神': { key: 'valor', val: 10, text: '前世は天下無双の軍神と謳われた。その武の残響が、腕に宿る' },
+            '智勇兼備の神将': { key: 'valor', val: 10, text: '前世は智勇兼備の神将。その武の残響が、腕に宿る' },
+            '神算鬼謀の伏龍': { key: 'strategy', val: 10, text: '前世は神算鬼謀の伏龍。その知の残響が、頭に宿る' },
+            '現人神の如き菩薩': { key: 'virtue', val: 10, text: '前世は現人神の如き菩薩。その徳の残響が、心に宿る' },
+            '極悪非道の修羅': { key: 'karma', val: 10, text: '前世は極悪非道の修羅。その悪の残響が、影に宿る' },
+            '第六天魔王': { key: 'karma', val: 10, text: '前世は第六天魔王。その魔の残響が、影に宿る' },
+            '天に愛されし御子': { key: 'luck', val: 10, text: '前世は天に愛されし御子。その寵愛の残響が、運に宿る' },
+            '不老不死の化身': { key: 'luck', val: 10, text: '前世は百の歳を越えた不老不死の化身。その天寿の加護が宿る' },
+            '伝説の仙人': { key: 'luck', val: 10, text: '前世は伝説の仙人。その長寿の加護が宿る' }
+        };
+        // 死因 reason は past_lives に日本語文で保存されるため、文面の特徴語で分類する
+        window.__pastLifeKarma = function(prev) {
+            if (!prev) return null;
+            if (prev.title && KARMA_TITLE_MAP[prev.title]) return KARMA_TITLE_MAP[prev.title];
+            const r = prev.reason || '';
+            if (r.indexOf('穏やかに生涯を閉じた') >= 0) return { key: 'luck', val: 5, text: '長寿の血筋。生まれながらに天の加護を感じる' };
+            if (r.indexOf('刑場に引き立てられ') >= 0) return { key: 'strategy', val: 5, text: '刑場で散った前世の無念が、策を巡らせる才を研ぎ澄ます' };
+            if (r.indexOf('落武者狩りの凶刃') >= 0) return { key: 'karma', val: 5, text: '狩られ死んだ前世の恨みが、闇に親しむ心を残す' };
+            if (r.indexOf('病魔に蝕まれ') >= 0) return { key: 'virtue', val: 5, text: '病に苦しんだ記憶が、人への優しさになる' };
+            if (r.indexOf('極限の飢餓') >= 0) return { key: 'money', val: 50, text: '飢えを知る魂は、銭の重みを知っている' };
+            if (r.indexOf('血の海に沈んで') >= 0 || r.indexOf('深い手傷を負い') >= 0) return { key: 'valor', val: 8, text: '前世の無念が、腕に宿る' };
+            return null;
+        };
+        window.__applyKarmaLink = function() {
+            try {
+                if (!window.__karmaLinkEnabled()) return;
+                if (!state || !state.classInfo || state.classInfo.id === 'sukanpin') return;
+                const past = JSON.parse(localStorage.getItem('sengoku_past_lives') || '[]');
+                if (!past || !past.length) return;
+                const prev = past[0];
+                const k = window.__pastLifeKarma(prev);
+                if (!k) return;
+                if (k.key === 'money') state.money += k.val; else state[k.key] += k.val;
+                state.flags.karmaLink = { key: k.key, val: k.val, text: k.text, fromTitle: prev.title || '', fromClass: prev.className || '' };
+                recordChronology('前世の因果 ― ' + k.text);
+            } catch (e) {}
+        };
+
         window.startGame = function(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
             if (isProcessing) return;
@@ -4153,7 +4478,9 @@ cv.toBlob((b) => resolve(b), 'image/png');
             try { localStorage.setItem('sengoku_last_birth_faction', selectedFaction.id); } catch (e) {}
 
             state = { playerName: finalName, age: 14, health: selectedClass.initHealth, money: selectedClass.initMoney, classInfo: selectedClass, faction: selectedFaction, isAlive: true, lastDamageEvent: '', deathCause: '', valor: 0, karma: 0, luck: 0, strategy: 0, virtue: 0, mode: 'normal', lastMode: 'normal', modeTurn: 0, flags: {}, chronology: [] };
+            if (window.__applyKarmaLink) window.__applyKarmaLink();
             try { const rb = parseInt(localStorage.getItem('sengoku_raid_lifebonus') || '0', 10) || 0; if (rb > 0) { state.flags.raidLifeBonus = rb; localStorage.removeItem('sengoku_raid_lifebonus'); recordChronology('番人の加護を受け、寿命の糸が十歳延びた'); } } catch (e) {}
+            try { if (window.__kawaraClaimedToday && window.__kawaraClaimedToday() && state.classInfo.id !== 'sukanpin') { state.flags.dailyAgeBonus = 5; recordChronology('今日の瓦版の加護を受け、寿命の糸が五歳延びた'); } } catch (e) {}
 
             if (state.classInfo.id === 'bushou') state.valor += 20;
             if (state.classInfo.id === 'monk') state.virtue += 30;
@@ -4264,6 +4591,9 @@ cv.toBlob((b) => resolve(b), 'image/png');
                 const ft3 = window.FACTION_TRAITS[state.flags.factionTrait];
                 const fmt = (k, v) => STAT_LABELS[k] + (v > 0 ? '+' + v : v);
                 hlText += `<p class="text-amber-200/80 mt-2 text-[10px]">${faction.name}の家風 ― ${ft3.buffName}（${fmt(ft3.buffKey, ft3.buffVal)}）／${ft3.debuffName}（${fmt(ft3.debuffKey, ft3.debuffVal)}）</p>`;
+            }
+            if (state.flags.karmaLink && state.flags.karmaLink.text) {
+                hlText += `<p class="text-cyan-200/90 mt-2 text-[10px]">前世の因果 ― ${state.flags.karmaLink.text}</p>`;
             }
             
             introText.innerHTML = `
@@ -4604,7 +4934,7 @@ cv.toBlob((b) => resolve(b), 'image/png');
             const hbar = document.getElementById('ui-health-bar');
             if (hbar) { const pct = Math.max(0, Math.min(100, (state.health / maxHp) * 100)); hbar.style.width = pct + '%'; hbar.style.backgroundColor = state.health <= 30 ? '#B02A1E' : (pct < 50 ? '#B8860B' : '#6B8E23'); hbar.className = 'h-full transition-all duration-500' + (state.health <= 30 ? ' animate-pulse' : ''); }
             const ageRem = document.getElementById('ui-age-remaining');
-            if (ageRem) { const lifeLimit = 70 + Math.floor((window.greatDeathCount || 0) / 10) * 5 + ((state.flags && state.flags.raidLifeBonus) || 0) + (window.__raidPermAge ? window.__raidPermAge() : 0); ageRem.innerText = state.age < 60 ? `あと${60 - state.age}年で大往生認定（限界${lifeLimit}歳）` : `大往生認定済（限界${lifeLimit}歳）`; }
+            if (ageRem) { const lifeLimit = 70 + Math.floor((window.greatDeathCount || 0) / 10) * 5 + ((state.flags && state.flags.raidLifeBonus) || 0) + ((state.flags && state.flags.dailyAgeBonus) || 0) + (window.__raidPermAge ? window.__raidPermAge() : 0); ageRem.innerText = state.age < 60 ? `あと${60 - state.age}年で大往生認定（限界${lifeLimit}歳）` : `大往生認定済（限界${lifeLimit}歳）`; }
             if (uiValor) uiValor.innerText = state.valor; if (uiKarma) uiKarma.innerText = state.karma; if (uiStrategy) uiStrategy.innerText = state.strategy; if (uiVirtue) uiVirtue.innerText = state.virtue; if (uiLuck) uiLuck.innerText = state.luck;
             if (state.faction) { uiFaction.innerText = state.faction.name; uiFaction.style.backgroundColor = state.faction.color; }
             const traitEl = document.getElementById('ui-trait');
@@ -4655,8 +4985,9 @@ cv.toBlob((b) => resolve(b), 'image/png');
 
             const bonusAge = Math.floor((window.greatDeathCount || 0) / 10) * 5;
             const raidBonusAge = (state.flags && state.flags.raidLifeBonus) || 0;
-            const absoluteMaxAge = 70 + bonusAge + raidBonusAge + (window.__raidPermAge ? window.__raidPermAge() : 0);
-            const randomDeathStart = 60 + bonusAge + raidBonusAge + (window.__raidPermAge ? window.__raidPermAge() : 0);
+            const dailyBonusAge = (state.flags && state.flags.dailyAgeBonus) || 0;
+            const absoluteMaxAge = 70 + bonusAge + raidBonusAge + (window.__raidPermAge ? window.__raidPermAge() : 0) + dailyBonusAge;
+            const randomDeathStart = 60 + bonusAge + raidBonusAge + (window.__raidPermAge ? window.__raidPermAge() : 0) + dailyBonusAge;
 
             if (state.age >= absoluteMaxAge && state.deathCause !== 'oldage') { 
                 state.health = 0; state.lastDamageEvent = '天寿'; state.deathCause = 'oldage'; 
@@ -4776,6 +5107,9 @@ cv.toBlob((b) => resolve(b), 'image/png');
                 window.__lastTitleNew = !window.unlockedTitles.includes(finalTitle);
                 if (window.__lastTitleNew) window.unlockedTitles.push(finalTitle);
 
+                // v52: 極・二つ名の判定（finalTitle確定後・最終ステータスで判定。saveMetaProgressで一緒に永続化される）
+                window.__lastKiwami = window.evaluateKiwami ? window.evaluateKiwami(state) : { earned: [], fresh: [] };
+
                 saveMetaProgress();
 
                 try {
@@ -4843,6 +5177,14 @@ cv.toBlob((b) => resolve(b), 'image/png');
             if (hlInfo && hlInfo.draw && hlInfo.draw.kind === 'convert') { hlNotice.classList.remove('hidden'); document.getElementById('new-heirloom-text').innerText = `『${hlInfo.draw.name}』は既に所持していたため、冥銭${hlInfo.draw.amount}に還元された`; }
             else if (nextHeirloom) { hlNotice.classList.remove('hidden'); document.getElementById('new-heirloom-text').innerText = nextHeirloom.name; } else { hlNotice.classList.add('hidden'); }
 
+            // v52: 極・二つ名の獲得表示（通常の二つ名とは別枠・金枠）
+            const kwNotice = document.getElementById('go-kiwami-notice');
+            const kwEarned = (window.__lastKiwami && window.__lastKiwami.earned) || [];
+            if (kwNotice) {
+                if (kwEarned.length > 0) { kwNotice.classList.remove('hidden'); const kwt = document.getElementById('go-kiwami-text'); if (kwt) kwt.innerText = kwEarned.map(n => `極『${n}』`).join('、'); }
+                else kwNotice.classList.add('hidden');
+            }
+
             // v29: 強化済みの棍棒をロストした場合のみ、専用の喪失メッセージを出す
             const clubLostNotice = document.getElementById('club-lost-notice');
             const lostClub = (lostHeirlooms || []).find(h => h.id === 'hl_club' && (h.value || 50) >= 51);
@@ -4889,6 +5231,14 @@ cv.toBlob((b) => resolve(b), 'image/png');
                     : `古びた木の棍棒は既に極限まで研ぎ澄まされている。その功は冥銭${hlInfo.club.amount}に還元された。`;
             } else if (clubNotice) clubNotice.classList.add('hidden');
 
+            // v52: 極・二つ名の獲得表示（通常の二つ名とは別枠・金枠）
+            const kwNoticeP = document.getElementById('premium-kiwami-notice');
+            const kwEarnedP = (window.__lastKiwami && window.__lastKiwami.earned) || [];
+            if (kwNoticeP) {
+                if (kwEarnedP.length > 0) { kwNoticeP.classList.remove('hidden'); const kwtP = document.getElementById('premium-kiwami-text'); if (kwtP) kwtP.innerText = kwEarnedP.map(n => `極『${n}』`).join('、'); }
+                else kwNoticeP.classList.add('hidden');
+            }
+
             const freeze = document.getElementById('freeze-overlay'); if (freeze) freeze.classList.add('freeze-active');
             setTimeout(() => { if (freeze) freeze.classList.remove('freeze-active'); if (content) { content.classList.remove('opacity-0'); content.classList.add('opacity-100'); } startSakuraParticles(); }, 3000);
         }
@@ -4930,10 +5280,10 @@ cv.toBlob((b) => resolve(b), 'image/png');
         window.resetSaveData = function(e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
             if (confirm("これまでの輪廻の記録と獲得した家宝蔵をすべて完全に消去します。\nよろしいですか？")) {
-                localStorage.removeItem('sengoku_rinne_count'); localStorage.removeItem('sengoku_heirloom'); localStorage.removeItem('sengoku_equipped_heirlooms'); localStorage.removeItem('sengoku_unlocked_heirlooms'); localStorage.removeItem('sengoku_unlocked_deaths'); localStorage.removeItem('sengoku_unlocked_titles'); localStorage.removeItem('sengoku_past_lives'); localStorage.removeItem('sengoku_current_run'); localStorage.removeItem('sengoku_meisen'); localStorage.removeItem('sengoku_inventory'); localStorage.removeItem('sengoku_active_consumable');
+                localStorage.removeItem('sengoku_rinne_count'); localStorage.removeItem('sengoku_heirloom'); localStorage.removeItem('sengoku_equipped_heirlooms'); localStorage.removeItem('sengoku_unlocked_heirlooms'); localStorage.removeItem('sengoku_unlocked_deaths'); localStorage.removeItem('sengoku_unlocked_titles'); localStorage.removeItem('sengoku_unlocked_kiwami'); localStorage.removeItem('sengoku_past_lives'); localStorage.removeItem('sengoku_current_run'); localStorage.removeItem('sengoku_meisen'); localStorage.removeItem('sengoku_inventory'); localStorage.removeItem('sengoku_active_consumable');
                 localStorage.removeItem('sengoku_great_death_count'); localStorage.removeItem('sengoku_heirloom_history'); 
                 
-                window.currentReincarnationCount = 0; window.greatDeathCount = 0; window.unlockedHeirlooms = []; window.heirloomHistory = []; window.activeHeirlooms = []; window.unlockedDeaths = []; window.unlockedTitles = []; window.meisen = 0; window.inventory = {}; window.activeConsumable = null;
+                window.currentReincarnationCount = 0; window.greatDeathCount = 0; window.unlockedHeirlooms = []; window.heirloomHistory = []; window.activeHeirlooms = []; window.unlockedDeaths = []; window.unlockedTitles = []; window.unlockedKiwami = []; window.meisen = 0; window.inventory = {}; window.activeConsumable = null;
                 window.updateStartScreenUI(); alert("すべての記録を初期化しました。");
             }
         };
@@ -5032,6 +5382,17 @@ cv.toBlob((b) => resolve(b), 'image/png');
                         html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-center gap-3 shadow-md"><div class="w-10 h-10 bg-blue-900/30 border border-blue-800 flex items-center justify-center rounded text-blue-400 font-bold text-sm flex-shrink-0">銘</div><div><div class="font-bold text-blue-300 text-sm">${t.name}</div><div class="text-xs text-gray-300 mt-0.5">取得済み</div></div></div>`;
                     } else {
                         html += `<div class="bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60"><div class="w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-sm font-bold flex-shrink-0">？</div><div><div class="font-bold text-gray-500 text-sm">未収得の称号</div><div class="text-[10px] text-gray-600 mt-0.5">【ヒント】 ${t.hint}</div></div></div>`;
+                    }
+                });
+                // v52: 極・二つ名の枠（金枠・別枠。通常の二つ名と同じ作法で、未収得は名前を伏せて条件だけ出す）
+                html += '<div class="mt-5 mb-2"><span class="text-gold font-black tracking-[0.3em] text-xs">― 極・二つ名 ―</span><span class="text-[9px] text-gray-500 ml-2">全10種</span></div>';
+                html += '<div class="text-[10px] text-gray-400 mb-2">※通常の二つ名を超えた、輪廻の極みにのみ届く称号が記録されます</div>';
+                (window.KIWAMI_DB || []).forEach(k => {
+                    const isKw = window.unlockedKiwami && window.unlockedKiwami.includes(k.name);
+                    if (isKw) {
+                        html += `<div class=\"bg-yellow-950/30 border-2 border-gold p-3 rounded-sm flex items-center gap-3 shadow-[0_0_14px_rgba(197,160,89,0.35)]\"><div class=\"w-10 h-10 bg-gold/25 border border-gold flex items-center justify-center rounded text-gold font-black text-sm flex-shrink-0\">極</div><div><div class=\"font-black text-gold text-sm\">${k.name}</div><div class=\"text-[10px] text-gray-300 mt-0.5\">【条件】 ${k.cond}</div></div></div>`;
+                    } else {
+                        html += `<div class=\"bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60\"><div class=\"w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-sm font-bold flex-shrink-0\">？</div><div><div class=\"font-bold text-gray-500 text-sm\">未収得の極</div><div class=\"text-[10px] text-gray-600 mt-0.5\">【条件】 ${k.cond}</div></div></div>`;
                     }
                 });
                 content.innerHTML = html;
@@ -5229,7 +5590,8 @@ cv.toBlob((b) => resolve(b), 'image/png');
             if (savedName && playerNameInput) {
                 playerNameInput.value = savedName;
             }
-            window.updateStartScreenUI(); 
+            window.updateStartScreenUI();
+            setTimeout(function() { if (window.__kawaraClaimedToday && !window.__kawaraClaimedToday()) window.openKawara(); }, 1200);
         }
         
 
@@ -6007,6 +6369,24 @@ if (target) target.classList.remove('hidden');
 <p class="px-4 py-2 text-[9px] text-gray-500 text-center tracking-widest shrink-0">挑んだ回数だけ、名は刻まれる。死の直後、転生の合間に番人へ挑めます。</p>
 </div>
 
+<div id="kawara-screen" class="hidden fixed inset-0 z-[190] bg-black/85 flex items-center justify-center p-4">
+  <div class="w-full max-w-sm border border-[#6B5A2E] bg-[#12100C] rounded-sm shadow-2xl p-5 text-center">
+    <p class="text-[10px] text-gray-500 tracking-[0.3em] mb-1">― 冥府瓦版 ―</p>
+    <h3 class="text-gold text-xl font-black tracking-[0.3em] mb-1">今日の瓦版</h3>
+    <p id="kawara-date" class="text-[10px] text-gray-500 mb-3"></p>
+    <div class="border-y border-[#3A322A] py-3 mb-3">
+      <p class="text-[10px] text-[#CEB27A] font-bold tracking-widest mb-1">輪廻子の一言</p>
+      <p id="kawara-word" class="text-sm text-gray-100 leading-relaxed"></p>
+    </div>
+    <div class="mb-3">
+      <p class="text-[10px] text-[#CEB27A] font-bold tracking-widest mb-1">今日の一文</p>
+      <p id="kawara-item-name" class="text-sm font-bold text-gold mb-1"></p>
+      <p id="kawara-item-text" class="text-[11px] text-gray-300 leading-relaxed text-left"></p>
+    </div>
+    <p id="kawara-reward" class="text-[11px] text-purple-300 font-bold mb-4"></p>
+    <button type="button" onclick="window.closeKawara(event)" class="w-full bg-[#3A322A] hover:bg-[#4A4036] text-white border border-[#6B5A2E] py-2.5 text-sm font-bold tracking-[0.25em] rounded-sm active:scale-95 transition-all">閉じる</button>
+  </div>
+</div>
 <div id="raid-thanks-screen" class="hidden fixed inset-0 z-[200] bg-black/85 flex items-center justify-center p-4">
 <div class="raid-thanks-pop raid-thanks-glow w-full max-w-md bg-[#0B0B10] border-2 border-[#D4AF37] rounded-md p-6 text-center relative overflow-hidden">
 <div class="absolute inset-1 border border-[#D4AF37]/40 rounded-sm pointer-events-none"></div>
