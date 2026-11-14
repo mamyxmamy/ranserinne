@@ -3559,47 +3559,188 @@ body.is-dead .comms {
   .boss-pulse:not([hidden]) { animation: none; opacity: 0.45; }
 }
 
-/* ==== 正式版フェーズ1: キャラ選択カルーセル（設計書 §A） ==== */
-/* 格納庫の回転台: 中央の選択中素体を大きく、両脇を小さく霞ませて並べる。
-   右のCRTパネルに固有特性・数値・初期デッキ・フレーバーを出す。 */
-.vessel-layout {
-  display: grid;
-  grid-template-columns: 1.15fr 1fr;
-  gap: 14px;
-  max-width: 62em;
-  margin: 0 auto;
-  text-align: left;
-  align-items: start;
+/* ==== 正式版フェーズ1＋レイアウト修正: キャラ選択（専用フル画面シーン） ==== */
+/* タイトル／プロローグと同じく body 直下の fixed シーンとして全画面表示する。
+   表示中は changeScene が desk（HUD）を隠すため、HUD要素は一切出ない。
+   構図は承認済みコンセプト画準拠: 管制デスク越しに格納庫の円形回転台を臨み、
+   選択中の素体が中央に大きく、両脇は小さく減光、未解禁はシルエット＋LOCKED。
+   右にCRT情報パネル、ROTATEと決定は大きく押しやすく。 */
+.vessel-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 62% 40% at 50% -6%, rgba(150, 255, 190, 0.14), transparent 70%),
+    radial-gradient(ellipse 90% 60% at 50% 115%, rgba(70, 200, 120, 0.07), transparent 70%),
+    linear-gradient(180deg, #07130c 0%, #030b06 55%, #010403 100%);
+  color: var(--phosphor);
+  font-family: var(--font-mono);
 }
 
+/* 格納庫の金網フェンスを両脇に薄く敷く */
+.vessel-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.16;
+  background-image:
+    repeating-linear-gradient(45deg, rgba(160, 255, 190, 0.13) 0 1px, transparent 1px 9px),
+    repeating-linear-gradient(-45deg, rgba(160, 255, 190, 0.13) 0 1px, transparent 1px 9px);
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, transparent 26%, transparent 74%, #000 100%);
+  mask-image: linear-gradient(90deg, #000 0%, transparent 26%, transparent 74%, #000 100%);
+}
+
+/* 走査線とビネット（attract と同じ作法） */
+.vessel-screen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(0, 0, 0, 0.32) 0 1px, transparent 1px 3px);
+  box-shadow: inset 0 0 130px 42px rgba(0, 0, 0, 0.82);
+}
+
+.vessel-screen__frame {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: clamp(10px, 2.2vh, 22px) clamp(14px, 3vw, 40px) clamp(10px, 2vh, 18px);
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.vessel-screen__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid rgba(180, 255, 200, 0.28);
+  padding-bottom: 6px;
+}
+
+.vessel-screen__kicker {
+  margin: 0;
+  font-size: clamp(11px, 1.6vmin, 14px);
+  letter-spacing: 0.18em;
+  color: var(--phosphor-hot);
+  text-shadow: 0 0 8px rgba(90, 255, 150, 0.4);
+}
+
+.vessel-screen__op {
+  margin: 0;
+  font-size: clamp(9px, 1.3vmin, 11px);
+  letter-spacing: 0.22em;
+  color: var(--phosphor-dim);
+  white-space: nowrap;
+}
+
+.vessel-screen__title {
+  margin: 0;
+  font-size: clamp(17px, 2.6vmin, 24px);
+  letter-spacing: 0.12em;
+  color: var(--phosphor-hot);
+}
+
+.vessel-screen__title span {
+  font-size: 0.58em;
+  letter-spacing: 0.2em;
+  color: var(--phosphor-dim);
+}
+
+.vessel-screen__hint {
+  margin: 0;
+  text-align: center;
+  font-size: clamp(10px, 1.5vmin, 12px);
+  letter-spacing: 0.14em;
+  color: var(--phosphor-dim);
+}
+
+/* レイアウト: 左=格納庫の回転台、右=CRT情報パネル */
+.vessel-layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1.25fr 1fr;
+  gap: clamp(12px, 2.4vw, 28px);
+  align-items: stretch;
+  text-align: left;
+}
+
+.vessel-stage-wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* 回転台ステージ: 上からのスポットライト＋足元の同心円プラットフォーム */
 .vessel-stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  gap: 8px;
-  min-height: 196px;
-  padding: 10px 6px 6px;
-  border: 1px solid rgba(180, 255, 200, 0.25);
+  gap: 4px;
+  padding: 12px 8px 4px;
+  border: 1px solid rgba(180, 255, 200, 0.22);
   background:
-    radial-gradient(ellipse 70% 46% at 50% 100%, rgba(90, 255, 150, 0.13), transparent 70%),
-    linear-gradient(180deg, rgba(10, 26, 16, 0.5), rgba(0, 0, 0, 0.35)),
+    radial-gradient(ellipse 58% 44% at 50% 0%, rgba(170, 255, 200, 0.13), transparent 70%),
+    linear-gradient(180deg, rgba(12, 30, 18, 0.55), rgba(0, 0, 0, 0.4)),
     #030b06;
-  box-shadow: inset 0 0 26px rgba(80, 255, 140, 0.06);
+  box-shadow: inset 0 0 34px rgba(80, 255, 140, 0.06);
   overflow: hidden;
 }
 
+/* 円形回転台: 同心円の楕円リングで台座を描く */
+.vessel-stage::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  width: 88%;
+  height: 18%;
+  border: 2px solid rgba(180, 255, 200, 0.35);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(120, 255, 170, 0.1), rgba(10, 24, 14, 0.55) 72%);
+  box-shadow: 0 0 24px rgba(90, 255, 150, 0.12), inset 0 0 18px rgba(90, 255, 150, 0.1);
+  pointer-events: none;
+}
+
+.vessel-stage::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: calc(12px + 3.4%);
+  transform: translateX(-50%);
+  width: 60%;
+  height: 11.5%;
+  border: 1px dashed rgba(180, 255, 200, 0.3);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
 .vessel-figure {
-  flex: 0 0 27%;
+  position: relative;
+  z-index: 1;
+  flex: 0 0 26%;
   text-align: center;
-  opacity: 0.5;
-  transform: scale(0.82);
+  opacity: 0.52;
+  filter: brightness(0.75);
+  transform: scale(0.8);
   transform-origin: bottom center;
-  transition: transform 380ms ease, opacity 380ms ease;
+  transition: transform 380ms ease, opacity 380ms ease, filter 380ms ease;
 }
 
 .vessel-figure.is-center {
-  flex-basis: 42%;
+  flex-basis: 44%;
   opacity: 1;
+  filter: none;
   transform: scale(1);
 }
 
@@ -3607,11 +3748,11 @@ body.is-dead .comms {
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  height: 148px;
+  height: min(27vh, 210px);
   position: relative;
 }
 
-.vessel-figure.is-center .vessel-figure__visual { height: 168px; }
+.vessel-figure.is-center .vessel-figure__visual { height: min(50vh, 430px); }
 
 .vessel-figure__visual img {
   max-height: 100%;
@@ -3620,9 +3761,15 @@ body.is-dead .comms {
   filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.6));
 }
 
+/* 未解禁シルエット: 素体画像を真っ黒に潰し、形だけを匂わせる */
+.vessel-figure__visual img.vessel-figure__silhouette {
+  filter: brightness(0);
+  opacity: 0.88;
+}
+
 .vessel-figure__glyph {
   font-family: var(--font-mono);
-  font-size: 84px;
+  font-size: clamp(84px, 20vh, 168px);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.04em;
@@ -3630,10 +3777,8 @@ body.is-dead .comms {
   text-shadow: 0 0 18px rgba(90, 255, 150, 0.35), 0 6px 0 rgba(0, 0, 0, 0.45);
 }
 
-.vessel-figure__glyph--locked {
-  color: rgba(110, 140, 118, 0.4);
-  text-shadow: none;
-}
+.vessel-figure.is-left .vessel-figure__glyph,
+.vessel-figure.is-right .vessel-figure__glyph { font-size: clamp(48px, 11vh, 96px); }
 
 .vessel-figure__lock {
   position: absolute;
@@ -3660,6 +3805,7 @@ body.is-dead .comms {
 }
 
 .vessel-figure.is-center .vessel-figure__caption {
+  font-size: 13px;
   color: var(--phosphor-hot);
   border-top-color: var(--phosphor-hot);
 }
@@ -3689,52 +3835,62 @@ body.is-dead .comms {
   .vessel-figure { transition: none; }
 }
 
+/* ROTATE レバー風ボタン: 大きく押しやすく */
 .vessel-controls {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  margin-top: 8px;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .vessel-rot {
   font: inherit;
   font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.14em;
+  font-size: clamp(12px, 1.7vmin, 14px);
+  letter-spacing: 0.16em;
   color: var(--phosphor);
-  background: #04140c;
-  border: 1px solid rgba(180, 255, 200, 0.4);
-  padding: 6px 12px;
+  background: linear-gradient(180deg, #0a2415, #04140c);
+  border: 1px solid rgba(180, 255, 200, 0.45);
+  padding: 12px 20px;
+  min-height: 48px;
   cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.5);
 }
 
 .vessel-rot:hover,
 .vessel-rot:focus-visible { border-color: var(--phosphor-hot); color: var(--phosphor-hot); }
 
+.vessel-rot:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0, 0, 0, 0.5); }
+
 .vessel-pos {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.2em;
   color: var(--phosphor-dim);
+  white-space: nowrap;
 }
 
+/* CRT情報パネル: 太いベゼルと内側のグローでモニタらしく */
 .vessel-info {
-  border: 1px solid rgba(180, 255, 200, 0.35);
+  border: 2px solid rgba(180, 255, 200, 0.4);
   background:
-    linear-gradient(180deg, rgba(18, 48, 28, 0.3), rgba(0, 0, 0, 0.2)),
+    linear-gradient(180deg, rgba(18, 48, 28, 0.32), rgba(0, 0, 0, 0.25)),
     #04140c;
-  box-shadow: inset 0 0 16px rgba(80, 255, 140, 0.05);
-  padding: 10px 12px;
+  box-shadow: inset 0 0 22px rgba(80, 255, 140, 0.07), 0 6px 18px rgba(0, 0, 0, 0.45);
+  padding: clamp(10px, 2vh, 16px) clamp(12px, 1.6vw, 18px);
   display: grid;
-  gap: 5px;
+  gap: 6px;
+  align-content: start;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .vessel-info__name {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 15px;
   letter-spacing: 0.14em;
   color: var(--phosphor-hot);
 }
@@ -3752,7 +3908,7 @@ body.is-dead .comms {
 .vessel-info__stats {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   color: var(--amber);
 }
@@ -3773,8 +3929,42 @@ body.is-dead .comms {
   padding-left: 8px;
 }
 
-.vessel-launch { justify-self: start; margin-top: 4px; }
+/* 決定ボタン（CONFIRM相当）: パネル幅いっぱいの大きなボタンに */
+.vessel-launch {
+  justify-self: stretch;
+  margin-top: 8px;
+  padding: 13px 16px;
+  min-height: 52px;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+}
+
 .vessel-launch:disabled { opacity: 0.45; cursor: default; }
+
+/* 低丈（スマホ横持ち等）: 全体を詰めて1画面に収める */
+@media (max-height: 480px) {
+  .vessel-screen__frame { gap: 5px; padding-top: 8px; padding-bottom: 8px; }
+  .vessel-screen__head { padding-bottom: 4px; }
+  .vessel-screen__title { font-size: 15px; }
+  .vessel-screen__hint { font-size: 10px; }
+  .vessel-figure__visual { height: min(22vh, 210px); }
+  .vessel-figure.is-center .vessel-figure__visual { height: min(40vh, 430px); }
+  .vessel-figure__glyph { font-size: clamp(64px, 17vh, 168px); }
+  .vessel-controls { margin-top: 6px; }
+  .vessel-rot { min-height: 40px; padding: 8px 14px; }
+  .vessel-launch { min-height: 42px; padding: 9px 12px; font-size: 13px; }
+  .vessel-info { gap: 4px; padding: 8px 10px; }
+  .vessel-info__flavor { font-size: 11px; line-height: 1.5; }
+}
+
+/* 幅が狭い場合は回転台の下にCRTパネルを回す（シーン内スクロールで収める） */
+@media (max-width: 760px) {
+  .vessel-screen { overflow-y: auto; }
+  .vessel-screen__frame { height: auto; min-height: 100%; }
+  .vessel-layout { grid-template-columns: 1fr; flex: none; }
+  .vessel-stage { min-height: 240px; }
+  .vessel-figure.is-center .vessel-figure__visual { height: min(36vh, 400px); }
+}
 
 /* 規格外巨体: 置換対象カードの解析パネルをグリッチ調に */
 .card-inspect.is-oversized {

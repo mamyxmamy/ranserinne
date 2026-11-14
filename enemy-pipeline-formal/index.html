@@ -102,6 +102,41 @@
     <p class="credit-card__start" id="credit-start" hidden>&gt; TAP TO START</p>
   </section>
 
+  <!-- 正式版フェーズ1（設計書 §A）＋レイアウト修正: キャラ選択はメイン画面のHUD内に埋め込まず、
+       タイトル／プロローグと同様の専用フル画面シーンとする。id は scene-vessel のまま
+       （main.js の sceneEl / changeScene の仕組みに合わせ、表示中は changeScene が desk を隠す）。
+       管制デスク越しに格納庫の円形回転台を臨む構図: 中央の選択中素体を大きく、両脇は小さく減光、
+       未解禁はシルエット＋LOCKED。右のCRTパネルに固有特性・HP・PWR回復・初期デッキ・フレーバーを出す。
+       構築は main.js の renderVesselSelect -->
+  <section class="vessel-screen" id="scene-vessel" hidden aria-label="素体選択">
+    <div class="vessel-screen__frame">
+      <header class="vessel-screen__head">
+        <p class="vessel-screen__kicker">&gt;&gt; ENEMY PIPELINE :: VESSEL SELECTION &lt;&lt;</p>
+        <p class="vessel-screen__op">OPERATOR: PANDORA — HANGAR ROTARY PLATFORM</p>
+      </header>
+      <h2 class="vessel-screen__title">素体を選択 <span>— VESSEL SELECT / ROTARY CAROUSEL</span></h2>
+      <div class="vessel-layout">
+        <div class="vessel-stage-wrap">
+          <div class="vessel-stage" id="vessel-stage"></div>
+          <div class="vessel-controls">
+            <button type="button" class="vessel-rot" id="vessel-prev">◀ ROTATE</button>
+            <p class="vessel-pos" id="vessel-pos"></p>
+            <button type="button" class="vessel-rot" id="vessel-next">ROTATE ▶</button>
+          </div>
+        </div>
+        <div class="vessel-info">
+          <p class="vessel-info__name" id="vessel-info-name"></p>
+          <p class="vessel-info__sys" id="vessel-info-sys"></p>
+          <p class="vessel-info__stats" id="vessel-info-stats"></p>
+          <p class="vessel-info__deck" id="vessel-info-deck"></p>
+          <p class="vessel-info__flavor" id="vessel-info-flavor"></p>
+          <button type="button" class="sheet__go vessel-launch" id="vessel-launch">この素体でダイブ</button>
+        </div>
+      </div>
+      <p class="vessel-screen__hint">回転台を回して素体を選べ。特性と数値は右のCRTに出る。</p>
+    </div>
+  </section>
+
   <section class="clear-screen" id="clear-screen" hidden aria-label="クリア">
     <p class="clear-screen__kicker">【 MISSION ACCOMPLISHED 】</p>
     <h2 class="clear-screen__title">THANK YOU FOR PLAYING</h2>
@@ -187,33 +222,6 @@
                 <h2 class="sheet__title">ENEMY PIPELINE</h2>
                 <p class="mission" id="mission"></p>
                 <button type="button" class="sheet__go" id="start-run" hidden>初期化＆起動</button>
-              </div>
-
-              <!-- 正式版フェーズ1: キャラ選択（設計書 §A）。格納庫の回転台（カルーセル）を回して素体を選ぶ。
-                   中央の選択中素体を大きく見せ、CRT側パネルに固有特性・HP・PWR回復・初期デッキ・
-                   フレーバーテキストを出す。未解禁はシルエット＋LOCKEDで詳細を出さない。
-                   構築は main.js の renderVesselSelect -->
-              <div class="scene scene--sheet" id="scene-vessel" hidden>
-                <p class="sheet__kicker">VESSEL SELECT — ROTARY CAROUSEL</p>
-                <h2 class="sheet__title">素体を選択</h2>
-                <div class="vessel-layout">
-                  <div class="vessel-stage-wrap">
-                    <div class="vessel-stage" id="vessel-stage"></div>
-                    <div class="vessel-controls">
-                      <button type="button" class="vessel-rot" id="vessel-prev">◀ ROTATE</button>
-                      <p class="vessel-pos" id="vessel-pos"></p>
-                      <button type="button" class="vessel-rot" id="vessel-next">ROTATE ▶</button>
-                    </div>
-                  </div>
-                  <div class="vessel-info">
-                    <p class="vessel-info__name" id="vessel-info-name"></p>
-                    <p class="vessel-info__sys" id="vessel-info-sys"></p>
-                    <p class="vessel-info__stats" id="vessel-info-stats"></p>
-                    <p class="vessel-info__deck" id="vessel-info-deck"></p>
-                    <p class="vessel-info__flavor" id="vessel-info-flavor"></p>
-                    <button type="button" class="sheet__go vessel-launch" id="vessel-launch">この素体でダイブ</button>
-                  </div>
-                </div>
               </div>
 
               <div class="scene" id="scene-map" hidden>

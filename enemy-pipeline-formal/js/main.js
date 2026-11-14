@@ -33,7 +33,7 @@ const SPEECH = "我々は新たなデジタル防壁によって、国家の安�
 // PROMPT-26: 導入通信は説明口調を排した3行に短縮（ダイブ直後・全プレイヤー共通）
 const GRAY_DIVE_LINES = [
   "……接続完了（ダイブ・サクセス）。相変わらず見事な手際だな、パンドラ。",
-  "旧世代の【戦闘素体（VESSEL 07）】へのリンクも正常。いつでもいけるぞ。",
+  "旧世代の素体へのリンクも正常だ。どの機体も、いつでもいけるぞ。",
   "さあ、仕事の時間だ。手元の【BOOTカード】をドラッグしてスロットに落とせ。システムを叩き起こすぞ。",
 ];
 const SAFEHOUSE_LINE = "[SAFEHOUSE] 鉛の壁だけが、あの忌まわしいネットワークを遮断してくれる。次のダイブに備えろ。";
@@ -475,6 +475,9 @@ function changeScene(sceneName) {
   }
   if (!SCENE_NAMES.includes(name)) return;
   if (ui.attract) ui.attract.hidden = true;
+  // キャラ選択（VESSEL）は専用フル画面シーン: 表示中はメイン画面の desk（HUD）を隠し、
+  // 他シーンへ移ったら必ず戻す。scene-vessel 本体は body 直下の section（index.html）。
+  if (ui.desk) ui.desk.hidden = name === "VESSEL";
   currentScene = name;
   window.currentScene = name;
   for (const id of SCENE_NAMES) {
@@ -1518,13 +1521,16 @@ function vesselFigureEl(entry, pos) {
   caption.className = "vessel-figure__caption";
   if (entry === "locked") {
     fig.classList.add("is-locked");
-    const glyph = document.createElement("span");
-    glyph.className = "vessel-figure__glyph vessel-figure__glyph--locked";
-    glyph.textContent = "?";
+    // 未解禁はシルエットで存在だけを匂わせる（コンセプト画の布を被った素体）。
+    // 既存の素体画像を真っ黒に潰して流用し、機体の判別はできない見せ方にする。
+    const sil = document.createElement("img");
+    sil.className = "vessel-figure__silhouette";
+    sil.src = "assets/cctv_vessel_expose.png";
+    sil.alt = "";
     const lock = document.createElement("span");
     lock.className = "vessel-figure__lock";
     lock.textContent = "LOCKED";
-    visual.append(glyph, lock);
+    visual.append(sil, lock);
     caption.textContent = "VESSEL ?? — CLASSIFIED";
   } else {
     const def = Battle.CHARACTERS[entry];
