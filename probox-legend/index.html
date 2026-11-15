@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>公道最速は白バンである。 v1.5.1-wip（オンラインランキング）</title>
+<title>公道最速は白バンである。 v1.5.2-wip（オンラインランキング）</title>
 <!-- v1.1: PWA（manifest＋アイコン）。SW登録は本体スクリプト末尾 -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#05070d">
@@ -378,7 +378,7 @@
       <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.5.1</div>
+      <div class="verTag">v1.5.2</div>
     </div>
   </div>
 
@@ -392,7 +392,7 @@
       <button class="kvRankBtn" id="btnRank2">🏆 ランキング</button>
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.5.1</div>
+      <div class="verTag">v1.5.2</div>
     </div>
   </div>
 
@@ -556,11 +556,11 @@
    (6) 初回タイトルを
    偽タイトル「営業車ドライビングシミュレーター」に差し替え（帰りルートの
    匂わせとランキングボタンを排除）。版数表示は「v1.5」に更新。
-   v1.5.1-wip: 小パッチ。転換演出のジングル（jingle_legend.mp3）を廃止し、
+   v1.5.2-wip: 小パッチ。転換演出のジングル（jingle_legend.mp3）を廃止し、
    2回目以降もカットイン後のテロップ表示と同時に帰りBGMを開始するよう
    初回リビールの挙動に統一。ジングルの再生コード・onended ハンドラ・
    8.2秒フォールバックタイマーを撤去し、BGM テーブルからも参照を削除
-   （mp3 ファイル自体はパッケージに残置）。版数表示は「v1.5.1」に更新。
+   （mp3 ファイル自体はパッケージに残置）。版数表示は「v1.5.2」に更新。
    疑似3D（セグメント方式） / 単一HTML / BGMは外部mp3を任意再生
    ===================================================================== */
 const $ = id => document.getElementById(id);
@@ -2196,7 +2196,7 @@ function showStory(){
    「伝説の幕開け」テロップ →（帰社スタート）→ 帰り。表面は従順、心の中では
    キレている主人公の反骨心が帰りの爆走の原動力、という演出。BGM: 行きBGMは
    納品後も独白まで流れ続け、着信（showIncomingCall）で停止する（v1.5）。
-   帰りBGMは goLegend のテロップ表示と同時に始まる（v1.5.1: ジングル廃止）。 */
+   帰りBGMは goLegend のテロップ表示と同時に始まる（v1.5.2: ジングル廃止）。 */
 let cutinTimer=null, cutinShown=false, bossTimer=null, bossStage=0;
 let callTimer=null, ringTimer=null; // v0.4.2: 着信の自動応答／着信音タイマー
 /* 上司の1言目（理不尽な小言）の候補プール: ランごとにランダムで1つ。正式版ではここに足すだけ。
@@ -2334,7 +2334,7 @@ function goLegend(){
     "<br>🔥 擦らず走るほど加速する「疾走」ボーナス（最大 +36 km/h）"+
     "<br>💨 高速カーブでハンドルを切り続けると「ドリフト」！ 抜けると +12 km/h ブースト";
   $("legendTelop").classList.add("show");
-  playBgm("kaeri"); // v1.5.1: ジングル廃止。テロップ表示と同時に帰りBGMを開始（初回リビールの挙動に統一）
+  playBgm("kaeri"); // v1.5.2: ジングル廃止。テロップ表示と同時に帰りBGMを開始（初回リビールの挙動に統一）
   SE.go();
 }
 function startReturn(){
