@@ -53,6 +53,14 @@
     return 1 + 0.10 * Math.max(0, base);
   }
 
+  // 騒音力学の拡張（GOLIATH専用パッシブ）: 被攻撃ダメージの軽減量。
+  // ヒット時点の現在NOISE（ライブ値。ターン開始時スナップショットではない）から
+  // floor(NOISE × 0.5)、上限5。VESSEL 07 には適用しない。
+  function noiseArmor(state) {
+    if (!state || state.characterId !== "vessel04") return 0;
+    return Math.min(5, Math.floor(Math.max(0, state.noise || 0) * 0.5));
+  }
+
   const FINISHERS = Object.freeze([
     { id: "cqc_disable_01", name: "関節破壊 (DISABLE)", cost: 1, category: "CQC", type: "skill", noise: 1, requirements: ["target_stun_ge_1"], stance_change: "EXPOSE", effects: [{ target: "enemy", type: "cancel_next_intent", value: 1 }, { target: "enemy", type: "vulnerable", value: 1 }] },
     { id: "cqc_holdup_01", name: "完全制圧 (HOLD UP)", cost: 2, category: "CQC", type: "finish", noise: 1, requirements: ["target_stun_max"], stance_change: null, effects: [{ target: "enemy", type: "instant_kill", value: 1 }] },
@@ -600,6 +608,16 @@
         const cut = Math.min(dmg, state.player.tread);
         dmg -= cut;
         if (cut > 0) log.push(`TREAD -${cut}`);
+      }
+      // 正式版 修正第2弾: 騒音力学の拡張（GOLIATHのみ）。被攻撃ダメージを現在NOISE連動で軽減する。
+      // 重圧歩行の後・防護相殺の前に1ヒットごとに適用し、重圧歩行とは重ねがけされる。
+      if (state.characterId === "vessel04" && dmg > 0) {
+        const armor = noiseArmor(state);
+        if (armor > 0) {
+          const cut = Math.min(dmg, armor);
+          dmg -= cut;
+          if (cut > 0) log.push(`騒音力学: 装甲が衝撃を呑む -${cut}`);
+        }
       }
       const soaked = Math.min(state.player.block || 0, dmg);
       if (soaked > 0) {
