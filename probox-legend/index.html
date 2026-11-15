@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>公道最速は白バンである。 v1.2-wip（オンラインランキング）</title>
+<title>公道最速は白バンである。 v1.3-wip（オンラインランキング）</title>
 <!-- v1.1: PWA（manifest＋アイコン）。SW登録は本体スクリプト末尾 -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#05070d">
@@ -272,6 +272,9 @@
                      display:flex; flex-direction:column; align-items:center; gap:10px; }
   #ovTitleKV .kvBest { font-size:12.5px; color:#ffe9b0; text-shadow:0 1px 6px rgba(0,0,0,.9); }
   #ovTitleKV .kvTiny { font-size:10px; line-height:1.6; color:rgba(255,255,255,.75); text-shadow:0 1px 4px rgba(0,0,0,.9); }
+  /* v1.3: 版数表示（公開版との取り違え確認用。両タイトル面の注意書き脇に極小・低コントラストで） */
+  .verTag { margin-top:6px; font-size:9px; letter-spacing:.1em; opacity:.45; }
+  #ovTitleKV .verTag { color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.9); }
 
   /* ---------- v1.0-rc: オンラインランキング（意匠はテーマBで統一） ---------- */
   #ovResult .panel { max-height:94dvh; overflow-y:auto; }
@@ -355,6 +358,7 @@
       <button class="ghostBtn" id="btnRank1">🏆 ランキング</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
+      <div class="verTag">v1.3</div>
     </div>
   </div>
 
@@ -368,6 +372,7 @@
       <button class="kvRankBtn" id="btnRank2">🏆 ランキング</button>
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
+      <div class="verTag">v1.3</div>
     </div>
   </div>
 
@@ -502,6 +507,16 @@
    SPRITES-RIVAL-FINAL-REPORT 参照）。帰りのみ・基本 night／ブレーキ時 brake_night、
    読込失敗時は従来絵にフォールバック。割り戻し方式・判定数値は v0.7 と同一で不変。
    従来絵のまま残るのは van（営業バン・通常交通）のみで、素材が無いため据え置き。
+   v1.3-wip: 帰りの「実写感」不足の修正。(1) 帰りの空は開始時点から夜寄り
+   （skyT 0.55→1.0 を 0.78→1.0 に変更。カットイン直後の開幕でもう夜）。
+   (2) 橋の水面は夜帯（skyT>0.6）で暗い藍 #12283f へ落とし、地平線際だけ僅かに
+   明るい弱グラデを付与。側帯の水面色・納品先（port）の地面も同帯で暗色化。
+   (3) 中景ファサード帯のタイル継ぎ目に暗色の縁帯を重ね、足元グラデを
+   強化（14px/0.34→最大30px/0.50）して「板」感を軽減。
+   (4) タイトル両面（初回面／KV面）の注意書き脇に極小の版数表示「v1.3」を
+   追加（公開版と手元版の取り違え確認用）。
+   (5) 自車スプライトを質感付与版（player-v2）へ差し替え（assets-v13/。
+   アルファ・寸法は従来と同一の中間版で、写真水準の再生成が成功したら再差し替え）。
    疑似3D（セグメント方式） / 単一HTML / BGMは外部mp3を任意再生
    ===================================================================== */
 const $ = id => document.getElementById(id);
@@ -1121,9 +1136,15 @@ function drawMidFacade(skyT, horizon, c){
         ctx.fillStyle="rgba(255,140,70,"+(0.10*(1-c.night))+")"; ctx.fillRect(bx,bTop,b.w,bh); }
       else { ctx.fillStyle="rgba(255,255,255,0.28)"; ctx.fillRect(bx,bTop,b.w,bh); }
       ctx.fillStyle="rgba(10,10,18,"+(0.05+0.10*hash)+")"; ctx.fillRect(bx,bTop,b.w,bh);  // 個体差
-      const grd=ctx.createLinearGradient(0,horizon-14,0,horizon);   // 足元を地面に馴染ませる
-      grd.addColorStop(0,"rgba(0,0,0,0)"); grd.addColorStop(1,"rgba(0,0,0,0.34)");
-      ctx.fillStyle=grd; ctx.fillRect(bx,horizon-14,b.w,14);
+      // v1.3: タイル継ぎ目に暗色の縁帯を薄く重ね、矩形の「板」感を減らす
+      // （グラデーション生成は毎フレームの負荷になるため、細いベタ帯＋フェード2段で代替）
+      const ew=Math.max(2,b.w*0.055);
+      ctx.fillStyle="rgba(3,5,12,0.26)"; ctx.fillRect(bx,bTop,ew,bh); ctx.fillRect(bx+b.w-ew,bTop,ew,bh);
+      ctx.fillStyle="rgba(3,5,12,0.12)"; ctx.fillRect(bx+ew,bTop,ew,bh); ctx.fillRect(bx+b.w-ew*2,bTop,ew,bh);
+      const gH=Math.min(30,Math.max(14,bh*0.45));   // v1.3: 足元グラデ強化（14px/0.34 → 最大30px/0.50）
+      const grd=ctx.createLinearGradient(0,horizon-gH,0,horizon);   // 足元を地面に馴染ませる
+      grd.addColorStop(0,"rgba(0,0,0,0)"); grd.addColorStop(1,"rgba(0,0,0,0.50)");
+      ctx.fillStyle=grd; ctx.fillRect(bx,horizon-gH,b.w,gH);
       ctx.strokeStyle="rgba(20,22,34,.8)"; ctx.lineWidth=1;   // 屋上アンテナ
       ctx.beginPath(); ctx.moveTo(bx+b.w*0.5,bTop); ctx.lineTo(bx+b.w*0.5,bTop-6); ctx.stroke();
       if(skyT>0.35 && hash>0.55){ const bl=0.5+0.5*Math.sin(performance.now()/450+b.x);  // 航空障害灯（点滅）
@@ -1225,10 +1246,10 @@ function render(){
   const maxY=H;
   let x=0, dx=-(baseSeg.curve*basePct);
   // 地平線まわりの背景
-  // 行き=昼パステル(0.03〜0.17) ／ 転換で夕景(0.55)へ遷移 ／ 帰り=夕→夜(0.55〜1)
+  // 行き=昼パステル(0.03〜0.17) ／ 転換で夕景(0.55)へ遷移 ／ 帰り=夜寄り→夜(0.78〜1、v1.3)
   const prog=position/Math.max(1,trackLength);
   const skyT = DEBUG_SKY!=null ? DEBUG_SKY :
-             state==="back"||state==="result" ? clamp(0.55+0.45*prog,0.55,1)
+             state==="back"||state==="result" ? clamp(0.78+0.22*prog,0.78,1)
              : (state==="legend"||state==="story") ? lerp(0.50,0.60,clamp(sunsetProgress,0,1))
              : clamp(0.05+0.47*prog,0.05,0.52); // v0.5: 行きは進行度で午後→夕景へ寄る（納品頃に夕景帯が主役になる）
   const horizon=Math.round(H*0.44 - clamp(playerY*0.00042,-30,60)) + Math.round(shakeY);
@@ -1241,8 +1262,24 @@ function render(){
   // 地面ベース
   const baseType=baseSeg.section?baseSeg.section.type:"exp";
   let groundCol = baseType==="bridge" ? "#2c5a86" : (skyT>0.6?"#131a2c":"#6d7c66");
+  // v1.3: 橋の水面は夜帯(skyT>0.6)で暗い藍 #12283f へ落とし、地平線際だけ僅かに明るい
+  // 弱グラデを付ける（水面の瞬きは地平線より上側の表現なので干渉しない）。
+  // 納品先(port)の地面は従来分岐どおり skyT>0.6 で #131a2c になり、帰り開始 skyT=0.78 化で
+  // 帰り開始直後から暗色になる（追加分岐なし＝最小変更）。
+  let groundFill=null;
+  if(baseType==="bridge"){
+    const nk=clamp((skyT-0.6)/0.4,0,1);
+    if(nk>0){
+      groundCol=mixHex("#2c5a86","#12283f",nk);
+      const g=ctx.createLinearGradient(0,horizonBg,0,H);
+      g.addColorStop(0,mixHex(groundCol,"#2a4a68",0.45*nk));
+      g.addColorStop(0.22,groundCol);
+      g.addColorStop(1,groundCol);
+      groundFill=g;
+    }
+  }
   if(playerElevK>0.02 && baseType!=="bridge") groundCol=mixHex(groundCol,"#4e4e5a",playerElevK*0.8); // v0.4.1: 高架下の街並みトーン
-  ctx.fillStyle = groundCol;
+  ctx.fillStyle = groundFill || groundCol;
   ctx.fillRect(0,horizonBg,W,H-horizonBg);
 
   let drawn=[];
@@ -1268,6 +1305,12 @@ function render(){
     const ek=seg.elevK||0;
     let sideCol=cSet.side;
     if(ek>0.02) sideCol=mixHex(sideCol,"#454f5c",ek*0.8); // v0.4.1: 高架下は構造物・街の影トーンへ
+    // v1.3: 夜帯(skyT>0.6)では橋の側帯（＝水面）も暗い藍へ、納品先(port)の側帯も暗色へ寄せる
+    if(skyT>0.6 && seg.section){
+      const nkS=clamp((skyT-0.6)/0.4,0,1);
+      if(seg.section.type==="bridge") sideCol=mixHex(sideCol,"#12283f",nkS*0.85);
+      else if(seg.section.type==="port") sideCol=mixHex(sideCol,"#131a2c",nkS*0.7);
+    }
     poly(0,seg.p2.screen.y, W,seg.p2.screen.y, W,seg.p1.screen.y, 0,seg.p1.screen.y, sideCol);
     // 路面（v0.5: アスファルトテクスチャ。読込前は平色フォールバック）
     drawRoadSurface(seg, cSet);
@@ -1508,13 +1551,15 @@ function drawCar(seg, car, skyT){
     ctx.fillText("▼ RIVAL", destX, destY-topH-Math.max(4,carW*0.12)); }
 }
 /* ---- v0.5: 自車の実写スプライト（帰りのみ。行きは従来の平たい絵で世界を分ける） ----
-   素材は assets-v05/（sprites-final の夜派生を WebP 化＋リーン夜派生を同レシピで生成）。
+   素材は assets-v13/（v1.3: 質感付与版 player-v2 の夜派生を WebP 化。アルファ・寸法は
+   assets-v05 版と同一検証済みのため SPR_WF/SPR_BF は不変。位置づけは「現行より改善・
+   ただし写真水準には未達の中間版」で、Juggernaut 再生成が成功したら差し替える前提）。
    車体の実測: キャンバス 768×768 に対し車体幅 85.0%、接地点は下から 99.0%。
    描画幅は「車体の見た目幅 = 従来の平たい絵の幅 pw」に揃えるため、キャンバス幅を
    pw/SPR_WF とし、当たり判定（PLAYER_HALF は pw 基準）との一致を保つ。 */
 const PLAYER_SPR={};
-[["night","assets-v05/player_night.webp"],["brake","assets-v05/player_brake_night.webp"],
- ["leanL","assets-v05/player_lean_left_night.webp"],["leanR","assets-v05/player_lean_right_night.webp"]
+[["night","assets-v13/player_night.webp"],["brake","assets-v13/player_brake_night.webp"],
+ ["leanL","assets-v13/player_lean_left_night.webp"],["leanR","assets-v13/player_lean_right_night.webp"]
 ].forEach(([k,src])=>{ const im=new Image(); const e={im,ok:false};
   im.onload=()=>{ e.ok=true; }; PLAYER_SPR[k]=e; im.src=src; });
 const SPR_WF=0.850, SPR_BF=0.990;
