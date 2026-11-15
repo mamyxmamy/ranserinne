@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>公道最速は白バンである。 v1.3-wip（オンラインランキング）</title>
+<title>公道最速は白バンである。 v1.4-wip（オンラインランキング）</title>
 <!-- v1.1: PWA（manifest＋アイコン）。SW登録は本体スクリプト末尾 -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#05070d">
@@ -358,7 +358,7 @@
       <button class="ghostBtn" id="btnRank1">🏆 ランキング</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.3</div>
+      <div class="verTag">v1.4</div>
     </div>
   </div>
 
@@ -372,7 +372,7 @@
       <button class="kvRankBtn" id="btnRank2">🏆 ランキング</button>
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.3</div>
+      <div class="verTag">v1.4</div>
     </div>
   </div>
 
@@ -517,6 +517,12 @@
    追加（公開版と手元版の取り違え確認用）。
    (5) 自車スプライトを質感付与版（player-v2）へ差し替え（assets-v13/。
    アルファ・寸法は従来と同一の中間版で、写真水準の再生成が成功したら再差し替え）。
+   v1.4-wip: 自車スプライトを修復済み 9205（第5便・欠陥修復＋仕上げ済み）へ
+   差し替え（assets-v14/、SPRITES-9205-REPORT 参照）。9205 は寸法体系が従来と
+   異なるため SPR_WF/SPR_BF を新素材の実測に更新（車体本体の実幅率 0.748＝
+   ミラー除く／接地点 0.984）。割り戻し方式は従来どおりで「車体本体の見た目幅
+   ＝pw」に一致させ、ミラーは判定幅の外へ張り出す。当たり判定・ニアミスの
+   数値そのものは不変。版数表示は「v1.4」に更新。
    疑似3D（セグメント方式） / 単一HTML / BGMは外部mp3を任意再生
    ===================================================================== */
 const $ = id => document.getElementById(id);
@@ -1551,18 +1557,19 @@ function drawCar(seg, car, skyT){
     ctx.fillText("▼ RIVAL", destX, destY-topH-Math.max(4,carW*0.12)); }
 }
 /* ---- v0.5: 自車の実写スプライト（帰りのみ。行きは従来の平たい絵で世界を分ける） ----
-   素材は assets-v13/（v1.3: 質感付与版 player-v2 の夜派生を WebP 化。アルファ・寸法は
-   assets-v05 版と同一検証済みのため SPR_WF/SPR_BF は不変。位置づけは「現行より改善・
-   ただし写真水準には未達の中間版」で、Juggernaut 再生成が成功したら差し替える前提）。
-   車体の実測: キャンバス 768×768 に対し車体幅 85.0%、接地点は下から 99.0%。
-   描画幅は「車体の見た目幅 = 従来の平たい絵の幅 pw」に揃えるため、キャンバス幅を
-   pw/SPR_WF とし、当たり判定（PLAYER_HALF は pw 基準）との一致を保つ。 */
+   素材は assets-v14/（v1.4: 第5便 seed 9205 を修復・仕上げした自車の夜派生 WebP。
+   SPRITES-9205-REPORT 参照）。9205 は寸法体系が従来絵と異なる: 最終キャンバス
+   1024 に対し車体本体幅（ミラー除く）766px＝実幅率 0.748、接地点 y=1008＝0.984
+   （配布 WebP 768 でも実測: 本体幅率 0.753@α>32／接地点 756/768=0.984 で裏付け）。
+   描画幅は「車体本体の見た目幅 = 従来の平たい絵の幅 pw」に揃えるため、キャンバス
+   幅を pw/SPR_WF とし、当たり判定（PLAYER_HALF は pw 基準）との一致を保つ。
+   ミラー込み全幅率は 0.879 で、ミラーは判定幅の外へ左右に張り出す（見た目のみ）。 */
 const PLAYER_SPR={};
-[["night","assets-v13/player_night.webp"],["brake","assets-v13/player_brake_night.webp"],
- ["leanL","assets-v13/player_lean_left_night.webp"],["leanR","assets-v13/player_lean_right_night.webp"]
+[["night","assets-v14/player_night.webp"],["brake","assets-v14/player_brake_night.webp"],
+ ["leanL","assets-v14/player_lean_left_night.webp"],["leanR","assets-v14/player_lean_right_night.webp"]
 ].forEach(([k,src])=>{ const im=new Image(); const e={im,ok:false};
   im.onload=()=>{ e.ok=true; }; PLAYER_SPR[k]=e; im.src=src; });
-const SPR_WF=0.850, SPR_BF=0.990;
+const SPR_WF=0.748, SPR_BF=0.984;
 function pickPlayerSprite(){
   if(state!=="back"&&state!=="result") return null;
   if(keys.brake||touchBrake) return PLAYER_SPR.brake.ok? PLAYER_SPR.brake.im
