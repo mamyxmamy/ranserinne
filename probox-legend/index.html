@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>公道最速は白バンである。 v1.4-wip（オンラインランキング）</title>
+<title>公道最速は白バンである。 v1.5-wip（オンラインランキング）</title>
 <!-- v1.1: PWA（manifest＋アイコン）。SW登録は本体スクリプト末尾 -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#05070d">
@@ -28,7 +28,7 @@
            --ctl-bg:rgba(255,248,230,.55); --ctl-border:rgba(160,120,70,.4); --ctl-ink:#5b4636;
            --controls-bg:linear-gradient(0deg,rgba(255,243,214,.9),rgba(255,243,214,.4));
            --phase-bg:#ffb7c9; --phase-ink:#5b2f3a; --phase-radius:999px;
-           --toast-bg:rgba(255,250,235,.95); --toast-border:#f2c894; --toast-border2:#b07fe8; --toast-ink:#5b4636;
+           --toast-bg:rgb(255,250,235); --toast-border:#e8a84e; --toast-border2:#9a5fe0; --toast-ink:#46311e;
            --bar-track:rgba(120,90,40,.18); --prog:#f2a65a; --gain-ink:#8a6a3b;
            --btn-bg:linear-gradient(180deg,#ffd34d,#ff9a3d); --btn-ink:#2a1503; --btn-border:transparent;
            --ghost-border:rgba(91,70,54,.45); --row-line:rgba(91,70,54,.28); --rank-ink:#c75b12;
@@ -41,7 +41,7 @@
            --ctl-bg:rgba(10,16,28,.72); --ctl-border:rgba(55,230,255,.55); --ctl-ink:#dff4ff;
            --controls-bg:linear-gradient(0deg,rgba(4,6,12,.94),rgba(4,6,12,.55));
            --phase-bg:rgba(255,62,165,.14); --phase-ink:#FF3EA5; --phase-radius:3px;
-           --toast-bg:rgba(6,10,18,.93); --toast-border:#37E6FF; --toast-border2:#FF3EA5; --toast-ink:#eafcff;
+           --toast-bg:rgba(6,10,18,.97); --toast-border:#37E6FF; --toast-border2:#FF3EA5; --toast-ink:#eafcff;
            --bar-track:rgba(120,200,255,.16); --prog:#37E6FF; --gain-ink:#9fdcff;
            --btn-bg:linear-gradient(180deg,#0d1626,#0a0f1c); --btn-ink:#37E6FF; --btn-border:#37E6FF;
            --ghost-border:rgba(55,230,255,.5); --row-line:rgba(120,200,255,.25); --rank-ink:#ffe14d;
@@ -122,7 +122,10 @@
            font-size:19px; padding:10px 18px; border-radius:var(--r-toast); text-align:center; opacity:0; pointer-events:none;
            transition:opacity .18s, transform .18s; max-width:92%; }
   #toast.show { opacity:1; transform:translate(-50%,-50%) scale(1); }
-  #toast.small { font-size:14px; border-color:var(--toast-border2); }
+  #toast.small { font-size:15px; border-color:var(--toast-border2); }
+  /* v1.5: 明るい写真背景の上でもテロップが埋没しないよう、テーマAにも分離用の影を付ける
+     （実機で「半透明の白板に灰色の文字」に見えた主因は地色の薄さ＋境界の弱さ） */
+  #stage[data-theme="a"] #toast { box-shadow:0 4px 18px rgba(74,52,24,.35); }
   #stage[data-theme="b"] #toast { box-shadow:0 0 18px rgba(55,230,255,.35); letter-spacing:.03em; }
   #stage[data-theme="b"] #toast.small { box-shadow:0 0 14px rgba(255,62,165,.35); }
   /* ---------- Controls ---------- */
@@ -257,9 +260,19 @@
   /* ---------- v0.4.3: 正式タイトル開示（初回のみ・全画面フェードイン） ---------- */
   #titleReveal { position:absolute; inset:0; z-index:30; background:#000; display:none; opacity:0;
                  transition:opacity .7s ease; cursor:pointer; }
-  #titleReveal.show { display:block; opacity:1; }
+  #titleReveal.show { display:block; opacity:1; animation:revealImpact .18s linear .88s 1; }
   #titleReveal.out { opacity:0; }
   #titleReveal img { width:100%; height:100%; object-fit:contain; display:block; }
+  /* v1.5: タイトルロゴは奥から回転しながら迫ってドンッと着地する（リビール＝フル版 1.1秒）。
+     着地（78〜88%地点）に合わせてコンテナ側に短い画面シェイクを遅延発火させる。 */
+  #titleReveal.show img { animation:logoSpinIn 1.1s cubic-bezier(.22,.9,.3,1) both; }
+  @keyframes logoSpinIn { 0% { transform:scale(.15) rotate(-700deg); opacity:0; }
+                          40% { opacity:1; }
+                          78% { transform:scale(1.09) rotate(9deg); opacity:1; }
+                          88% { transform:scale(.96) rotate(-2deg); }
+                          100% { transform:scale(1) rotate(0deg); opacity:1; } }
+  @keyframes revealImpact { 0% { transform:translate(0,0); } 30% { transform:translate(2px,3px); }
+                            60% { transform:translate(-2px,1px); } 100% { transform:translate(0,0); } }
   /* ---------- v0.4.3: 2回目以降のタイトル画面（キービジュアル版） ----------
      v1.1: ロゴ全体が見える構成へ変更。背面にKVをぼかして全面敷き（暗色オーバーレイ兼用）、
      前面のKV本体は contain で全体表示する（従来は cover＋32% でロゴが切れていた）。 */
@@ -267,6 +280,12 @@
   #ovTitleKV .kvBg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:32% 50%;
                      filter:blur(16px) brightness(.48); transform:scale(1.15); }
   #ovTitleKV .kvImg { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:50% 30%; }
+  /* v1.5: KVタイトルでもロゴが回って入る（短め版 0.65秒。.show の付け直しで毎回再生） */
+  #ovTitleKV.show .kvImg { animation:logoSpinInShort .65s cubic-bezier(.22,.9,.3,1) both; }
+  @keyframes logoSpinInShort { 0% { transform:scale(.55) rotate(-150deg); opacity:0; }
+                               55% { opacity:1; }
+                               84% { transform:scale(1.03) rotate(4deg); }
+                               100% { transform:scale(1) rotate(0deg); opacity:1; } }
   #ovTitleKV .kvShade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,.28) 0%,rgba(0,0,0,0) 26%,rgba(0,0,0,0) 52%,rgba(0,0,0,.55) 80%,rgba(0,0,0,.85)); }
   #ovTitleKV .kvUI { position:relative; z-index:2; width:100%; max-width:400px; padding:0 20px 26px;
                      display:flex; flex-direction:column; align-items:center; gap:10px; }
@@ -346,19 +365,20 @@
   </div>
 
   <!-- Title -->
+  <!-- v1.5: 初回タイトルは偽タイトル「営業車ドライビングシミュレーター」の顔。
+       帰社・最速・伝説など帰りルートを匂わせる要素とランキングボタンは出さない。
+       本タイトルは転換後のリビールで初めて開示される（2回目以降はKVタイトル）。 -->
   <div class="overlay show" id="ovTitle">
     <div class="panel">
-      <h1 class="title">首都高プロボックス<br>最速説（仮）</h1>
-      <div class="catch">行きは丁寧に。帰りは、伝説に。</div>
-      <div class="sub">行き：荷物を守って丁寧に。我慢した分だけ、社畜メーターが溜まる<br>
-      転換：課長の理不尽が、火をつける<br>
-      帰り：溜めた分が、全部スピードに変わる。法定速度は、知らない<br>
-      操作：◀▶長押し／スワイプで寄せる。BRAKEで減速。帰りの高速カーブでは◀▶を切り続けるとドリフト（オートアクセル）。</div>
-      <button class="bigBtn" id="btnStart">▶ はじめる</button>
-      <button class="ghostBtn" id="btnRank1">🏆 ランキング</button>
+      <h1 class="title">営業車<br>ドライビングシミュレーター</h1>
+      <div class="catch">荷物をお客様にしっかり届けよう！</div>
+      <div class="sub">📦 お仕事：荷物を積んで、納品先まで安全運転でお届けします<br>
+      丁寧な運転で、お客様も笑顔に。首都高の景色を楽しみながら、のんびりドライブしましょう<br>
+      操作：◀▶長押し／スワイプで寄せる。BRAKEで減速（オートアクセル）。</div>
+      <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.4</div>
+      <div class="verTag">v1.5</div>
     </div>
   </div>
 
@@ -372,7 +392,7 @@
       <button class="kvRankBtn" id="btnRank2">🏆 ランキング</button>
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.4</div>
+      <div class="verTag">v1.5</div>
     </div>
   </div>
 
@@ -523,6 +543,19 @@
    ミラー除く／接地点 0.984）。割り戻し方式は従来どおりで「車体本体の見た目幅
    ＝pw」に一致させ、ミラーは判定幅の外へ張り出す。当たり判定・ニアミスの
    数値そのものは不変。版数表示は「v1.4」に更新。
+   v1.5-wip: 実機フィードバック対応。(1) 昼の中景ビルが無地の角丸長方形で
+   「白い看板」に読めた問題を、屋根帯・窓・玄関・輪郭・足元の影を持つ
+   drawPastelBuilding に差し替えて修正。あわせてテロップ（#toast）の地色を
+   完全不透明化し、テーマAの文字色を濃く＋分離用の影を追加。
+   (2) クリア後も帰りBGMを止めない（finishReturn の stopBgm を撤去。
+   停止は もう1往復／タイトルへ の操作時）。(3) タイトルロゴに回転しながら
+   奥から迫って着地するアニメーション（リビール＝フル版1.1秒／KV＝短め版
+   0.65秒）。(4) 行きBGMは納品後も独白まで流し続け、着信開始で停止。
+   (5) 配送後シーン（story）〜カットイン〜リビール／伝説テロップの間は
+   ゲームHUDを完全に隠し、帰り開始の電源投入シーケンスで初めて現れる。
+   (6) 初回タイトルを
+   偽タイトル「営業車ドライビングシミュレーター」に差し替え（帰りルートの
+   匂わせとランキングボタンを排除）。版数表示は「v1.5」に更新。
    疑似3D（セグメント方式） / 単一HTML / BGMは外部mp3を任意再生
    ===================================================================== */
 const $ = id => document.getElementById(id);
@@ -761,7 +794,8 @@ function saveBest(d){ try{ localStorage.setItem(STORE_KEY,JSON.stringify(d)); }c
 function refreshBestLine(){ const b=loadBest();
   const t = b ? ("ローカルベスト： 帰社 "+fmtTime(b.bestReturn)+" ／ 称号「"+b.bestTitle+"」 ／ "+(b.plays||1)+"往復目")
               : "ローカルベスト： まだ記録なし";
-  $("bestLine").textContent=t;
+  // v1.5: 未開示の間、初回（偽）タイトルに帰社ベストを表示してネタバレしない
+  $("bestLine").textContent = titleRevealed()? t : "ローカルベスト： まだ記録なし";
   const kv=$("bestLineKV"); if(kv) kv.textContent=t; }
 /* ---- v0.4.3: 正式タイトル開示フラグ（初回のみ開示演出／2回目以降はKVタイトル） ---- */
 const TITLE_REVEAL_KEY="probox_title_revealed_v1";
@@ -1122,6 +1156,47 @@ function drawBg3Layer(skyT, horizon){
   }
   return drew;
 }
+/* ---- v1.5: 昼の中景ビルを「建物」として描く ----
+   従来はパステル無地の角丸長方形のみで、窓も屋根も輪郭もなく「白い看板／
+   ホワイトボード」に読めた（実機フィードバックで特定）。ほんわかな平絵は保ったまま、
+   屋根帯・窓グリッド・玄関・輪郭・足元の影で建物の記号を足す。
+   窓の点灯パターンは seed 由来の決定的ハッシュにして毎フレーム同じにする。 */
+function drawPastelBuilding(bx, bTop, bw, bh, seed){
+  const PB=["#f3d9cf","#f7ead2","#d6ead9","#d2e2f2","#efe0ee","#f9e3b8"];
+  const PR=["#d98f78","#dda64f","#84b984","#6f9cc4","#b183cc","#e09a3e"]; // 屋根帯（同系の濃色）
+  const idx=((Math.floor(seed*6)%6)+6)%6;
+  // 足元の影（接地感）
+  ctx.fillStyle="rgba(74,64,44,0.13)";
+  ctx.beginPath(); ctx.ellipse(bx+bw/2, bTop+bh+2, bw*0.56, 3.5, 0, 0, 7); ctx.fill();
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(bx,bTop,bw,bh,6); ctx.clip();
+  ctx.fillStyle=PB[idx]; ctx.fillRect(bx,bTop,bw,bh);
+  // 屋根帯＋その下端の細線
+  const rh=Math.max(5, Math.min(11, bh*0.16));
+  ctx.fillStyle=PR[idx]; ctx.fillRect(bx,bTop,bw,rh);
+  ctx.fillStyle="rgba(90,66,44,0.22)"; ctx.fillRect(bx,bTop+rh,bw,1.5);
+  // 窓グリッド（小さすぎる建物は省略。一部はほんのり灯り色）
+  if(bh>30 && bw>36){
+    const cols=Math.max(1,Math.floor((bw-12)/13)), rows=Math.max(1,Math.floor((bh-rh-12)/14));
+    const gx=bx+(bw-(cols*8+(cols-1)*5))/2, gy=bTop+rh+5;
+    for(let rI=0;rI<rows;rI++) for(let cI=0;cI<cols;cI++){
+      const hsh=Math.abs(Math.sin(seed*91.7+rI*12.9898+cI*78.233)*43758.5453)%1;
+      ctx.fillStyle= hsh<0.22? "rgba(255,205,110,0.9)" : "rgba(255,255,255,0.62)";
+      ctx.beginPath(); ctx.roundRect(gx+cI*13, gy+rI*14, 8, 9, 2); ctx.fill();
+    }
+  }
+  // 玄関（幅のある建物だけ）
+  if(bw>64 && bh>24){
+    ctx.fillStyle="rgba(84,102,110,0.55)";
+    ctx.beginPath(); ctx.roundRect(bx+bw/2-6, bTop+bh-13, 12, 13, 2); ctx.fill();
+  }
+  // 足元を締める
+  ctx.fillStyle="rgba(90,66,44,0.10)"; ctx.fillRect(bx,bTop+bh-4,bw,4);
+  ctx.restore();
+  // 輪郭
+  ctx.strokeStyle="rgba(96,74,58,0.42)"; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.roundRect(bx+0.5,bTop+0.5,bw-1,bh-1,6); ctx.stroke();
+}
 function drawMidFacade(skyT, horizon, c){
   const offM=((skyOff*0.9)%2400+2400)%2400;
   const pastel = skyT<0.32;
@@ -1157,10 +1232,8 @@ function drawMidFacade(skyT, horizon, c){
         ctx.fillStyle="rgba(255,60,50,"+(0.35+0.55*bl)+")";
         ctx.beginPath(); ctx.arc(bx+b.w*0.5,bTop-7,1.8,0,7); ctx.fill(); }
     } else {
-      // 昼：従来のパステル平塗り（ただし高さ上限・密度抑制はv2の値を適用＝遠景を隠さない）
-      if(pastel){ const PB=["#f3d9cf","#f7ead2","#d6ead9","#d2e2f2","#efe0ee","#f9e3b8"];
-        ctx.fillStyle = PB[Math.abs(Math.floor(b.win*6))%6];
-        ctx.beginPath(); ctx.roundRect(bx,bTop,b.w,bh,7); ctx.fill(); }
+      // 昼：パステル平絵のまま「建物」として読める意匠で描く（v1.5。高さ上限・密度抑制はv2の値を維持）
+      if(pastel){ drawPastelBuilding(bx, bTop, b.w, bh, b.win*7+b.x*0.013); }
       else { ctx.fillStyle = skyT>0.6 ? "#0d1229" : "#33406b"; ctx.fillRect(bx,bTop,b.w,bh); }
     }
   } }
@@ -1210,9 +1283,8 @@ function drawBackground(skyT, horizon){
     // 行き（昼パステル帯）は丸みのあるパステルビル＋低めに抑える
     const pastel = skyT<0.32;
     const bh = pastel? b.h*0.62 : b.h;
-    ctx.fillStyle = skyT>0.6 ? "#0d1229" : (pastel? PASTEL_B[Math.abs(Math.floor(b.win*6))%6] : "#33406b");
-    if(pastel){ ctx.beginPath(); ctx.roundRect(bx,horizon-bh,b.w,bh,7); ctx.fill(); }
-    else ctx.fillRect(bx,horizon-bh,b.w,bh);
+    if(pastel){ drawPastelBuilding(bx, horizon-bh, b.w, bh, b.win*7+b.x*0.013); }
+    else { ctx.fillStyle = skyT>0.6 ? "#0d1229" : "#33406b"; ctx.fillRect(bx,horizon-bh,b.w,bh); }
     const bTop=horizon-bh, bH=bh;
     if(c.night>0.05||skyT>0.35){ ctx.fillStyle="rgba(255,205,110,"+(0.35+0.6*c.night)+")";
       const rows=Math.floor(bH/16), cols=Math.floor(b.w/14);
@@ -1704,6 +1776,11 @@ function setPhaseUI(){
   else { pl.textContent= state==="legend"||state==="story" ? "転換" : "—"; pl.className=""; }
   $("cargoRow").style.opacity = state==="back" ? .45 : 1;
   $("comboBox").style.display = (state==="back"&&combo>0) ? "block":"none";
+  // v1.5: 配送後の画面（納品パネル〜独白〜着信＝story 一式）ではゲームHUDを隠す。
+  // 社畜メーター等の数値が演出の後ろに透けると世界観が壊れるため。運転中は従来どおり。
+  // v1.5追加: カットイン〜タイトルリビール／伝説テロップの間（reveal／legend）も
+  // 完全に隠し、HUDは帰り開始時の電源投入シーケンス（startReturn の .boot）で初めて現れる。
+  $("hud").style.display = (state==="story"||state==="reveal"||state==="legend") ? "none" : "";
 }
 function updateHUD(){
   const seg=findSegment(position);
@@ -2089,7 +2166,9 @@ function startOutbound(){
   lastGainReason="🍀 のんびり丁寧にいこう"; gainFlashT=3.5;
 }
 function finishOutbound(){
-  state="story"; speed=0; stopBgm("iki"); setPhaseUI();
+  // v1.5: 納品しても行きBGMは止めない。納品パネル→独白の間も流し続け、
+  // 止めるのは課長の着信シーケンス開始（showIncomingCall）のタイミング。
+  state="story"; speed=0; setPhaseUI();
   sunsetProgress=0.15; storyStep=0; showStory(); // v0.5: 行き終わりの夕景（skyT≒0.52）から滑らかに繋ぐ
 }
 function showStory(){
@@ -2111,8 +2190,9 @@ function showStory(){
    からスマホ着信（バイブ演出／タップまたは約2.6秒で自動応答）→ 通話で小言
    （理不尽な小言→締切圧の2言立て）→ 主人公の心の声カットイン約2.5秒 →
    「伝説の幕開け」テロップ →（帰社スタート）→ 帰り。表面は従順、心の中では
-   キレている主人公の反骨心が帰りの爆走の原動力、という演出。BGMは止めない:
-   行きBGMは finishOutbound で停止済み、ジングルは goLegend 以降にしか鳴らない。 */
+   キレている主人公の反骨心が帰りの爆走の原動力、という演出。BGM: 行きBGMは
+   納品後も独白まで流れ続け、着信（showIncomingCall）で停止する（v1.5）。
+   ジングルは goLegend 以降にしか鳴らない。 */
 let cutinTimer=null, cutinShown=false, bossTimer=null, bossStage=0;
 let callTimer=null, ringTimer=null; // v0.4.2: 着信の自動応答／着信音タイマー
 /* 上司の1言目（理不尽な小言）の候補プール: ランごとにランダムで1つ。正式版ではここに足すだけ。
@@ -2142,6 +2222,7 @@ function showHeroMonologue(){
 }
 function ringOnce(){ beep(1046,0.14,"sine",0.06); setTimeout(()=>beep(1318,0.16,"sine",0.06),180); }
 function showIncomingCall(){
+  stopBgm("iki"); // v1.5: 着信（呼び出し音）に入るタイミングで行きBGMを止める
   bossStage=-1; // 着信中
   const box=$("storyContent");
   box.innerHTML='<div class="callPanel vib" id="callPanel"><div class="callIcon">📱</div>'+
@@ -2279,7 +2360,9 @@ const RANKS=[
   { max:Infinity,rank:"D", title:"残業確定の社畜戦士" },
 ];
 function finishReturn(){
-  state="result"; stopBgm("kaeri"); setPhaseUI();
+  // v1.5: クリア後も帰りBGMを流し続ける（止めるのは「もう1往復」=startOutbound の
+  // stopAllBgm、「タイトルへ戻る」=goTitle の stopAllBgm のタイミング）
+  state="result"; setPhaseUI();
   vib(VIB.goal); // v0.6: ゴールのバイブ
   const eff=Math.max(1, backTime-bonusSec);
   let ri=RANKS.findIndex(r=>eff<=r.max); if(ri<0) ri=RANKS.length-1;
@@ -2477,7 +2560,7 @@ const RankingUI={
   closeRanking(){ $("ovRanking").classList.remove("show"); },
 };
 $("btnRankRegister").onclick=()=>RankingUI.register();
-$("btnRank1").onclick=()=>RankingUI.openRanking();
+// v1.5: 初回（偽）タイトルにはランキングボタンを置かないため btnRank1 は存在しない
 $("btnRank2").onclick=()=>RankingUI.openRanking();
 $("btnRankClose").onclick=()=>RankingUI.closeRanking();
 
