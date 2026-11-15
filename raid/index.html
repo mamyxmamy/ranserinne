@@ -391,7 +391,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 53.0</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 53.1</span></div>
             </div>
 
             <div class="hidden">
@@ -704,7 +704,8 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <button type="button" onclick="window.closeHeirloomStorage(event)" class="action-button-main text-gray-400 hover:text-white text-3xl px-2 leading-none">&times;</button>
             </div>
             <div class="bg-[#1A1613] p-2 border-b border-[#3A322A] flex justify-between items-center">
-                <span class="text-xs text-gray-300">装備可能な枠数:</span><span class="text-sm font-bold text-gold" id="modal-slots-count">0/1</span>
+                <span><span class="text-xs text-gray-300">装備可能な枠数:</span><span class="text-sm font-bold text-gold" id="modal-slots-count">0/1</span></span>
+                <span><span class="text-xs text-gray-300">所持冥銭:</span><span class="text-sm font-bold text-purple-300" id="modal-meisen-count">0</span></span>
             </div>
             <div class="bg-[#14110F] px-3 py-2 border-b border-[#3A322A] flex items-center gap-1.5 flex-wrap">
                 <span class="text-[10px] text-gray-400">並び替え:</span><button type="button" data-hlsort="" onclick="window.setHeirloomSort(null, event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">標準</button><button type="button" data-hlsort="valor" onclick="window.setHeirloomSort('valor', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">武功</button><button type="button" data-hlsort="karma" onclick="window.setHeirloomSort('karma', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">悪逆</button><button type="button" data-hlsort="strategy" onclick="window.setHeirloomSort('strategy', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">知略</button><button type="button" data-hlsort="virtue" onclick="window.setHeirloomSort('virtue', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">人徳</button><button type="button" data-hlsort="luck" onclick="window.setHeirloomSort('luck', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">運</button><button type="button" data-hlsort="health" onclick="window.setHeirloomSort('health', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">体力</button><button type="button" data-hlsort="money" onclick="window.setHeirloomSort('money', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">銭</button>
@@ -829,6 +830,15 @@ body.pc-on #ranking-screen { font-size: 15px; }
                         <li><span class="text-purple-400 font-bold">冥銭</span>: 死後に得る通貨。冥府の商人で持込道具（1人生に1つ）と交換できます。</li>
                         <li><span class="text-gold font-bold">家宝</span>: 条件を満たすと得る永続強化品。装備できる数は輪廻回数で増えます（10回で2つ、30回で3つ）。<span class="text-red-400 font-bold">非業の死（大往生以外）で失い</span>、被ると格に応じた冥銭に還元されます。</li>
                         <li><span class="text-purple-400 font-bold">冥府の宝籤（ガチャ）</span>: 輪廻30回で解放、1回300冥銭で家宝を1つ授かります。新しい家宝が出ない日が続いても、5回目で必ず未所持が出ます（天井）。</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 家宝の強化（v53.1新要素）</h3>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li>家宝蔵で、所持している家宝を<span class="text-purple-400 font-bold">冥銭</span>で強化できます。強化は最大<span class="font-bold">5段階</span>まで、1段階ごとに効果が元の値の<span class="font-bold">+20%</span>ずつ伸びます（例：初期武功+35 → +42 → +49 …、最大で2倍）。</li>
+                        <li>価格は段階ごとに 150／300／450／600／900 冥銭。強化した家宝は、名前の後ろに「+1」のように段階が付きます。</li>
+                        <li><span class="text-red-400 font-bold">非業の死で家宝を失うと、強化も一緒に消えます</span>。再び手に入れた時は段階0からです。古びた木の棍棒は己の伝説で育つ品のため、強化はできません。</li>
                     </ul>
                 </section>
 
@@ -1231,19 +1241,85 @@ body.pc-on #ranking-screen { font-size: 15px; }
         function heirloomInstance(id) {
             const c = HEIRLOOMS_DB.find(h => h.id === id);
             if (!c) return null;
-            return { id: c.id, name: c.name, type: c.type, value: c.value, desc: c.effect };
+            return { id: c.id, name: c.name, type: c.type, value: c.value, desc: c.effect, enh: 0, baseValue: c.value };
         }
 
+        // v53.1: 家宝の強化（冥銭の新しい支出先）。段階ごとに元の値の+20%ずつ伸びる（線形）、最大5段階。
+        // 実体は enh（強化段階）と baseValue（元の値）を保持し、実効値を value / desc に反映する。
+        // 効果適用（startGame）は装備中インスタンスの value を読むため、この反映で確実に効く（棍棒の可変 value と同じ作法）。
+        const HEIRLOOM_ENH_MAX = 5;
+        const HEIRLOOM_ENH_COSTS = [150, 300, 450, 600, 900]; // 1段目〜5段目の価格（冥銭）
+        const HEIRLOOM_ENH_TYPE_LABELS = { valor: '武功', karma: '悪逆', strategy: '知略', virtue: '人徳', luck: '運', health: '体力' };
+        function heirloomEnhStep(baseValue) { return Math.max(1, Math.round((baseValue || 0) * 0.2)); }
+        function heirloomEnhOf(h) { const e = h && h.enh; return (typeof e === 'number' && isFinite(e)) ? Math.max(0, Math.min(HEIRLOOM_ENH_MAX, Math.floor(e))) : 0; }
+        function heirloomBaseValue(h) {
+            if (h && typeof h.baseValue === 'number') return h.baseValue;
+            const c = h && HEIRLOOMS_DB.find(x => x.id === h.id);
+            return c ? c.value : ((h && h.value) || 0);
+        }
+        function heirloomEffectiveValue(h) {
+            const base = heirloomBaseValue(h);
+            return base + heirloomEnhStep(base) * heirloomEnhOf(h);
+        }
+        // 効果文を DB の書式（「初期武功 +35」「初期所持金 +400文」）で再生成する。再生成できない型は null を返し、原文を保つ
+        function heirloomEffectText(type, value) {
+            if (type === 'money') return '初期所持金 +' + value + '文';
+            const label = HEIRLOOM_ENH_TYPE_LABELS[type];
+            return label ? ('初期' + label + ' +' + value) : null;
+        }
+        // enh と baseValue から value / desc を再計算する（棍棒は独自成長のため対象外）
+        function heirloomApplyEnh(h) {
+            if (!h || !h.id || h.id === 'hl_club') return h;
+            h.baseValue = heirloomBaseValue(h);
+            h.enh = heirloomEnhOf(h);
+            h.value = heirloomEffectiveValue(h);
+            const t = heirloomEffectText(h.type, h.value);
+            if (t) h.desc = t;
+            return h;
+        }
+        window.__hlDisplayName = function(h) {
+            if (!h) return '';
+            const e = (h.id === 'hl_club') ? 0 : heirloomEnhOf(h);
+            return (h.name || '') + (e > 0 ? ' +' + e : '');
+        };
+        window.__hlEnhCost = function(h) {
+            if (!h || h.id === 'hl_club') return null;
+            const e = heirloomEnhOf(h);
+            return e >= HEIRLOOM_ENH_MAX ? null : HEIRLOOM_ENH_COSTS[e];
+        };
+        window.enhanceHeirloom = function(id, e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            const item = (window.unlockedHeirlooms || []).find(h => h.id === id);
+            if (!item || item.id === 'hl_club') return;
+            heirloomApplyEnh(item);
+            const cost = window.__hlEnhCost(item);
+            if (cost === null) return;
+            if ((window.meisen || 0) < cost) return;
+            window.meisen -= cost;
+            item.enh = heirloomEnhOf(item) + 1;
+            heirloomApplyEnh(item);
+            // 装備中コピーは別オブジェクトとして保存されるため、同じ段階を反映する
+            (window.activeHeirlooms || []).forEach(a => { if (a.id === item.id) { a.enh = item.enh; a.baseValue = item.baseValue; heirloomApplyEnh(a); } });
+            saveMetaProgress();
+            if (window.updateStartScreenUI) window.updateStartScreenUI();
+            window.openHeirloomStorage();
+        };
+
         // v32: 旧セーブに残る旧 value / desc を正本へ同期する（棍棒は強化で可変のため対象外）
+        // v53.1: 元の値（baseValue）は DB を正本とし、強化段階 enh は保持したまま実効値へ再計算する
         function syncHeirloomStats() {
             const fix = (h) => {
                 if (!h || !h.id || h.id === 'hl_club') return;
                 const c = HEIRLOOMS_DB.find(x => x.id === h.id);
                 if (!c) return;
-                h.type = c.type; h.value = c.value; h.desc = c.effect;
+                h.type = c.type; h.baseValue = c.value;
+                heirloomApplyEnh(h);
             };
             (window.unlockedHeirlooms || []).forEach(fix);
-            (window.activeHeirlooms || []).forEach(fix);
+            // 装備中コピーは所持リスト側の段階に合わせてから同期する（別オブジェクトで保存されるため）
+            const enhById = {};
+            (window.unlockedHeirlooms || []).forEach(h => { if (h && h.id) enhById[h.id] = heirloomEnhOf(h); });
+            (window.activeHeirlooms || []).forEach(h => { if (h && h.id && enhById[h.id] !== undefined) h.enh = enhById[h.id]; fix(h); });
         }
         syncHeirloomStats();
 
@@ -3054,12 +3130,14 @@ logFail: (g, l) => '夢は破れ、傷と借金だけが残った。それでも
         // v29: 家宝の被り還元額（格は type / value から決まる）
         function heirloomConvertMeisen(hl) {
             if (!hl) return 0;
+            // v53.1: 還元額は強化段階に影響させないため、元の値（baseValue）で判定する
+            const hv = (typeof hl.baseValue === 'number') ? hl.baseValue : (hl.value || 0);
             if (hl.type === 'money') {
-                if (hl.value >= 1000) return 100;
-                if (hl.value >= 400) return 50;
+                if (hv >= 1000) return 100;
+                if (hv >= 400) return 50;
                 return 30;
             }
-            const v = hl.value || 0;
+            const v = hv;
             if (v >= 50) return 100;
             if (v >= 35) return 70;
             if (v >= 25) return 50;
@@ -3327,7 +3405,7 @@ logFail: (g, l) => '夢は破れ、傷と借金だけが残った。それでも
                     listDiv.innerHTML = '<span class="text-gray-400 text-xs block py-0.5">装備なし（クリックして蔵を開く）</span>';
                 } else {
                     window.activeHeirlooms.forEach(hl => {
-                        listDiv.innerHTML += `<div class="bg-black/30 p-1.5 rounded border border-gold/30"><strong class="text-gold text-xs block">${hl.name}</strong></div>`;
+                        listDiv.innerHTML += `<div class="bg-black/30 p-1.5 rounded border border-gold/30"><strong class="text-gold text-xs block">${window.__hlDisplayName(hl)}</strong></div>`;
                     });
                 }
             }
@@ -3362,6 +3440,8 @@ logFail: (g, l) => '夢は破れ、傷と借金だけが残った。それでも
             const hList = document.getElementById('heirloom-list');
             const maxSlots = window.getMaxHeirloomSlots();
             document.getElementById('modal-slots-count').innerText = `${window.activeHeirlooms.length}/${maxSlots}`;
+            const meisenEl = document.getElementById('modal-meisen-count');
+            if (meisenEl) meisenEl.innerText = String(window.meisen || 0);
 
             hScreen.classList.remove('hidden');
             hList.innerHTML = '';
@@ -3404,12 +3484,30 @@ logFail: (g, l) => '夢は破れ、傷と借金だけが残った。それでも
                 const isActive = window.activeHeirlooms.find(h => h.id === item.id);
                 const card = document.createElement('div');
                 card.className = `border p-3 rounded-sm cursor-pointer transition-all ${isActive ? 'bg-yellow-900/40 border-gold' : 'bg-[#181513] border-[#3A322A] hover:border-gold/50'}`;
+                // v53.1: 強化UI（棍棒は独自成長のため対象外＝ボタン自体を出さない）。次の1段でどう伸びるかも併記する
+                let enhHtml = '';
+                if (item.id !== 'hl_club') {
+                    const enhNow = heirloomEnhOf(item);
+                    const enhCost = window.__hlEnhCost(item);
+                    if (enhCost === null) {
+                        enhHtml = `<div class="mt-2 pt-2 border-t border-[#3A322A] flex items-center justify-between"><span class="text-[10px] text-gold font-bold">強化段階 ${enhNow}/${HEIRLOOM_ENH_MAX}（最大）</span><span class="text-[10px] text-gray-500">これ以上の強化はできません</span></div>`;
+                    } else {
+                        const base = heirloomBaseValue(item);
+                        const nextText = heirloomEffectText(item.type, base + heirloomEnhStep(base) * (enhNow + 1));
+                        const afford = (window.meisen || 0) >= enhCost;
+                        enhHtml = `<div class="mt-2 pt-2 border-t border-[#3A322A] flex items-center justify-between gap-2">
+                            <span class="text-[10px] text-gray-400">強化段階 ${enhNow}/${HEIRLOOM_ENH_MAX}${nextText ? `<br>次の強化で ${nextText}` : ''}</span>
+                            <button type="button" data-enh-id="${item.id}" class="shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-sm border ${afford ? 'bg-purple-900 hover:bg-purple-700 text-white border-purple-500' : 'bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed'}" ${afford ? '' : 'disabled'}>強化する（${enhCost} 冥銭）</button>
+                        </div>`;
+                    }
+                }
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-1">
-                        <div class="font-bold ${isActive ? 'text-gold' : 'text-gray-200'} text-sm">${item.name}</div>
+                        <div class="font-bold ${isActive ? 'text-gold' : 'text-gray-200'} text-sm">${window.__hlDisplayName(item)}</div>
                         ${isActive ? '<span class="text-[9px] bg-gold text-black px-1.5 py-0.5 font-bold rounded">装備中</span>' : '<span class="text-[9px] text-gray-500 border border-gray-600 px-1.5 py-0.5 rounded">装備する</span>'}
                     </div>
                     <div class="text-xs text-gray-400">${item.desc}</div>
+                    ${enhHtml}
                 `;
                 card.onclick = () => {
                     if (isActive) window.activeHeirlooms = window.activeHeirlooms.filter(h => h.id !== item.id);
@@ -3420,6 +3518,8 @@ logFail: (g, l) => '夢は破れ、傷と借金だけが残った。それでも
                     window.updateStartScreenUI();
                     window.openHeirloomStorage(); 
                 };
+                const enhBtn = card.querySelector('button[data-enh-id]');
+                if (enhBtn) enhBtn.onclick = (ev) => { window.enhanceHeirloom(item.id, ev); };
                 hList.appendChild(card);
             });
         };
@@ -3565,8 +3665,8 @@ logFail: (g, l) => '夢は破れ、傷と借金だけが残った。それでも
                     const isObtainedBefore = !isUnlocked && (window.heirloomHistory || []).includes(hl.id); // v22: 過去に取得したが現在は未所持
                     if(isUnlocked) {
                         const actual = window.unlockedHeirlooms.find(u => u.id === hl.id) || hl;
-                        const dexEffect = hl.id === 'hl_club' ? (actual.desc || hl.effect) : hl.effect;
-                        html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-start gap-3 shadow-md"><div class="w-10 h-10 bg-gold/20 border border-gold flex items-center justify-center rounded text-lg flex-shrink-0">✨</div><div><div class="font-bold text-gold text-sm">${actual.name || hl.name}</div><div class="text-xs text-gray-300 mt-0.5">${dexEffect}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${hl.flavor}</div><div class="text-[10px] text-gray-500 mt-1">【取得条件】 ${hl.hint}</div></div></div>`;
+                        const dexEffect = (actual.desc || hl.effect); // v53.1: 所持実体の desc（強化後の実効値で再生成済み）を優先する
+                        html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-start gap-3 shadow-md"><div class="w-10 h-10 bg-gold/20 border border-gold flex items-center justify-center rounded text-lg flex-shrink-0">✨</div><div><div class="font-bold text-gold text-sm">${window.__hlDisplayName(actual)}</div><div class="text-xs text-gray-300 mt-0.5">${dexEffect}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${hl.flavor}</div><div class="text-[10px] text-gray-500 mt-1">【取得条件】 ${hl.hint}</div></div></div>`;
                     } else if(isObtainedBefore) {
                         const dexEffectB = hl.id === 'hl_club' ? '初期運 +50' : hl.effect;
                         html += `<div class="bg-[#15120E] border border-[#4A3F2E] p-3 rounded-sm flex items-start gap-3"><div class="w-10 h-10 bg-[#2A2118] border border-[#8A6D3B] flex items-center justify-center rounded text-[#C9B48A] text-sm font-bold flex-shrink-0">宝</div><div><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[#C9B48A] text-sm">${hl.name}</span><span class="text-[9px] font-bold text-black bg-[#C9B48A] px-1.5 py-0.5 rounded-sm tracking-widest">取得済</span><span class="text-[9px] text-[#8A6D3B]">輪廻の流れの中で失われた</span></div><div class="text-xs text-gray-300 mt-0.5">${dexEffectB}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${hl.flavor}</div><div class="text-[10px] text-gray-400 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
@@ -4614,7 +4714,7 @@ cv.toBlob((b) => resolve(b), 'image/png');
             
             let hlText = "";
             if (window.activeHeirlooms && window.activeHeirlooms.length > 0) {
-                const hlNames = window.activeHeirlooms.map(h => h.name).join('、');
+                const hlNames = window.activeHeirlooms.map(h => window.__hlDisplayName(h)).join('、');
                 hlText = `<p class="text-gold mt-6 text-[11px]">家宝「${hlNames}」の加護を携え、<br>宿命の旅が始まる。</p>`;
             }
             if (state.flags.consumedItemName) {
@@ -4734,7 +4834,7 @@ cv.toBlob((b) => resolve(b), 'image/png');
             const list = document.getElementById('prep-list');
             if (!list) return;
             const name = window.getRegisteredPlayerName ? window.getRegisteredPlayerName() : '';
-            const hls = (window.activeHeirlooms || []).map(h => h.name).join('、');
+            const hls = (window.activeHeirlooms || []).map(h => window.__hlDisplayName(h)).join('、');
             const slots = (window.currentReincarnationCount >= 30) ? 3 : (window.currentReincarnationCount >= 10) ? 2 : 1;
             const cons = window.activeConsumable;
             let consText = cons ? cons.name : 'なし';
@@ -5395,8 +5495,8 @@ cv.toBlob((b) => resolve(b), 'image/png');
                     const isObtainedBefore = !isUnlocked && (window.heirloomHistory || []).includes(hl.id); // v22: 過去に取得したが現在は未所持
                     if(isUnlocked) {
                         const actual = window.unlockedHeirlooms.find(u => u.id === hl.id) || hl;
-                        const dexEffect = hl.id === 'hl_club' ? (actual.desc || hl.effect) : hl.effect;
-                        html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-start gap-3 shadow-md"><div class="w-10 h-10 bg-gold/20 border border-gold flex items-center justify-center rounded text-lg flex-shrink-0">✨</div><div><div class="font-bold text-gold text-sm">${actual.name || hl.name}</div><div class="text-xs text-gray-300 mt-0.5">${dexEffect}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${hl.flavor}</div><div class="text-[10px] text-gray-500 mt-1">【取得条件】 ${hl.hint}</div></div></div>`;
+                        const dexEffect = (actual.desc || hl.effect); // v53.1: 所持実体の desc（強化後の実効値で再生成済み）を優先する
+                        html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-start gap-3 shadow-md"><div class="w-10 h-10 bg-gold/20 border border-gold flex items-center justify-center rounded text-lg flex-shrink-0">✨</div><div><div class="font-bold text-gold text-sm">${window.__hlDisplayName(actual)}</div><div class="text-xs text-gray-300 mt-0.5">${dexEffect}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${hl.flavor}</div><div class="text-[10px] text-gray-500 mt-1">【取得条件】 ${hl.hint}</div></div></div>`;
                     } else if(isObtainedBefore) {
                         const dexEffectB = hl.id === 'hl_club' ? '初期運 +50' : hl.effect;
                         html += `<div class="bg-[#15120E] border border-[#4A3F2E] p-3 rounded-sm flex items-start gap-3"><div class="w-10 h-10 bg-[#2A2118] border border-[#8A6D3B] flex items-center justify-center rounded text-[#C9B48A] text-sm font-bold flex-shrink-0">宝</div><div><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[#C9B48A] text-sm">${hl.name}</span><span class="text-[9px] font-bold text-black bg-[#C9B48A] px-1.5 py-0.5 rounded-sm tracking-widest">取得済</span><span class="text-[9px] text-[#8A6D3B]">輪廻の流れの中で失われた</span></div><div class="text-xs text-gray-300 mt-0.5">${dexEffectB}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${hl.flavor}</div><div class="text-[10px] text-gray-400 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
