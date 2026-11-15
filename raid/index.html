@@ -391,7 +391,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 52.1</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 52.2</span></div>
             </div>
 
             <div class="hidden">
@@ -2633,83 +2633,82 @@ return res;
                     { text: '先頭で隊列を引っ張る', condition: () => true, hint: '武功上昇・体力減少', effect: (s) => { s.valor += 10; return { hp: -10, log: '声を張り上げて隊を鼓舞した。その働きは上役の目に留まった。'};}},
                     { text: '近道を探す', condition: () => true, hint: '運で判定', effect: (s) => { if (critRoll('luck', 0.45 + (s.luck * 0.003))) { s.strategy += 10; return { hp: 5, log: '山勘が的中し、隊は半日も早く宿場に着いた。温かい飯にありつけた。' }; } return { hp: -15, log: '近道は獣道だった。余計に疲れ果て、本隊に追いつくのに苦労した。' }; } }
             ]},
-,
-{ id: 'peasant_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'peasant', 'virtue'),
+{ id: 'peasant_grand_gamble', mode: ['normal'], weight: 100, condition: (s) => gambleReady(s, 'peasant', 'virtue'),
 title: '\u3010大勝負\u3011地主への道', text: '村の有力者が、広大な田畑を手放すという話が舞い込んだ。買い取れば一代で大地主へ成り上がれるが、実らなければ人徳も信も地に落ちる。一世一代の大勝負である。',
 choices: [
-{ text: '田畑を買い取り、地主への道に賭ける', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（人徳・運で変動）・成功で人徳+40%、失敗で人徳-25%＋凶作で所持金の2割減', effect: (s) => resolveGrandGamble(s, { classId: 'peasant', main: 'virtue', sub: 'luck', painMoneyRate: 0.2,
+{ text: '田畑を買い取り、地主への道に賭ける', condition: () => true, hint: '\u3010大勝負\u3011成功率 約55〜85%（人徳・運で変動）・成功で人徳+40%、失敗で人徳-25%＋凶作で所持金の2割減', effect: (s) => resolveGrandGamble(s, { classId: 'peasant', main: 'virtue', sub: 'luck', painMoneyRate: 0.2,
 chronWin: '村の田畑を買い取り、大地主として名を馳せる', chronFail: '地主への夢破れ、凶作と借りに泣く',
 logWin: (g, l) => '買い取った田は豊かに実り、小作の人々が次々と門を叩いた。' + l + 'が大きく伸びた（+' + g + '）。今や村にその名を知らぬ者はない。',
 logFail: (g, l) => 'その年に限って大凶作。田は実らず、借りだけが残った。' + l + 'も地に落ちた（-' + g + '）。'})},
 { text: '身の丈に合った百姓仕事を続ける', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '夢は見ず、今日も鍬を振るう。堅実な暮らしぶりが、村の信を集めた。'};}}
 ]},
-{ id: 'ashigaru_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'ashigaru', 'valor'),
+{ id: 'ashigaru_grand_gamble', mode: ['normal'], weight: 100, condition: (s) => gambleReady(s, 'ashigaru', 'valor'),
 title: '\u3010大勝負\u3011一旗挙げる大勝負', text: '大合戦の気配。先鋒の大役に名乗りを上げれば、一躍名を挙げる好機だが、討ち死にも覚悟の上。一旗挙げるか、堅実に槍働きを続けるか、一世一代の大勝負である。',
 choices: [
-{ text: '先鋒の大役に名乗りを上げる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（武功・運で変動）・成功で武功+40%、失敗で武功-25%＋大怪我（体力-30）', effect: (s) => resolveGrandGamble(s, { classId: 'ashigaru', main: 'valor', sub: 'luck', painHp: -30,
+{ text: '先鋒の大役に名乗りを上げる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約55〜85%（武功・運で変動）・成功で武功+40%、失敗で武功-25%＋大怪我（体力-30）', effect: (s) => resolveGrandGamble(s, { classId: 'ashigaru', main: 'valor', sub: 'luck', painHp: -30,
 chronWin: '大合戦の先鋒を務め上げ、一旗挙げる', chronFail: '先鋒の大勝負に敗れ、大怪我を負う',
 logWin: (g, l) => '先鋒として敵陣を切り崩し、味方の大勝を呼び込んだ！' + l + 'が大きく伸びた（+' + g + '）。その名は軍中に轟いた。',
 logFail: (g, l) => '敵の猛攻に先鋒は崩れ、深手を負って担ぎ出された。' + l + 'も挫けた（-' + g + '）。'})},
 { text: '名乗りを上げず、持ち場を守る', condition: () => true, hint: '武功上昇', effect: (s) => { s.valor += 5; return { hp: 0, log: '華々しさはないが、持ち場を守り抜くのも戦の務め。腕は着実に磨かれた。'};}}
 ]},
-{ id: 'bushou_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'bushou', 'valor'),
+{ id: 'bushou_grand_gamble', mode: ['normal'], weight: 100, condition: (s) => gambleReady(s, 'bushou', 'valor'),
 title: '\u3010大勝負\u3011所領経営の大普請', text: '検地と城下の大普請に、蓄えた資産と人手の全てを投じる案がまとまった。成れば所領は盤石となるが、しくじれば一揆と困窮が待つ。一世一代の大勝負である。',
 choices: [
-{ text: '資産の全てを投じて大普請に打って出る', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（武功・知略で変動）・成功で武功+40%、失敗で武功-25%＋体力-20・人徳-5', effect: (s) => resolveGrandGamble(s, { classId: 'bushou', main: 'valor', sub: 'strategy', painHp: -20, painVirtue: 5,
+{ text: '資産の全てを投じて大普請に打って出る', condition: () => true, hint: '\u3010大勝負\u3011成功率 約55〜85%（武功・知略で変動）・成功で武功+40%、失敗で武功-25%＋体力-20・人徳-5', effect: (s) => resolveGrandGamble(s, { classId: 'bushou', main: 'valor', sub: 'strategy', painHp: -20, painVirtue: 5,
 chronWin: '所領の大普請を成し遂げ、領地を盤石とする', chronFail: '大普請が頓挫し、所領に綻びが生じる',
 logWin: (g, l) => '普請は見事に成り、城下は活況に沸いた。武威はいや増し、' + l + 'が大きく伸びた（+' + g + '）。',
 logFail: (g, l) => '普請は頓挫し、自ら陣頭に立っての収拾で身を削った。人々の信も少し揺らぎ、' + l + 'も挫けた（-' + g + '）。'})},
 { text: '普請は小規模に留め、様子を見る', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 5; return { hp: 0, log: '急がば回れ。領地の様子を見ながら、少しずつ手を入れることにした。'};}}
 ]},
-{ id: 'daimyo_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'daimyo', 'strategy'),
+{ id: 'daimyo_grand_gamble', mode: ['normal'], weight: 100, condition: (s) => gambleReady(s, 'daimyo', 'strategy'),
 title: '\u3010大勝負\u3011楽市楽座と城下町整備', text: '国庫の半分を投じ、楽市楽座と城下町の大整備を行う大号令が議に上がった。成れば税収と国力は跳ね上がるが、失敗すれば重臣の不満は爆発する。一世一代の大勝負である。',
 choices: [
-{ text: '国庫を投じて大改革を断行する', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（知略・運で変動）・成功で知略+40%、失敗で知略-25%＋重臣の不満（人徳-10）', effect: (s) => resolveGrandGamble(s, { classId: 'daimyo', main: 'strategy', sub: 'luck', painVirtue: 10,
+{ text: '国庫を投じて大改革を断行する', condition: () => true, hint: '\u3010大勝負\u3011成功率 約55〜85%（知略・運で変動）・成功で知略+40%、失敗で知略-25%＋重臣の不満（人徳-10）', effect: (s) => resolveGrandGamble(s, { classId: 'daimyo', main: 'strategy', sub: 'luck', painVirtue: 10,
 chronWin: '楽市楽座と城下町整備を成し遂げ、国力を飛躍させる', chronFail: '城下町整備が失敗し、重臣の不満が募る',
 logWin: (g, l) => '城下は商いで溢れ、税収は跳ね上がった。采配の冴えに諸国が震え、' + l + 'が大きく伸びた（+' + g + '）。',
 logFail: (g, l) => '整備は混乱を招き、重臣たちの不満が一斉に噴き出した。采配への信が揺らぎ、' + l + 'も挫けた（-' + g + '）。'})},
 { text: '大改革は見送り、現状を維持する', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '国を動かすのは勢いだけではない。重臣たちの声に耳を澄まし、時を待つことにした。'};}}
 ]},
-{ id: 'ninja_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'ninja', 'karma'),
+{ id: 'ninja_grand_gamble', mode: ['normal'], weight: 100, condition: (s) => gambleReady(s, 'ninja', 'karma'),
 title: '\u3010大勝負\u3011闇の大仕事', text: '敵国の大名の首――前代未聞の大仕事の依頼が、闇の回路から届いた。成せば闇の世界にその名が轟くが、失敗すれば返り討ちで大怪我、最悪死ぬ。一世一代の大勝負である。',
 choices: [
-{ text: '闇の大仕事に身を投じる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（悪逆・知略で変動）・成功で悪逆+40%、失敗で悪逆-25%＋返り討ちで大怪我（体力-40）、最悪死ぬ', effect: (s) => resolveGrandGamble(s, { classId: 'ninja', main: 'karma', sub: 'strategy', painHp: -40,
+{ text: '闇の大仕事に身を投じる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約55〜85%（悪逆・知略で変動）・成功で悪逆+40%、失敗で悪逆-25%＋返り討ちで大怪我（体力-40）、最悪死ぬ', effect: (s) => resolveGrandGamble(s, { classId: 'ninja', main: 'karma', sub: 'strategy', painHp: -40,
 chronWin: '闇の大仕事を成し遂げ、裏の世界に名を轟かせる', chronFail: '闇の大仕事に失敗し、返り討ちで大怪我を負う',
 logWin: (g, l) => '影は音もなく的の命を絶った。誰も真相を知らぬまま、' + l + 'の名だけが闇に轟いた（+' + g + '）。',
 logFail: (g, l) => '罠だった。返り討ちの刃に深手を負い、辛くも闇に逃れた。' + l + 'の威信も地に落ちた（-' + g + '）。'})},
 { text: '割に合わぬと、依頼を闇に返す', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 5; return { hp: 0, log: '命あっての忍び。釣り合わぬ仕事は受けぬのが、長生きの秘訣である。'};}}
 ]},
-{ id: 'monk_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'monk', 'virtue'),
+{ id: 'monk_grand_gamble', mode: ['normal'], weight: 100, condition: (s) => gambleReady(s, 'monk', 'virtue'),
 title: '\u3010大勝負\u3011大勧進', text: '大寺の建立と諸国を巡る大勧進の話が持ち上がった。成功すれば寄進が各地から集まり、その徳は天下に知れ渡る。失敗しても損なうのは積年の徳のみ。一世一代の大勝負である。',
 choices: [
-{ text: '大勧進に身を投じる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（人徳・知略で変動）・成功で人徳+40%、失敗で人徳-25%のみ（他の痛手なし）', effect: (s) => resolveGrandGamble(s, { classId: 'monk', main: 'virtue', sub: 'strategy',
+{ text: '大勧進に身を投じる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約55〜85%（人徳・知略で変動）・成功で人徳+40%、失敗で人徳-25%のみ（他の痛手なし）', effect: (s) => resolveGrandGamble(s, { classId: 'monk', main: 'virtue', sub: 'strategy',
 chronWin: '大勧進を成し遂げ、各地から寄進が集まる', chronFail: '大勧進が不発に終わり、静かに寺へ戻る',
 logWin: (g, l) => '勧進の声は諸国に届き、寄進の列は絶えなかった。その徳は天下に知れ渡り、' + l + 'が大きく伸びた（+' + g + '）。',
 logFail: (g, l) => '勧進は実を結ばなかった。だが損なったのは徳のみ。静かに読経へ戻った（' + l + ' -' + g + '）。'})},
 { text: '勧進には出ず、寺の務めに励む', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '名声は求めず、日々の務めを誠実に果たした。それもまた徳の積み方である。'};}}
 ]},
-{ id: 'kuge_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'kuge', 'strategy'),
+{ id: 'kuge_grand_gamble', mode: ['normal'], weight: 100, condition: (s) => gambleReady(s, 'kuge', 'strategy'),
 title: '\u3010大勝負\u3011荘園への投資', text: '荘園の買い増しと、朝廷への献金工作を束ねた大きな企てが持ち上がった。成れば荘園からの収入と発言力は倍増するが、しくじれば面子と蓄えを同時に失う。一世一代の大勝負である。',
 choices: [
-{ text: '荘園と工作に蓄えを投じる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（知略・運で変動）・成功で知略+40%、失敗で知略-25%＋面子を失う（人徳-5）', effect: (s) => resolveGrandGamble(s, { classId: 'kuge', main: 'strategy', sub: 'luck', painVirtue: 5,
+{ text: '荘園と工作に蓄えを投じる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約55〜85%（知略・運で変動）・成功で知略+40%、失敗で知略-25%＋面子を失う（人徳-5）', effect: (s) => resolveGrandGamble(s, { classId: 'kuge', main: 'strategy', sub: 'luck', painVirtue: 5,
 chronWin: '荘園への投資が実り、朝廷での発言力を増す', chronFail: '荘園への投資に失敗し、面子と蓄えを失う',
 logWin: (g, l) => '工作は水面下で実を結び、荘園の収入は倍増した。朝廷での発言力も増し、' + l + 'が大きく伸びた（+' + g + '）。',
 logFail: (g, l) => '工作は裏目に出て、面子も蓄えも失った。宮中の笑い話にされる屈辱に、' + l + 'も挫けた（-' + g + '）。'})},
 { text: '企てには乗らず、雅な日々を守る', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '欲に駆られて雅を失うのは、公家の道にあらず。静かに歌を詠む日々を選んだ。'};}}
 ]},
-{ id: 'bandit_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'bandit', 'karma'),
+{ id: 'bandit_grand_gamble', mode: ['normal'], weight: 100, condition: (s) => gambleReady(s, 'bandit', 'karma'),
 title: '\u3010大勝負\u3011大口の襲撃', text: '大名の金銀輸送隊が峠を通るという、大口の襲撃の機が巡ってきた。武器と手下の手配に蓄えを投じれば、一山当てて名も上がるが、討伐隊の返り討ちも覚悟の上。一世一代の大勝負である。',
 choices: [
-{ text: '輸送隊の大襲撃に打って出る', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（悪逆・武功で変動）・成功で悪逆+40%、失敗で悪逆-25%＋討伐隊に痛手（体力-30）', effect: (s) => resolveGrandGamble(s, { classId: 'bandit', main: 'karma', sub: 'valor', painHp: -30,
+{ text: '輸送隊の大襲撃に打って出る', condition: () => true, hint: '\u3010大勝負\u3011成功率 約55〜85%（悪逆・武功で変動）・成功で悪逆+40%、失敗で悪逆-25%＋討伐隊に痛手（体力-30）', effect: (s) => resolveGrandGamble(s, { classId: 'bandit', main: 'karma', sub: 'valor', painHp: -30,
 chronWin: '大名の輸送隊を襲い、大口の戦果を挙げる', chronFail: '大口の襲撃に失敗し、討伐隊に痛手を負う',
 logWin: (g, l) => '襲撃は大成功。金銀は山分けされ、その凶名は街道に轟いた。' + l + 'が大きく伸びた（+' + g + '）。',
 logFail: (g, l) => '輸送隊には討伐隊が張り付いていた。痛手を負って山へ逃げ戻り、' + l + 'の威信も地に落ちた（-' + g + '）。'})},
 { text: '大口は避け、小口の稼ぎに徹する', condition: () => true, hint: '武功上昇', effect: (s) => { s.valor += 5; return { hp: 0, log: 'デカい山ほど罠も深い。身の丈の稼ぎで、山の暮らしを守った。'};}}
 ]},
-{ id: 'ronin_grand_gamble', mode: ['normal'], weight: 20, condition: (s) => gambleReady(s, 'ronin', 'luck'),
+{ id: 'ronin_grand_gamble', mode: ['normal'], weight: 100, condition: (s) => gambleReady(s, 'ronin', 'luck'),
 title: '\u3010大勝負\u3011一攫千金の渡世', text: '大商人の護衛請負か、流れ者の大博打か――一攫千金の話が、渡世の風に乗って耳に届いた。当たれば名と銭が転がり込むが、外れれば傷と借金が残る。一世一代の大勝負である。',
 choices: [
-{ text: '一攫千金の渡世に身を投じる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約35〜85%（運・武功で変動）・成功で運+40%、失敗で運-25%＋傷（体力-15）と所持金の2割減', effect: (s) => resolveGrandGamble(s, { classId: 'ronin', main: 'luck', sub: 'valor', painHp: -15, painMoneyRate: 0.2,
+{ text: '一攫千金の渡世に身を投じる', condition: () => true, hint: '\u3010大勝負\u3011成功率 約55〜85%（運・武功で変動）・成功で運+40%、失敗で運-25%＋傷（体力-15）と所持金の2割減', effect: (s) => resolveGrandGamble(s, { classId: 'ronin', main: 'luck', sub: 'valor', painHp: -15, painMoneyRate: 0.2,
 chronWin: '一攫千金の渡世をものにし、名を上げる', chronFail: '一攫千金の夢破れ、傷と借金を負う',
 logWin: (g, l) => '渡世の賭けは当たった！礼金と儲けが転がり込み、天の配剤に身を震わせた。' + l + 'が大きく伸びた（+' + g + '）。',
 logFail: (g, l) => '夢は破れ、傷と借金だけが残った。それでも渡世人は、明日を笑って歩く（' + l + ' -' + g + '）。'})},
