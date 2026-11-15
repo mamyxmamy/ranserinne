@@ -391,7 +391,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 52.2</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 53.0</span></div>
             </div>
 
             <div class="hidden">
@@ -444,6 +444,11 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     <span class="text-[11px] font-bold tracking-[0.25em] text-[#A8CDD8]">🔗 前世の因果：<span id="karma-link-state">宿す</span></span>
                     <span class="block text-[9px] text-gray-500 tracking-widest mt-0.5">前世の死に様と二つ名が、次の生に小さな恵みを残す</span>
                 </button>
+                <div id="raid-season-banner" onclick="window.openRaidRank(event)" class="hidden w-full border border-purple-800/80 bg-[#160D1A]/85 rounded-sm px-3 py-2 text-center shadow-[0_0_14px_rgba(88,28,135,0.35)] cursor-pointer">
+                    <p class="text-[12px] font-bold tracking-[0.2em] text-purple-200">共討戦 ― 輪廻の番人 ― <span class="text-[#F5D97E]">開催中</span></p>
+                    <p id="raid-season-banner-note" class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">冥府の門が開いている。死の直後、転生の合間に番人へ挑め。</p>
+                    <p class="text-[10px] text-[#F5D97E]/90 tracking-[0.25em] mt-1 font-bold">― 共討戦績（与ダメージ番付）を見る ―</p>
+                </div>
 
                 <button id="resume-btn" type="button" onclick="window.resumeGame(event)" class="hidden action-button-main w-full bg-[#1A331A] hover:bg-[#204020] text-green-200 border border-green-800 py-3 text-sm sm:text-base font-bold active:scale-95 transition-all shadow-[0_0_15px_rgba(0,100,0,0.4)] tracking-[0.2em] rounded-sm">
                     続きから遊ぶ
@@ -5651,6 +5656,128 @@ window.__raidThanksDone = true;
 if (window.__raidConvertTestReward()) window.__showRaidThanks();
 };
 document.addEventListener('DOMContentLoaded', function() { setTimeout(function() { window.__raidThanksCheck(); }, 3500); });
+
+// ===== 共討戦 定例化（v53）：開催設定・段階報酬 =====
+// 回の設定は Firestore raid_event/state の {runId, startAt, endAt, baseHp, genMul} を正とし、
+// 無い場合はコード内定数（第1回）にフォールバックする。ボス本体が属する回は bossRunId で管理する。
+const RAID_SEASON_FALLBACK = { runId: 'raid-2026-12-1', startAt: Date.parse('2026-12-01T00:00:00+09:00'), endAt: Date.parse('2026-12-07T23:59:59+09:00'), baseHp: 80000, genMul: 1.5 };
+const RAID_SEASON_AGE_CAP = 30; // 定例分の永続寿命キャップ（泡沫夢幻の礼状 +30 とは別枠で数える）
+window.__raidRunConfig = null; // 解決済みの回設定キャッシュ {runId, startAt(ms), endAt(ms), baseHp, genMul}
+function raidSeasonToMs(v, fb) {
+if (typeof v === 'number' && isFinite(v)) return v;
+if (typeof v === 'string') { const t = Date.parse(v); if (!isNaN(t)) return t; }
+if (v && typeof v.toDate === 'function') { try { return v.toDate().getTime(); } catch (e) {} }
+if (v && typeof v.seconds === 'number') return v.seconds * 1000;
+return fb;
+}
+window.__raidDefaultConfig = function() { return { runId: RAID_SEASON_FALLBACK.runId, startAt: RAID_SEASON_FALLBACK.startAt, endAt: RAID_SEASON_FALLBACK.endAt, baseHp: RAID_SEASON_FALLBACK.baseHp, genMul: RAID_SEASON_FALLBACK.genMul }; };
+window.__raidConfigFromDoc = function(d) {
+const fb = window.__raidDefaultConfig();
+if (d && (d.startAt != null || d.endAt != null)) {
+return { runId: d.runId || fb.runId, startAt: raidSeasonToMs(d.startAt, fb.startAt), endAt: raidSeasonToMs(d.endAt, fb.endAt), baseHp: (typeof d.baseHp === 'number' && d.baseHp > 0) ? d.baseHp : fb.baseHp, genMul: (typeof d.genMul === 'number' && d.genMul > 0) ? d.genMul : fb.genMul };
+}
+return fb;
+};
+window.__raidRunPhase = function(cfg, now) { // 純粋関数：'before' | 'active' | 'after'
+if (!cfg) return 'after';
+if (now < cfg.startAt) return 'before';
+if (now > cfg.endAt) return 'after';
+return 'active';
+};
+window.__raidCurrentConfig = function() { return window.__raidRunConfig || window.__raidDefaultConfig(); };
+window.__raidSeasonActive = function() { return window.__raidRunPhase(window.__raidCurrentConfig(), Date.now()) === 'active'; };
+window.__raidBattleLive = function() { return window.__raidSeasonActive(); };
+window.__raidSeasonAge = function() { try { return parseInt(localStorage.getItem('sengoku_raid_season_age') || '0', 10) || 0; } catch (e) { return 0; } };
+// 段階判定（純粋関数）：その回の自分の累計ダメージと、定例分の取得済み寿命から今回の付与内容を決める
+window.__raidSeasonRewardTier = function(totalDamage, seasonAgeSoFar) {
+if (!(totalDamage > 0)) return null;
+let tierAge = 0, tierName = '参戦';
+if (totalDamage >= 50000) { tierAge = 5; tierName = '討伐級'; }
+else if (totalDamage >= 10000) { tierAge = 3; tierName = '奮戦'; }
+let age = 0;
+const meisenBase = 30; // 参戦の冥銭
+let meisen = meisenBase;
+if (tierAge > 0) {
+age = Math.max(0, Math.min(tierAge, RAID_SEASON_AGE_CAP - (seasonAgeSoFar || 0)));
+if (age <= 0) meisen += 50; // キャップで寿命が増えない場合は冥銭に振り替え
+}
+return { tierName: tierName, tierAge: tierAge, age: age, meisen: meisen, totalDamage: totalDamage };
+};
+window.__raidFetchMyRunDamage = async function(runId) {
+try {
+if (!window.firebase || !firebase.firestore) return null;
+const myPid = (typeof window.__myPlayerId === 'function') ? window.__myPlayerId() : '';
+if (!myPid) return null;
+const db = firebase.firestore();
+const logsRef = db.collection('artifacts').doc('sengoku-life-app').collection('raid_event_logs');
+const snap = await raidWithTimeout(logsRef.where('pid', '==', myPid).limit(1000).get(), 8000);
+let total = 0, found = false;
+snap.forEach(function(doc) { const d = doc.data(); if (d && d.runId === runId && typeof d.damage === 'number') { total += d.damage; found = true; } });
+return found ? total : 0;
+} catch (e) { return null; }
+};
+window.__showRaidSeasonThanks = function(cfg, reward) {
+const t = document.getElementById('raid-thanks-title');
+const b = document.getElementById('raid-thanks-body');
+const badge = document.getElementById('raid-thanks-badge');
+const note = document.getElementById('raid-thanks-note');
+const fmt = function(ms) { try { return new Date(ms).toLocaleDateString('ja-JP'); } catch (e) { return ''; } };
+if (t) t.innerHTML = '共討戦、閉幕<br>戦績に応じ、礼を贈る';
+if (b) b.innerHTML = '共討戦（' + fmt(cfg.startAt) + ' 〜 ' + fmt(cfg.endAt) + '）は終わり、冥府の門は閉ざされた。<br>あなたの累計ダメージは <b>' + reward.totalDamage.toLocaleString() + '</b> ―― 段階は「' + reward.tierName + '」。';
+if (badge) badge.innerText = '冥銭 +' + reward.meisen + (reward.age > 0 ? ' ／ 寿命限界 永続 +' + reward.age : '');
+if (note) note.innerText = reward.age > 0 ? '寿命の加護は、これからのすべての人生に適用されます' : '冥銭は冥府の商人で使えます';
+window.__showRaidThanks();
+};
+window.__raidSeasonRewardCheck = async function() {
+if (window.__raidSeasonRewardDone) return;
+window.__raidSeasonRewardDone = true;
+try {
+const cfg = window.__raidCurrentConfig();
+if (window.__raidRunPhase(cfg, Date.now()) !== 'after') return;
+const key = 'sengoku_raid_reward_' + cfg.runId;
+try { if (localStorage.getItem(key)) return; } catch (e) {}
+await window.__raidWaitAuth(12000);
+const total = await window.__raidFetchMyRunDamage(cfg.runId);
+if (total === null) { window.__raidSeasonRewardDone = false; return; } // 取得に失敗した場合は次回起動時に再試行する
+if (!(total > 0)) { try { localStorage.setItem(key, 'none'); } catch (e) {} return; }
+const reward = window.__raidSeasonRewardTier(total, window.__raidSeasonAge());
+if (!reward) return;
+// 泡沫夢幻の礼状が表示中なら、閉じられるのを待ってから出す
+const scr = document.getElementById('raid-thanks-screen');
+if (scr && !scr.classList.contains('hidden') && (window.__raidSeasonRewardRetry || 0) < 3) {
+window.__raidSeasonRewardRetry = (window.__raidSeasonRewardRetry || 0) + 1;
+window.__raidSeasonRewardDone = false;
+setTimeout(function() { window.__raidSeasonRewardCheck(); }, 15000);
+return;
+}
+window.meisen = (window.meisen || 0) + reward.meisen;
+if (reward.age > 0) {
+try {
+localStorage.setItem('sengoku_raid_perm_age', String(window.__raidPermAge() + reward.age));
+localStorage.setItem('sengoku_raid_season_age', String(window.__raidSeasonAge() + reward.age));
+} catch (e) {}
+}
+try { localStorage.setItem(key, '1'); } catch (e) {}
+if (typeof saveMetaProgress === 'function') { try { saveMetaProgress(); } catch (e) {} }
+window.__showRaidSeasonThanks(cfg, reward);
+} catch (e) {}
+};
+window.__raidRefreshBanner = function() {
+const el = document.getElementById('raid-season-banner');
+if (!el) return;
+const active = window.__raidSeasonActive();
+el.classList.toggle('hidden', !active);
+if (active) {
+const note = document.getElementById('raid-season-banner-note');
+if (note) { const cfg = window.__raidCurrentConfig(); note.innerText = '冥府の門が開いている（〜' + new Date(cfg.endAt).toLocaleDateString('ja-JP') + '）。死の直後、転生の合間に番人へ挑め。'; }
+}
+};
+document.addEventListener('DOMContentLoaded', function() { setTimeout(async function() {
+try { await window.__raidFetchBoss(); } catch (e) {}
+window.__raidRefreshBanner();
+if (window.__raidRefreshButtons) { try { window.__raidRefreshButtons(); } catch (e) {} }
+window.__raidSeasonRewardCheck();
+}, 4200); });
 const RAID_STAT_LABELS = { valor: '武功', karma: '悪逆', strategy: '知略', virtue: '人徳', luck: '運'};
 window.__raidUsedThisDeath = false;
 window.__raidFromPremium = false;
@@ -5671,9 +5798,10 @@ const map = {};
 docs.forEach(function(d) {
 if (!d || typeof d.damage !== 'number') return;
 const key = d.pid ? ('pid:' + d.pid) : ('name:' + (d.playerName || '名無し'));
-if (!map[key]) map[key] = { key: key, pid: d.pid || '', name: d.playerName || '名無し', total: 0, runs: 0, best: 0, latest: 0 };
+if (!map[key]) map[key] = { key: key, pid: d.pid || '', name: d.playerName || '名無し', total: 0, runs: 0, best: 0, latest: 0, guardianGens: [] };
 const r = map[key];
 r.total += d.damage;
+if (d.killed === true && typeof d.gen === 'number' && r.guardianGens.indexOf(d.gen) < 0) r.guardianGens.push(d.gen);
 r.runs += 1;
 if (d.damage > r.best) r.best = d.damage;
 if ((d.timestamp || 0) >= r.latest) { r.latest = d.timestamp || 0; if (d.playerName) r.name = d.playerName; }
@@ -5688,8 +5816,9 @@ if (!window.firebase || !firebase.firestore) { window.__raidRankError = 'no-fire
 const db = firebase.firestore();
 const logsRef = db.collection('artifacts').doc('sengoku-life-app').collection('raid_event_logs');
 const snap = await raidWithTimeout(logsRef.orderBy('timestamp', 'desc').limit(1000).get(), 6000);
+const runId = window.__raidCurrentConfig().runId;
 const docs = [];
-snap.forEach(function(doc) { docs.push(doc.data()); });
+snap.forEach(function(doc) { const d = doc.data(); if (d && d.runId === runId) docs.push(d); });
 return window.__raidAggregateRank(docs);
 } catch (e) { window.__raidRankError = (e && (e.code || e.message)) || 'unknown'; return null; }
 };
@@ -5738,7 +5867,7 @@ rows.slice(0, 30).forEach(function(r, i) {
 const mine = (myPid && r.pid && r.pid === myPid);
 html += '<div class="flex items-center gap-2 py-2 border-b border-[#3A322A]/70' + (mine ? ' bg-purple-950/40' : '') + '">'
 + '<span class="w-8 text-center font-black ' + (i === 0 ? 'text-gold text-lg' : 'text-gray-300') + '">' + (i + 1) + '</span>'
-+ '<span class="flex-1 min-w-0"><span class="block truncate text-sm font-bold text-white">' + esc(r.name) + (mine ? ' <span class="text-[9px] text-purple-300 font-bold">自分</span>' : '') + '</span>'
++ '<span class="flex-1 min-w-0"><span class="block truncate text-sm font-bold text-white">' + esc(r.name) + (mine ? ' <span class="text-[9px] text-purple-300 font-bold">自分</span>' : '') + ((r.guardianGens && r.guardianGens.length) ? ' <span class="text-[9px] text-[#F5D97E] font-bold">⚔ ' + r.guardianGens.map(function(g) { return '第' + g + '世代'; }).join('・') + 'の番人</span>' : '') + '</span>'
 + '<span class="block text-[10px] text-gray-400">挑戦 ' + r.runs + ' 回 ／ 一撃最大 ' + r.best.toLocaleString() + '</span></span>'
 + '<span class="text-right"><span class="block text-base font-black text-[#F5D97E]">' + r.total.toLocaleString() + '</span><span class="block text-[9px] text-gray-500">合計ダメージ</span></span>'
 + '</div>';
@@ -5759,7 +5888,7 @@ return { power: power, endurance: Math.round(350 + power * 1.5)};
 };
 
 window.__raidRefreshButtons = function() {
-const show = !RAID_TEST_ENDED && !window.__raidUsedThisDeath;
+const show = (typeof window.__raidBattleLive === 'function' ? window.__raidBattleLive() : !RAID_TEST_ENDED) && !window.__raidUsedThisDeath;
 ['go-raid-btn', 'pm-raid-btn'].forEach(function(id) {
 const b = document.getElementById(id);
 if (b) { b.classList.toggle('hidden',!show); b.classList.toggle('flex', show);}
@@ -5767,7 +5896,7 @@ if (b) { b.classList.toggle('hidden',!show); b.classList.toggle('flex', show);}
 };
 
 window.__raidAutoEnter = function(fromPremium) {
-if (RAID_TEST_ENDED) return;
+if (typeof window.__raidBattleLive === 'function' ? !window.__raidBattleLive() : RAID_TEST_ENDED) return;
 if (window.__raidUsedThisDeath) return;
 window.__raidForceFrom = fromPremium ? 'pm' : 'go';
 if (window.openRaid) window.openRaid();
@@ -5775,7 +5904,7 @@ if (window.openRaid) window.openRaid();
 
 function raidLocalBoss() {
 try { const j = JSON.parse(localStorage.getItem('sengoku_raid_event_local') || 'null'); if (j && j.hp > 0) return j;} catch (e) {}
-return { gen: 1, hp: RAID_BASE_HP, maxHp: RAID_BASE_HP};
+return { gen: 1, hp: window.__raidCurrentConfig().baseHp, maxHp: window.__raidCurrentConfig().baseHp };
 }
 function raidSaveLocalBoss(b) { try { localStorage.setItem('sengoku_raid_event_local', JSON.stringify(b));} catch (e) {}}
 
@@ -5784,9 +5913,26 @@ try {
 const db = firebase.firestore();
 const ref = db.collection('artifacts').doc('sengoku-life-app').collection('raid_event').doc('state');
 const snap = await raidWithTimeout(ref.get(), 4000);
-if (snap.exists) { const d = snap.data(); return { gen: d.gen || 1, hp: d.hp, maxHp: d.maxHp || RAID_BASE_HP, shared: true};}
-await raidWithTimeout(ref.set({ gen: 1, hp: RAID_BASE_HP, maxHp: RAID_BASE_HP}), 4000);
-return { gen: 1, hp: RAID_BASE_HP, maxHp: RAID_BASE_HP, shared: true};
+if (snap.exists) {
+const d = snap.data();
+const cfg = window.__raidConfigFromDoc(d);
+window.__raidRunConfig = cfg;
+if (window.__raidRunPhase(cfg, Date.now()) === 'active' && d.bossRunId !== cfg.runId) {
+// 開催中かつボスがまだこの回に初期化されていない → この回のボスとして初期化してから使う
+const init = { gen: 1, hp: cfg.baseHp, maxHp: cfg.baseHp, bossRunId: cfg.runId, runId: cfg.runId, startAt: new Date(cfg.startAt).toISOString(), endAt: new Date(cfg.endAt).toISOString(), baseHp: cfg.baseHp, genMul: cfg.genMul };
+await raidWithTimeout(ref.set(init, { merge: true }), 4000);
+return { gen: 1, hp: cfg.baseHp, maxHp: cfg.baseHp, shared: true };
+}
+return { gen: d.gen || 1, hp: (typeof d.hp === 'number' ? d.hp : cfg.baseHp), maxHp: d.maxHp || cfg.baseHp, shared: true };
+}
+// state ドキュメントが無い場合：開催中のみ初期化して作る（期間外は作らない）
+const cfg2 = window.__raidCurrentConfig();
+if (window.__raidRunPhase(cfg2, Date.now()) === 'active') {
+const init2 = { gen: 1, hp: cfg2.baseHp, maxHp: cfg2.baseHp, bossRunId: cfg2.runId, runId: cfg2.runId, startAt: new Date(cfg2.startAt).toISOString(), endAt: new Date(cfg2.endAt).toISOString(), baseHp: cfg2.baseHp, genMul: cfg2.genMul };
+await raidWithTimeout(ref.set(init2), 4000);
+return { gen: 1, hp: cfg2.baseHp, maxHp: cfg2.baseHp, shared: true };
+}
+const lb = raidLocalBoss(); lb.shared = false; return lb;
 } catch (e) { const b = raidLocalBoss(); b.shared = false; return b;}
 };
 
@@ -5810,7 +5956,8 @@ return { dmgMul: valorOn? 1.08: 1, evadeBonus: evadeOn? 0.15: 0, valorOn: valorO
 };
 
 window.__raidApplyDamage = async function(dmg) {
-const boss = window.__raidBossCache || { gen: 1, hp: RAID_BASE_HP, maxHp: RAID_BASE_HP};
+const cfgA = window.__raidCurrentConfig();
+const boss = window.__raidBossCache || { gen: 1, hp: cfgA.baseHp, maxHp: cfgA.baseHp };
 if (boss.shared) {
 window.__raidApplyError = '';
 window.__raidApplyStage = 'inc';
@@ -5821,15 +5968,15 @@ try {
 await raidWithTimeout(ref.update({ hp: firebase.firestore.FieldValue.increment(-dmg) }), 10000);
 } catch (e1) {
 if (e1 && e1.code === 'not-found') {
-await raidWithTimeout(ref.set({ gen: 1, hp: Math.max(1, RAID_BASE_HP - dmg), maxHp: RAID_BASE_HP }), 10000);
+await raidWithTimeout(ref.set({ gen: 1, hp: Math.max(1, cfgA.baseHp - dmg), maxHp: cfgA.baseHp, bossRunId: cfgA.runId, runId: cfgA.runId }), 10000);
 } else { throw e1; }
 }
 window.__raidApplyStage = 'read';
 const snap = await raidWithTimeout(ref.get(), 8000);
-let cur = snap.exists ? snap.data() : { gen: boss.gen || 1, hp: Math.max(1, (boss.hp || RAID_BASE_HP) - dmg), maxHp: boss.maxHp || RAID_BASE_HP };
+let cur = snap.exists ? snap.data() : { gen: boss.gen || 1, hp: Math.max(1, (boss.hp || cfgA.baseHp) - dmg), maxHp: boss.maxHp || cfgA.baseHp };
 let gen = cur.gen || 1, hp = cur.hp, maxHp = cur.maxHp || RAID_BASE_HP, killed = false;
 if (typeof hp === 'number' && hp <= 0) {
-const newMax = Math.round(maxHp * 1.5);
+const newMax = Math.round(maxHp * (cfgA.genMul || 1.5));
 const newHp = Math.max(1, newMax + hp);
 window.__raidApplyStage = 'genup';
 await raidWithTimeout(ref.set({ gen: gen + 1, hp: newHp, maxHp: newMax }, { merge: true }), 10000);
@@ -5840,7 +5987,7 @@ killed = true;
 }
 window.__raidApplyStage = 'log';
 try {
-await db.collection('artifacts').doc('sengoku-life-app').collection('raid_event_logs').add({ pid: (typeof window.__myPlayerId === 'function')? window.__myPlayerId(): '', playerName: state.playerName || '名無し', damage: dmg, gen: boss.gen, valor: state.valor || 0, strategy: state.strategy || 0, luck: state.luck || 0, timestamp: Date.now()});
+await db.collection('artifacts').doc('sengoku-life-app').collection('raid_event_logs').add({ pid: (typeof window.__myPlayerId === 'function')? window.__myPlayerId(): '', playerName: state.playerName || '名無し', damage: dmg, gen: boss.gen, runId: cfgA.runId, killed: killed, valor: state.valor || 0, strategy: state.strategy || 0, luck: state.luck || 0, timestamp: Date.now()});
 } catch (e2) { window.__raidApplyError = 'log: ' + ((e2 && (e2.code || e2.message)) || 'unknown'); }
 return { gen: gen, hp: hp, maxHp: maxHp, killed: killed };
 } catch (e) { window.__raidApplyError = (window.__raidApplyStage || 'inc') + ': ' + ((e && (e.code || e.message)) || 'unknown'); /* fall through to local */}
@@ -5848,7 +5995,7 @@ return { gen: gen, hp: hp, maxHp: maxHp, killed: killed };
 const b = raidLocalBoss();
 const remain = b.hp - dmg;
 if (remain > 0) { b.hp = remain; raidSaveLocalBoss(b); return { gen: b.gen, hp: b.hp, maxHp: b.maxHp, killed: false};}
-const newMax = Math.round(b.maxHp * 1.5);
+const newMax = Math.round(b.maxHp * (cfgA.genMul || 1.5));
 const nb = { gen: b.gen + 1, hp: Math.max(1, newMax + remain), maxHp: newMax};
 raidSaveLocalBoss(nb);
 return { gen: nb.gen, hp: nb.hp, maxHp: nb.maxHp, killed: true};
@@ -6236,7 +6383,7 @@ if (window.__raidBossCache) { window.__raidBossCache = { gen: after.gen, hp: aft
 
 window.openRaid = async function(e) {
 if (e) { e.preventDefault(); e.stopPropagation();}
-if (RAID_TEST_ENDED) return;
+if (typeof window.__raidBattleLive === 'function' ? !window.__raidBattleLive() : RAID_TEST_ENDED) return;
 if (window.__raidUsedThisDeath) return;
 window.__raidUsedThisDeath = true;
 window.__raidRefreshButtons();
@@ -6388,7 +6535,7 @@ if (target) target.classList.remove('hidden');
 <div class="p-4 border-b border-purple-900/60 bg-[#120A18] flex justify-between items-center shrink-0">
 <div>
 <h2 class="text-base font-black text-purple-100 tracking-[0.25em]">共討戦績</h2>
-<p class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">― 泡沫夢幻・与ダメージ番付（期間中の合計） ―</p>
+<p class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">― 与ダメージ番付（今回の共討戦・期間中の合計） ―</p>
 </div>
 <button type="button" onclick="window.closeRaidRank(event)" class="action-button-main text-gray-400 hover:text-white text-3xl px-2 leading-none">&times;</button>
 </div>
@@ -6419,10 +6566,10 @@ if (target) target.classList.remove('hidden');
 <div class="raid-thanks-pop raid-thanks-glow w-full max-w-md bg-[#0B0B10] border-2 border-[#D4AF37] rounded-md p-6 text-center relative overflow-hidden">
 <div class="absolute inset-1 border border-[#D4AF37]/40 rounded-sm pointer-events-none"></div>
 <p class="raid-thanks-line text-[10px] tracking-[0.5em] text-[#D4AF37]/80 mb-2" style="animation-delay:.15s">冥府よりの礼状</p>
-<h3 class="raid-thanks-line text-2xl font-black text-[#F5D97E] tracking-widest mb-4" style="animation-delay:.35s">降臨の証、<br>ここにあり</h3>
-<p class="raid-thanks-line text-sm text-gray-200 leading-relaxed mb-2" style="animation-delay:.6s">泡沫夢幻は終わり、冥府の門は閉ざされた。<br>されど、番人に挑んだ証は消えない。<br>その加護は、これからの全ての生に宿り続ける。</p>
-<p class="raid-thanks-line inline-block mt-2 mb-5 px-4 py-2 border border-[#D4AF37]/70 bg-[#D4AF37]/10 text-[#F5D97E] font-bold tracking-widest" style="animation-delay:.85s">寿命限界 永続 +30</p>
-<p class="raid-thanks-line text-[11px] text-gray-400 mb-5" style="animation-delay:1s">これからのすべての人生に適用されます</p>
+<h3 id="raid-thanks-title" class="raid-thanks-line text-2xl font-black text-[#F5D97E] tracking-widest mb-4" style="animation-delay:.35s">降臨の証、<br>ここにあり</h3>
+<p id="raid-thanks-body" class="raid-thanks-line text-sm text-gray-200 leading-relaxed mb-2" style="animation-delay:.6s">泡沫夢幻は終わり、冥府の門は閉ざされた。<br>されど、番人に挑んだ証は消えない。<br>その加護は、これからの全ての生に宿り続ける。</p>
+<p id="raid-thanks-badge" class="raid-thanks-line inline-block mt-2 mb-5 px-4 py-2 border border-[#D4AF37]/70 bg-[#D4AF37]/10 text-[#F5D97E] font-bold tracking-widest" style="animation-delay:.85s">寿命限界 永続 +30</p>
+<p id="raid-thanks-note" class="raid-thanks-line text-[11px] text-gray-400 mb-5" style="animation-delay:1s">これからのすべての人生に適用されます</p>
 <button type="button" onclick="window.closeRaidThanks(event)" class="raid-thanks-line w-full bg-[#D4AF37] text-black font-black tracking-widest py-3 rounded-sm" style="animation-delay:1.15s">ありがたく受け取る</button>
 </div>
 </div>
