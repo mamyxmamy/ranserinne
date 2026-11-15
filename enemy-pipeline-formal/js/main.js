@@ -191,13 +191,13 @@ function blurb(card) {
     if (effect.type === "add_card_to_discard") parts.push("捨て札に呪装");
     if (effect.type === "heal") parts.push(`HP回復 +${effect.value}`);
     if (effect.type === "drain_energy") parts.push("残りPWR全喪失");
-    if (effect.type === "damage_per_noise") parts.push(`ダメージ ターン開始時ノイズ×${effect.value}`);
-    if (effect.type === "block_per_noise") parts.push(`防護 +ターン開始時ノイズ×${effect.value}`);
+    if (effect.type === "damage_per_noise") parts.push(`ダメージ 開始時ノイズ×${effect.value}`);
+    if (effect.type === "block_per_noise") parts.push(`防護 +開始時ノイズ×${effect.value}`);
     if (effect.type === "damage_plus_noise") parts.push(`ダメージ ${effect.value}＋ノイズ×${effect.per}`);
     if (effect.type === "block_plus_noise") parts.push(`防護 +${effect.value}＋ノイズ×${effect.per}`);
     if (effect.type === "damage_plus_played") parts.push(`ダメージ ${effect.value}＋このターンの使用枚数×${effect.per}`);
-    if (effect.type === "tread") parts.push("このターン、被ダメージをノイズ分だけ固定軽減");
-    if (effect.type === "draw_penalty_next") parts.push(`次のターンのドロー -${effect.value}`);
+    if (effect.type === "tread") parts.push("このターン被ダメをノイズ分軽減");
+    if (effect.type === "draw_penalty_next") parts.push(`次ドロー -${effect.value}`);
     if (effect.type === "reset_noise") parts.push("ノイズ リセット");
     if (effect.type === "draw") parts.push(`${effect.value}枚ドロー`);
     if (effect.type === "halve_next") parts.push("次の被ダメージ半減");
@@ -227,7 +227,10 @@ function face(card) {
     curse,
     oversized,
     flavor: card.flavor || "",
-    rules: oversized ? `[ERROR: OVERSIZED VESSEL] COVER不発 → BLK +5 / NOISE +1 に変換（${rules}）` : rules,
+    // カード面では短縮形（面の面積では長文が収まらず潰れるため。CARD-TEXT-AUDIT P1）。
+    // 完全な置換文は rulesFull に残し、解析パネルでのみ表示する。
+    rules: oversized ? `[ERROR] COVER不発 → BLK +5 / NOISE +1` : rules,
+    rulesFull: oversized ? `[ERROR: OVERSIZED VESSEL] COVER不発 → BLK +5 / NOISE +1 に変換（${rules}）` : rules,
     text: card.flavor || blurb(card),
   };
 }
@@ -726,6 +729,7 @@ function makeCard(spec) {
   card.dataset.ink = spec.ink;
   if (spec.exhaust) { card.classList.add("is-exhaust"); card.dataset.exhaust = "1"; }
   if (spec.curse) card.classList.add("is-curse");
+  if (spec.oversized) card.classList.add("is-oversized");
   if (spec.flavor) card.dataset.flavor = spec.flavor;
   card.setAttribute("aria-label", spec.curse
     ? `パンチカード ${spec.name}。呪装。リーダは受け付けない`
@@ -2054,7 +2058,8 @@ function focusCard(el) {
   ui.cardInspectName.textContent = `解析：${data.name}${data.exhaust ? "【廃棄】" : ""}`;
   const noiseText = Number(data.noise) > 0 ? `+${data.noise}` : `${data.noise}`;
   const lines = [`消費PWR ${data.cost} / 発生ノイズ ${noiseText} / 態勢→${data.stance || "—"}`];
-  if (data.rules) lines.push(data.rules);
+  const rulesLine = data.rulesFull || data.rules;
+  if (rulesLine) lines.push(rulesLine);
   // スタン効果カードは、レリック補正（油圧関節など）込みの実効値を解析に併記する
   if (card && window.Relics && typeof run !== "undefined" && run && run.relics) {
     const stunEff = (card.effects || []).find((effect) => effect.target === "enemy" && effect.type === "stun");

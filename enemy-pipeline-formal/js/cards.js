@@ -103,7 +103,7 @@
       "effects": [ { "target": "player", "type": "draw", "value": 2 } ]
     },
     {
-      "id": "goliath_sledgehammer", "name": "スレッジハンマー (SLEDGEHAMMER)", "cost": 2, "category": "HVY", "type": "attack", "noise": 0, "stance_change": null,
+      "id": "goliath_sledgehammer", "name": "スレッジハンマー (SLEDGE)", "cost": 2, "category": "HVY", "type": "attack", "noise": 0, "stance_change": null,
       "flavor": "「騒音がレッドゾーンを振り切り、安全装置（リミッター）が物理的に焼き切れた時のみ許される主砲。全油圧を右腕に集中させ、標的ごとフロアをスクラップに変える極大の一撃。」",
       "effects": [ { "target": "enemy", "type": "damage_plus_noise", "value": 8, "per": 2 } ]
     },
@@ -118,12 +118,12 @@
       "effects": [ { "target": "player", "type": "block_plus_noise", "value": 10, "per": 2 }, { "target": "player", "type": "draw_penalty_next", "value": 1 } ]
     },
     {
-      "id": "goliath_rock_pile", "name": "削岩パイル (ROCK-CRUSHING PILE)", "cost": 1, "category": "HVY", "type": "attack", "noise": 1, "stance_change": null,
+      "id": "goliath_rock_pile", "name": "削岩パイル (ROCK PILE)", "cost": 1, "category": "HVY", "type": "attack", "noise": 1, "stance_change": null,
       "flavor": "「強固な岩盤を打ち砕くための掘削機構。ハッキングなどの小細工は不要。ただ力任せに、何度でも、目標が粉々になるまで連続で打ち付けろ。」",
       "effects": [ { "target": "enemy", "type": "damage_plus_played", "value": 4, "per": 3 } ]
     },
     {
-      "id": "goliath_blowback", "name": "暴発シリンダー (BLOWBACK CYLINDER)", "cost": 3, "category": "HVY", "type": "attack", "noise": 3, "stance_change": null,
+      "id": "goliath_blowback", "name": "暴発シリンダー (BLOWBACK)", "cost": 3, "category": "HVY", "type": "attack", "noise": 3, "stance_change": null,
       "flavor": "「限界まで溜め込んだ排熱と圧力を、敵陣のど真ん中で一気に解放する。周囲のすべてを吹き飛ばすその爆発は、隠密任務のセオリーに対する最も下品な冒涜だ。」",
       "effects": [ { "target": "enemy", "type": "damage_plus_noise", "value": 5, "per": 2 } ]
     },
@@ -133,7 +133,7 @@
       "effects": [ { "target": "player", "type": "tread", "value": 0 } ]
     },
     {
-      "id": "goliath_purge_punish", "name": "パージ＆パニッシュ (PURGE & PUNISH)", "cost": 1, "category": "HVY", "type": "attack", "noise": 0, "stance_change": null, "isExhaust": true,
+      "id": "goliath_purge_punish", "name": "パージ＆パニッシュ (PURGE)", "cost": 1, "category": "HVY", "type": "attack", "noise": 0, "stance_change": null, "isExhaust": true,
       "flavor": "「臨界点に達した騒音と熱量を、装甲の一部ごとパージして標的に叩きつける。静寂が戻った後には、ひしゃげた鉄クズしか残らない。」",
       "effects": [ { "target": "enemy", "type": "damage_per_noise", "value": 6 }, { "target": "player", "type": "reset_noise", "value": 0 } ]
     },

@@ -2146,14 +2146,14 @@ button { color: inherit; }
   /* grid-area を持たず自動配置で他要素に重なっていたため、面の左下へ絶対配置で固定する（2026-11-15 実機報告） */
   position: absolute;
   left: 6px;
-  bottom: 15px;
+  bottom: 17px;
   z-index: 2;
   padding: 0 3px;
   background: rgba(247, 236, 210, 0.88);
   color: var(--amber);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.18em;
   text-align: left;
 }
 
@@ -2167,7 +2167,7 @@ button { color: inherit; }
   grid-area: name;
   font-size: 11px;
   letter-spacing: 0.02em;
-  line-height: 1.2;
+  line-height: 1.15;
   min-height: 0;
   overflow: hidden;
 }
@@ -2203,6 +2203,10 @@ button { color: inherit; }
   line-height: 1.25;
   color: #3a3124;
   overflow: hidden;
+  /* 収まりきらないフレーバーはぶつ切りでなく下端フェードで示す（CARD-TEXT-AUDIT P5）。
+     収まっている場合はフェード帯が空白側に来るため見た目は変わらない */
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 12px), transparent 100%);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 12px), transparent 100%);
 }
 
 /* PROMPT-24: 手札（ホッパー内）のカードだけ文字を大きくし、肉眼で読めるようにする。
@@ -2211,7 +2215,7 @@ button { color: inherit; }
 /* 手札の扇状の重なり（-18px）でフッター右端の態勢表記が隣のカードに隠れるため、重なり分だけ内側へ寄せる */
 .hopper .punchcard__foot { padding-right: 20px; }
 .hopper .punchcard__name { font-size: 13.5px; }
-.hopper .punchcard__rules { font-size: 10.5px; }
+.hopper .punchcard__rules { font-size: 10.5px; line-height: 1.15; }
 .hopper .punchcard__text { font-size: 10.5px; }
 
 /* 実機報告 2026-11-15: 低い画面（スマホ横向き）ではカード面の行が収まらず文字が潰れる。
@@ -2220,8 +2224,13 @@ button { color: inherit; }
 @media (max-height: 560px) {
   .punchcard__text { display: none; }
   .hopper .punchcard { grid-template-columns: 42px minmax(0, 1fr); }
-  .hopper .punchcard__name { font-size: 12.5px; }
+  .hopper .punchcard__name { font-size: 12px; line-height: 1.1; }
+  /* 面積回収（CARD-TEXT-AUDIT P3）: 行間と上下paddingを詰め、名前・効果文へ約7px回す */
+  .punchcard { gap: 1px 6px; padding-top: 4px; padding-bottom: 4px; }
 }
+
+/* 規格外巨体の置換カードは面の効果文を小さく詰めて短縮文を収める（CARD-TEXT-AUDIT P1） */
+.punchcard.is-oversized .punchcard__rules { font-size: 9.5px; line-height: 1.15; }
 .hopper .punchcard__flavor { font-size: 10px; }
 
 /* ---------- motion ---------- */
@@ -2978,6 +2987,9 @@ body.is-dead .comms {
 }
 
 .reward-offers .punchcard:hover { transform: translateY(-6px); }
+
+/* 報酬面の効果文3行組を収めるため行間を詰める（CARD-TEXT-AUDIT P4） */
+.reward-offers .punchcard__rules { line-height: 1.15; }
 
 .reward-secured {
   margin: 10px 0 0;
