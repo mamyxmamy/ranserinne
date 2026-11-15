@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>公道最速は白バンである。 v1.1-wip（オンラインランキング）</title>
+<title>公道最速は白バンである。 v1.2-wip（オンラインランキング）</title>
 <!-- v1.1: PWA（manifest＋アイコン）。SW登録は本体スクリプト末尾 -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#05070d">
@@ -497,6 +497,11 @@
    含む）は素材なしで従来絵のまま）。基本は night、v0.6 のブレーキランプ点灯
    タイミング（car.braking）では brake_night に切替。見た目幅は従来絵の車種幅に
    一致させ、当たり判定・ニアミス判定（carHalfW 基準）との関係は従来どおり不変。
+   v1.2-wip: ライバル車（sports）を実写スプライト化（assets-v12/。
+   rival_black_sports＝第3便 seed 8103 をマゼンタ色被り補正して仕上げた素材、
+   SPRITES-RIVAL-FINAL-REPORT 参照）。帰りのみ・基本 night／ブレーキ時 brake_night、
+   読込失敗時は従来絵にフォールバック。割り戻し方式・判定数値は v0.7 と同一で不変。
+   従来絵のまま残るのは van（営業バン・通常交通）のみで、素材が無いため据え置き。
    疑似3D（セグメント方式） / 単一HTML / BGMは外部mp3を任意再生
    ===================================================================== */
 const $ = id => document.getElementById(id);
@@ -1450,12 +1455,15 @@ const TRAFFIC_SPR_DEF={
   taxi:   { base:"taxi_yellow",  wf:0.730, hf:0.646, bf:0.982 },
   taxiBlk:{ base:"taxi_black",   wf:0.729, hf:0.568, bf:0.980 },
   truck:  { base:"truck_white",  wf:0.840, hf:0.967, bf:0.980 },
+  // v1.2: ライバル（sports）専用素材。置き場所が違うため dir を持つ（他は assets-v07/）。
+  // wf/hf/bf は dist 実物（768×768）のアルファ実測（α≧32、4パターンとも同一 bbox・横中心 0.500）。
+  sports: { base:"rival_black_sports", wf:0.732, hf:0.477, bf:0.982, dir:"assets-v12/" },
 };
 for(const d of Object.values(TRAFFIC_SPR_DEF)){
   for(const pat of ["night","brake_night"]){
     const im=new Image(); const e={im,ok:false};
     im.onload=()=>{ e.ok=true; };
-    TRAFFIC_SPR[d.base+"_"+pat]=e; im.src="assets-v07/"+d.base+"_"+pat+".webp";
+    TRAFFIC_SPR[d.base+"_"+pat]=e; im.src=(d.dir||"assets-v07/")+d.base+"_"+pat+".webp";
   }
 }
 function trafficSpriteFor(car){
@@ -1463,7 +1471,8 @@ function trafficSpriteFor(car){
   if(car.type.kind==="sedan") def=TRAFFIC_SPR_DEF.sedan;
   else if(car.type.kind==="truck") def=TRAFFIC_SPR_DEF.truck;
   else if(car.type.kind==="taxi") def=car.taxiBlack? TRAFFIC_SPR_DEF.taxiBlk : TRAFFIC_SPR_DEF.taxi;
-  if(!def) return null; // van・sports（ライバル含む）は素材なし＝従来絵のまま
+  else if(car.type.kind==="sports") def=TRAFFIC_SPR_DEF.sports; // v1.2: ライバル車も実写化
+  if(!def) return null; // van は素材なし＝従来絵のまま
   let e=TRAFFIC_SPR[def.base+(car.braking? "_brake_night":"_night")];
   if((!e||!e.ok) && car.braking) e=TRAFFIC_SPR[def.base+"_night"]; // brake未読込時はnightで代替
   if(!e||!e.ok) return null; // 読み込み前は従来絵にフォールバック
@@ -1493,9 +1502,10 @@ function drawCar(seg, car, skyT){
     car._dbg={ x:destX, y:destY, w:carW, h:carH, roadHalf:seg.p1.screen.w };
     drawCarBody(destX, destY, carW, carH, car.type.kind, col, { brakeLight: !!car.braking }); // v0.6: 減速中はブレーキランプ点灯
   }
-  if(car===rivalCar){ // ライバル表示
+  if(car===rivalCar){ // ライバル表示（v1.2: 実写時は実寸の高さに合わせてラベル位置を取る）
+    const topH=tspr? car._dbg.h : carH;
     ctx.fillStyle="#ffe14d"; ctx.font="900 "+Math.max(9,carW*0.22)+"px sans-serif"; ctx.textAlign="center";
-    ctx.fillText("▼ RIVAL", destX, destY-carH-Math.max(4,carW*0.12)); }
+    ctx.fillText("▼ RIVAL", destX, destY-topH-Math.max(4,carW*0.12)); }
 }
 /* ---- v0.5: 自車の実写スプライト（帰りのみ。行きは従来の平たい絵で世界を分ける） ----
    素材は assets-v05/（sprites-final の夜派生を WebP 化＋リーン夜派生を同レシピで生成）。
