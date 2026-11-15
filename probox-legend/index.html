@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>公道最速は白バンである。 v1.0-rc（オンラインランキング）</title>
+<title>公道最速は白バンである。 v1.1-wip（オンラインランキング）</title>
+<!-- v1.1: PWA（manifest＋アイコン）。SW登録は本体スクリプト末尾 -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#05070d">
+<link rel="apple-touch-icon" href="assets-v11/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800&family=Orbitron:wght@600;800&display=swap" rel="stylesheet">
@@ -256,10 +260,14 @@
   #titleReveal.show { display:block; opacity:1; }
   #titleReveal.out { opacity:0; }
   #titleReveal img { width:100%; height:100%; object-fit:contain; display:block; }
-  /* ---------- v0.4.3: 2回目以降のタイトル画面（キービジュアル版） ---------- */
-  #ovTitleKV { padding:0; justify-content:flex-end; background:#000; }
-  #ovTitleKV .kvImg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:32% 50%; }
-  #ovTitleKV .kvShade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,0) 55%,rgba(0,0,0,.55) 82%,rgba(0,0,0,.82)); }
+  /* ---------- v0.4.3: 2回目以降のタイトル画面（キービジュアル版） ----------
+     v1.1: ロゴ全体が見える構成へ変更。背面にKVをぼかして全面敷き（暗色オーバーレイ兼用）、
+     前面のKV本体は contain で全体表示する（従来は cover＋32% でロゴが切れていた）。 */
+  #ovTitleKV { padding:0; justify-content:flex-end; background:#000; overflow:hidden; }
+  #ovTitleKV .kvBg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; object-position:32% 50%;
+                     filter:blur(16px) brightness(.48); transform:scale(1.15); }
+  #ovTitleKV .kvImg { position:absolute; inset:0; width:100%; height:100%; object-fit:contain; object-position:50% 30%; }
+  #ovTitleKV .kvShade { position:absolute; inset:0; background:linear-gradient(180deg,rgba(0,0,0,.28) 0%,rgba(0,0,0,0) 26%,rgba(0,0,0,0) 52%,rgba(0,0,0,.55) 80%,rgba(0,0,0,.85)); }
   #ovTitleKV .kvUI { position:relative; z-index:2; width:100%; max-width:400px; padding:0 20px 26px;
                      display:flex; flex-direction:column; align-items:center; gap:10px; }
   #ovTitleKV .kvBest { font-size:12.5px; color:#ffe9b0; text-shadow:0 1px 6px rgba(0,0,0,.9); }
@@ -352,6 +360,7 @@
 
   <!-- Title (2nd+ plays: key visual version) v0.4.3 -->
   <div class="overlay" id="ovTitleKV">
+    <img class="kvBg" src="assets-v06/title-keyvisual.webp" alt="" aria-hidden="true">
     <img class="kvImg" src="assets-v06/title-keyvisual.webp" alt="公道最速は白バンである。">
     <div class="kvShade"></div>
     <div class="kvUI">
@@ -678,7 +687,7 @@ let driftBonusCount=0, dashMaxReached=0, dashMaxVoiced=false, driftVoiced=false;
    （横方向の余白 = |playerX-car.offset| - (PLAYER_HALF+相手の判定半幅)）が
    0 以上 NEAR_BAND 以下なら「際どく抜いた」とみなして NEAR_MISS_SEC 秒を判定から差し引く。
    接触・擦りした車（pen>=0 を記録した車）は対象外。全体クールダウンで連打を防ぐ。 */
-const NEAR_BAND=0.17;        // ニアミスと認めるクリアランス上限（offset単位）
+const NEAR_BAND=0.21;        // ニアミスと認めるクリアランス上限（offset単位）v1.1: 実機の指操作向けに 0.17→0.21 へ緩和
 const NEAR_WIN=900;          // クリアランスを計測する判定平面の前後幅（ワールド単位）
 const NEAR_MISS_SEC=0.3;     // 1回の差し引き秒数
 const NEAR_MISS_CD=0.8;      // 連続発火防止の全体クールダウン（秒）
@@ -2220,8 +2229,12 @@ function finishReturn(){
              bestTitle: isNew? R.title : prev.bestTitle,
              bestCargo: Math.max(prev?prev.bestCargo||0:0, Math.ceil(cargo)),
              plays: (prev&&prev.plays?prev.plays:0)+1 });
+  // v1.1: 表示（小数1位）とランキング登録値の丸めを統一する。
+  // 表示値 effShown を先に確定し、画面表示・共有文・登録 timeMs の全てをこの値から導く
+  // （従来は eff の生浮動小数を表示側 toFixed と登録側 Math.round で別々に丸め、0.1秒ずれる場合があった）。
+  const effShown=Math.round(eff*10)/10;
   $("rankTitle").textContent=R.rank+"ランク「"+R.title+"」";
-  $("rankBand").textContent="判定タイム "+fmtTime(eff)+(overtime?"（残業のため評価調整）":"（定時帰社！）");
+  $("rankBand").textContent="判定タイム "+fmtTime(effShown)+(overtime?"（残業のため評価調整）":"（定時帰社！）");
   // SCRIPT-v1 §7: ランク別・主人公の心の声
   const RANK_COMMENTS={ S:"「見たか。これが営業車の本気だ」", A:"「上出来だ。金曜、取り返した」",
     B:"「まあ、こんなもんだろ」", C:"「……課長の顔が浮かぶ。悔しい」", D:"「次は、絶対に取り返す」" };
@@ -2236,15 +2249,15 @@ function finishReturn(){
   $("rowRival").style.display= rivalState==="done"? "" : "none";
   $("rowNearMiss").style.display= nearMissCount>0? "" : "none";
   $("rowDrift").style.display= driftBonusCount>0? "" : "none";
-  $("resEff").textContent=fmtTime(eff);
+  $("resEff").textContent=fmtTime(effShown);
   $("resDrift").textContent= driftBonusCount>0? driftBonusCount+"回（+"+DRIFT_BOOST_KMH+" km/h × "+DRIFT_BOOST_SEC+"秒）" : "0回";
   $("resDash").textContent="+"+dashMaxReached+" km/h";
   $("resCargo").textContent=Math.ceil(cargo)+"%";
   $("resShachi").textContent=Math.floor(shachiku);
   $("resCombo").textContent=comboMax+" コンボ";
   $("resTeiji").textContent= overtime? "残業確定（+"+fmtTime(backTime-TEIJI_LIMIT)+"）" : "定時クリア！";
-  resultData={ eff:eff, rank:R.rank, title:R.title, backTime:backTime, isNew:isNew };
-  RankingUI.onResult(Math.round(eff*1000), R.rank); // v1.0-rc: ランキング登録候補をセット
+  resultData={ eff:effShown, rank:R.rank, title:R.title, backTime:backTime, isNew:isNew };
+  RankingUI.onResult(Math.round(effShown*1000), R.rank); // v1.0-rc: ランキング登録候補をセット（v1.1: 表示値と同一の丸め）
   $("ovResult").classList.add("show");
   // v0.5: 検印スタンプを叩き込む（着地に合わせてSE＋バイブ）
   const stampEl=$("rankStamp"); stampEl.textContent=R.rank;
@@ -2432,6 +2445,11 @@ refreshBestLine();
 setPhaseUI();
 resize();
 requestAnimationFrame(frame);
+/* ---- v1.1: Service Worker 登録（PWA）。http(s) のときだけ・失敗しても無音で無視。
+   file:// や zip 展開など SW が使えない環境では何もしない。 ---- */
+if(location.protocol.indexOf("http")===0 && "serviceWorker" in navigator){
+  try{ navigator.serviceWorker.register("sw.js").catch(()=>{}); }catch(e){}
+}
 </script>
 <script type="module">
 /* v1.0-rc: Firebase（オンラインランキング）接続。SDK読込・認証・通信のいずれが失敗しても
