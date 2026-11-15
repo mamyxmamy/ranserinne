@@ -753,7 +753,17 @@ function makeCard(spec) {
 
   const name = document.createElement("span");
   name.className = "punchcard__name";
-  name.textContent = spec.name;
+  // 実機報告 2026-11-15: 英字サフィックス（(STRIKE) 等）を小さくし、狭い面でも名前を1行に収める
+  const nameMatch = /^(.*?)\s*(\(.+\))$/.exec(spec.name || "");
+  if (nameMatch) {
+    name.append(document.createTextNode(nameMatch[1] + " "));
+    const en = document.createElement("span");
+    en.className = "punchcard__name-en";
+    en.textContent = nameMatch[2];
+    name.append(en);
+  } else {
+    name.textContent = spec.name;
+  }
 
   const exhaustTag = document.createElement("span");
   exhaustTag.className = "punchcard__exhaust";
@@ -939,6 +949,7 @@ function renderCombat() {
 
 function renderEnemyIntent() {
   if (session.phase !== "combat" || !battle) {
+    ui.intent.style.display = "";
     ui.intent.dataset.action = "";
     ui.intent.dataset.alert = "";
     imprint(ui.intent, "INTENT  —");
@@ -958,8 +969,9 @@ function renderEnemyIntent() {
     + ((battle.alertBuff || 0) > 0 ? ` 〈警報+${battle.alertBuff}〉` : "")
     + (view.extra ? ` 〈${view.extra.label}〉` : "");
   imprint(ui.intent, label);
-  // v15.3 案A: インテント予告は CCTV 中央下にも常時大きめに表示する
-  // （上部バッジと同じ内容を、即時反映で大きく出す）
+  // 実機報告 2026-11-15: 戦闘中はインテント表示を CCTV 中央のバナー1か所に統一する
+  // （v15.3 案A の上部バッジとの二重表示はやめる。バッジは戦闘外のフェイズ表示専用）
+  ui.intent.style.display = "none";
   if (ui.intentBanner) {
     ui.intentBanner.hidden = false;
     ui.intentBanner.dataset.action = view.action || "";
@@ -2765,6 +2777,9 @@ function fieldDown() {
   slotIdleLabel();
   renderRelics();
   syncEndButton();
+  // 実機要望 2026-11-15: ゲームオーバー画面でボタン待ちにせず、数秒見せてから自動でタイトルへ戻る
+  // （先にボタンが押される等でフェイズが変わっていたら何もしない）
+  window.setTimeout(() => { if (session.phase === "gameover") showTitle(); }, 3500);
 }
 
 function closeEvent() {
@@ -3025,6 +3040,9 @@ async function openGameOver() {
   slotIdleLabel();
   renderRelics();
   syncEndButton();
+  // 実機要望 2026-11-15: ゲームオーバー画面でボタン待ちにせず、数秒見せてから自動でタイトルへ戻る
+  // （先にボタンが押される等でフェイズが変わっていたら何もしない）
+  window.setTimeout(() => { if (session.phase === "gameover") showTitle(); }, 3500);
 }
 
 function blankDesk() {

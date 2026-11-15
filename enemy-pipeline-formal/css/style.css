@@ -2143,11 +2143,24 @@ button { color: inherit; }
 }
 
 .punchcard__exhaust {
+  /* grid-area を持たず自動配置で他要素に重なっていたため、面の左下へ絶対配置で固定する（2026-11-15 実機報告） */
+  position: absolute;
+  left: 6px;
+  bottom: 15px;
+  z-index: 2;
+  padding: 0 3px;
+  background: rgba(247, 236, 210, 0.88);
   color: var(--amber);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.24em;
   text-align: left;
+}
+
+.punchcard__name-en {
+  font-size: 0.66em;
+  letter-spacing: 0.01em;
+  opacity: 0.72;
 }
 
 .punchcard__name {
@@ -2195,9 +2208,20 @@ button { color: inherit; }
 /* PROMPT-24: 手札（ホッパー内）のカードだけ文字を大きくし、肉眼で読めるようにする。
    報酬シーンのカードは従来寸法のまま（ステージ内に3枚収める制約があるため） */
 .hopper .punchcard__head, .hopper .punchcard__foot { font-size: 10.5px; }
+/* 手札の扇状の重なり（-18px）でフッター右端の態勢表記が隣のカードに隠れるため、重なり分だけ内側へ寄せる */
+.hopper .punchcard__foot { padding-right: 20px; }
 .hopper .punchcard__name { font-size: 13.5px; }
 .hopper .punchcard__rules { font-size: 10.5px; }
 .hopper .punchcard__text { font-size: 10.5px; }
+
+/* 実機報告 2026-11-15: 低い画面（スマホ横向き）ではカード面の行が収まらず文字が潰れる。
+   フレーバーは面から畳み（全文は解析パネルで読める）、名前と効果文に面積を回す。
+   あわせて孔列を細くして本文の列幅を確保する */
+@media (max-height: 560px) {
+  .punchcard__text { display: none; }
+  .hopper .punchcard { grid-template-columns: 42px minmax(0, 1fr); }
+  .hopper .punchcard__name { font-size: 12.5px; }
+}
 .hopper .punchcard__flavor { font-size: 10px; }
 
 /* ---------- motion ---------- */
@@ -3052,6 +3076,15 @@ body.is-dead .comms {
   #scene-reward .reward-skip { margin-top: 3px; padding: 3px 10px; font-size: 11px; }
   /* ステータスバーが2行に折り返すとステージが痩せるので、低い画面では1行に収める */
   .statusbar { font-size: 9px; letter-spacing: 0.08em; gap: 6px; white-space: nowrap; }
+}
+
+/* 実機報告 2026-11-15: 報酬カードは最大幅120pxでは面の文字が潰れるため、低い画面でも幅を確保する
+   （面のフレーバーを畳む修正とセット。高さ400px以下の極端に低い画面だけ少し絞る） */
+@media (max-height: 480px) {
+  #scene-reward .reward-offers .punchcard { max-width: 150px; }
+}
+@media (max-height: 400px) {
+  #scene-reward .reward-offers .punchcard { max-width: 132px; }
 }
 
 /* v13.5: 戦闘時の左ステータスベイをスクロールなしで一目に収める */
