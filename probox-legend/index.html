@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>公道最速は白バンである。 v1.5-wip（オンラインランキング）</title>
+<title>公道最速は白バンである。 v1.5.1-wip（オンラインランキング）</title>
 <!-- v1.1: PWA（manifest＋アイコン）。SW登録は本体スクリプト末尾 -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#05070d">
@@ -378,7 +378,7 @@
       <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.5</div>
+      <div class="verTag">v1.5.1</div>
     </div>
   </div>
 
@@ -392,7 +392,7 @@
       <button class="kvRankBtn" id="btnRank2">🏆 ランキング</button>
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.5</div>
+      <div class="verTag">v1.5.1</div>
     </div>
   </div>
 
@@ -556,6 +556,11 @@
    (6) 初回タイトルを
    偽タイトル「営業車ドライビングシミュレーター」に差し替え（帰りルートの
    匂わせとランキングボタンを排除）。版数表示は「v1.5」に更新。
+   v1.5.1-wip: 小パッチ。転換演出のジングル（jingle_legend.mp3）を廃止し、
+   2回目以降もカットイン後のテロップ表示と同時に帰りBGMを開始するよう
+   初回リビールの挙動に統一。ジングルの再生コード・onended ハンドラ・
+   8.2秒フォールバックタイマーを撤去し、BGM テーブルからも参照を削除
+   （mp3 ファイル自体はパッケージに残置）。版数表示は「v1.5.1」に更新。
    疑似3D（セグメント方式） / 単一HTML / BGMは外部mp3を任意再生
    ===================================================================== */
 const $ = id => document.getElementById(id);
@@ -597,10 +602,9 @@ function carHalfW(car){ return car.w/2*HIT_FORGIVE; }
 const BGM = {
   iki:   { src:"bgm_iki.mp3",      el:null },
   kaeri: { src:"bgm_kaeri.mp3",    el:null },
-  jingle:{ src:"jingle_legend.mp3",el:null },
 };
 function bgmEl(key){ const b=BGM[key]; if(b.el) return b.el;
-  try{ const a=new Audio(); a.src=b.src; a.loop=(key!=="jingle"); a.volume= audioMuted?0 : ((key==="jingle")?0.9:0.55);
+  try{ const a=new Audio(); a.src=b.src; a.loop=true; a.volume= audioMuted?0 : 0.55;
        a.onerror=()=>{}; b.el=a; }catch(e){ b.el=null; } return b.el; }
 function playBgm(key){ try{ const a=bgmEl(key); if(!a) return;
   const p=a.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }
@@ -648,7 +652,7 @@ function masterGain(){ const c=ac(); if(!c) return null;
   if(!seMaster){ seMaster=c.createGain(); seMaster.gain.value=audioMuted?0:1; seMaster.connect(c.destination); }
   return seMaster; }
 function applyMute(){ if(seMaster&&AC) seMaster.gain.setTargetAtTime(audioMuted?0:1, AC.currentTime, 0.03);
-  for(const k of Object.keys(BGM)){ const b=BGM[k]; if(b.el) b.el.volume= audioMuted?0 : ((k==="jingle")?0.9:0.55); }
+  for(const k of Object.keys(BGM)){ const b=BGM[k]; if(b.el) b.el.volume= audioMuted?0 : 0.55; }
   const btn=$("btnMute"); if(btn) btn.textContent= audioMuted? "🔇":"🔊"; }
 const WIND_GAIN_MAX=0.14; // 風切り音の最大ゲイン（BGM 0.55 に対して控えめ）
 const ENG_GAIN_MAX=0.045; // エンジン音の最大ゲイン
@@ -2192,7 +2196,7 @@ function showStory(){
    「伝説の幕開け」テロップ →（帰社スタート）→ 帰り。表面は従順、心の中では
    キレている主人公の反骨心が帰りの爆走の原動力、という演出。BGM: 行きBGMは
    納品後も独白まで流れ続け、着信（showIncomingCall）で停止する（v1.5）。
-   ジングルは goLegend 以降にしか鳴らない。 */
+   帰りBGMは goLegend のテロップ表示と同時に始まる（v1.5.1: ジングル廃止）。 */
 let cutinTimer=null, cutinShown=false, bossTimer=null, bossStage=0;
 let callTimer=null, ringTimer=null; // v0.4.2: 着信の自動応答／着信音タイマー
 /* 上司の1言目（理不尽な小言）の候補プール: ランごとにランダムで1つ。正式版ではここに足すだけ。
@@ -2330,10 +2334,7 @@ function goLegend(){
     "<br>🔥 擦らず走るほど加速する「疾走」ボーナス（最大 +36 km/h）"+
     "<br>💨 高速カーブでハンドルを切り続けると「ドリフト」！ 抜けると +12 km/h ブースト";
   $("legendTelop").classList.add("show");
-  playBgm("jingle");
-  // ジングル（約7秒）が終わってから帰りBGMへ繋ぐ（重なって鳴らないように）
-  try{ const j=bgmEl("jingle"); if(j) j.onended=()=>{ if(state==="legend") playBgm("kaeri"); }; }catch(e){}
-  setTimeout(()=>{ if(state==="legend" && (!BGM.jingle.el || BGM.jingle.el.paused || BGM.jingle.el.ended)) playBgm("kaeri"); }, 8200);
+  playBgm("kaeri"); // v1.5.1: ジングル廃止。テロップ表示と同時に帰りBGMを開始（初回リビールの挙動に統一）
   SE.go();
 }
 function startReturn(){
@@ -2345,8 +2346,7 @@ function startReturn(){
   seedTraffic(65, 0.24, 0.44, 3000);
   state="back"; hideAllOverlays(); setPhaseUI();
   speed=MAX_SPEED*0.30; boostT=2.0; // 社畜解放の初期加速
-  stopBgm("jingle");
-  playBgm("kaeri");
+  playBgm("kaeri"); // 再生中なら no-op（リビール／テロップ時点ですでに開始済み）
   // v0.5: HUD点灯シーケンス（枠→数字→メーター）＋帰り開始の心の声（SCRIPT-v1 §6）
   const stg=$("stage"); stg.classList.remove("boot"); void stg.offsetWidth; stg.classList.add("boot");
   setTimeout(()=>stg.classList.remove("boot"), 1500);
