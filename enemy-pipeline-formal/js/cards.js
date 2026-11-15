@@ -108,9 +108,9 @@
       "effects": [ { "target": "enemy", "type": "damage_plus_noise", "value": 8, "per": 2 } ]
     },
     {
-      "id": "goliath_overdrive", "name": "限界駆動 (OVERDRIVE)", "cost": 0, "category": "TEC", "type": "skill", "noise": 4, "stance_change": null,
+      "id": "goliath_overdrive", "name": "限界駆動 (OVERDRIVE)", "cost": 0, "category": "TEC", "type": "skill", "noise": 3, "stance_change": null,
       "flavor": "「冷却系を意図的にバイパスし、潤滑油の代わりに己の身を削って出力を引き上げる。赤熱したシリンダーが上げる悲鳴は、もはや兵器のそれではない。」",
-      "effects": [ { "target": "player", "type": "damage", "value": 5 }, { "target": "player", "type": "add_energy", "value": 2 } ]
+      "effects": [ { "target": "player", "type": "damage", "value": 5 }, { "target": "player", "type": "add_energy", "value": 2, "overcharge": true } ]
     },
     {
       "id": "goliath_steel_press", "name": "鋼圧プレス (STEEL PRESS)", "cost": 2, "category": "DEF", "type": "skill", "noise": 2, "stance_change": null,

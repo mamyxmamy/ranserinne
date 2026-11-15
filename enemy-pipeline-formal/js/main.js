@@ -2453,7 +2453,7 @@ function beginField(encounter) {
 
 function safehouseHeal(hp, hpMax) {
   const max = Math.max(0, hpMax | 0);
-  const amount = Math.floor(max * 0.3);
+  const amount = Math.floor(max * 0.4);
   return Math.min(max, Math.max(0, hp) + amount);
 }
 

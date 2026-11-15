@@ -29,7 +29,7 @@
     name: "重装甲サイボーグ『GATEKEEPER』",
     image: "assets/cctv_enemy_gatekeeper.png",
     max_hp: 120,
-    max_stun: 3,
+    max_stun: 5,
     immune_to_stun: false,
     intent_pattern: Object.freeze([
       Object.freeze({ action: "buff", name: "警戒態勢", value: 12 }),
