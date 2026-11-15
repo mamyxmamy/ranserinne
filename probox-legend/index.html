@@ -334,6 +334,41 @@
                border:1.5px solid rgba(55,230,255,.7); color:#37E6FF; font-size:16px; font-weight:900; letter-spacing:.05em;
                font-family:var(--font-head); text-shadow:0 0 8px rgba(55,230,255,.7); }
   .kvRankBtn:active { transform:scale(.98); }
+  /* ---------- v1.6: 第3フェイズ「追撃」まわり ---------- */
+  #chaseBeat { margin-top:14px; border-top:1.5px dashed rgba(255,62,165,.45); padding-top:12px; }
+  #chaseBeat .beatText { font-size:13.5px; line-height:1.8; font-weight:700; }
+  #chaseBeat .beatText .punch { color:#FF3EA5; text-shadow:0 0 8px rgba(255,62,165,.6); }
+  #btnToChase { border-color:#FF3EA5; color:#ffd7ec; text-shadow:0 0 8px rgba(255,62,165,.8);
+                box-shadow:0 0 18px rgba(255,62,165,.30), inset 0 0 12px rgba(255,62,165,.12); }
+  /* 最終ムービー（課長宅・爆破） */
+  #ovMovie { background:#000; padding:0; z-index:12; cursor:pointer; }
+  #ovMovie video { width:100%; height:100%; object-fit:contain; background:#000; }
+  .movieHint { position:absolute; right:14px; bottom:16px; font-size:12px; color:rgba(255,255,255,.75);
+               background:rgba(0,0,0,.45); padding:5px 10px; border-radius:6px; letter-spacing:.08em; }
+  /* 最終リザルト（炎の背景） */
+  #ovFinalResult { z-index:11; }
+  #ovFinalResult .panel { max-height:94dvh; overflow-y:auto; padding:0;
+                background:rgba(10,9,18,.60); } /* 炎の絵がパネル越しにも透けて見える半透明に */
+  #ovFinalResult .finTitle, #finalRankTitle { padding-right:92px; } /* 右上の検印と見出しが重ならないように */
+  .finalBg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+  .finalShade { position:absolute; inset:0;
+                background:linear-gradient(180deg, rgba(5,6,12,.42), rgba(5,6,12,.66) 55%, rgba(5,6,12,.82)); }
+  .finalContent { position:relative; z-index:1; padding:20px 18px; color:#fdf3e3;
+                  text-shadow:0 1px 6px rgba(0,0,0,.85); }
+  #finalStamp { position:absolute; top:12px; right:14px; width:76px; height:76px; display:none;
+               border:4px solid #ff2e4d; color:#ff2e4d; border-radius:10px; font-weight:900; font-size:46px;
+               align-items:center; justify-content:center; background:rgba(10,8,18,.82);
+               font-family:var(--font-num); box-shadow:0 0 18px rgba(255,46,77,.45), inset 0 0 12px rgba(255,46,77,.25);
+               text-shadow:0 0 10px rgba(255,46,77,.8); }
+  #finalStamp.show { display:flex; animation:stampIn .45s cubic-bezier(.2,1.6,.4,1) both; }
+  #finalRankTitle { font-size:23px; font-weight:900; color:#ffe14d; margin:8px 0 2px; line-height:1.35;
+                    font-family:var(--font-head); text-shadow:0 0 14px rgba(255,225,77,.55), 0 1px 6px rgba(0,0,0,.85); }
+  #finalRankComment { font-size:13.5px; font-weight:700; margin-top:6px; line-height:1.6; }
+  #finalNewRecord { display:none; margin-top:8px; background:#e5484d; color:#fff; font-weight:900;
+                    border-radius:8px; padding:5px 10px; font-size:14px; letter-spacing:.1em; }
+  .finalContent .resultRow { border-bottom-color:rgba(255,220,170,.30); }
+  #finTotalRow { font-size:17px; border-bottom:2px solid rgba(255,225,77,.65); }
+  #finTotalRow b { color:#ffe14d; font-size:21px; }
 </style>
 </head>
 <body>
@@ -378,7 +413,7 @@
       <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.5.5</div>
+      <div class="verTag">v1.6</div>
     </div>
   </div>
 
@@ -392,7 +427,7 @@
       <button class="kvRankBtn" id="btnRank2">🏆 ランキング</button>
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.5.5</div>
+      <div class="verTag">v1.6</div>
     </div>
   </div>
 
@@ -451,9 +486,55 @@
         <div class="rankListHead">— 上位10件 —</div>
         <div id="rankTop10" class="rankList"><div class="rankEmpty">読み込み中…</div></div>
       </div>
+      <!-- v1.6: 帰社リザルト（中間）から第3フェイズ「追撃」への導線 -->
+      <div id="chaseBeat" style="display:none">
+        <div class="beatText">……だが、会社に着いたとき、<span class="punch">課長はもう帰っていた。</span><br>
+        あの電話の直後に、真っ先に帰っていたのだ。</div>
+        <button class="bigBtn" id="btnToChase">🔥 このまま課長宅へ追撃</button>
+      </div>
       <button class="bigBtn" id="btnAgain">↻ もう1往復</button>
       <button class="bigBtn" id="btnShare">𝕏 結果を共有</button>
       <button class="tinyLink" id="btnResTitle">タイトルへ戻る</button>
+    </div>
+  </div>
+
+  <!-- v1.6: 最終ムービー（課長宅・爆破。本人が用意した実写動画の1.5倍速版） -->
+  <div class="overlay" id="ovMovie">
+    <video id="endingVideo" src="ending-movie-v1-speed150.mp4" playsinline preload="metadata"></video>
+    <div class="movieHint">タップでスキップ</div>
+  </div>
+
+  <!-- v1.6: 最終リザルト（合計タイムで判定。背景はムービー最終フレームの炎） -->
+  <div class="overlay" id="ovFinalResult">
+    <div class="panel">
+      <img class="finalBg" src="result-bg-fire.webp" alt="" aria-hidden="true">
+      <div class="finalShade"></div>
+      <div class="finalContent">
+        <div id="finalStamp">S</div>
+        <div class="finTitle" style="font-size:19px;font-weight:900;font-family:var(--font-head);">🔥 課長宅に、コーヒー配達完了</div>
+        <div id="finalRankTitle">—</div>
+        <div id="finalRankBand" style="font-size:12px;opacity:.9;"></div>
+        <div id="finalRankComment">—</div>
+        <div id="finalNewRecord">★ NEW RECORD ★</div>
+        <div style="margin-top:10px;">
+          <div class="resultRow"><span>帰社タイム（判定）</span><b id="finBack">—</b></div>
+          <div class="resultRow"><span>追撃タイム（実測）</span><b id="finChaseRaw">—</b></div>
+          <div class="resultRow" id="finRowChaseBonus"><span>追撃ボーナス（コンボ・ニアミス等）</span><b id="finChaseBonus">—</b></div>
+          <div class="resultRow"><span>追撃タイム（判定）</span><b id="finChase">—</b></div>
+          <div class="resultRow" id="finTotalRow"><span>合計タイム（判定）</span><b id="finTotal">—</b></div>
+          <div class="resultRow" id="finRowNear"><span>ニアミス内訳</span><b id="finNear">—</b></div>
+          <div class="resultRow"><span>吹き飛ばし</span><b id="finSmash">—</b></div>
+          <div class="resultRow" id="finRowDrift"><span>ドリフトボーナス</span><b id="finDrift">—</b></div>
+          <div class="resultRow"><span>疾走 最大</span><b id="finDash">—</b></div>
+          <div class="resultRow"><span>行きの丁寧評価（荷物残量）</span><b id="finCargo">—</b></div>
+          <div class="resultRow"><span>社畜メーター解放量</span><b id="finShachi">—</b></div>
+          <div class="resultRow"><span>最速説コンボ最大（通算）</span><b id="finCombo">—</b></div>
+        </div>
+        <div class="finalRankSlot"></div>
+        <button class="bigBtn" id="btnFinalAgain">↻ もう1往復</button>
+        <button class="bigBtn" id="btnFinalShare">𝕏 結果を共有</button>
+        <button class="tinyLink" id="btnFinalTitle">タイトルへ戻る</button>
+      </div>
     </div>
   </div>
     <!-- v1.0-rc Online ranking (title) -->
@@ -655,6 +736,16 @@ const SE = {
       g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.20,t+0.03);
       g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
       s.connect(f); f.connect(g); g.connect(masterGain()||c.destination); s.start(t); s.stop(t+0.2); }catch(e){} },
+  /* v1.6: 吹き飛ばしの衝突音（低いドン＋金属ノイズの掃引）。noiseBuf が無い環境では beep のみ */
+  smash(){ beep(95,0.24,"sawtooth",0.15,38); beep(220,0.10,"square",0.07,70);
+    const c=ac(); if(!c) return; ensureFX(); if(!noiseBuf) return;
+    try{ const s=c.createBufferSource(); s.buffer=noiseBuf; s.playbackRate.value=1.1;
+      const f=c.createBiquadFilter(); f.type="bandpass"; f.Q.value=0.8;
+      const g=c.createGain(); const t=c.currentTime;
+      f.frequency.setValueAtTime(2100,t); f.frequency.exponentialRampToValueAtTime(160,t+0.22);
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.30,t+0.02);
+      g.gain.exponentialRampToValueAtTime(0.001,t+0.26);
+      s.connect(f); f.connect(g); g.connect(masterGain()||c.destination); s.start(t); s.stop(t+0.3); }catch(e){} },
 };
 
 /* ---- v0.6: オーディオ基盤（マスターゲイン／ミュート／風切り・エンジン音の合成） ----
@@ -715,15 +806,20 @@ const ACCEL=MAX_SPEED/4.2, BRAKE_DECEL=-MAX_SPEED*0.85, DECEL=-MAX_SPEED/6, OFFR
 const CENTRIFUGAL=0.32;
 const PLAYER_W=0.42;               // 自車の見た目上の全幅（道路半幅比。実測 0.418 と一致）。v0.2-wipの判定は PLAYER_HALF を使用
 const TEIJI_LIMIT=90;              // 定時タイマー（秒・仮置き）
-const STORE_KEY="probox_demo_best_v1";
+const STORE_KEY="probox_total_best_v1"; // v1.6: 合計タイム基準の新キー（旧 probox_demo_best_v1 とは混ぜない）
 let camDepthCur=CAM_DEPTH;         // v0.6: 実効カメラ深度（FOVキックで変化）
 
 /* ---------------- 状態 ---------------- */
-let state="title"; // title | out | story | legend | back | fail | result
+let state="title"; // title | out | story | legend | back | fail | result | movie（v1.6）
 let segments=[], trackLength=0, cars=[];
 let position=0, playerX=0, speed=0, steerVis=0, bounce=0;
 let skyOff=0, hillOff=0;
 let outTime=0, backTime=0, cargo=100, shachiku=0, shachikuShown=0;
+/* ---- v1.6: 第3フェイズ「追撃」 ----
+   帰り（leg=2）と追撃（leg=3）は同じ state="back" で走る（ドリフト・疾走・ニアミス・
+   吹き飛ばし等の帰り系システムをそのまま共有し、leg でタイマーとゴールを分ける）。
+   leg: 1=行き（state="out" と併用）/ 2=帰り / 3=追撃。 */
+let leg=1, chaseTime=0, runData=null, legendMode="back", cutinNext=null, firstComplaint="";
 let safeStreak=0, lastGainReason="", gainFlashT=0;
 let combo=0, comboMax=0, comboTimer=0, bonusSec=0, passBonus=0, passedSet=new Set();
 let rivalState="none", rivalCar=null, rivalTelopT=0; // none|announced|active|done
@@ -767,7 +863,21 @@ let driftBonusCount=0, dashMaxReached=0, dashMaxVoiced=false, driftVoiced=false;
    接触・擦りした車（pen>=0 を記録した車）は対象外。全体クールダウンで連打を防ぐ。 */
 const NEAR_BAND=0.21;        // ニアミスと認めるクリアランス上限（offset単位）v1.1: 実機の指操作向けに 0.17→0.21 へ緩和
 const NEAR_WIN=900;          // クリアランスを計測する判定平面の前後幅（ワールド単位）
-const NEAR_MISS_SEC=0.3;     // 1回の差し引き秒数
+const NEAR_MISS_SEC=0.3;     // （v1.6で段階化。旧・一律の差し引き秒数。互換のため残置）
+/* ---- v1.6: ニアミス段階化（接近度3段階。gap=最小クリアランスで判定） ----
+   超ギリ（gap<=0.07）: -0.5秒 ／ ギリ（gap<=0.14）: -0.35秒 ／ 近（gap<=0.21）: -0.2秒。
+   期待値は旧一律0.3とほぼ同水準に寄せ、際どさへの報酬だけを厚くした。 */
+const NEAR_TIERS=[ { max:0.07, sec:0.5, name:"超ギリ", line:"紙一重！！" },
+                   { max:0.14, sec:0.35, name:"ギリ", line:"今の、紙一重" },
+                   { max:0.21, sec:0.2, name:"近", line:"すれすれ！" } ];
+let nearMissByTier=[0,0,0];
+/* ---- v1.6: 接触＝吹き飛ばし＋ブースト（帰り・追撃のみ。他車だけが対象） ----
+   本人の設計変更: 帰り・追撃では他車接触の減速ペナルティ自体を廃止し、通常走行でも
+   ドリフト中でも、接触したら相手が大げさに吹き飛んで自車が加速する（数値差は付けない）。
+   壁・路外など他車以外のペナルティと、行きの接触ペナルティは従来どおり。 */
+const SMASH_BOOST_FRAC=0.022;  // 接触時の即時加速（MAX_SPEED比 ≒ +4.1 km/h）
+const SMASH_BOOST_T=0.8;       // 接触後に加速×2.2が続く時間（秒。boostT と共用）
+let smashCount=0;
 const NEAR_MISS_CD=0.8;      // 連続発火防止の全体クールダウン（秒）
 let nearMissCount=0, nearMissSec=0, nearMissCd=0;
 const NEAR_LINES=["すれすれ！","今の、紙一重"]; // SCRIPT-v1 §6
@@ -804,14 +914,31 @@ let etcGateZ=0;               // ゲート判定面のワールドz（buildTrack
 let etcState="none";          // none | armed | clean | hit
 let etcBar=[0,0];             // バーの開き具合 0..1（左・右レーン）
 try{ window.__etcDebug=()=>({ state:etcState, gateZ:etcGateZ, bar:etcBar.slice(), playerX:playerX, planeZ:position+PLAYER_Z }); }catch(e){}
+try{ window.__v16Debug=()=>({ state, leg, backTime:+backTime.toFixed(2), chaseTime:+chaseTime.toFixed(2),
+  bonusSec:+bonusSec.toFixed(2), smashCount, nearMissCount, nearMissSec:+nearMissSec.toFixed(2),
+  nearMissByTier:nearMissByTier.slice(), combo, comboMax, dashBonus, driftBonusCount,
+  runSeed, traffic:(window.__trafficDebug||null),
+  runData: runData? JSON.parse(JSON.stringify(runData)) : null,
+  rankPending:(typeof RankingUI!=="undefined"&&RankingUI.pending)? { timeMs:RankingUI.pending.timeMs, rank:RankingUI.pending.rank } : null,
+  totalBest: loadBest() }); }catch(e){}
 let prevSteerOut=0, fullLockT=0, jerkFlipCd=0;
 const keys={left:false,right:false,brake:false};
 let touchSteer=0; // -1|0|1
 
+/* ---- v1.6: 交通の毎回ランダム化（ラン＋レッグごとにシードを変える決定的RNG） ----
+   配置・密度・速度帯をシードから決めるので、同じラン内では再現性があり、ランが
+   変わればパターンが変わる。理不尽な壁配置を作らない前後間隔ルールは従来どおり維持。 */
+let runSeed=0, rngState=0;
+function srand(seed){ rngState=(seed>>>0)||1; }
+function rng(){ rngState=(rngState+0x6D2B79F5)>>>0; let t=rngState;
+  t=Math.imul(t^(t>>>15), t|1); t^=t+Math.imul(t^(t>>>7), t|61);
+  return ((t^(t>>>14))>>>0)/4294967296; }
+function newRunSeed(){ runSeed=((Date.now()^(Math.random()*0x7fffffff))>>>0)||1; srand(runSeed); }
+
 function loadBest(){ try{ const s=localStorage.getItem(STORE_KEY); return s?JSON.parse(s):null; }catch(e){ return null; } }
 function saveBest(d){ try{ localStorage.setItem(STORE_KEY,JSON.stringify(d)); }catch(e){} }
 function refreshBestLine(){ const b=loadBest();
-  const t = b ? ("ローカルベスト： 帰社 "+fmtTime(b.bestReturn)+" ／ 称号「"+b.bestTitle+"」 ／ "+(b.plays||1)+"往復目")
+  const t = (b&&b.bestTotal!=null) ? ("ローカルベスト： 合計 "+fmtTime(b.bestTotal)+" ／ 称号「"+b.bestTitle+"」 ／ "+(b.plays||1)+"回目")
               : "ローカルベスト： まだ記録なし";
   // v1.5: 未開示の間、初回（偽）タイトルに帰社ベストを表示してネタバレしない
   $("bestLine").textContent = titleRevealed()? t : "ローカルベスト： まだ記録なし";
@@ -848,6 +975,19 @@ function courseBack(){ // 逆向き：区間を逆順にし、カーブを反転
     "C1 都心環状線（ビル谷間）":["都心環状線 C1","本社 方面 →"], "本社前（オフィス街）":["本社","まもなく帰社"] };
   return rev.map(s=>({ name:names[s.name]||s.name, n:s.n, bg:s.bg, curve:-s.curve, hill:-s.hill,
     type:s.type, cap:(s.type==="gate"?0:(s.cap===0.55?0:s.cap)), sign:signs[s.name]||s.sign }));
+}
+/* ---- v1.6: 追撃コース（本社→住宅街→課長宅前・夜） ----
+   全1,530セグメント＝帰り（2,335）の約65%。背景は夜の city 帯＋住宅街ファサードで
+   代用し、専用素材は作らない。区間キャップは帰り系（state="back"）では元々無効。 */
+function courseChase(){
+  return [
+    { name:"本社前（夜）", bg:"city",   n:200, curve:0,  hill:0,   type:"port", cap:0, sign:["本社前","追撃開始 →"] },
+    { name:"一般道（夜）", bg:"city",   n:300, curve:1,  hill:0,   type:"city", cap:0, sign:["一般道","住宅街 方面 →"] },
+    { name:"住宅地入口", bg:"city",     n:250, curve:-2, hill:6,   type:"city", cap:0, sign:["住宅地","この先 課長宅"] },
+    { name:"住宅街", bg:"city",         n:350, curve:3,  hill:0,   type:"city", cap:0, sign:["住宅街","コーヒーが冷める前に"] },
+    { name:"住宅街・坂道", bg:"city",   n:250, curve:-3, hill:18,  type:"city", cap:0, sign:["坂道","課長宅まで あと少し"] },
+    { name:"課長宅前", bg:"city",       n:180, curve:0,  hill:-10, type:"port", cap:0, sign:["課長宅","まもなく到着"] },
+  ];
 }
 
 function buildTrack(course){
@@ -936,36 +1076,55 @@ function addCar(z, offset, type, speedFrac){
   const seg=findSegment(z); if(!seg) return null;
   const car={ z:z, offset:offset, type:type, speed:MAX_SPEED*speedFrac, w:type.w, percent:0, spriteScale:0 };
   // v0.6: 交通の振る舞い用（基準速度・ブレーキ状態・車線変更スケジュール）
-  car.baseSpeed=car.speed; car.braking=false; car.lcTarget=null; car.lcTimer=4+Math.random()*14;
+  car.baseSpeed=car.speed; car.braking=false; car.lcTarget=null; car.lcTimer=4+rng()*14; // v1.6: シードRNGへ寄せる
   // v0.7: タクシーはスポーン時に黄／黒の素材バリエーションを決める（帰りの描画でのみ使用）
-  if(type.kind==="taxi") car.taxiBlack=Math.random()<TAXI_BLACK_RATE;
+  if(type.kind==="taxi") car.taxiBlack=rng()<TAXI_BLACK_RATE;
   seg.cars.push(car); cars.push(car); return car;
 }
 function seedTraffic(density, speedMin, speedMax, avoidFirst){
+  // v1.6: ラン＋レッグのシードで配置・密度・速度帯を毎回変える（±15%の密度ジッター付き）
+  const dens=Math.max(8, Math.round(density*(0.85+rng()*0.3)));
+  const sMin=speedMin+(rng()*0.04-0.02), sMax=speedMax+(rng()*0.04-0.02);
   const placed=[];
-  for(let i=0;i<density;i++){
+  for(let i=0;i<dens;i++){
     let z=0, ok=false;
     for(let tries=0;tries<12&&!ok;tries++){
-      z=(Math.random()*0.92+0.06)*trackLength;
+      z=(rng()*0.92+0.06)*trackLength;
       ok=!(avoidFirst&&z<avoidFirst);
       if(ok) for(const pz of placed){ let d=Math.abs(pz-z); d=Math.min(d, trackLength-d);
         if(d<2600){ ok=false; break; } } // 前後間隔を確保し「壁」配置を作らない
     }
     if(!ok) continue;
     placed.push(z);
-    const t=CAR_TYPES[Math.floor(Math.random()*(CAR_TYPES.length-1))]; // sportsは通常混ぜない
-    addCar(z, (Math.random()*1.3-0.65), t, speedMin+Math.random()*(speedMax-speedMin));
+    const t=CAR_TYPES[Math.floor(rng()*(CAR_TYPES.length-1))]; // sportsは通常混ぜない
+    addCar(z, (rng()*1.3-0.65), t, sMin+rng()*(sMax-sMin));
   }
+  try{ window.__trafficDebug={ seed:runSeed, leg:leg, count:cars.length,
+    hash:(()=>{ let h=0; for(const c of cars){ h=(h*31 + Math.round(c.z) + c.type.kind.length*7)>>>0; } return h; })() }; }catch(e){}
 }
 const LANE_CHANGE_RATE=0.22; // v0.6: 車線変更の横移動速度（offset単位/秒。緩やかさの調整ノブ）
 function updateCars(dt){
   for(const car of cars){
     const oldSeg=findSegment(car.z);
+    /* v1.6: 吹き飛び中の車は幽霊化する。通常の交通挙動（追従・車線変更・判定）から
+       完全に外し、横方向へ大きく飛びながら約1秒で画面外へ消えてから除去する。 */
+    if(car.fly){
+      car.fly.t+=dt;
+      car.offset+=car.fly.vx*dt;
+      car.z += (speed*1.22+2200)*dt; // 自車より速く前方へも飛ばす: 接触点はカメラに近く道路が
+      // 画面幅いっぱいに広がるため、同速だと横移動が0.2〜0.4秒で画面外へ出て見えない。
+      // 前方へ逃がすと遠ざかりながら小さくなり、回転＋跳ねが約1秒しっかり視界に残る。
+      if(car.z>=trackLength) car.z-=trackLength;
+      const ns=findSegment(car.z);
+      if(oldSeg!==ns){ const i=oldSeg.cars.indexOf(car); if(i>=0) oldSeg.cars.splice(i,1); ns.cars.push(car); }
+      if(car.fly.t>=car.fly.dur) car._dead=true;
+      continue;
+    }
     /* v0.6: 前車追従 — 同じ寄せ位置で前方に遅い車がいれば減速し、ブレーキランプを点ける。
        前が開ければ基準速度まで緩やかに戻る。当たり判定・ニアミス判定は現在位置・現在速度を
        そのまま使うため、この挙動追加と矛盾しない。 */
     let leader=null, leadD=Infinity;
-    for(const o of cars){ if(o===car) continue;
+    for(const o of cars){ if(o===car||o.fly) continue;
       let d=(o.z-car.z+trackLength)%trackLength; if(d>trackLength/2) d-=trackLength;
       if(d>0 && d<leadD && Math.abs(o.offset-car.offset)<0.30){ leader=o; leadD=d; } }
     let decel=false;
@@ -992,8 +1151,12 @@ function updateCars(dt){
     const newSeg=findSegment(car.z);
     if(oldSeg!==newSeg){ const i=oldSeg.cars.indexOf(car); if(i>=0) oldSeg.cars.splice(i,1); newSeg.cars.push(car); }
   }
-  // ライバルは専用制御（帰り中盤）
-  if(state==="back" && rivalState==="active" && rivalCar){
+  // v1.6: 飛び切った車を完全除去（配列とセグメントの両方から）
+  for(let i=cars.length-1;i>=0;i--){ if(cars[i]._dead){
+    const seg=findSegment(cars[i].z); const j=seg.cars.indexOf(cars[i]); if(j>=0) seg.cars.splice(j,1);
+    cars.splice(i,1); } }
+  // ライバルは専用制御（帰り中盤・レッグ2のみ）
+  if(state==="back" && leg===2 && rivalState==="active" && rivalCar && !rivalCar.fly){
     rivalCar.speed = MAX_SPEED*0.62; // プレイヤーが本気を出せば抜ける速度
   }
 }
@@ -1631,18 +1794,31 @@ function drawCar(seg, car, skyT){
   if(state==="out"){ const pm={ sedan:"#a8d0e6", taxi:"#fbe3a1", truck:"#dfe6da", van:"#fdfdf8", sports:"#f3b8c6" };
     col=pm[car.type.kind]||col; }
   const tspr=(state==="back"||state==="result")? trafficSpriteFor(car) : null;
+  /* v1.6: 吹き飛び描画 — 横へ飛びながらスピンし、上方向へ跳ねて、終盤でフェード。
+     回転中心は車体中心寄り。地面の影は飛んでいる間は描かない。 */
+  let flySave=false;
+  if(car.fly){ const f=car.fly, p=clamp(f.t/f.dur,0,1);
+    const hopY=Math.sin(p*Math.PI)*carH*f.hop + p*p*carH*0.35;
+    ctx.save(); flySave=true;
+    ctx.globalAlpha= p>0.55? Math.max(0,1-(p-0.55)/0.45) : 1;
+    ctx.translate(destX, destY-hopY-carH*0.4); ctx.rotate(f.rot*f.t);
+    ctx.translate(-destX, -(destY-hopY-carH*0.4));
+    var flyDY=destY-hopY; // 横移動そのものは car.offset の実移動で表現済み
+  }
+  const drawY = car.fly? flyDY : destY;
   if(tspr){
     // v0.7: 実写スプライト描画（影は従来絵・自車と同じ楕円。接地点を destY に一致させる）
-    ctx.fillStyle="rgba(0,0,0,.35)"; ctx.beginPath();
-    ctx.ellipse(destX, destY, carW*0.52, Math.max(2,carH*0.07), 0, 0, 7); ctx.fill();
+    if(!car.fly){ ctx.fillStyle="rgba(0,0,0,.35)"; ctx.beginPath();
+      ctx.ellipse(destX, destY, carW*0.52, Math.max(2,carH*0.07), 0, 0, 7); ctx.fill(); }
     const cw=carW/tspr.wf; // キャンバスは正方形。車体の見た目幅が carW と一致する拡縮
-    ctx.drawImage(tspr.im, destX-cw/2, destY-tspr.bf*cw, cw, cw);
-    car._dbg={ x:destX, y:destY, w:carW, h:tspr.hf*cw, roadHalf:seg.p1.screen.w };
+    ctx.drawImage(tspr.im, destX-cw/2, drawY-tspr.bf*cw, cw, cw);
+    car._dbg={ x:destX, y:drawY, w:carW, h:tspr.hf*cw, roadHalf:seg.p1.screen.w };
   } else {
-    car._dbg={ x:destX, y:destY, w:carW, h:carH, roadHalf:seg.p1.screen.w };
-    drawCarBody(destX, destY, carW, carH, car.type.kind, col, { brakeLight: !!car.braking }); // v0.6: 減速中はブレーキランプ点灯
+    car._dbg={ x:destX, y:drawY, w:carW, h:carH, roadHalf:seg.p1.screen.w };
+    drawCarBody(destX, drawY, carW, carH, car.type.kind, col, { brakeLight: !!car.braking }); // v0.6: 減速中はブレーキランプ点灯
   }
-  if(car===rivalCar){ // ライバル表示（v1.2: 実写時は実寸の高さに合わせてラベル位置を取る）
+  if(flySave) ctx.restore();
+  if(car===rivalCar && !car.fly){ // ライバル表示（v1.2: 実写時は実寸の高さに合わせてラベル位置を取る）
     const topH=tspr? car._dbg.h : carH;
     ctx.fillStyle="#ffe14d"; ctx.font="900 "+Math.max(9,carW*0.22)+"px sans-serif"; ctx.textAlign="center";
     ctx.fillText("▼ RIVAL", destX, destY-topH-Math.max(4,carW*0.12)); }
@@ -1791,6 +1967,7 @@ function setPhaseUI(){
   else if(state==="back"||state==="result") stage.dataset.theme="b";
   const pl=$("phaseLabel");
   if(state==="out"){ pl.textContent="行き：納品へ"; pl.className=""; }
+  else if(state==="back"&&leg===3){ pl.textContent="追撃：課長宅へ"; pl.className="back"; } // v1.6
   else if(state==="back"){ pl.textContent="帰り：伝説"; pl.className="back"; }
   else { pl.textContent= state==="legend"||state==="story" ? "転換" : "—"; pl.className=""; }
   $("cargoRow").style.opacity = state==="back" ? .45 : 1;
@@ -1825,7 +2002,8 @@ function updateHUD(){
   // v0.5: テーマBの速度計は状態で色が変わる（通常=シアン／疾走=マゼンタ／ブースト=白熱）
   spdEl.className = state==="back" ? (driftBoostT>0? "boost" : (dashBonus>0? "dash":"")) : "";
   const tb=$("timerBox");
-  if(state==="back"){ const remain=TEIJI_LIMIT-backTime;
+  if(state==="back"&&leg===3){ tb.textContent="⏱ 追撃 "+fmtTime(chaseTime); tb.className=""; } // v1.6: 追撃は経過表示
+  else if(state==="back"){ const remain=TEIJI_LIMIT-backTime;
     if(remain>=0){ tb.textContent="⏱ 定時まで "+fmtTime(remain); tb.className=""; }
     else { tb.textContent="⏱ 残業 +"+fmtTime(-remain); tb.className="over"; tb.id="timerBox"; } }
   else { tb.textContent="⏱ "+fmtTime(outTime); tb.className=""; }
@@ -1956,7 +2134,8 @@ function handleTraffic(dt, prevPos){
   for(const car of cars){
     const diff=(car.z-position+trackLength)%trackLength;
     const ahead=diff<trackLength/2;
-    if(car._ahead&&!ahead&&hitCooldown<=0){
+    // v1.6: 吹き飛ばした車は追い越しコンボを二重に数えない（コンボは接触時に加算済み）
+    if(car._ahead&&!ahead&&hitCooldown<=0&&!car.fly&&!car._smashed){
       if(state==="back") onPass(car); else if(state==="out") onPassOut(car);
     }
     car._ahead=ahead;
@@ -1968,6 +2147,7 @@ function handleTraffic(dt, prevPos){
   // 幅は見た目のスプライト幅に合わせ、側面の浅い擦りは小ダメージに分ける。
   const planeZ=position+PLAYER_Z;
   for(const car of cars){
+    if(car.fly) continue; // v1.6: 吹き飛び中の車は幽霊（ニアミス計測・接触の対象外）
     let rel=(car.z-planeZ+trackLength)%trackLength;
     if(rel>trackLength/2) rel-=trackLength;
     const dx=Math.abs(playerX-car.offset);
@@ -1984,9 +2164,12 @@ function handleTraffic(dt, prevPos){
     if(car._prevRel!=null && car._prevRel>0 && rel<=0 && car._prevRel<600 && rel>-600){
       if(state==="back" && car!==rivalCar && !car._nmHit && !car._nmDone &&
          car._nmMin!=null && car._nmMin>=0 && car._nmMin<=NEAR_BAND && nearMissCd<=0){
+        // v1.6: 接近度で3段階（超ギリ -0.5秒／ギリ -0.35秒／近 -0.2秒）
+        let ti=NEAR_TIERS.findIndex(t=>car._nmMin<=t.max); if(ti<0) ti=NEAR_TIERS.length-1;
+        const T=NEAR_TIERS[ti];
         car._nmDone=true; nearMissCd=NEAR_MISS_CD;
-        nearMissCount++; nearMissSec+=NEAR_MISS_SEC; bonusSec+=NEAR_MISS_SEC;
-        showToast(NEAR_LINES[nearMissCount%NEAR_LINES.length]+" ニアミス -"+NEAR_MISS_SEC.toFixed(1)+"秒", true, 1100); // SCRIPT-v1 §6＋§9（理由＋数値）
+        nearMissCount++; nearMissByTier[ti]++; nearMissSec+=T.sec; bonusSec+=T.sec;
+        showToast(T.line+" ニアミス（"+T.name+"） -"+T.sec+"秒", true, 1100); // SCRIPT-v1 §6＋§9（理由＋数値）
         SE.nearmiss(); vib(VIB.near);
       }
       car._nmMin=null; car._nmHit=false;
@@ -1994,28 +2177,68 @@ function handleTraffic(dt, prevPos){
     car._prevRel=rel;
     if(Math.abs(rel)>HIT_WIN) continue;
     if(pen<0) continue;
+    /* ---- v1.6: 帰り・追撃の他車接触は「吹き飛ばし＋ブースト」に統一 ----
+       本人の設計変更（ドリフト中に当てるのは難しい→通常走行でも成立させる）。
+       深い接触・擦りの区別なく、他車に触れたら相手が吹き飛んで自車が加速する。
+       減速・コンボ没収・疾走リセット・ドリフト解除は一切しない。ライバルへの
+       接触は「撃破」として従来の +3秒を維持する。壁・路外など他車以外の
+       ペナルティと、行きの接触ペナルティは従来どおり（下の out 分岐）。 */
+    if(state==="back"){
+      if(pen>=GRAZE_DEPTH){ if(hitCooldown>0 || gameClock<=(car._graceUntil||0)) continue;
+        hitCooldown=0.35; car._graceUntil=gameClock+3; }
+      else { if(grazeCooldown>0 || gameClock<=(car._grazeUntil||0)) continue;
+        grazeCooldown=0.4; car._grazeUntil=gameClock+1.5; }
+      HIT_STATS.full++;
+      smashCar(car);
+      if(DEBUG_HITBOX) console.log("[hitbox] SMASH rel="+Math.round(rel)+" dx="+dx.toFixed(2)+" pen="+pen.toFixed(2));
+      continue;
+    }
     if(pen>=GRAZE_DEPTH){
       // 深い接触（正面・追突・割り込み）。同じ車とは3秒間再衝突しない（従来どおり）
       if(hitCooldown>0 || gameClock<=(car._graceUntil||0)) continue;
       if(speed>car.speed) speed=car.speed*0.92;
       hitCooldown=1.0; car._graceUntil=gameClock+3; safeStreak=0; HIT_STATS.full++;
       vib(VIB.hit); // v0.6: 全面接触のバイブ
-      if(state==="out"){ damageCargo(10,"あっ…ぶつかっちゃった（荷物 -10）"); SE.hit(); }
-      else { combo=0; comboTimer=0; dashBonus=0; dashTimer=0; cancelDrift(); SE.hit(); // v0.3: 全面接触で疾走リセット。v0.4.4: ドリフトも不成立終了（dashMaxReached はランの最大記録として保持）
-        if(car===rivalCar){ /* ライバルとの接触はボーナスなしで継続 */ }
-        showToast("っ……！", true, 900); } // SCRIPT-v1 §6: 接触時は小声（クールダウンは hitCooldown が担保）
+      damageCargo(10,"あっ…ぶつかっちゃった（荷物 -10）"); SE.hit();
       if(DEBUG_HITBOX) console.log("[hitbox] FULL rel="+Math.round(rel)+" dx="+dx.toFixed(2)+" pen="+pen.toFixed(2));
     } else {
       // 側面の軽い擦り：相対速度がなくても（並走でも）発生する
       if(grazeCooldown>0 || gameClock<=(car._grazeUntil||0)) continue;
       grazeCooldown=0.5; car._grazeUntil=gameClock+1.5; HIT_STATS.graze++;
       vib(VIB.graze); // v0.6: 擦りのバイブ
-      if(state==="out"){ damageCargo(3,"すりっ…荷物が擦れた（荷物 -3）"); beep(300,0.08,"square",0.05,200); }
-      else { combo=Math.floor(combo/2); dashBonus=Math.floor(dashBonus/2); dashTimer=0; cancelDrift(); beep(300,0.08,"square",0.05,200); // v0.3: 擦りで疾走半減。v0.4.4: ドリフトも不成立終了
-        showToast("すりっ…！ コンボ半減", true, 1000); }
+      damageCargo(3,"すりっ…荷物が擦れた（荷物 -3）"); beep(300,0.08,"square",0.05,200);
       if(DEBUG_HITBOX) console.log("[hitbox] GRAZE rel="+Math.round(rel)+" dx="+dx.toFixed(2)+" pen="+pen.toFixed(2));
     }
   }
+}
+/* ---- v1.6: 吹き飛ばし（帰り・追撃の他車接触の統一挙動） ----
+   相手は横方向へ大きく弾かれ、スピン＋跳ねを伴って約1秒で画面外まで飛ぶ。
+   飛んでいる間は car.fly が立ち、判定・交通挙動から外れる（幽霊化）。
+   自車は即時加速＋短い加速ブースト。コンボは追い越しと同格に数える
+   （passBonus の上限6秒も共有）。ドリフト中でも数値差は付けない。 */
+function smashCar(car){
+  const dir = car.offset>playerX? 1 : (car.offset<playerX? -1 : (Math.random()<0.5?-1:1));
+  car.fly={ t:0, dur:1.05+Math.random()*0.25,
+            vx: dir*(1.9+Math.random()*0.7),          // 横速度（offset単位/秒）。接触点はカメラに近く
+            // 遠近が広いため速すぎると0.3秒で画面外へ出て見えない。1.9〜2.6なら約0.6〜0.8秒は
+            // 画面内で回転＋跳ねが見え、終了時には offset 2.0〜3.4 で完全に画面外まで飛ぶ。
+            rot:(Math.random()<0.5?-1:1)*(6.5+Math.random()*3.5), // スピン（rad/秒）
+            hop: 1.15+Math.random()*0.5 };            // 跳ねの大きさ（車高比）
+  car._smashed=true; car._nmDone=true; car.braking=false; car.lcTarget=null;
+  smashCount++;
+  speed=Math.min(speed+MAX_SPEED*SMASH_BOOST_FRAC, MAX_SPEED*1.30);
+  boostT=Math.max(boostT, SMASH_BOOST_T);
+  SE.smash(); vib(VIB.hit);
+  const w=$("cvWrap"); w.classList.remove("shake"); void w.offsetWidth; w.classList.add("shake");
+  setTimeout(()=>w.classList.remove("shake"), 340); // 衝突の小シェイク（カットインと同じ仕組み）
+  if(car===rivalCar && rivalState==="active"){
+    // ライバルへの接触は「撃破」: 従来の撃破ボーナス（+3秒・コンボ+3）を維持
+    rivalState="done"; bonusSec+=3; combo+=3; comboMax=Math.max(comboMax,combo); comboTimer=4;
+    showToast("……営業車、なめんなよ", false, 2200); SE.go(); return;
+  }
+  combo++; comboMax=Math.max(comboMax,combo); comboTimer=4;
+  if(passBonus<6){ const gain=Math.min(0.12*comboMult, 6-passBonus); passBonus+=gain; bonusSec+=gain; }
+  showToast("💥 吹き飛ばした！", true, 800);
 }
 function onPassOut(car){
   // 近くをうまくかわしたら「接触回避」で社畜+
@@ -2083,9 +2306,11 @@ function updateOutbound(dt, playerSeg, spdPct, steer, braking){
   prevSteerOut=steer;
 }
 function updateReturn(dt){
-  backTime+=dt;
+  // v1.6: 帰り（leg2）と追撃（leg3）でタイマーを分ける。疾走・コンボは両レッグ共通。
+  if(leg===3) chaseTime+=dt; else backTime+=dt;
   // v0.3 疾走加速：接触も擦りもせず走り続ける間だけ積み上がる
   // v0.4.4: ドリフト中はタイマーを止める（制御された滑りは無接触の内側。リセットはしない）
+  // v1.6: 吹き飛ばしは疾走をリセットしない（接触が正のプレイになったため、タイマーは走行時間で進む）
   if(!drifting){ dashTimer+=dt;
     while(dashTimer>=DASH_EVERY_SEC){ dashTimer-=DASH_EVERY_SEC;
       if(dashBonus<DASH_MAX_KMH){ dashBonus=Math.min(DASH_MAX_KMH, dashBonus+DASH_STEP_KMH);
@@ -2093,12 +2318,12 @@ function updateReturn(dt){
         if(dashBonus>=DASH_MAX_KMH && !dashMaxVoiced){ dashMaxVoiced=true; // SCRIPT-v1 §6: 疾走が伸びきった時の心の声
           showToast("誰も俺を止められねえ", true, 1300); }
         else if(dashBonus%12===0) showToast("🔥 疾走 +"+dashBonus+" km/h", true, 900); } } }
-  if(!overtime&&backTime>TEIJI_LIMIT){ overtime=true;
+  if(leg===2 && !overtime&&backTime>TEIJI_LIMIT){ overtime=true;
     showToast("残業確定…でも、完走しよう", true, 1800); SE.warn(); }
   if(comboTimer>0){ comboTimer-=dt; if(comboTimer<=0) combo=0; }
-  // 煽りイベント（中盤・1回）
+  // 煽りイベント（中盤・1回・帰りのみ）
   const prog=position/trackLength;
-  if(rivalState==="none"&&prog>0.40){
+  if(leg===2 && rivalState==="none"&&prog>0.40){
     rivalState="active";
     const z=(position+2800)%trackLength;
     const st=CAR_TYPES.find(t=>t.kind==="sports");
@@ -2119,6 +2344,7 @@ function resetCommon(){
   driftDirty=false; driftVis=0; smoke=[]; smokeAcc=0;
   driftBonusCount=0; dashMaxReached=0; dashMaxVoiced=false; driftVoiced=false; // v0.5 脚本ボイス用
   nearMissCount=0; nearMissSec=0; nearMissCd=0; camDepthCur=CAM_DEPTH; // v0.6 ニアミス／FOVリセット
+  smashCount=0; nearMissByTier=[0,0,0]; // v1.6: レッグ単位の吹き飛ばし／ニアミス段階カウント（通算は runData 側で合算）
   monoT=9; lastMonoIdx=-1;
   toastQueue.length=0; // 前ランのテロップを持ち越さない
 }
@@ -2144,6 +2370,8 @@ function showOpening(){
 let routeLabels=[];
 function shortSecName(name){
   if(!name) return "";
+  if(name.includes("課長")) return "課長宅"; // v1.6: 追撃コース
+  if(name.includes("住宅")) return "住宅街"; // v1.6: 追撃コース
   if(name.includes("浜崎橋")) return "浜崎橋JCT";
   if(name.includes("首都高入口")) return "入口";
   if(name.includes("都心環状線")) return "C1都心";
@@ -2181,6 +2409,8 @@ function updateRouteCur(){
 }
 function startOutbound(){
   resetCommon();
+  leg=1; runData=null; chaseTime=0; legendMode="back"; // v1.6
+  newRunSeed(); // v1.6: ランごとに交通シードを変える
   cargo=100; shachiku=0; outTime=0; sunsetProgress=0;
   buildTrack(courseOut());
   buildProgressMarkers();
@@ -2248,6 +2478,10 @@ function ringOnce(){ beep(1046,0.14,"sine",0.06); setTimeout(()=>beep(1318,0.16,
 function showIncomingCall(){
   stopBgm("iki"); // v1.5: 着信（呼び出し音）に入るタイミングで行きBGMを止める
   bossStage=-1; // 着信中
+  // v1.6: カットイン文言を1回目の定型に戻す（追撃カットインで書き換えた文言を持ち越さない）
+  bossRetort="（……なんだその文句は）";
+  const bl0=document.querySelector("#heroCutin .bcLine");
+  if(bl0) bl0.innerHTML="上等だ。<br>最速で帰ってやる";
   const box=$("storyContent");
   box.innerHTML='<div class="callPanel vib" id="callPanel"><div class="callIcon">📱</div>'+
     '<div class="callName">課長</div><div class="callSub">着信中…</div>'+
@@ -2272,6 +2506,7 @@ function answerCall(){
     '<div class="callBubble" id="bossMsg2" style="display:none">あと何分で戻れる？</div>'+
     '<div class="callNote">――定時（90秒）で戻れたら、今日は勝ちだ。</div></div>';
   const bc=BOSS_COMPLAINTS[Math.floor(Math.random()*BOSS_COMPLAINTS.length)];
+  firstComplaint=bc; // v1.6: 追撃の2回目の小言で同じ文句を引かないために覚える
   $("bossMsg1").textContent="おつかれ。"+bc;
   try{ window.__bossDebug=()=>({ stage:bossStage, msg1:$("bossMsg1")?$("bossMsg1").textContent:"", retort:bossRetort }); }catch(e){}
   SE.msg();
@@ -2315,6 +2550,7 @@ function hideHeroCutin(){
   const c=$("heroCutin"); c.classList.add("out");
   setTimeout(()=>{ c.classList.remove("on","out");
     $("ovStory").classList.remove("show");
+    if(cutinNext){ const f=cutinNext; cutinNext=null; f(); return; } // v1.6: 追撃カットインの行き先
     if(!titleRevealed()) showTitleReveal(); // v0.4.3: 初回のみ正式タイトル開示（テロップに代える）
     else goLegend();
   }, 320);
@@ -2345,7 +2581,9 @@ function hideTitleReveal(){
   }, 700);
 }
 function goLegend(){
-  state="legend"; legendT=0; setPhaseUI(); // v0.5: sunsetProgress は story から引き継ぎ、黄昏へ進める
+  state="legend"; legendMode="back"; legendT=0; setPhaseUI(); // v0.5: sunsetProgress は story から引き継ぎ、黄昏へ進める
+  document.querySelector("#legendTelop .telopMain").textContent="伝説の幕開け";
+  $("btnGoBack").textContent="🔥 帰社スタート";
   backTopBonus=shachiku*0.0008; comboMult=1+shachiku/100;
   $("legendDetail").innerHTML=
     "社畜メーター "+Math.floor(shachiku)+" を全解放！<br>"+
@@ -2360,7 +2598,8 @@ function goLegend(){
 function startReturn(){
   const keepShachiku=shachiku;
   resetCommon(); shachiku=keepShachiku;
-  backTime=0;
+  leg=2; backTime=0; // v1.6
+  srand(runSeed^0xBEEF); // v1.6: レッグごとにシードをずらす
   buildTrack(courseBack());
   buildProgressMarkers();
   seedTraffic(65, 0.24, 0.44, 3000);
@@ -2379,32 +2618,31 @@ const RANKS=[
   { max:90,     rank:"C", title:"ギリギリ帰社マン" },
   { max:Infinity,rank:"D", title:"残業確定の社畜戦士" },
 ];
+const RANK_COMMENTS={ S:"「見たか。これが営業車の本気だ」", A:"「上出来だ。金曜、取り返した」",
+  B:"「まあ、こんなもんだろ」", C:"「……課長の顔が浮かぶ。悔しい」", D:"「次は、絶対に取り返す」" }; // SCRIPT-v1 §7
 function finishReturn(){
   // v1.5: クリア後も帰りBGMを流し続ける（止めるのは「もう1往復」=startOutbound の
   // stopAllBgm、「タイトルへ戻る」=goTitle の stopAllBgm のタイミング）
+  if(leg===3){ finishChase(); return; } // v1.6: 追撃ゴールは最終フローへ
   state="result"; setPhaseUI();
   vib(VIB.goal); // v0.6: ゴールのバイブ
   const eff=Math.max(1, backTime-bonusSec);
   let ri=RANKS.findIndex(r=>eff<=r.max); if(ri<0) ri=RANKS.length-1;
   if(overtime&&ri<2) ri=2; // 残業確定は評価をB以下に下げる
   const R=RANKS[ri];
-  const prev=loadBest();
-  const isNew=!prev||eff<prev.bestReturn;
-  saveBest({ bestReturn: isNew? eff : prev.bestReturn,
-             bestTitle: isNew? R.title : prev.bestTitle,
-             bestCargo: Math.max(prev?prev.bestCargo||0:0, Math.ceil(cargo)),
-             plays: (prev&&prev.plays?prev.plays:0)+1 });
-  // v1.1: 表示（小数1位）とランキング登録値の丸めを統一する。
-  // 表示値 effShown を先に確定し、画面表示・共有文・登録 timeMs の全てをこの値から導く
-  // （従来は eff の生浮動小数を表示側 toFixed と登録側 Math.round で別々に丸め、0.1秒ずれる場合があった）。
+  // v1.1: 表示（小数1位）の丸めを統一する（表示値 effShown を先に確定して各表示へ流す）
   const effShown=Math.round(eff*10)/10;
+  /* v1.6: ここは「帰社リザルト（中間）」。帰りの記録は runData に退避し、
+     ベスト保存とランキング登録は最終リザルト（合計タイム）へ移行した。 */
+  runData={ backRaw:backTime, backBonus:bonusSec, backEff:eff, backEffShown:effShown,
+            rank:R.rank, title:R.title, overtime:overtime,
+            nearCount:nearMissCount, nearSec:nearMissSec, nearByTier:nearMissByTier.slice(),
+            smash:smashCount, driftCount:driftBonusCount, dashMax:dashMaxReached,
+            comboMax:comboMax, rivalDone:(rivalState==="done"), passBonus:passBonus };
   $("rankTitle").textContent=R.rank+"ランク「"+R.title+"」";
-  $("rankBand").textContent="判定タイム "+fmtTime(effShown)+(overtime?"（残業のため評価調整）":"（定時帰社！）");
-  // SCRIPT-v1 §7: ランク別・主人公の心の声
-  const RANK_COMMENTS={ S:"「見たか。これが営業車の本気だ」", A:"「上出来だ。金曜、取り返した」",
-    B:"「まあ、こんなもんだろ」", C:"「……課長の顔が浮かぶ。悔しい」", D:"「次は、絶対に取り返す」" };
+  $("rankBand").textContent="帰社タイム（判定） "+fmtTime(effShown)+(overtime?"（残業のため評価調整）":"（定時帰社！）")+" ― 最終判定は合計タイム";
   $("rankComment").textContent=RANK_COMMENTS[R.rank]||"";
-  $("newRecord").style.display=isNew? "inline-block":"none";
+  $("newRecord").style.display="none"; // v1.6: NEW RECORD は最終リザルト（合計）で判定
   $("resTime").textContent=fmtTime(backTime);
   $("resBonus").textContent="-"+passBonus.toFixed(1)+"秒";
   $("resRival").textContent= rivalState==="done"? "-3.0秒" : "—";
@@ -2421,15 +2659,195 @@ function finishReturn(){
   $("resShachi").textContent=Math.floor(shachiku);
   $("resCombo").textContent=comboMax+" コンボ";
   $("resTeiji").textContent= overtime? "残業確定（+"+fmtTime(backTime-TEIJI_LIMIT)+"）" : "定時クリア！";
-  resultData={ eff:effShown, rank:R.rank, title:R.title, backTime:backTime, isNew:isNew };
-  RankingUI.onResult(Math.round(effShown*1000), R.rank); // v1.0-rc: ランキング登録候補をセット（v1.1: 表示値と同一の丸め）
+  resultData=null; // v1.6: 共有・登録は最終リザルトで確定させる
+  // v1.6: ランキング登録ブロックは最終リザルトへ移設するため中間では隠し、追撃導線を出す
+  $("rankRegBox").style.display="none";
+  $("btnShare").style.display="none";
+  $("chaseBeat").style.display="";
   $("ovResult").classList.add("show");
   // v0.5: 検印スタンプを叩き込む（着地に合わせてSE＋バイブ）
   const stampEl=$("rankStamp"); stampEl.textContent=R.rank;
   stampEl.classList.remove("show"); void stampEl.offsetWidth; stampEl.classList.add("show");
   setTimeout(()=>{ SE.stamp(); vib(VIB.stamp); }, 250);
+}
+/* ================= v1.6: 第3フェイズ「追撃」フロー =================
+   帰社リザルト（中間）→「課長はもう帰っていた」→課長へ電話（2回目の小言＋
+   コーヒーのコールバック）→カットイン再び→「追撃の幕開け」→追撃走行→
+   課長宅前ゴール→最終ムービー→最終リザルト（合計タイムで判定・登録）。 */
+let chaseBossStage=0, chaseBossTimer=null;
+function showChaseBeat(){
+  $("ovResult").classList.remove("show");
+  state="story"; sunsetProgress=1; setPhaseUI();
+  const box=$("storyContent");
+  $("ovStory").classList.add("show");
+  box.innerHTML='<div class="panel"><div style="font-size:17px;font-weight:900;font-family:var(--font-head);">🏢 本社 ― 帰社</div>'+
+    '<div class="sub" style="text-align:left;line-height:1.9">「ただいま戻りましたー！」<br>'+
+    '……課長の席は、空っぽだった。デスクの上に、付箋が1枚。<br>'+
+    '『先に帰るね。おつかれさま〜』<br>'+
+    '（あの電話の後、真っ先に帰った……だと？）</div>'+
+    '<button class="bigBtn" id="btnChaseCall">📱 課長に電話する</button></div>';
+  box.onclick=null;
+  $("btnChaseCall").onclick=e=>{ e.stopPropagation(); showChaseCall(); };
+}
+function showChaseCall(){
+  chaseBossStage=0;
+  const box=$("storyContent");
+  // 2回目の小言はプールから1件（1回目と違うもの）。締めはコーヒーのコールバック（プール5件目の発展）
+  let bc=BOSS_COMPLAINTS[Math.floor(Math.random()*BOSS_COMPLAINTS.length)];
+  if(bc===firstComplaint) bc=BOSS_COMPLAINTS[(BOSS_COMPLAINTS.indexOf(bc)+1)%BOSS_COMPLAINTS.length];
+  box.innerHTML='<div class="callPanel" id="callPanel"><div class="callIcon">📞</div>'+
+    '<div class="callName">課長</div><div class="callSub">通話中…</div>'+
+    '<div class="callBubble" id="chaseMsg1">お、もう着いたのか。早かったね</div>'+
+    '<div class="callBubble" id="chaseMsg2" style="display:none">'+rankEscapeHtml(bc)+'</div>'+
+    '<div class="callBubble" id="chaseMsg3" style="display:none">じゃあさ、俺のコーヒー熱めで買って、家まで持ってきてくれる？ 近いからさ。冷める前に頼むよ</div>'+
+    '<div class="callNote">――コーヒーが冷める前に、課長宅へ届けろ。</div></div>';
+  SE.msg();
+  box.onclick=()=>chaseBossAdvance();
+  chaseBossTimer=setTimeout(chaseBossSecond, 1300);
+}
+function chaseBossSecond(){
+  if(chaseBossStage!==0) return; chaseBossStage=1;
+  const b=$("chaseMsg2"); if(b) b.style.display="block";
+  SE.msg();
+  chaseBossTimer=setTimeout(chaseBossThird, 1500);
+}
+function chaseBossThird(){
+  if(chaseBossStage!==1) return; chaseBossStage=2;
+  const b=$("chaseMsg3"); if(b) b.style.display="block";
+  SE.msg();
+  chaseBossTimer=setTimeout(showChaseCutin, 1900);
+}
+function chaseBossAdvance(){
+  if(chaseBossStage===0){ if(chaseBossTimer) clearTimeout(chaseBossTimer); chaseBossSecond(); }
+  else if(chaseBossStage===1){ if(chaseBossTimer) clearTimeout(chaseBossTimer); chaseBossThird(); }
+  else if(chaseBossStage===2){ if(chaseBossTimer) clearTimeout(chaseBossTimer); showChaseCutin(); }
+}
+function showChaseCutin(){
+  if(chaseBossStage!==2) return; chaseBossStage=3;
+  bossRetort="（……家まで、だと）"; // カットインの心の声（2回目用）
+  const bl=document.querySelector("#heroCutin .bcLine");
+  if(bl) bl.innerHTML="上等だ。<br>冷める前に届けてやる";
+  cutinNext=goChaseLegend;
+  showHeroCutin();
+}
+function goChaseLegend(){
+  state="legend"; legendMode="chase"; legendT=0; setPhaseUI();
+  document.querySelector("#legendTelop .telopMain").textContent="追撃の幕開け";
+  $("legendDetail").innerHTML=
+    "課長は家で待っている。コーヒーが冷める前に、届けろ。<br>"+
+    "最終判定は <b>帰社＋追撃の合計タイム</b> ／ コンボ倍率 ×"+comboMult.toFixed(1)+" は継続中"+
+    "<br>💥 他車に触れれば、吹き飛ばして加速できる";
+  $("legendTelop").classList.add("show");
+  $("btnGoBack").textContent="🔥 追撃スタート";
+  SE.go();
+}
+function startChase(){
+  const keepShachiku=shachiku;
+  resetCommon(); shachiku=keepShachiku;
+  leg=3; chaseTime=0;
+  srand(runSeed^0xCA5E); // v1.6: レッグごとにシードをずらす
+  buildTrack(courseChase());
+  buildProgressMarkers();
+  seedTraffic(45, 0.24, 0.44, 3000);
+  state="back"; hideAllOverlays(); setPhaseUI();
+  speed=MAX_SPEED*0.30; boostT=2.0; // 帰りと同じ初期加速
+  playBgm("kaeri");
+  // 最終ムービーは追撃の走行中にプリロードしておく
+  const v=$("endingVideo"); if(v){ try{ v.preload="auto"; v.load(); }catch(e){} }
+  const stg=$("stage"); stg.classList.remove("boot"); void stg.offsetWidth; stg.classList.add("boot");
+  setTimeout(()=>stg.classList.remove("boot"), 1500);
+  showToast("コーヒーが冷める前に、課長宅へ", false, 1900);
+}
+/* ---- 追撃ゴール → 最終ムービー → 最終リザルト ---- */
+const TOTAL_RANKS=[ // 合計タイム（帰社判定＋追撃判定）基準。
+  // 閾値の根拠（BUILD-REPORT-v16）: 帰り単体の S 境界 50秒＋追撃（帰りの約65%長）を
+  // 同密度で換算した約35秒＝85秒を S 境界とし、以下は帰り単体の刻み（+10/+20/+30）を踏襲。
+  // ボット実測の合計は 54.7〜55.9秒（最適運転・吹き飛ばし多用）で、S 内側に十分入る。
+  { max:85,      rank:"S", title:"定時の貴公子" },
+  { max:100,     rank:"A", title:"夕暮れの最速営業" },
+  { max:120,     rank:"B", title:"残業回避の達人" },
+  { max:150,     rank:"C", title:"ギリギリ帰社マン" },
+  { max:Infinity,rank:"D", title:"残業確定の社畜戦士" },
+];
+function finishChase(){
+  vib(VIB.goal); // ゴールのバイブ
+  speed=0;
+  const chaseEff=Math.max(1, chaseTime-bonusSec);
+  const totalEff=(runData? runData.backEff : 0)+chaseEff;
+  if(runData){ runData.chaseRaw=chaseTime; runData.chaseBonus=bonusSec;
+    runData.chaseEff=chaseEff; runData.chaseEffShown=Math.round(chaseEff*10)/10;
+    runData.totalEff=totalEff; runData.totalShown=Math.round(totalEff*10)/10;
+    runData.chaseSmash=smashCount; runData.chaseNearSec=nearMissSec;
+    runData.chaseNearByTier=nearMissByTier.slice(); runData.chaseDriftCount=driftBonusCount;
+    runData.chaseComboMax=comboMax; runData.chaseDashMax=dashMaxReached; }
+  showEndingMovie();
+}
+let movieDone=false;
+function showEndingMovie(){
+  state="movie"; setPhaseUI(); hideAllOverlays();
+  movieDone=false;
+  stopBgm("kaeri"); // ムービーの音声は動画のものをそのまま使う
+  $("ovMovie").classList.add("show");
+  const v=$("endingVideo");
+  v.onended=()=>finishMovie();
+  v.onerror=()=>finishMovie(); // 読めない環境では最終リザルトへ直行（劣化設計）
+  try{ v.currentTime=0; const p=v.play(); if(p&&p.catch) p.catch(()=>finishMovie()); }catch(e){ finishMovie(); }
+}
+function finishMovie(){
+  if(movieDone) return; movieDone=true;
+  const v=$("endingVideo"); try{ v.pause(); }catch(e){}
+  $("ovMovie").classList.remove("show");
+  showFinalResult();
+}
+function showFinalResult(){
+  state="result"; setPhaseUI();
+  playBgm("kaeri"); // 最終リザルトでも帰りBGMを流し続ける（v1.5の方針を踏襲）
+  const rd=runData||{};
+  const totalShown=rd.totalShown||0;
+  let ri=TOTAL_RANKS.findIndex(r=>totalShown<=r.max); if(ri<0) ri=TOTAL_RANKS.length-1;
+  if(rd.overtime&&ri<2) ri=2; // 帰りで残業確定していたら最終評価もB以下に調整
+  const R=TOTAL_RANKS[ri];
+  const prev=loadBest();
+  const isNew=!prev||prev.bestTotal==null||totalShown<prev.bestTotal;
+  saveBest({ bestTotal: isNew? totalShown : prev.bestTotal,
+             bestTitle: isNew? R.title : prev.bestTitle,
+             bestBack: rd.backEffShown, bestChase: rd.chaseEffShown,
+             bestCargo: Math.max(prev?prev.bestCargo||0:0, Math.ceil(cargo)),
+             plays: (prev&&prev.plays?prev.plays:0)+1 });
+  $("finalRankTitle").textContent=R.rank+"ランク「"+R.title+"」";
+  $("finalRankBand").textContent="合計タイム（判定） "+fmtTime(totalShown)+(rd.overtime?"（帰りの残業のため評価調整）":"");
+  $("finalRankComment").textContent=RANK_COMMENTS[R.rank]||"";
+  $("finalNewRecord").style.display=isNew? "inline-block":"none";
+  $("finBack").textContent=fmtTime(rd.backEffShown);
+  $("finChaseRaw").textContent=fmtTime(rd.chaseRaw);
+  $("finChaseBonus").textContent="-"+(rd.chaseBonus||0).toFixed(1)+"秒";
+  $("finRowChaseBonus").style.display= (rd.chaseBonus||0)>0.001? "" : "none";
+  $("finChase").textContent=fmtTime(rd.chaseEffShown);
+  $("finTotal").textContent=fmtTime(totalShown);
+  const nt=[0,1,2].map(i=>((rd.nearByTier||[])[i]||0)+((rd.chaseNearByTier||[])[i]||0));
+  $("finNear").textContent="超ギリ "+nt[0]+" ・ ギリ "+nt[1]+" ・ 近 "+nt[2]+"（計 -"+((rd.nearSec||0)+(rd.chaseNearSec||0)).toFixed(1)+"秒）";
+  $("finRowNear").style.display= (nt[0]+nt[1]+nt[2])>0? "" : "none";
+  $("finSmash").textContent=((rd.smash||0)+(rd.chaseSmash||0))+"台";
+  const driftTotal=(rd.driftCount||0)+(rd.chaseDriftCount||0);
+  $("finDrift").textContent= driftTotal>0? driftTotal+"回（+"+DRIFT_BOOST_KMH+" km/h × "+DRIFT_BOOST_SEC+"秒）" : "0回";
+  $("finRowDrift").style.display= driftTotal>0? "" : "none";
+  $("finDash").textContent="+"+Math.max(rd.dashMax||0, rd.chaseDashMax||0)+" km/h";
+  $("finCargo").textContent=Math.ceil(cargo)+"%";
+  $("finShachi").textContent=Math.floor(shachiku);
+  $("finCombo").textContent=Math.max(rd.comboMax||0, rd.chaseComboMax||0)+" コンボ";
+  resultData={ eff:totalShown, rank:R.rank, title:R.title, backTime:rd.backRaw, chaseTime:rd.chaseRaw, isNew:isNew, total:true };
+  // ランキング登録ブロックを最終リザルトへ移設し、登録候補は「合計タイム」でセットする
+  const slot=document.querySelector("#ovFinalResult .finalRankSlot");
+  if(slot && $("rankRegBox").parentNode!==slot) slot.appendChild($("rankRegBox"));
+  $("rankRegBox").style.display="";
+  RankingUI.onResult(Math.round(totalShown*1000), R.rank);
+  $("ovFinalResult").classList.add("show");
+  const stampEl=$("finalStamp"); stampEl.textContent=R.rank;
+  stampEl.classList.remove("show"); void stampEl.offsetWidth; stampEl.classList.add("show");
+  setTimeout(()=>{ SE.stamp(); vib(VIB.stamp); }, 250);
   refreshBestLine();
 }
+
 function goTitle(){
   state="title"; stopAllBgm(); hideAllOverlays();
   buildTrack(courseOut()); resetCommon(); sunsetProgress=0;
@@ -2480,9 +2898,25 @@ $("btnStart").onclick=()=>{ ac(); showOpening(); }; // v0.4.2: タイトル→�
 $("btnStartKV").onclick=()=>{ ac(); showOpening(); }; // v0.4.3: KVタイトルからも同じ開始フロー
 $("btnRetryOut").onclick=()=>{ $("ovFail").classList.remove("show"); startOutbound(); };
 $("btnFailTitle").onclick=()=>{ goTitle(); };
-$("btnGoBack").onclick=()=>{ startReturn(); };
+$("btnGoBack").onclick=()=>{ if(legendMode==="chase") startChase(); else startReturn(); }; // v1.6: テロップの行き先を分岐
 $("btnAgain").onclick=()=>{ startOutbound(); };
 $("btnResTitle").onclick=()=>{ goTitle(); };
+/* ---- v1.6: 追撃・ムービー・最終リザルトの導線 ---- */
+$("btnToChase").onclick=()=>{ showChaseBeat(); };
+$("ovMovie").onclick=()=>{ finishMovie(); }; // タップでスキップ
+$("btnFinalAgain").onclick=()=>{ startOutbound(); };
+$("btnFinalTitle").onclick=()=>{ goTitle(); };
+$("btnFinalShare").onclick=()=>{
+  if(!resultData){ showToast("まだ結果がありません", true, 1200); return; }
+  const text="『公道最速は白バンである。』\n"+
+    "合計タイム（判定）"+fmtTime(resultData.eff)+"／"+resultData.rank+"ランク「"+resultData.title+"」"+
+    (resultData.isNew? "（自己ベスト更新！）":"")+"\n"+
+    "帰社 "+fmtTime(resultData.backTime)+" ＋ 追撃 "+fmtTime(resultData.chaseTime)+"\n"+
+    "行きは丁寧に。帰りは、伝説に。\n#公道最速は白バンである";
+  const w=window.open("https://twitter.com/intent/tweet?text="+encodeURIComponent(text), "_blank");
+  if(!w){ try{ navigator.clipboard.writeText(text); }catch(e){}
+    showToast("共有テキストをコピーしました", true, 1500); }
+};
 /* ---- v0.5: 結果を共有（X共有テキスト生成。URLは投稿に含めない運用に合わせ本文のみ） ---- */
 $("btnShare").onclick=()=>{
   if(!resultData){ showToast("まだ結果がありません", true, 1200); return; }
