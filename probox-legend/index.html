@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>公道最速は白バンである。 v1.5.2-wip（オンラインランキング）</title>
+<title>公道最速は白バンである。 v1.5.3-wip（オンラインランキング）</title>
 <!-- v1.1: PWA（manifest＋アイコン）。SW登録は本体スクリプト末尾 -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#05070d">
@@ -378,7 +378,7 @@
       <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.5.2</div>
+      <div class="verTag">v1.5.3</div>
     </div>
   </div>
 
@@ -392,7 +392,7 @@
       <button class="kvRankBtn" id="btnRank2">🏆 ランキング</button>
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.5.2</div>
+      <div class="verTag">v1.5.3</div>
     </div>
   </div>
 
@@ -561,6 +561,10 @@
    初回リビールの挙動に統一。ジングルの再生コード・onended ハンドラ・
    8.2秒フォールバックタイマーを撤去し、BGM テーブルからも参照を削除
    （mp3 ファイル自体はパッケージに残置）。版数表示は「v1.5.2」に更新。
+   v1.5.3-wip: 小パッチ。帰りフェイズの HUD から社畜メーター行を隠す
+   （setPhaseUI で state が back／result の間だけ shachiRow を display:none。
+   社畜は行きで溜めるもので帰りでは増減せず、解放量はリザルト内訳に残る）。
+   行きでは従来どおり表示。版数表示は「v1.5.3」に更新。
    疑似3D（セグメント方式） / 単一HTML / BGMは外部mp3を任意再生
    ===================================================================== */
 const $ = id => document.getElementById(id);
@@ -1779,6 +1783,9 @@ function setPhaseUI(){
   else if(state==="back"){ pl.textContent="帰り：伝説"; pl.className="back"; }
   else { pl.textContent= state==="legend"||state==="story" ? "転換" : "—"; pl.className=""; }
   $("cargoRow").style.opacity = state==="back" ? .45 : 1;
+  // v1.5.3: 社畜メーターは行きで溜めるもの。帰りでは増減せず意味を持たないため
+  // 行ごと隠す（リザルトでも HUD が見える間は隠したままにする）。
+  $("shachiRow").style.display = (state==="back"||state==="result") ? "none" : "";
   $("comboBox").style.display = (state==="back"&&combo>0) ? "block":"none";
   // v1.5: 配送後の画面（納品パネル〜独白〜着信＝story 一式）ではゲームHUDを隠す。
   // 社畜メーター等の数値が演出の後ろに透けると世界観が壊れるため。運転中は従来どおり。
