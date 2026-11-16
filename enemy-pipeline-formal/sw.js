@@ -1,5 +1,5 @@
 // Enemy Pipeline FORMAL PWA service worker（正式版専用キャッシュ。デモ版とは分離）
-const CACHE = "enemy-pipeline-formal-v9";
+const CACHE = "enemy-pipeline-formal-v10";
 const CORE = [
   "./",
   "./index.html",
@@ -31,6 +31,7 @@ const CORE = [
   "./assets/cctv_vessel_expose.png",
   "./assets/vessel04_goliath.webp",
   "./assets/vessel09_ghosttape.webp",
+  "./assets/vessel13_weaver.webp",
   "./assets/vessel_hangar_bg.webp",
   "./assets/audio/amb_fan.wav",
   "./assets/audio/bgm_intro.mp3",

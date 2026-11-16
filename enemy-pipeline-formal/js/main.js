@@ -125,6 +125,17 @@ function markGoliathUnlocked() {
   try { window.localStorage.setItem(GOLIATH_UNLOCK_STORE, "1"); }
   catch { /* storage unavailable */ }
 }
+// 解禁キャラ3 VESSEL 13 "WEAVER" の解禁フラグ（実装追補 DESIGN-WEAVER-IMPL-ADDENDUM.md §1、2026-11-16 確定）。
+// 解禁条件: VESSEL 09 "GHOST-TAPE" を使ってランをクリアした時点。解禁連鎖は 07 → GOLIATH → GHOST-TAPE → WEAVER。
+const WEAVER_UNLOCK_STORE = "enemy-pipeline-formal-weaver-unlock-v1";
+function weaverUnlocked() {
+  try { return window.localStorage.getItem(WEAVER_UNLOCK_STORE) === "1"; }
+  catch { return false; }
+}
+function markWeaverUnlocked() {
+  try { window.localStorage.setItem(WEAVER_UNLOCK_STORE, "1"); }
+  catch { /* storage unavailable */ }
+}
 async function maybeAlertIntro() {
   if (alertIntroSeen() || !battle || session.phase !== "combat") return;
   if (battle.player.hp <= 0 || battle.enemy.dead) return;
@@ -190,6 +201,17 @@ const CODE_BY_ID = {
   ghost_reel_recycle: "REC",
   ghost_phantom_tape: "PHA",
   ghost_silence_end: "SIL",
+  weaver_laying_arm: "LAY",
+  weaver_armor_fold: "FLD",
+  weaver_barbed_wire: "BWR",
+  weaver_audio_mine: "AMN",
+  weaver_decoy_spin: "DSP",
+  weaver_double_wire: "DWR",
+  weaver_echo_mine: "EMN",
+  weaver_glue_wire: "GWR",
+  weaver_leg_lock: "LLK",
+  weaver_reposition: "RPS",
+  weaver_full_detonation: "FDT",
   echo_search: "SCH",
   foil_sort: "SRT",
   dense_punch: "DPU",
@@ -211,6 +233,7 @@ const INK_BY_CATEGORY = {
   TEC: "tactic",
   DEF: "stealth",
   ACOUSTIC: "acoustic",
+  TRAP: "tactic",
 };
 
 function isCurse(card) {
@@ -223,6 +246,7 @@ function blurb(card) {
   if (isCurse(card)) return "呪装。リーダは受け付けない";
   if (card.requirements.includes("target_stun_ge_1")) parts.push("要スタン");
   if (card.requirements.includes("target_stun_max")) parts.push("要スタン最大");
+  if (card.requirements.includes("self_noise_le_0")) parts.push("要 静寂");
   for (const effect of card.effects) {
     if (effect.type === "damage" && effect.target === "player") parts.push(`自傷 ${effect.value}`);
     else if (effect.type === "damage" && effect.pierce) parts.push(`ダメージ ${effect.value}（貫通）`);
@@ -231,7 +255,7 @@ function blurb(card) {
     if (effect.type === "stun") parts.push(`スタン +${effect.value}`);
     if (effect.type === "block") parts.push(`防護 +${effect.value}`);
     if (effect.type === "cancel_next_intent") parts.push("次の行動を潰す");
-    if (effect.type === "vulnerable") parts.push("脆弱 +1");
+    if (effect.type === "vulnerable") parts.push(`脆弱 +${effect.value || 1}`);
     if (effect.type === "instant_kill") parts.push("その場で制圧");
     if (effect.type === "add_energy") parts.push(effect.overcharge ? `電力 +${effect.value}（上限突破）` : `電力 +${effect.value}`);
     if (effect.type === "add_card_to_discard") parts.push("捨て札に呪装");
@@ -245,15 +269,43 @@ function blurb(card) {
     if (effect.type === "damage_silence_bonus") parts.push(`ダメージ ${effect.value}（静寂時 +${effect.per}）`);
     if (effect.type === "stun_if_silence") parts.push("使用後ノイズ0以下で スタン +1");
     if (effect.type === "stun_draw_if_max") parts.push(`スタン +${effect.value}（最大到達で1ドロー）`);
-    if (effect.type === "scrap_noise") parts.push("敵の次の攻撃を半減");
+    if (effect.type === "scrap_noise") parts.push((effect.value || 1) > 1 ? `敵の次の攻撃${effect.value}回を半減` : "敵の次の攻撃を半減");
     if (effect.type === "draw_bonus_next") parts.push("次ターンのドロー +1");
     if (effect.type === "recycle_discard") parts.push("捨て札から1枚回収（なければ1ドロー）");
     if (effect.type === "search") parts.push("山札から1枚選んで手札へ");
+    if (effect.type === "search_top") parts.push(`山札の上${effect.value || 3}枚から1枚を手札へ（残りは捨て札）`);
     if (effect.type === "discard_then_draw") parts.push(`手札1枚を捨てて${effect.value || 1}枚ドロー`);
+    if (effect.type === "exhaust_curse_in_hand") parts.push(`手札の呪い1枚を廃棄し${effect.value || 0}枚ドロー`);
+    if (effect.type === "trap_sacrifice_draw") parts.push(`設置中の罠1つを取り除き${effect.value || 0}枚ドロー`);
     if (effect.type === "damage_per_exhausted") parts.push(`ダメージ ${effect.value}＋この戦闘の廃棄枚数×${effect.per}`);
     if (effect.type === "weaken_next") parts.push("敵の次の攻撃を半減");
     if (effect.type === "damage_stance_bonus") parts.push(`ダメージ ${effect.value}（${effect.stance || "COVER"}時 +${effect.per}）`);
-    if (effect.type === "power") parts.push(effect.kind === "energy_per_turn" ? `戦闘中 毎ターン PWR +${effect.value}` : "戦闘中 持続効果");
+    // プール大拡充バッチB／C の新規効果（解析テキスト）
+    if (effect.type === "damage_stun_bonus") parts.push(`ダメージ ${effect.value}＋スタン蓄積×${effect.per}（最大+${effect.cap}）`);
+    if (effect.type === "damage_if_hand_le") parts.push((effect.maxHand || 0) > 0
+      ? `ダメージ ${effect.value}（手札${effect.maxHand}枚以下で +${effect.per}）`
+      : `ダメージ ${effect.value}（手札がこのカードだけなら +${effect.per}）`);
+    if (effect.type === "damage_hold_bonus") parts.push(`ダメージ ${effect.value}（保持中 +${effect.per}）`);
+    if (effect.type === "damage_per_negative_noise") parts.push(`ダメージ ${effect.value}＋逆位相×${effect.per}`);
+    if (effect.type === "block_per_trap") parts.push(`防護 +${effect.value}＋設置罠×${effect.per}（最大+${effect.cap}）`);
+    if (effect.type === "next_attack_bonus") parts.push(`次の攻撃 +${effect.value}`);
+    if (effect.type === "trap" && effect.kind === "audio_mine") parts.push(`設置：NOISE ${effect.minNoise || 3}以上で敵行動時に発動 ${effect.damage}ダメージ＋行動キャンセル`);
+    if (effect.type === "trap" && effect.kind === "echo_mine") parts.push(`設置：NOISE ${effect.minNoise || 2}以上で敵行動時に発動 ${effect.damage}ダメージ＋スタン +${effect.stun || 0}`);
+    if (effect.type === "trap" && effect.kind === "glue_wire") parts.push(`設置：敵の非攻撃行動時に発動 スタン +${effect.stun || 0}`);
+    if (effect.type === "trap" && (effect.kind === "barbed_wire" || effect.kind === "double_wire")) parts.push(`設置：敵の攻撃時に発動 ${effect.damage}ダメージ＋その攻撃 −${effect.cut || 0}`);
+    if (effect.type === "trap" && effect.kind === "decoy_mine") parts.push(`設置：敵行動時に発動 ${effect.drawOnTrigger || 1}ドロー`);
+    if (effect.type === "trap" && effect.kind === "alarm_wire") parts.push(`設置：敵行動時に発動 スタン +${effect.stun || 0}＋防護 +${effect.selfBlock || 0}`);
+    if (effect.type === "trap" && effect.kind === "spark_trap") parts.push(`設置：敵の攻撃時に発動 ${effect.damage}ダメージ＋その攻撃 −${effect.cut || 0}＋防護 +${effect.selfBlock || 0}`);
+    if (effect.type === "reposition") parts.push("設置中の罠1つを手札へ戻す＋1ドロー");
+    if (effect.type === "detonate_all") parts.push("設置中の罠をすべて即時起爆");
+    if (effect.type === "power") parts.push(
+      effect.kind === "energy_per_turn" ? `戦闘中 毎ターン PWR +${effect.value}`
+      : effect.kind === "block_per_turn" ? `戦闘中 毎ターン 防護 +${effect.value}`
+      : effect.kind === "vent_per_turn" ? `戦闘中 毎ターン ノイズ −${effect.value}`
+      : effect.kind === "turn_start_noise_damage" ? `戦闘中 毎ターン 開始時ノイズ×${effect.value}ダメージ`
+      : effect.kind === "standby_armor_up" ? `戦闘中 待機防護の変換率 +${effect.value}`
+      : effect.kind === "trap_damage_up" ? `戦闘中 罠ダメージ +${effect.value}`
+      : "戦闘中 持続効果");
     if (effect.type === "tread") parts.push("このターン被ダメをノイズ分軽減");
     if (effect.type === "draw_penalty_next") parts.push(`次ドロー -${effect.value}`);
     if (effect.type === "reset_noise") parts.push("ノイズ リセット");
@@ -287,6 +339,7 @@ function face(card) {
     stance: card.stance_change || "",
     ink: INK_BY_CATEGORY[card.category] || "cqc",
     exhaust: !!card.isExhaust,
+    trap: (card.effects || []).some((effect) => effect.type === "trap"),
     curse,
     oversized,
     flavor: card.flavor || "",
@@ -305,6 +358,9 @@ function reasonText(reason) {
   if (reason === "dead") return "すでに無力";
   if (reason === "down") return "通信途絶";
   if (reason === "curse") return "呪装は拒否";
+  if (reason === "trap_limit") return "設置上限";
+  if (reason === "no_traps") return "設置中の罠なし";
+  if (reason === "self_noise_le_0") return "要 静寂";
   return "読取拒否";
 }
 
@@ -410,6 +466,8 @@ const ui = {
   ambushDetail: $("ambush-detail"),
   relics: $("relics"),
   relicsLabel: $("relics-label"),
+  traps: $("traps"),
+  trapsLabel: $("traps-label"),
   relicTip: $("relic-tip"),
   relicTipName: $("relic-tip-name"),
   relicTipBody: $("relic-tip-body"),
@@ -856,6 +914,12 @@ function makeCard(spec) {
   exhaustTag.textContent = "[ 廃棄 ]";
   exhaustTag.hidden = !spec.exhaust;
 
+  // 『アナログ・トラップ機構』: 罠カードの「設置」タグ（廃棄タグと同じ流儀・左下のタグ列）
+  const trapTag = document.createElement("span");
+  trapTag.className = "punchcard__trap";
+  trapTag.textContent = "[ 設置 ]";
+  trapTag.hidden = !spec.trap;
+
   // 『磁気ホールド』保持札のバッジ（このターン限り PWR −1）
   const holdTag = document.createElement("span");
   holdTag.className = "punchcard__hold";
@@ -879,7 +943,7 @@ function makeCard(spec) {
   stance.textContent = spec.stance || "—";
   foot.append(noise, stance);
 
-  card.append(head, stripe, holes, name, exhaustTag, holdTag, rules, text, foot);
+  card.append(head, stripe, holes, name, exhaustTag, trapTag, holdTag, rules, text, foot);
   card.addEventListener("animationend", () => {
     card.classList.remove("is-new", "is-rise");
   }, { once: true });
@@ -1055,8 +1119,28 @@ function renderCombat() {
   renderStance();
   renderNoise();
   renderEnemyIntent();
+  renderTraps();
   updateLowHpBgm();
   updateBossAlert();
+}
+
+// 『アナログ・トラップ機構』: 設置中トラップのチップ列（左パネル・RELICS の流儀）。
+// 戦闘中かつ設置がある時だけ出し、発動・再配置のたびに renderCombat 経由で最新化される
+function renderTraps() {
+  if (!ui.traps) return;
+  const traps = (battle && session.phase === "combat" && Array.isArray(battle.traps)) ? battle.traps : [];
+  const live = traps.length > 0;
+  ui.traps.hidden = !live;
+  if (ui.trapsLabel) ui.trapsLabel.hidden = !live;
+  ui.traps.replaceChildren();
+  if (!live) return;
+  for (const trap of traps) {
+    const def = Battle.card(trap.cardId);
+    const chip = document.createElement("span");
+    chip.className = "trap-chip";
+    chip.textContent = def ? def.name.replace(/\s*\(.+\)$/, "") : trap.cardId;
+    ui.traps.append(chip);
+  }
 }
 
 function renderEnemyIntent() {
@@ -1403,14 +1487,45 @@ function openPickSelect() {
     el.classList.remove("is-locked");
     el.removeAttribute("title");
   });
-  const isSearch = pickPick.kind === "search";
-  if (ui.pickMsg) ui.pickMsg.textContent = isSearch
-    ? "残響サーチ：山札から手札に加えるカードを1枚選べ"
-    : "箔の選別：捨てるカードを1枚選べ（選んだ後に1枚引く）";
+  // 保留種別ごとの案内文（プール大拡充バッチB／Cで search_top／curse／trap_sacrifice を追加）
+  const pickDraw = (battle.pendingPick && battle.pendingPick.draw) || 1;
+  const PICK_TEXT = {
+    search: {
+      msg: "残響サーチ：山札から手札に加えるカードを1枚選べ",
+      note: "山札の中身から1枚を選べ。",
+      log: "ECHO SEARCH — 山札から選択",
+    },
+    search_top: {
+      msg: `巻尺確認：山札の上${(battle.pendingPick && battle.pendingPick.n) || 3}枚から手札に加えるカードを1枚選べ（残りは捨て札へ）`,
+      note: "山札の上から1枚を選べ。残りは捨て札へ送られる。",
+      log: "MEASURE — 山札の上から選択",
+    },
+    reposition: {
+      msg: "死線の再配置：手札に戻す罠を1枚選べ（選んだ後に1枚引く）",
+      note: "設置中の罠から、戻すものを1枚選べ。",
+      log: "REPOSITION — 戻す罠を選択",
+    },
+    curse: {
+      msg: `呪い吸着箔：廃棄する呪いを1枚選べ（選んだ後に${pickDraw}枚引く）`,
+      note: "手札の呪いから、廃棄するものを1枚選べ。",
+      log: "CURSE SPONGE — 廃棄する呪いを選択",
+    },
+    trap_sacrifice: {
+      msg: `予備部品：部品に戻す罠を1枚選べ（選んだ後に${pickDraw}枚引く）`,
+      note: "設置中の罠から、部品に戻すものを1枚選べ。",
+      log: "SPARE PARTS — 取り除く罠を選択",
+    },
+  };
+  const pickText = PICK_TEXT[pickPick.kind] || {
+    msg: `箔の選別：捨てるカードを1枚選べ（選んだ後に${pickDraw}枚引く）`,
+    note: "捨てるカードを1枚選べ。",
+    log: "FOIL SORT — 捨てるカードを選択",
+  };
+  if (ui.pickMsg) ui.pickMsg.textContent = pickText.msg;
   if (ui.pickBar) ui.pickBar.hidden = false;
   if (ui.pickConfirm) ui.pickConfirm.disabled = true;
-  ui.note.textContent = isSearch ? "山札の中身から1枚を選べ。" : "捨てるカードを1枚選べ。";
-  pushLog(isSearch ? "ECHO SEARCH — 山札から選択" : "FOIL SORT — 捨てるカードを選択");
+  ui.note.textContent = pickText.note;
+  pushLog(pickText.log);
   syncEndButton();
 }
 
@@ -1492,7 +1607,8 @@ async function runEnemyPhase() {
   // 敵ログの区間を位置で特定して色分けする。区間の先頭には見出し行も残す。
   showEnemyAction(result.enemy);
   const enemyLog = (result.enemy && result.enemy.log) || [];
-  const enemyStart = 1;
+  // 敵ログの開始位置は Battle.endTurn が返す実位置を使う（待機防護など敵フェイズ前の行が増えてもずれない）
+  const enemyStart = typeof result.enemyLogStart === "number" ? result.enemyLogStart : 1;
   const enemyEnd = enemyStart + enemyLog.length;
   const headline = enemyActionText(result.enemy);
   for (let i = 0; i < lines.length; i += 1) {
@@ -1760,11 +1876,38 @@ let vesselSelectSuppress = false;
 // 表示順（回転台の並び）。"locked" は未解禁枠: シルエット＋LOCKED表示のみで詳細は出さない。
 // GHOST-TAPE 解禁後は vessel09 が入り、将来の解禁キャラ用に locked 枠を1つ残す。
 // GOLIATH 未解禁の間は "locked04" 枠: GOLIATH の輪郭だけをシルエットで示し、詳細は出さない。
+// WEAVER 未解禁の間は "locked13" 枠（locked04 と同じ流儀）。WEAVER 解禁後は vessel13 が入り、
+// 将来の解禁キャラ（REACTOR）用に locked 枠を1つ残す。
 function vesselOrder() {
-  if (ghostTapeUnlocked()) return ["vessel07", "vessel04", "vessel09", "locked"];
+  if (weaverUnlocked()) return ["vessel07", "vessel04", "vessel09", "vessel13", "locked"];
+  if (ghostTapeUnlocked()) return ["vessel07", "vessel04", "vessel09", "locked13", "locked"];
   if (goliathUnlocked()) return ["vessel07", "vessel04", "locked"];
   return ["vessel07", "locked04", "locked"];
 }
+
+// 未解禁枠の表示文（シルエット原画／キャプション／CRT）。詳細（性能・デッキ）は出さない。
+// locked13 のシルエットは汎用の素体画を黒潰ししたもので、WEAVER の造形は明かさない
+// （WEAVER の立ち絵は候補生成→本人選択で公式化するまで未配線）。
+const LOCKED_VESSEL_INFO = {
+  locked04: {
+    name: "VESSEL 04 “????”",
+    sys: "[SYS] — SIGNAL LOST —\n> 巨体の信号のみ捕捉。リンク権限なし。\n> 解禁条件: VESSEL 07 でランをクリア",
+    caption: "VESSEL 04 — CLASSIFIED",
+    sil: "assets/vessel04_goliath.webp",
+  },
+  locked13: {
+    name: "VESSEL 13 “????”",
+    sys: "[SYS] — SIGNAL LOST —\n> 死線の振動のみ捕捉。リンク権限なし。\n> 解禁条件: GHOST-TAPE でランをクリア",
+    caption: "VESSEL 13 — CLASSIFIED",
+    sil: "assets/cctv_vessel_expose.png",
+  },
+  locked: {
+    name: "VESSEL ?? “????”",
+    sys: "[SYS] — NO DATA —\n> 素体信号を捕捉できず。",
+    caption: "VESSEL ?? — CLASSIFIED",
+    sil: "assets/cctv_vessel_expose.png",
+  },
+};
 let vesselCursor = 0;
 
 // 表示文（CRT表示／フレーバー）は本人の原文ママ（2026-11-14、設計書 §A に記録済み）。
@@ -1785,6 +1928,14 @@ const VESSEL_PROFILES = {
     sys: "[SYS] VESSEL 09 \"GHOST-TAPE\" LINKED.\nMAGNETIC HOLD OS: READY. NOISE LIMIT: 05.\n> 逆位相補正を開始。存在しない音声を検出しています。",
     flavor: "「こいつの装甲は、笑ってしまうほど薄い。代わりに機体の中では何十本もの磁気テープが回り続け、消すべき音、残すべき音、敵に聞かせるべきでない音を選別している。派手な勝ち方はできない。だが、すべての無駄を削ぎ落とした先で、敵は自分がいつ敗れたのか最後まで気づかない。」",
     img: "assets/vessel09_ghosttape.webp", // 専用立ち絵（候補1「リール肩型」・楕円ソフトアルファ済み）
+  },
+  // ⚠ あやね下書き・本人確認待ち（2026-11-16）: 07／GOLIATH の本人原文とは別物。
+  // 罠師・寡黙な職人肌の出自は匂わせに留め、過去の断定はしていない（実装追補 §5）。
+  // 立ち絵は 2026-11-17 に候補1「蜘蛛型＋背部ボビン」を本人が公式として選択・配線済み。
+  vessel13: {
+    sys: "[SYS] VESSEL 13 \"WEAVER\" LINKED.\nTRAP SYSTEMS ARMED. STANDBY ARMOR ONLINE.\n> 罠師の素体・リンク確立。",
+    flavor: "「こいつは自分から殴りに行く機体じゃない。暗がりに死線を張り巡らせ、わざと音を立てて敵を誘い、踏み込んできたところを静かに仕留める。……昔、誰かが言っていたそうだ。『罠は待つ者の味方だ』と。派手さはない。だが格納庫で一番、帰りを待つ価値のある背中だ。」",
+    img: "assets/vessel13_weaver.webp", // 専用立ち絵（候補1「蜘蛛型＋背部ボビン」・楕円ソフトアルファ済み）
   },
 };
 
@@ -1807,20 +1958,21 @@ function vesselFigureEl(entry, pos) {
   visual.className = "vessel-figure__visual";
   const caption = document.createElement("p");
   caption.className = "vessel-figure__caption";
-  if (entry === "locked" || entry === "locked04") {
+  if (LOCKED_VESSEL_INFO[entry]) {
     fig.classList.add("is-locked");
     // 未解禁はシルエットで存在だけを匂わせる（コンセプト画の布を被った素体）。
     // 既存の素体画像を真っ黒に潰して流用し、機体の判別はできない見せ方にする。
     // locked04 は GOLIATH の立ち絵を黒潰しし、巨体の輪郭だけを見せる。
+    const info = LOCKED_VESSEL_INFO[entry];
     const sil = document.createElement("img");
     sil.className = "vessel-figure__silhouette";
-    sil.src = entry === "locked04" ? "assets/vessel04_goliath.webp" : "assets/cctv_vessel_expose.png";
+    sil.src = info.sil;
     sil.alt = "";
     const lock = document.createElement("span");
     lock.className = "vessel-figure__lock";
     lock.textContent = "LOCKED";
     visual.append(sil, lock);
-    caption.textContent = entry === "locked04" ? "VESSEL 04 — CLASSIFIED" : "VESSEL ?? — CLASSIFIED";
+    caption.textContent = info.caption;
   } else {
     const def = Battle.CHARACTERS[entry];
     const profile = VESSEL_PROFILES[entry];
@@ -1863,12 +2015,11 @@ function renderVesselSelect(spinDir) {
   const cur = at(0);
   if (ui.vesselLaunch) ui.vesselLaunch.dataset.vessel = cur;
   if (ui.vesselPos) ui.vesselPos.textContent = `CAROUSEL ${vesselCursor + 1} / ${n}`;
-  if (cur === "locked" || cur === "locked04") {
+  if (LOCKED_VESSEL_INFO[cur]) {
     // 未解禁: 詳細情報（説明・数値・デッキ）は出さない
-    if (ui.vesselInfoName) ui.vesselInfoName.textContent = cur === "locked04" ? "VESSEL 04 “????”" : "VESSEL ?? “????”";
-    if (ui.vesselInfoSys) ui.vesselInfoSys.textContent = cur === "locked04"
-      ? "[SYS] — SIGNAL LOST —\n> 巨体の信号のみ捕捉。リンク権限なし。\n> 解禁条件: VESSEL 07 でランをクリア"
-      : "[SYS] — NO DATA —\n> 素体信号を捕捉できず。";
+    const info = LOCKED_VESSEL_INFO[cur];
+    if (ui.vesselInfoName) ui.vesselInfoName.textContent = info.name;
+    if (ui.vesselInfoSys) ui.vesselInfoSys.textContent = info.sys;
     if (ui.vesselInfoStats) ui.vesselInfoStats.textContent = "HP ?? ／ PWR回復 ??";
     if (ui.vesselInfoDeck) ui.vesselInfoDeck.textContent = "初期デッキ: CLASSIFIED";
     if (ui.vesselInfoFlavor) ui.vesselInfoFlavor.textContent = "SIGNAL NOT FOUND — 未解禁";
@@ -2331,7 +2482,7 @@ function focusCard(el) {
   if (card) data = face(card);
   // 正式版フェーズ1: 規格外巨体の置換対象カードは解析パネルをグリッチ調に変える
   ui.cardInspect.classList.toggle("is-oversized", !!data.oversized);
-  ui.cardInspectName.textContent = `解析：${data.name}${data.exhaust ? "【廃棄】" : ""}`;
+  ui.cardInspectName.textContent = `解析：${data.name}${data.exhaust ? "【廃棄】" : ""}${data.trap ? "【設置】" : ""}`;
   const noiseText = Number(data.noise) > 0 ? `+${data.noise}` : `${data.noise}`;
   const lines = [`消費PWR ${data.cost} / 発生ノイズ ${noiseText} / 態勢→${data.stance || "—"}`];
   const rulesLine = data.rulesFull || data.rules;
@@ -3214,6 +3365,11 @@ async function bossClearSequence() {
   if (run && run.character === "vessel04" && !ghostTapeUnlocked()) {
     markGhostTapeUnlocked();
     pushLog("NEW VESSEL SIGNAL — VESSEL 09 \"GHOST-TAPE\" 解禁");
+  }
+  // 解禁キャラ3（2026-11-16 確定）: GHOST-TAPE を使ってランをクリアした時点で VESSEL 13 を解禁する
+  if (run && run.character === "vessel09" && !weaverUnlocked()) {
+    markWeaverUnlocked();
+    pushLog("NEW VESSEL SIGNAL — VESSEL 13 \"WEAVER\" 解禁");
   }
   session.offer = [];
   ui.hopper.replaceChildren();

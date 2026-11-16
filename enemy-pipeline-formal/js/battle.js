@@ -26,6 +26,10 @@
     vessel07: Object.freeze({ id: "vessel07", name: "VESSEL 07", code: "PANDORA", hp: PLAYER_HP, energyPerTurn: ENERGY_PER_TURN, canCover: true, noiseMin: 0, noiseMax: NOISE_MAX, canHold: false }),
     vessel04: Object.freeze({ id: "vessel04", name: "VESSEL 04", code: "GOLIATH", hp: 120, energyPerTurn: 2, canCover: false, noiseMin: 0, noiseMax: NOISE_MAX, canHold: false }),
     vessel09: Object.freeze({ id: "vessel09", name: "VESSEL 09", code: "GHOST-TAPE", hp: 30, energyPerTurn: 3, canCover: true, noiseMin: -3, noiseMax: 5, canHold: true }),
+    // vessel13 "WEAVER"（設計書 DESIGN-WEAVER-DRAFT.md＋実装追補、2026-11-16 本人一括GO）:
+    // HP50／PWR回復3／NOISE上限5／固有OS『アナログ・トラップ機構』（state.traps）と
+    // 『余剰電力装甲』（standbyArmor: 残PWR×4 をターン終了時に BLK へ変換）。
+    vessel13: Object.freeze({ id: "vessel13", name: "VESSEL 13", code: "WEAVER", hp: 50, energyPerTurn: 3, canCover: true, noiseMin: 0, noiseMax: 5, canHold: false, standbyArmor: 4 }),
   });
 
   function characterDef(id) {
@@ -81,8 +85,8 @@
   }
 
   const FINISHERS = Object.freeze([
-    { id: "cqc_disable_01", name: "関節破壊 (DISABLE)", cost: 1, category: "CQC", type: "skill", noise: 1, requirements: ["target_stun_ge_1"], stance_change: "EXPOSE", effects: [{ target: "enemy", type: "cancel_next_intent", value: 1 }, { target: "enemy", type: "vulnerable", value: 1 }] },
-    { id: "cqc_holdup_01", name: "完全制圧 (HOLD UP)", cost: 2, category: "CQC", type: "finish", noise: 1, requirements: ["target_stun_max"], stance_change: null, effects: [{ target: "enemy", type: "instant_kill", value: 1 }] },
+    { id: "cqc_disable_01", name: "関節破壊 (DISABLE)", flavor: "「動きの鈍った敵機の関節へ、正確な一撃を叩き込む。開いた継ぎ目は次の行動を封じ、次の打撃を深く通す弱点になる。『聖歌隊』の時代から変わらぬ、制圧の基本だ。」", cost: 1, category: "CQC", type: "skill", noise: 1, requirements: ["target_stun_ge_1"], stance_change: "EXPOSE", effects: [{ target: "enemy", type: "cancel_next_intent", value: 1 }, { target: "enemy", type: "vulnerable", value: 1 }] },
+    { id: "cqc_holdup_01", name: "完全制圧 (HOLD UP)", flavor: "「沈黙した敵機の前に立ち、最後の孔を打ち込む。抵抗のない装甲に、穿孔機の音だけが響く。完全な制圧とは、敵の駆動音が二度と戻らないことだ。」", cost: 2, category: "CQC", type: "finish", noise: 1, requirements: ["target_stun_max"], stance_change: null, effects: [{ target: "enemy", type: "instant_kill", value: 1 }] },
   ].map((card) => Object.freeze({
     ...card,
     requirements: Object.freeze(card.requirements.slice()),
@@ -125,7 +129,21 @@
     root.Cards.get("ghost_silent_cut"),
   ].filter(Boolean));
 
-  const DECKS_BY_CHARACTER = { vessel04: GOLIATH_DECK, vessel09: GHOST_TAPE_DECK };
+  // 正式版: VESSEL 13 "WEAVER" 初期デッキ10枚（敷設アーム打撃×3／装甲折りたたみ×3／迎撃鉄線×2／集音地雷×1／囮の空回り×1）
+  const WEAVER_DECK = Object.freeze([
+    root.Cards.get("weaver_laying_arm"),
+    root.Cards.get("weaver_laying_arm"),
+    root.Cards.get("weaver_laying_arm"),
+    root.Cards.get("weaver_armor_fold"),
+    root.Cards.get("weaver_armor_fold"),
+    root.Cards.get("weaver_armor_fold"),
+    root.Cards.get("weaver_barbed_wire"),
+    root.Cards.get("weaver_barbed_wire"),
+    root.Cards.get("weaver_audio_mine"),
+    root.Cards.get("weaver_decoy_spin"),
+  ].filter(Boolean));
+
+  const DECKS_BY_CHARACTER = { vessel04: GOLIATH_DECK, vessel09: GHOST_TAPE_DECK, vessel13: WEAVER_DECK };
 
   function deckIdsFor(characterId) {
     return (DECKS_BY_CHARACTER[characterId] || DECK).map((card) => card.id);
@@ -216,13 +234,27 @@
       // 共通プール拡張（DESIGN-COMMON-POOL-EXPANSION-DRAFT.md）:
       // powers = 持続効果の汎用基盤。{ source, kind, value } の配列で、戦闘中ずっと残る。
       //   kind "energy_per_turn" = ターン開始時に PWR +value（予備電源）。
-      //   将来の WEAVER（罠スタック）・REACTOR（臨界排熱）もこの配列へ種別を足して共有する想定。
+      // プール大拡充バッチBで種別を追加（発動は beginPlayerTurn／endTurn）:
+      //   "block_per_turn" = ターン開始時に BLK +value（残響バッテリー）。
+      //   "vent_per_turn" = ターン開始時に NOISE −value（予備ギア／静寂領域）。
+      //   "turn_start_noise_damage" = ターン開始時に敵へ開始時NOISE×value ダメージ（圧力鍋）。
+      //   "standby_armor_up" = 余剰電力装甲の変換率 +value（塹壕モード。endTurn が参照）。
+      // プール大拡充バッチCで追加:
+      //   "trap_damage_up" = 罠の発動ダメージ +value（監視の目。罠の発動箇所が参照）。
       powers: [],
       // この戦闘で廃棄（exhaust）されたカードの累計枚数。圧縮穿孔（damage_per_exhausted）が参照する
       exhaustedCount: 0,
-      // プレイヤー選択待ちの保留効果。{ kind: "search" } | { kind: "discard", draw }。
+      // プール大拡充バッチB（プリミティブ #4 next_attack_bonus）: 次に解決する敵ダメージ効果へ
+      // 一度だけ加算される保留ボーナス（07専用 P-08「迎撃の構え」用の基盤）。消費は applyEffect のダメージ適用部
+      nextAttackBonus: 0,
+      // プレイヤー選択待ちの保留効果。{ kind: "search" } | { kind: "discard", draw } | { kind: "reposition", draw }。
+      // バッチBで追加: { kind: "search_top", n } | { kind: "curse", draw } | { kind: "trap_sacrifice", draw }。
       // 効果解決時に登録され、main.js の選択フェイズが resolvePick で確定させる
       pendingPick: null,
+      // 『アナログ・トラップ機構』（WEAVER固有OS）: 設置済み罠のスタック。
+      // 要素は { cardId, kind, trigger, minNoise, damage, cut, stun, cancel }。戦闘ごとに空で始まり、
+      // 戦闘終了で state ごと破棄される（次戦闘へは漏れない）。発動した罠は exhaust へ送られる。
+      traps: [],
       player: {
         hp: charDef.hp,
         hpMax: charDef.hp,
@@ -258,6 +290,9 @@
   function requirementMet(state, requirement) {
     if (requirement === "target_stun_ge_1") return state.enemy.stun >= 1;
     if (requirement === "target_stun_max") return state.enemy.stun >= state.enemy.stunMax;
+    // プール大拡充バッチB（DESIGN-POOL-EXPANSION2-DRAFT.md プリミティブ #15）:
+    // 使用開始時点の自分のNOISEが0以下でなければ使用不可（GHOST-TAPE T-12 用の基盤）
+    if (requirement === "self_noise_le_0") return (state.noise || 0) <= 0;
     return false;
   }
 
@@ -295,6 +330,33 @@
     return true;
   }
 
+  // ==== 『アナログ・トラップ機構』（WEAVER固有OS） ====
+  // 罠カードは effect type "trap" を持ち、使用すると即時効果ではなく state.traps へ設置される。
+  // 設置上限は種類混合で合計 TRAP_LIMIT（実装追補 §2.1、2026-11-16 確定）。
+  const TRAP_LIMIT = 3;
+  // 発動判定の固定順（実装追補 §2.2＋専用プール分）: 地雷（行動キャンセル系）→ 残響 → 囮地雷 → 粘着 → 警報線 → 鉄線系。
+  // プール大拡充バッチB（プリミティブ #21）: 新kind 3種（decoy_mine／alarm_wire／spark_trap）を追加。
+  const TRAP_FIRE_ORDER = Object.freeze(["audio_mine", "echo_mine", "decoy_mine", "glue_wire", "alarm_wire", "barbed_wire", "double_wire", "spark_trap"]);
+  const TRAP_LABEL = Object.freeze({
+    audio_mine: "AUDIO MINE",
+    echo_mine: "ECHO MINE",
+    glue_wire: "GLUE WIRE",
+    barbed_wire: "BARBED WIRE",
+    double_wire: "DOUBLE WIRE",
+    decoy_mine: "DECOY MINE",
+    alarm_wire: "TRIP ALARM",
+    spark_trap: "SPARK TRAP",
+  });
+
+  function trapEffectOf(card) {
+    if (!card) return null;
+    return (card.effects || []).find((effect) => effect.type === "trap") || null;
+  }
+
+  function isTrapCard(card) {
+    return !!trapEffectOf(card);
+  }
+
   function canPlay(state, card) {
     if (!card) return { ok: false, reason: "unknown" };
     if (state.player.hp <= 0) return { ok: false, reason: "down" };
@@ -304,6 +366,20 @@
     }
     for (const requirement of card.requirements) {
       if (!requirementMet(state, requirement)) return { ok: false, reason: requirement };
+    }
+    // 罠カードは設置上限（合計3）に達していたら使用不可
+    if (isTrapCard(card) && (state.traps || []).length >= TRAP_LIMIT) {
+      return { ok: false, reason: "trap_limit" };
+    }
+    // 死線の再配置は、設置中の罠が1つ以上あるときだけ使用可
+    if ((card.effects || []).some((effect) => effect.type === "reposition")
+      && !(state.traps && state.traps.length > 0)) {
+      return { ok: false, reason: "no_traps" };
+    }
+    // 罠の資源化（プリミティブ #14 trap_sacrifice_draw、WEAVER W-07 用の基盤）も同じ前提
+    if ((card.effects || []).some((effect) => effect.type === "trap_sacrifice_draw")
+      && !(state.traps && state.traps.length > 0)) {
+      return { ok: false, reason: "no_traps" };
     }
     if (state.player.energy < effectiveCost(state, card)) return { ok: false, reason: "energy" };
     return { ok: true, reason: "" };
@@ -321,6 +397,11 @@
     const extra = Math.max(0, gained - amount);
     if (extra > 0) log.push(`STUN BOOST +${extra}`);
     return gained;
+  }
+
+  // 呪いカードの判定（呪い吸着箔の候補抽出で使う）。定義側の unplayable／種別／負コストのいずれか
+  function isCurseCard(card) {
+    return !!card && (card.unplayable || card.type === "curse" || (card.cost || 0) < 0);
   }
 
   function applyEffect(state, effect, log, ctx) {
@@ -399,6 +480,65 @@
       // GOLIATH は常時EXPOSEなので COVER 指定では永遠に発動しない（設計書どおり意図的な非対称）
       const stanceAtPlay = ctx ? ctx.stanceBefore : state.player.stance;
       effect = { ...effect, type: "damage", value: (effect.value || 0) + (stanceAtPlay === (effect.stance || "COVER") ? (effect.per || 0) : 0) };
+    } else if (effect.type === "damage_stun_bonus") {
+      // 跳弾（プリミティブ #2、参照系）: 基礎値＋敵の現在スタン蓄積×per（上限 cap）。倍率は通常どおり乗る
+      const bonus = Math.min(typeof effect.cap === "number" ? effect.cap : Number.POSITIVE_INFINITY,
+        (state.enemy.stun || 0) * (effect.per || 0));
+      effect = { ...effect, type: "damage", value: (effect.value || 0) + bonus };
+    } else if (effect.type === "damage_if_hand_le") {
+      // 最後の一枚（プリミティブ #3、参照系）: 使用時点の手札枚数（このカードを除く）が maxHand 以下なら +per。
+      // 解決時点では使用カード自身がまだ手札にあるため、ctx.cardId の一致を見て1枚差し引く
+      const inHand = ctx && ctx.cardId ? state.hand.some((card) => card.id === ctx.cardId) : false;
+      const others = state.hand.length - (inHand ? 1 : 0);
+      effect = { ...effect, type: "damage", value: (effect.value || 0) + (others <= (effect.maxHand || 0) ? (effect.per || 0) : 0) };
+    } else if (effect.type === "damage_hold_bonus") {
+      // 保持残響（プリミティブ #5、参照系。GHOST-TAPE T-01 用の基盤）: 保持中なら +per。
+      // 「保持中」は敵フェイズ中の保持実体（state.retained）と、保持割引が有効な自ターン
+      // （state.holdDiscountUid）の両方を含む
+      const holding = !!state.retained || (state.holdDiscountUid || 0) > 0;
+      effect = { ...effect, type: "damage", value: (effect.value || 0) + (holding ? (effect.per || 0) : 0) };
+    } else if (effect.type === "damage_per_negative_noise") {
+      // 負の波形（プリミティブ #6、変換系＝固定レート）: 基礎値＋逆位相の深さ×per。
+      // 変換系の既存ルールに合わせ、深さはターン開始時NOISEのスナップショットから取る
+      // （max(0, −turnStartNoise)。機体クランプで深さは最大3に収まる）
+      const depth = Math.max(0, -(state.turnStartNoise || 0));
+      effect = { ...effect, type: "damage", value: (effect.value || 0) + depth * (effect.per || 0) };
+      noScale = true;
+    } else if (effect.type === "block_per_trap") {
+      // 脚部補強／待つ者の構え（プリミティブ #7。WEAVER W-09／W-12 用の基盤）:
+      // 基礎値＋設置中の罠の数×per（上限 cap）
+      const bonus = Math.min(typeof effect.cap === "number" ? effect.cap : Number.POSITIVE_INFINITY,
+        (state.traps || []).length * (effect.per || 0));
+      effect = { ...effect, type: "block", value: (effect.value || 0) + bonus };
+    } else if (effect.type === "next_attack_bonus") {
+      // 迎撃の構え（プリミティブ #4。07専用 P-08 用の基盤）: 次に解決する敵ダメージ効果へ
+      // 一度だけ加算される保留を積む。消費は下部のダメージ適用部（初撃のみ）
+      state.nextAttackBonus = (state.nextAttackBonus || 0) + (effect.value || 0);
+      log.push(`NEXT ATK BONUS +${effect.value || 0} (保留 ${state.nextAttackBonus})`);
+      return;
+    } else if (effect.type === "search_top") {
+      // 巻尺確認（プリミティブ #1）: 山札の上 value 枚から1枚選んで手札へ、残りは捨て札へ。
+      // 選択は UI に委ね、ここでは保留だけ登録する（実移動は resolvePick）
+      state.pendingPick = { kind: "search_top", n: effect.value || 3 };
+      log.push(`MEASURE 山札の上${effect.value || 3}枚から1枚選択`);
+      return;
+    } else if (effect.type === "exhaust_curse_in_hand") {
+      // 呪い吸着箔（プリミティブ #13）: 手札の呪い1枚を選ばせて廃棄し、value 枚ドロー。
+      // 対象（呪い）が手札に無ければ不発（保留を登録せず、ドローもしない）
+      const hasCurse = state.hand.some((card) => isCurseCard(card));
+      if (!hasCurse) {
+        log.push("CURSE SPONGE 不発 (手札に呪いなし)");
+        return;
+      }
+      state.pendingPick = { kind: "curse", draw: effect.value || 0 };
+      log.push("CURSE SPONGE 廃棄する呪いを1枚選択");
+      return;
+    } else if (effect.type === "trap_sacrifice_draw") {
+      // 予備部品（プリミティブ #14。WEAVER W-07 用の基盤）: 設置中の罠1つを取り除く選択を
+      // UI に委ね、保留だけ登録する（確定は resolvePick。罠の有無は canPlay が保証する）
+      state.pendingPick = { kind: "trap_sacrifice", draw: effect.value || 0 };
+      log.push("SPARE PARTS 取り除く罠を1つ選択");
+      return;
     } else if (effect.type === "search") {
       // 残響サーチ: 山札から1枚選んで手札へ。選択は UI（main.js の選択フェイズ）に委ね、
       // ここでは保留だけ登録する。実際の移動は resolvePick が行う
@@ -432,6 +572,36 @@
       state.drawPenaltyNext = (state.drawPenaltyNext || 0) + (effect.value || 0);
       log.push(`次ターン ドロー -${effect.value}`);
       return;
+    } else if (effect.type === "trap") {
+      // 罠の設置: 即時効果はなく、state.traps へ記録だけ積む。コストとNOISEは playCard が
+      // 通常どおり適用済み。カード実体の移動（手札→設置）は playFromHand 側で行う。
+      // 発動は敵ターンの resolveTrapsBeforeAction が条件を見て行う。
+      state.traps = state.traps || [];
+      state.traps.push({
+        cardId: (ctx && ctx.cardId) || "",
+        kind: effect.kind || "",
+        trigger: effect.trigger || "attack",
+        minNoise: effect.minNoise || 0,
+        damage: effect.damage || 0,
+        cut: effect.cut || 0,
+        stun: effect.stun || 0,
+        cancel: !!effect.cancel,
+        // プリミティブ #21（罠フィールド拡張）: 発動時に自分へ BLK を付ける／ドローする任意フィールド
+        selfBlock: effect.selfBlock || 0,
+        drawOnTrigger: effect.drawOnTrigger || 0,
+      });
+      log.push(`TRAP SET ${TRAP_LABEL[effect.kind] || effect.kind || "trap"} (設置 ${state.traps.length}/${TRAP_LIMIT})`);
+      return;
+    } else if (effect.type === "reposition") {
+      // 死線の再配置: 設置中の罠1つを手札へ戻す選択を UI に委ね、保留だけ登録する。
+      // 候補提示は pickCandidates（kind "reposition"）、確定は resolvePick が行う
+      state.pendingPick = { kind: "reposition", draw: effect.value || 1 };
+      log.push("REPOSITION 戻す罠を1つ選択");
+      return;
+    } else if (effect.type === "detonate_all") {
+      // 総起爆: 設置中の罠をすべて条件無視で即時発動させる（詳細は detonateAllTraps）
+      detonateAllTraps(state, log);
+      return;
     }
     let amount = effect.value;
     // 騒音力学の倍率（GOLIATHのみ）: 敵へのダメージと自BLK獲得に適用。自傷・回復等には適用しない
@@ -441,12 +611,21 @@
       amount = Math.round(amount * noiseScale(state, ctx));
     }
     if (effect.target === "enemy" && effect.type === "damage") {
+      // next_attack_bonus（プリミティブ #4）: 保留ボーナスはこのダメージ効果の初撃にだけ加算して消費する。
+      // 罠ダメージ（applyTrapDamage）とターン開始時パワー（turn_start_noise_damage）は別経路のため消費しない
+      let pendingBonus = 0;
+      if ((state.nextAttackBonus || 0) > 0) {
+        pendingBonus = state.nextAttackBonus;
+        state.nextAttackBonus = 0;
+        log.push(`ATK BONUS +${pendingBonus}`);
+      }
       const hits = effect.hits || 1;
       for (let h = 0; h < hits; h += 1) {
         if (state.enemy.hp <= 0) break;
+        const hitAmount = amount + (h === 0 ? pendingBonus : 0);
         const block = effect.pierce ? 0 : (state.enemy.block || 0);
-        const soaked = Math.min(block, amount);
-        const dealt = amount - soaked;
+        const soaked = Math.min(block, hitAmount);
+        const dealt = hitAmount - soaked;
         if (soaked > 0) {
           state.enemy.block = block - soaked;
           log.push(`BLOCKED ${soaked}`);
@@ -607,7 +786,11 @@
       card.__heldNow = false;
       result.log.push("HOLD割引 適用 (PWR −1)");
     }
-    if (card.isExhaust) {
+    if (isTrapCard(card)) {
+      // 罠カードは捨て札・廃棄へ行かず、設置（state.traps）へ移る。
+      // 設置レコード自体は playCard → applyEffect（type "trap"）が積んでいる
+      result.trapSet = true;
+    } else if (card.isExhaust) {
       state.exhaust.push(card);
       // 圧縮穿孔（damage_per_exhausted）の参照カウンタ。この戦闘の累計
       state.exhaustedCount = (state.exhaustedCount || 0) + 1;
@@ -646,7 +829,20 @@
   function pickCandidates(state) {
     if (!state || !state.pendingPick) return [];
     if (state.pendingPick.kind === "search") return state.drawPile.slice();
+    // search_top（プリミティブ #1）: 山札の「上」は drawPile の末尾側（drawCards が pop で引く）。
+    // 上 n 枚だけが候補になる
+    if (state.pendingPick.kind === "search_top") {
+      const n = state.pendingPick.n || 3;
+      return state.drawPile.slice(Math.max(0, state.drawPile.length - n));
+    }
     if (state.pendingPick.kind === "discard") return state.hand.slice();
+    // curse（プリミティブ #13）: 候補は手札の呪いだけ
+    if (state.pendingPick.kind === "curse") return state.hand.filter((card) => isCurseCard(card));
+    // reposition／trap_sacrifice: 候補は設置中の罠そのもの。UI にはカード面で出すため定義オブジェクトへ写す
+    // （同種の罠は性能が同一なので、確定は cardId 一致の先頭レコードで等価に処理できる）
+    if (state.pendingPick.kind === "reposition" || state.pendingPick.kind === "trap_sacrifice") {
+      return (state.traps || []).map((trap) => lookup(trap.cardId)).filter(Boolean);
+    }
     return [];
   }
 
@@ -682,7 +878,263 @@
       for (const line of res.log) log.push(line);
       return { ok: true, log };
     }
+    if (pick.kind === "reposition") {
+      // 設置中の罠1つを設置から外して手札へ戻し、さらに pick.draw 枚ドローする。
+      // 対象が取れなければ不発（ドローもしない）
+      const traps = state.traps || [];
+      const index = cardId ? traps.findIndex((trap) => trap.cardId === cardId) : -1;
+      if (index < 0) {
+        log.push("REPOSITION 不発 (対象なし)");
+        return { ok: false, log };
+      }
+      const removed = traps.splice(index, 1)[0];
+      const def = lookup(removed.cardId);
+      if (def) {
+        state.hand.push(def);
+        log.push(`REPOSITION ${def.name} を手札へ回収`);
+      }
+      const res = drawCards(state, pick.draw || 1);
+      for (const line of res.log) log.push(line);
+      return { ok: true, log };
+    }
+    if (pick.kind === "search_top") {
+      // 山札の上 n 枚を取り出し、選ばれた1枚を手札へ、残りを捨て札へ送る。
+      // 対象が取れなければ山札へ戻して不発（残りも捨てない）
+      const n = pick.n || 3;
+      const pile = state.drawPile;
+      const topCount = Math.min(n, pile.length);
+      if (topCount === 0) {
+        log.push("MEASURE 不発 (山札が空)");
+        return { ok: false, log };
+      }
+      const top = pile.splice(pile.length - topCount, topCount);
+      const index = cardId ? top.findIndex((card) => card.id === cardId) : -1;
+      if (index < 0) {
+        pile.push(...top);
+        log.push("MEASURE 不発 (対象なし)");
+        return { ok: false, log };
+      }
+      const picked = top.splice(index, 1)[0];
+      state.hand.push(picked);
+      log.push(`MEASURE ${picked.name} を手札へ`);
+      for (const rest of top) {
+        state.discard.push(rest);
+        log.push(`MEASURE ${rest.name} を捨て札へ`);
+      }
+      return { ok: true, log };
+    }
+    if (pick.kind === "curse") {
+      // 手札の呪い1枚を廃棄（exhaust）へ送り、pick.draw 枚ドローする。
+      // 対象が取れなければ不発（ドローもしない）。廃棄は exhaustedCount に数える
+      const index = cardId ? state.hand.findIndex((card) => card.id === cardId && isCurseCard(card)) : -1;
+      if (index < 0) {
+        log.push("CURSE SPONGE 不発 (対象なし)");
+        return { ok: false, log };
+      }
+      const removed = state.hand.splice(index, 1)[0];
+      state.exhaust.push(removed);
+      state.exhaustedCount = (state.exhaustedCount || 0) + 1;
+      log.push(`CURSE EXHAUST ${removed.name}`);
+      const res = drawCards(state, pick.draw || 0);
+      for (const line of res.log) log.push(line);
+      return { ok: true, log };
+    }
+    if (pick.kind === "trap_sacrifice") {
+      // 設置中の罠1つを「取り除き」、pick.draw 枚ドローする。部品へ戻す扱いのため
+      // 廃棄（exhaust）へは送らず、exhaustedCount にも数えない（再配置＝手札回収との対）
+      const traps = state.traps || [];
+      const index = cardId ? traps.findIndex((trap) => trap.cardId === cardId) : -1;
+      if (index < 0) {
+        log.push("SPARE PARTS 不発 (対象なし)");
+        return { ok: false, log };
+      }
+      const removed = traps.splice(index, 1)[0];
+      const def = lookup(removed.cardId);
+      log.push(`SPARE PARTS ${def ? def.name : removed.cardId} を部品へ分解`);
+      const res = drawCards(state, pick.draw || 0);
+      for (const line of res.log) log.push(line);
+      return { ok: true, log };
+    }
     return { ok: false, log };
+  }
+
+  // ==== 『アナログ・トラップ機構』: 罠の発動エンジン ====
+  // プール大拡充バッチC（WEAVER W-10「監視の目」）: 持続パワー trap_damage_up の加算分。
+  // 罠カードの発動ダメージにだけ乗せる。applyTrapDamage は圧力鍋（turn_start_noise_damage）も
+  // 流用するため、加算はここではなく罠の発動箇所（resolveTrapsBeforeAction／detonateAllTraps）で行う
+  function trapDamageBonus(state) {
+    return (state.powers || [])
+      .filter((power) => power.kind === "trap_damage_up")
+      .reduce((sum, power) => sum + (power.value || 0), 0);
+  }
+
+  function trapFireDamage(state, trap) {
+    return (trap.damage || 0) + trapDamageBonus(state);
+  }
+
+  // 罠ダメージは通常攻撃と同じ経路（敵BLKで相殺、貫通なし、騒音力学の倍率なし）で適用する
+  function applyTrapDamage(state, amount, log) {
+    if (!amount || amount <= 0 || state.enemy.dead) return 0;
+    const block = state.enemy.block || 0;
+    const soaked = Math.min(block, amount);
+    if (soaked > 0) {
+      state.enemy.block = block - soaked;
+      log.push(`BLOCKED ${soaked}`);
+    }
+    const dealt = amount - soaked;
+    state.enemy.hp = Math.max(0, state.enemy.hp - dealt);
+    if (state.enemy.hp === 0) state.enemy.dead = true;
+    log.push(`DMG ${dealt}  HP ${state.enemy.hp}`);
+    return dealt;
+  }
+
+  // 発動（または起爆）した罠を設置から外し、廃棄（exhaust）へ送る。
+  // 圧縮穿孔の参照カウンタ（この戦闘で廃棄された枚数）にも数える
+  function consumeTrap(state, record) {
+    const traps = state.traps || [];
+    const index = traps.indexOf(record);
+    if (index >= 0) traps.splice(index, 1);
+    const def = record.cardId ? lookup(record.cardId) : null;
+    if (def) {
+      state.exhaust.push(def);
+      state.exhaustedCount = (state.exhaustedCount || 0) + 1;
+    }
+  }
+
+  // プリミティブ #21: 罠の発動時セルフ効果（selfBlock = 自分のBLK +n／drawOnTrigger = n ドロー）。
+  // 既存kind では両フィールドとも 0 のため無動作。新kind（警報線／火花罠／囮地雷）が使う
+  function fireTrapSideEffects(state, trap, log) {
+    if ((trap.selfBlock || 0) > 0) {
+      state.player.block = (state.player.block || 0) + trap.selfBlock;
+      log.push(`TRAP SELF BLOCK +${trap.selfBlock}  BLK ${state.player.block}`);
+    }
+    if ((trap.drawOnTrigger || 0) > 0) {
+      const res = drawCards(state, trap.drawOnTrigger);
+      for (const line of res.log) log.push(line);
+    }
+  }
+
+  // 総起爆（FULL DETONATION）: 設置中の罠をすべて条件無視で即時発動する。
+  // 鉄線系はダメージのみ（攻撃軽減なし）、地雷系もダメージのみ（残響はスタン+1も）、
+  // 粘着はスタン+2。集音地雷を含む場合は「次の行動キャンセル」を予約する
+  function detonateAllTraps(state, log) {
+    const traps = (state.traps || []).slice();
+    if (traps.length === 0) {
+      log.push("総起爆 — 設置中の罠なし");
+      return;
+    }
+    let includesAudioMine = false;
+    for (const trap of traps) {
+      consumeTrap(state, trap);
+      if (trap.kind === "audio_mine") includesAudioMine = true;
+      const label = TRAP_LABEL[trap.kind] || trap.kind;
+      const fireDamage = trapFireDamage(state, trap);
+      const bits = [];
+      if (fireDamage > 0) bits.push(`${fireDamage}dmg`);
+      if (trap.stun > 0) bits.push(`スタン +${trap.stun}`);
+      if (trap.selfBlock > 0) bits.push(`自BLK +${trap.selfBlock}`);
+      if (trap.drawOnTrigger > 0) bits.push(`${trap.drawOnTrigger}ドロー`);
+      log.push(`TRAP: ${label} 起爆 (総起爆)${bits.length ? ` ${bits.join(" / ")}` : ""}`);
+      if (fireDamage > 0) applyTrapDamage(state, fireDamage, log);
+      if (trap.stun > 0) addStun(state, trap.stun, log, false);
+      fireTrapSideEffects(state, trap, log);
+      if (state.enemy.dead) break;
+    }
+    if (includesAudioMine && !state.enemy.dead) {
+      state.enemy.cancelNextIntent = (state.enemy.cancelNextIntent || 0) + 1;
+      log.push("次の行動キャンセル予約 (集音地雷)");
+    }
+  }
+
+  // 敵ターンの新フェイズ: 行動解決の直前に割り込み、設置中の罠の発動を判定する。
+  // enemyTurn から「敵が行動しない確定ケース（dead／cancelNextIntent／スタン最大ショート）」の
+  // 後でのみ呼ばれる。NOISE条件は敵フェイズ開始時点の state.noise で判定する。
+  // 戻り値: { cancelled, attackCut, dead }。
+  // - 集音地雷: NOISE≥minNoise で発動し、その行動自体をキャンセルする（1回の行動で1つまで。
+  //   キャンセルが決まったら以降の罠は発動しない）
+  // - 残響地雷: NOISE≥minNoise で発動（ダメージ＋スタン蓄積）。キャンセルはしない
+  // - 粘着ワイヤー: 本行動が非攻撃のとき発動（スタン蓄積）。行動自体は実行される
+  // - 迎撃鉄線／二重鉄線: 本行動が攻撃のときのみ発動し、重ねがけする（ダメージ＋攻撃値の減算）。
+  //   警報の追加行動には発動しない（enemyTurn の本行動解決前にのみ呼ばれるため自然にそうなる）
+  function resolveTrapsBeforeAction(state, intent, log) {
+    const out = { cancelled: false, attackCut: 0, dead: false };
+    const traps = state.traps || [];
+    if (traps.length === 0 || state.enemy.dead) return out;
+    const noiseNow = state.noise || 0;
+    const attack = isAttackIntent(intent);
+    const ofKind = (kind) => traps.filter((trap) => trap.kind === kind);
+    for (const kind of TRAP_FIRE_ORDER) {
+      if (state.enemy.dead) { out.dead = true; return out; }
+      if (kind === "audio_mine") {
+        const mine = ofKind(kind)[0];
+        if (mine && noiseNow >= (mine.minNoise || 3)) {
+          consumeTrap(state, mine);
+          const dmg = trapFireDamage(state, mine);
+          log.push(`TRAP: AUDIO MINE 起爆 ${dmg}dmg / 行動キャンセル`);
+          applyTrapDamage(state, dmg, log);
+          if (state.enemy.dead) { out.dead = true; return out; }
+          out.cancelled = true;
+          return out;
+        }
+        continue;
+      }
+      if (kind === "echo_mine") {
+        // バッチC: minNoise は地雷ごとに判定する（残響地雷 minNoise 2 と重残響地雷 minNoise 4 の
+        // 混在対応。従来は先頭の1つの minNoise で同種全部を一括判定していた）
+        const ready = ofKind(kind).filter((mine) => noiseNow >= (mine.minNoise || 2));
+        if (ready.length === 0) continue;
+        for (const mine of ready) {
+          consumeTrap(state, mine);
+          const dmg = trapFireDamage(state, mine);
+          log.push(`TRAP: ECHO MINE 起爆 ${dmg}dmg / スタン +${mine.stun}`);
+          applyTrapDamage(state, dmg, log);
+          if (mine.stun > 0) addStun(state, mine.stun, log, false);
+          if (state.enemy.dead) { out.dead = true; return out; }
+        }
+        continue;
+      }
+      if (kind === "decoy_mine") {
+        // 囮地雷（プリミティブ #21）: 敵の行動時に発動し、ダメージではなくドロー（＋任意のセルフ効果）を生む
+        for (const mine of ofKind(kind)) {
+          consumeTrap(state, mine);
+          log.push("TRAP: DECOY MINE 起爆 (注意を逸らす)");
+          fireTrapSideEffects(state, mine, log);
+        }
+        continue;
+      }
+      if (kind === "glue_wire") {
+        if (attack) continue;
+        for (const wire of ofKind(kind)) {
+          consumeTrap(state, wire);
+          log.push(`TRAP: GLUE WIRE 起爆 スタン +${wire.stun}`);
+          if (wire.stun > 0) addStun(state, wire.stun, log, false);
+          fireTrapSideEffects(state, wire, log);
+        }
+        continue;
+      }
+      if (kind === "alarm_wire") {
+        // 警報線（プリミティブ #21）: 敵の行動時に発動（攻撃・非攻撃どちらでも）。スタン＋自BLK
+        for (const wire of ofKind(kind)) {
+          consumeTrap(state, wire);
+          log.push(`TRAP: TRIP ALARM 起爆 スタン +${wire.stun} / 自BLK +${wire.selfBlock || 0}`);
+          if (wire.stun > 0) addStun(state, wire.stun, log, false);
+          fireTrapSideEffects(state, wire, log);
+        }
+        continue;
+      }
+      // barbed_wire / double_wire / spark_trap（火花罠は selfBlock 付きの鉄線系変種）
+      if (!attack) continue;
+      for (const wire of ofKind(kind)) {
+        consumeTrap(state, wire);
+        out.attackCut += wire.cut || 0;
+        const dmg = trapFireDamage(state, wire);
+        log.push(`TRAP: ${TRAP_LABEL[kind]} 起爆 ${dmg}dmg / 攻撃 -${wire.cut}`);
+        applyTrapDamage(state, dmg, log);
+        fireTrapSideEffects(state, wire, log);
+        if (state.enemy.dead) { out.dead = true; return out; }
+      }
+    }
+    return out;
   }
 
   function discardHand(state) {
@@ -722,6 +1174,30 @@
     state.player.block = 0;
     const notes = applyRelics(state, "start_of_turn");
     if (expiredBlock > 0) notes.unshift(`BLOCK EXPIRED ${expiredBlock}`);
+    // プール大拡充バッチB: 持続パワーの追加種別（ターン開始時。プリミティブ #16〜#18）。
+    // vent_per_turn（予備ギア／静寂領域）: NOISE −value（機体別クランプ適用）。
+    // block_per_turn（残響バッテリー）: BLK +value。防護の失効（上の block = 0）より後に加算する。
+    // turn_start_noise_damage（圧力鍋）: 敵へ「開始時NOISE×value」ダメージ（変換系・固定レート）。
+    // 開始時NOISEは冒頭で確定した turnStartNoise スナップショット（vent 適用前）を使う。
+    let vented = false;
+    for (const power of state.powers || []) {
+      if (power.kind === "vent_per_turn" && power.value) {
+        const before = state.noise || 0;
+        state.noise = clampNoise(state, before - power.value);
+        vented = true;
+        if (state.noise !== before) powerNotes.push(`POWER ${power.source} NOISE ${before} → ${state.noise}`);
+      } else if (power.kind === "block_per_turn" && power.value) {
+        state.player.block += power.value;
+        powerNotes.push(`POWER ${power.source} BLOCK +${power.value}`);
+      } else if (power.kind === "turn_start_noise_damage" && power.value) {
+        const dmg = Math.max(0, state.turnStartNoise || 0) * power.value;
+        if (dmg > 0 && !state.enemy.dead) {
+          powerNotes.push(`POWER ${power.source} 開始時ノイズ ${state.turnStartNoise} ×${power.value}`);
+          applyTrapDamage(state, dmg, powerNotes);
+        }
+      }
+    }
+    if (vented) syncAlertBuff(state);
     const stagger = state.player.stagger || 0;
     if (stagger > 0) {
       const lost = Math.min(state.player.energy, stagger);
@@ -971,9 +1447,30 @@
       log.push("STUNNED - 行動ショート");
       return { log, outcome: "stunned", damage: 0, call: "STUNNED", action: { label: "STUNNED", kind: "stunned" }, alert: { telegraphed, kind: null, cancelled: !!telegraphed } };
     }
+    // 『アナログ・トラップ機構』（WEAVER）: 行動しない確定ケース（dead／キャンセル／スタン最大）を
+    // 抜けた後、警報バフ確定・インテント解決の前に設置罠の発動を判定する（1か所に集約）。
+    // 罠で敵が倒れたら行動は発生せず、集音地雷が起爆したら行動自体をキャンセルする
+    // （cancelNextIntent の分岐と同じ結果。パターンは1つ進み、追加行動も発生しない）。
+    let mainIntent = currentIntent(state.enemy);
+    if ((state.traps || []).length > 0) {
+      const trapRes = resolveTrapsBeforeAction(state, mainIntent, log);
+      if (trapRes.dead || state.enemy.dead) {
+        log.push("TARGET DOWN");
+        return { log, outcome: "down", damage: 0, call: "", action: null, alert: { telegraphed, kind: null, cancelled: false } };
+      }
+      if (trapRes.cancelled) {
+        advancePattern(state.enemy);
+        log.push("INTENT CANCELLED (TRAP)");
+        return { log, outcome: "cancelled", damage: 0, call: "CANCELLED", action: { label: "CANCELLED", kind: "cancelled" }, alert: { telegraphed, kind: null, cancelled: !!telegraphed } };
+      }
+      // 迎撃鉄線系の攻撃軽減は、解決に渡すインテントの複製へ先に適用する（表示用 shownIntent にも反映される）
+      if (trapRes.attackCut > 0 && isAttackIntent(mainIntent)) {
+        mainIntent = { ...mainIntent, value: Math.max(0, (mainIntent.value || 0) - trapRes.attackCut) };
+        log.push(`鉄線が攻撃を鈍らせる (攻撃値 -${trapRes.attackCut})`);
+      }
+    }
     // 正式版フェーズ1（A-2）: 敵フェイズ開始時点の帯域で警報バフを確定させる
     syncAlertBuff(state);
-    const mainIntent = currentIntent(state.enemy);
     // v15.3 案A: 中央バナー用の「実行された行動」ラベル。表示中のインテント予告
     // （intentView）と同じく警報バフ＋照準を合算した実効値で組む。
     const effBuff = (state.alertBuff || 0) + (state.alertAim || 0);
@@ -1049,13 +1546,30 @@
 
   function endTurn(state, rng) {
     const log = [];
-    // 選択保留（search／discard）はターン終了で消散する（UI側でも選択中はターン終了をブロックする）
+    // 選択保留（search／discard／reposition）はターン終了で消散する（UI側でも選択中はターン終了をブロックする）
     state.pendingPick = null;
+    // 『余剰電力装甲』（WEAVER固有OS）: ターン終了時点で残っているPWR × standbyArmor を
+    // BLK に加算してから敵フェイズに入る（加算分はそのまま敵フェイズの攻撃を受ける。
+    // 残ったBLKの失効は従来どおり次の自ターン開始時）。磁気ホールド等の他処理より前に行う
+    const endCharDef = characterDef(state.characterId);
+    if (endCharDef.standbyArmor && (state.player.energy || 0) > 0) {
+      // プリミティブ #19 standby_armor_up（WEAVER W-08「塹壕モード」用の基盤）:
+      // 変換率は機体固有値＋持続パワーの加算分
+      const armorUp = (state.powers || [])
+        .filter((power) => power.kind === "standby_armor_up")
+        .reduce((sum, power) => sum + (power.value || 0), 0);
+      const armorGain = state.player.energy * (endCharDef.standbyArmor + armorUp);
+      state.player.block = (state.player.block || 0) + armorGain;
+      log.push(`待機防護 +${armorGain}`);
+    }
     // 保持割引は「保持した次のターン」限り。使われなかった分の割引はここで失効する
     // （同じ実体がこの後の保持選択で選び直された場合だけ、翌ターンに新しい割引が付く）。
     state.holdDiscountUid = 0;
     const discarded = discardHand(state);
     log.push(`DISCARD ${discarded.length}`);
+    // UI（main.js runEnemyPhase）が敵ログの区間を特定するための開始位置。
+    // 待機防護など敵フェイズ前の行が増えても色分けがずれないよう、実位置を返す
+    const enemyLogStart = log.length;
     const enemy = enemyTurn(state);
     log.push(...enemy.log);
     // 正式版フェーズ1（A-2）: 完全露呈の天井リセット。ノイズ10の敵フェイズは LOCKDOWN 相当で
@@ -1070,17 +1584,20 @@
     state.turn += 1;
     const started = beginPlayerTurn(state, rng);
     log.push(...started.log);
-    return { log, discarded, drawn: started.drawn, enemy, exposedReset };
+    return { log, discarded, drawn: started.drawn, enemy, exposedReset, enemyLogStart };
   }
 
   function pileCount(state) {
-    return state.drawPile.length + state.hand.length + state.discard.length + (state.exhaust ? state.exhaust.length : 0) + (state.retained ? 1 : 0);
+    return state.drawPile.length + state.hand.length + state.discard.length + (state.exhaust ? state.exhaust.length : 0) + (state.retained ? 1 : 0) + (state.traps ? state.traps.length : 0);
   }
 
   root.Battle = {
     DECK,
     GOLIATH_DECK,
     GHOST_TAPE_DECK,
+    WEAVER_DECK,
+    TRAP_LIMIT,
+    isTrapCard,
     CHARACTERS,
     characterDef,
     noiseLimitsFor,

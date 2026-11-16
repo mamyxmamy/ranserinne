@@ -956,6 +956,34 @@ button { color: inherit; }
   text-shadow: none;
 }
 
+/* 『アナログ・トラップ機構』: 設置中トラップのチップ列（RELICS と同じ流儀、色は死線の錆赤） */
+.traps-label {
+  margin: 6px 0 2px;
+  color: #8d948e;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+
+.traps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  flex: none;
+}
+
+.traps .trap-chip {
+  border: 1px solid rgba(216, 106, 74, 0.65);
+  background: rgba(90, 26, 16, 0.25);
+  color: #e89a7a;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  padding: 1px 5px;
+}
+
 .stage {
   position: relative;
   flex: 1;
@@ -2187,6 +2215,21 @@ button { color: inherit; }
   opacity: 0.72;
 }
 
+/* 『アナログ・トラップ機構』: 罠カードの「設置」タグ（廃棄タグと同じ左下のタグ列） */
+.punchcard__trap {
+  position: absolute;
+  left: 6px;
+  bottom: 17px;
+  z-index: 2;
+  padding: 0 3px;
+  background: rgba(247, 236, 210, 0.88);
+  color: #b3402a;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-align: left;
+}
+
 /* 『磁気ホールド』: 保持札バッジ／保持中の面／選択フェイズの候補 */
 .punchcard__hold {
   position: absolute;
@@ -3100,6 +3143,8 @@ body.is-dead .comms {
   .rig { grid-template-rows: auto minmax(0, 1fr) minmax(146px, 30%); }
   .counters__label { display: none; }
   .relics-label { display: none; }
+  .traps-label { display: none; }
+  .traps .trap-chip { font-size: 9px; line-height: 1.15; padding: 1px 2px; white-space: nowrap; overflow: hidden; }
   .hint { display: none; }
   /* PROMPT-24: 低い画面ではリーダーを詰め、浮いた分を手札カードの高さに回す */
   .reader { padding: 2px 8px 2px; }
