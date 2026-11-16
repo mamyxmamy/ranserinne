@@ -334,6 +334,16 @@
   .rankBadge.rS { color:#ffe14d; text-shadow:0 0 8px rgba(255,225,77,.7); }
   .rankTime { font-family:var(--font-num); font-variant-numeric:tabular-nums; flex:0 0 auto; }
   .rankEmpty { padding:10px 4px; font-size:12.5px; opacity:.75; text-align:center; line-height:1.6; }
+  /* v1.9: ランキングのボード切替タブ（タイム／スコア） */
+  .rankTabs { display:flex; gap:8px; margin-top:12px; }
+  .rankTabs button { flex:1; min-height:40px; border-radius:6px; cursor:pointer; background:rgba(10,16,28,.6);
+    border:1.5px solid rgba(120,200,255,.35); color:#9fdcff; font-size:14px; font-weight:800; font-family:var(--font-head); }
+  .rankTabs button.on { border-color:#37E6FF; color:#eafcff; background:rgba(55,230,255,.16);
+    text-shadow:0 0 8px rgba(55,230,255,.7); box-shadow:0 0 10px rgba(55,230,255,.25) inset; }
+  .rankTabs button:active { transform:scale(.98); }
+  .rankTitleB { font-size:11px; font-weight:800; color:#ffe14d; white-space:nowrap; flex:0 1 auto;
+    overflow:hidden; text-overflow:ellipsis; text-shadow:0 0 6px rgba(255,225,77,.4); }
+  .rankScore { font-family:var(--font-num); font-variant-numeric:tabular-nums; font-weight:800; flex:0 0 auto; }
   /* ランキング全画面（タイトルから開く。テーマA上でもテーマB意匠で固定） */
   #ovRanking .panel { background:rgba(8,10,18,.93); color:#dff4ff; border:1.5px solid rgba(55,230,255,.65); border-radius:4px;
                       box-shadow:0 10px 40px rgba(0,0,0,.6), 0 0 22px rgba(55,230,255,.18);
@@ -529,7 +539,7 @@
       <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.8.6</div>
+      <div class="verTag">v1.9</div>
     </div>
   </div>
 
@@ -544,8 +554,9 @@
       <div class="kvBackNote">行きを飛ばして帰りから。社畜メーター60でスタート</div>
       <button class="kvRankBtn" id="btnRank2">🏆 ランキング</button>
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
+      <div class="kvBest" id="globalPlaysLine">🌍 みんなの累計プレイ： —</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.8.6</div>
+      <div class="verTag">v1.9</div>
     </div>
   </div>
 
@@ -601,7 +612,11 @@
           <button id="btnRankRegister" disabled>🏆 このタイムを登録</button>
         </div>
         <div id="rankMyPos"></div>
-        <div class="rankListHead">— 上位10件 —</div>
+        <div class="rankTabs" id="rankTabsResult">
+          <button type="button" data-board="time" class="on">⏱ タイム</button>
+          <button type="button" data-board="score">★ スコア</button>
+        </div>
+        <div class="rankListHead" id="rankHeadResult">— タイム 上位10件 —</div>
         <div id="rankTop10" class="rankList"><div class="rankEmpty">読み込み中…</div></div>
       </div>
       <!-- v1.6: 帰社リザルト（中間）から第3フェイズ「追撃」への導線 -->
@@ -662,6 +677,11 @@
     <div class="panel">
       <h2>🏆 オンラインランキング</h2>
       <div id="rankOverlayStatus">読み込み中…</div>
+      <div id="rankGlobalPlays" style="font-size:12.5px;text-align:center;margin-top:2px;color:#9fdcff">🌍 みんなの累計プレイ： —</div>
+      <div class="rankTabs" id="rankTabsOverlay">
+        <button type="button" data-board="time" class="on">⏱ タイム</button>
+        <button type="button" data-board="score">★ スコア</button>
+      </div>
       <div id="rankListFull" class="rankList"><div class="rankEmpty">読み込み中…</div></div>
       <button id="btnRankClose">閉じる</button>
     </div>
@@ -2727,6 +2747,7 @@ function updateRouteCur(){
   routeLabels.forEach((el,i)=>{ if(el) el.classList.toggle("cur", i===seg.secIdx); });
 }
 function startOutbound(){
+  try{ if(window.ProboxFB&&window.ProboxFB.countPlay) window.ProboxFB.countPlay(); }catch(e){} // v1.9: 累計プレイ数+1
   resetCommon();
   leg=1; runData=null; chaseTime=0; legendMode="back"; // v1.6
   newRunSeed(); // v1.6: ランごとに交通シードを変える
@@ -2936,6 +2957,7 @@ function startReturn(){
    （HUD電源投入・帰りBGM）は startReturn の通常フローと同一。合計タイムは
    元々「帰り判定＋追撃判定」だけなので、ランキング／ベストは通常どおり有効。 */
 function startFromBack(){
+  try{ if(window.ProboxFB&&window.ProboxFB.countPlay) window.ProboxFB.countPlay(); }catch(e){} // v1.9: 累計プレイ数+1
   ac();
   hideAllOverlays();
   newRunSeed(); // 通常フローでは startOutbound が担うランシード発行をここで行う
@@ -3338,7 +3360,7 @@ function showFinalResult(){
   const slot=document.querySelector("#ovFinalResult .finalRankSlot");
   if(slot && $("rankRegBox").parentNode!==slot) slot.appendChild($("rankRegBox"));
   $("rankRegBox").style.display="";
-  RankingUI.onResult(Math.round(totalShown*1000), R.rank);
+  RankingUI.onResult(Math.round(totalShown*1000), R.rank, sc.pts.total, st.title);
   $("ovFinalResult").classList.add("show");
   const stampEl=$("finalStamp"); stampEl.textContent=R.rank;
   stampEl.classList.remove("show"); // 検印はカウントアップ完了時に押す（startFinCountUp 内）
@@ -3437,9 +3459,11 @@ const RankingUI={
   pending:null, registered:false, registering:false,
   netState:"connecting", /* connecting | online | offline */
   myUid:null, docs:null, listError:false,
+  board:"time", /* v1.9: "time" | "score" */
+  scoreDocs:null, scoreListError:false,
   fmtMs(ms){ return fmtTime(ms/1000); },
-  onResult(timeMs, rank){
-    this.pending={ timeMs:timeMs, rank:rank };
+  onResult(timeMs, rank, score, title){
+    this.pending={ timeMs:timeMs, rank:rank, score:score, title:title };
     this.registered=false; this.registering=false;
     const inp=$("rankNameInput");
     try{ inp.value=localStorage.getItem(RANK_NAME_KEY)||""; }catch(e){ inp.value=""; }
@@ -3455,13 +3479,13 @@ const RankingUI={
     const st=$("rankRegStatus"), btn=$("btnRankRegister");
     if(!this.pending){ st.textContent=""; btn.disabled=true; return; }
     const ms=this.pending.timeMs;
-    if(this.registered){ st.textContent="✅ このタイムは登録済みです"; btn.disabled=true; btn.textContent="登録済み"; return; }
-    btn.textContent="🏆 このタイムを登録";
-    if(ms<10000||ms>600000){ st.textContent="このタイムは登録対象外です（10秒〜10分のランが対象）"; btn.disabled=true; return; }
+    if(this.registered){ st.textContent="✅ タイムとスコアは登録済みです"; btn.disabled=true; btn.textContent="登録済み"; return; }
+    btn.textContent="🏆 タイムとスコアを登録";
+    if(ms<10000||ms>600000){ st.textContent="このランは登録対象外です（10秒〜10分のランが対象）"; btn.disabled=true; return; }
     if(this.registering){ st.textContent="登録中…"; btn.disabled=true; return; }
     if(this.netState==="connecting"){ st.textContent="ランキングに接続中…"; btn.disabled=true; return; }
     if(this.netState==="offline"){ st.textContent="ランキングに接続できません（オフラインでは登録できません）"; btn.disabled=true; return; }
-    st.textContent="判定タイム "+this.fmtMs(ms)+" をオンラインランキングに登録できます";
+    st.textContent="判定タイム "+this.fmtMs(ms)+" と総合点 "+(this.pending.score||0).toLocaleString()+"点 を両方のランキングに登録できます";
     btn.disabled=false;
   },
   async register(){
@@ -3473,10 +3497,12 @@ const RankingUI={
     try{ localStorage.setItem(RANK_NAME_KEY, name); }catch(e){}
     this.registering=true; this.refreshRegUI();
     try{
-      const r=await window.ProboxFB.register(name, this.pending.timeMs, this.pending.rank);
+      const r=await window.ProboxFB.register(name, this.pending.timeMs, this.pending.rank, this.pending.score, this.pending.title);
       this.registering=false; this.registered=true;
       $("rankRegBox").dataset.docId=r.id;
-      $("rankMyPos").innerHTML="🏆 あなたの順位： <b>"+r.pos+"位</b> ／ "+r.total+"人中";
+      $("rankMyPos").innerHTML = (r.scorePos!=null)
+        ? "🏆 タイム <b>"+r.pos+"位</b>／"+r.total+"人中　★ スコア <b>"+r.scorePos+"位</b>／"+r.scoreTotal+"人中"
+        : "🏆 タイム <b>"+r.pos+"位</b>／"+r.total+"人中（スコアは通信エラーで登録できませんでした）";
       this.refreshRegUI();
     }catch(e){
       this.registering=false;
@@ -3486,24 +3512,49 @@ const RankingUI={
   },
   renderRows(el, limit){
     if(!el) return;
-    if(this.listError||(this.docs===null&&this.netState==="offline")){
+    const isScore = this.board==="score";
+    const docs = isScore ? this.scoreDocs : this.docs;
+    const err  = isScore ? this.scoreListError : this.listError;
+    if(err||(docs===null&&this.netState==="offline")){
       el.innerHTML='<div class="rankEmpty">ランキングに接続できません</div>'; return; }
-    if(this.docs===null){ el.innerHTML='<div class="rankEmpty">読み込み中…</div>'; return; }
-    if(!this.docs.length){ el.innerHTML='<div class="rankEmpty">まだ登録がありません。最初の伝説を作ろう！</div>'; return; }
-    el.innerHTML=this.docs.slice(0,limit).map((d,i)=>{
+    if(docs===null){ el.innerHTML='<div class="rankEmpty">読み込み中…</div>'; return; }
+    if(!docs.length){ el.innerHTML='<div class="rankEmpty">まだ登録がありません。最初の伝説を作ろう！</div>'; return; }
+    el.innerHTML=docs.slice(0,limit).map((d,i)=>{
       const mine=this.myUid&&d.uid===this.myUid;
+      if(isScore){
+        return '<div class="rankRow'+(mine?' mine':'')+'"><span class="rankPos">'+(i+1)+'</span>'+
+          '<span class="rankName">'+rankEscapeHtml(d.name)+'</span>'+
+          '<span class="rankTitleB">'+rankEscapeHtml(d.title||"")+'</span>'+
+          '<b class="rankScore">'+Number(d.score||0).toLocaleString()+'点</b></div>';
+      }
       return '<div class="rankRow'+(mine?' mine':'')+'"><span class="rankPos">'+(i+1)+'</span>'+
         '<span class="rankName">'+rankEscapeHtml(d.name)+'</span>'+
         '<span class="rankBadge r'+rankEscapeHtml(d.rank)+'">'+rankEscapeHtml(d.rank)+'</span>'+
         '<b class="rankTime">'+this.fmtMs(d.timeMs)+'</b></div>';
     }).join("");
   },
-  renderResultTop(){ this.renderRows($("rankTop10"), 10); },
+  renderResultTop(){ this.renderRows($("rankTop10"), 10);
+    const h=$("rankHeadResult"); if(h) h.textContent = this.board==="score" ? "— スコア 上位10件 —" : "— タイム 上位10件 —"; },
   renderOverlayList(){ this.renderRows($("rankListFull"), 30); },
   setDocs(docs){ this.docs=docs; this.listError=false;
     this.renderResultTop(); this.renderOverlayList(); this.refreshRankOverlayStatus(); },
   setListError(){ this.listError=true;
     this.renderResultTop(); this.renderOverlayList(); this.refreshRankOverlayStatus(); },
+  /* v1.9: スコアボード */
+  setScoreDocs(docs){ this.scoreDocs=docs; this.scoreListError=false;
+    this.renderResultTop(); this.renderOverlayList(); this.refreshRankOverlayStatus(); },
+  setScoreListError(){ this.scoreListError=true;
+    this.renderResultTop(); this.renderOverlayList(); this.refreshRankOverlayStatus(); },
+  /* v1.9: 累計プレイ数（全プレイヤー合計）の表示 */
+  setGlobalPlays(n){
+    const txt = "🌍 みんなの累計プレイ： " + (n==null ? "—" : Number(n).toLocaleString()+" 回");
+    const a=$("globalPlaysLine"); if(a) a.textContent=txt;
+    const b=$("rankGlobalPlays"); if(b) b.textContent=txt;
+  },
+  setBoard(b){ this.board = (b==="score") ? "score" : "time";
+    document.querySelectorAll(".rankTabs button").forEach(x=>{
+      x.classList.toggle("on", x.dataset.board===this.board); });
+    this.renderResultTop(); this.renderOverlayList(); },
   refreshRankOverlayStatus(){
     const st=$("rankOverlayStatus"); if(!st) return;
     if(this.listError||(this.docs===null&&this.netState==="offline")){ st.textContent="ランキングに接続できません"; return; }
@@ -3514,6 +3565,8 @@ const RankingUI={
   closeRanking(){ $("ovRanking").classList.remove("show"); },
 };
 $("btnRankRegister").onclick=()=>RankingUI.register();
+document.querySelectorAll(".rankTabs button").forEach(b=>{
+  b.onclick=()=>RankingUI.setBoard(b.dataset.board); });
 // v1.5: 初回（偽）タイトルにはランキングボタンを置かないため btnRank1 は存在しない
 $("btnRank2").onclick=()=>RankingUI.openRanking();
 $("btnRankClose").onclick=()=>RankingUI.closeRanking();
@@ -3574,6 +3627,8 @@ const FB_CONFIG = {
     const auth = authMod.getAuth(app);
     const db = fsMod.getFirestore(app);
     const colRef = fsMod.collection(db, "ranking");
+    const scoreColRef = fsMod.collection(db, "scoreRanking"); // v1.9
+    const statsRef = fsMod.doc(db, "stats", "global"); // v1.9: 累計プレイ数
     let myUid = null, subStarted = false;
     function startSubscription(){
       if(subStarted) return; subStarted = true;
@@ -3585,6 +3640,19 @@ const FB_CONFIG = {
         docs.sort((a,b)=> (a.timeMs-b.timeMs) || (a.createdAtMs-b.createdAtMs));
         UI.setDocs(docs);
       }, ()=>{ UI.setListError(); });
+      /* v1.9: スコアランキング購読（score 降順、同点は作成順） */
+      const sq = fsMod.query(scoreColRef, fsMod.orderBy("score","desc"), fsMod.limit(30));
+      fsMod.onSnapshot(sq, snap=>{
+        const docs = snap.docs.map(d=>{ const v=d.data(); return {
+          id:d.id, name:v.name, score:v.score, title:v.title, uid:v.uid,
+          createdAtMs: (v.createdAt && v.createdAt.toMillis) ? v.createdAt.toMillis() : 0 }; });
+        docs.sort((a,b)=> (b.score-a.score) || (a.createdAtMs-b.createdAtMs));
+        UI.setScoreDocs(docs);
+      }, ()=>{ UI.setScoreListError(); });
+      /* v1.9: 累計プレイ数の購読 */
+      fsMod.onSnapshot(statsRef, snap=>{
+        UI.setGlobalPlays(snap.exists() ? (snap.data().plays||0) : 0);
+      }, ()=>{});
     }
     authMod.onAuthStateChanged(auth, u=>{
       if(u){ myUid = u.uid; UI.setOnline(u.uid); startSubscription(); }
@@ -3592,8 +3660,9 @@ const FB_CONFIG = {
     await authMod.signInAnonymously(auth);
     window.ProboxFB = {
       ready: true,
-      /* 登録: ドキュメントは {name, timeMs, rank, uid, createdAt} の5キーのみ（ルールのバリデーションに一致） */
-      register: async (name, timeMs, rank)=>{
+      /* 登録: タイム {name, timeMs, rank, uid, createdAt} と
+         スコア {name, score, title, uid, createdAt} を両方へ書く（各ルールのバリデーションに一致） */
+      register: async (name, timeMs, rank, score, title)=>{
         if(!myUid) throw new Error("not-signed-in");
         const ref = await fsMod.addDoc(colRef, {
           name: name, timeMs: timeMs, rank: rank, uid: myUid,
@@ -3608,9 +3677,42 @@ const FB_CONFIG = {
         })).sort((a,b)=>a.t-b.t);
         const tieIdx = ties.findIndex(t=>t.id===ref.id);
         const totalSnap = await fsMod.getCountFromServer(colRef);
+        /* v1.9: スコア側も登録し、順位（自分より大きい件数＋同点内の作成順＋1）を確定。
+           スコア側だけ失敗してもタイム登録は成立として返す（scorePos=null） */
+        let scorePos=null, scoreTotal=null;
+        try{
+          const sScore = Math.max(0, Math.floor(Number(score)||0));
+          const sTitle = String(title||"").slice(0,32);
+          const sRef = await fsMod.addDoc(scoreColRef, {
+            name: name, score: sScore, title: sTitle, uid: myUid,
+            createdAt: fsMod.serverTimestamp() });
+          const greaterSnap = await fsMod.getCountFromServer(
+            fsMod.query(scoreColRef, fsMod.where("score",">",sScore)));
+          const sTieSnap = await fsMod.getDocs(
+            fsMod.query(scoreColRef, fsMod.where("score","==",sScore)));
+          const sTies = sTieSnap.docs.map(d=>({ id:d.id,
+            t:(d.data().createdAt && d.data().createdAt.toMillis) ? d.data().createdAt.toMillis() : 0
+          })).sort((a,b)=>a.t-b.t);
+          const sTieIdx = sTies.findIndex(t=>t.id===sRef.id);
+          const sTotalSnap = await fsMod.getCountFromServer(scoreColRef);
+          scorePos = greaterSnap.data().count + (sTieIdx>=0 ? sTieIdx : sTies.length) + 1;
+          scoreTotal = sTotalSnap.data().count;
+        }catch(e){ scorePos=null; scoreTotal=null; }
         return { id: ref.id,
                  pos: lessSnap.data().count + (tieIdx>=0 ? tieIdx : ties.length) + 1,
-                 total: totalSnap.data().count };
+                 total: totalSnap.data().count,
+                 scorePos: scorePos, scoreTotal: scoreTotal };
+      },
+      /* v1.9: 累計プレイ数+1（トランザクション。失敗してもゲームに影響しない） */
+      countPlay: async ()=>{
+        if(!myUid) return;
+        try{
+          await fsMod.runTransaction(db, async (tx)=>{
+            const s = await tx.get(statsRef);
+            if(s.exists()) tx.update(statsRef, { plays: (s.data().plays||0) + 1 });
+            else tx.set(statsRef, { plays: 1 });
+          });
+        }catch(e){}
       }
     };
   }catch(e){

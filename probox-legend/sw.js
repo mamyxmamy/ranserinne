@@ -6,7 +6,7 @@
      （あれば即返し、裏でネットワークから更新する stale-while-revalidate）。
    - 別オリジン（Firebase / Google Fonts 等）は一切触らない（素通り）。
    キャッシュ名にバージョンを含め、更新時は古いキャッシュを破棄する。 */
-const CACHE_NAME = "probox-legend-v1.8.6";
+const CACHE_NAME = "probox-legend-v1.9";
 
 self.addEventListener("install", (e) => {
   self.skipWaiting();
