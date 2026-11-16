@@ -16,6 +16,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="assets-v11/icon-192.png">
 <link rel="apple-touch-icon" href="assets-v11/icon-192.png">
+<link rel="preload" as="image" href="assets-v06/yui-face.webp">
 <meta name="theme-color" content="#05070d">
 <link rel="apple-touch-icon" href="assets-v11/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -391,6 +392,10 @@
     padding:9px 13px 11px; color:#eafcff; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
     box-shadow:0 6px 24px rgba(0,0,0,.45); backdrop-filter:blur(3px); }
   #driveCall.show { opacity:1; transform:translate(-50%,0); }
+  #driveCall { display:flex; gap:10px; }
+  #driveCallFace { width:58px; height:58px; border-radius:50%; object-fit:cover; flex:none;
+    border:2px solid rgba(255,183,221,.85); background:#1b2740; }
+  #driveCall .dcMain { flex:1; min-width:0; }
   #driveCall .dcHead { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
   #driveCall .dcName { font-size:13px; font-weight:900; color:#FFB7DD; letter-spacing:.04em; }
   #driveCall .dcSub { font-size:10.5px; color:rgba(234,252,255,.55); font-weight:700; }
@@ -557,7 +562,7 @@
       <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.9.2</div>
+      <div class="verTag">v1.9.3</div>
     </div>
   </div>
 
@@ -574,7 +579,7 @@
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvBest" id="globalPlaysLine">🌍 みんなの累計プレイ： —</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.9.2</div>
+      <div class="verTag">v1.9.3</div>
     </div>
   </div>
 
@@ -711,7 +716,7 @@
     <div id="heroCutinText"><div class="bcVoice" id="heroRetort">（……なんだその文句は）</div><div class="bcLine">上等だ。<br>最速で帰ってやる</div></div>
   </div>
   <!-- v1.9.2: 走行中ハンズフリー着信（帰社通過ビート用・操作は止めない） -->
-  <div id="driveCall"><div class="dcHead"><span class="dcName">📞 内勤のユイさん</span><span class="dcSub">ハンズフリー通話中</span></div><div class="dcLine" id="driveCallLine"></div></div>
+  <div id="driveCall"><img id="driveCallFace" src="assets-v06/yui-face.webp" alt="内勤のユイさん"><div class="dcMain"><div class="dcHead"><span class="dcName">📞 内勤のユイさん</span><span class="dcSub">ハンズフリー通話中</span></div><div class="dcLine" id="driveCallLine"></div></div></div>
   <!-- v1.7: コンボ節目ミニカットイン（帰り・追撃中のみ。ゲームは止めず右端に約1.2秒差し込む） -->
   <div id="comboCutin"><img src="assets-v06/protagonist-cutin.webp" alt="" aria-hidden="true">
     <div class="ccBody"><div class="ccCombo" id="ccComboNum">5 コンボ！</div><div class="ccLine" id="ccLine">まだまだ！</div></div>
