@@ -529,7 +529,7 @@
       <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.8.4</div>
+      <div class="verTag">v1.8.5</div>
     </div>
   </div>
 
@@ -545,7 +545,7 @@
       <button class="kvRankBtn" id="btnRank2">🏆 ランキング</button>
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.8.4</div>
+      <div class="verTag">v1.8.5</div>
     </div>
   </div>
 
@@ -1025,8 +1025,7 @@ const SMASH_BOOST_T=0.8;       // 接触後に加速×2.2が続く時間（秒�
    減衰し、実質ゼロだった（実測で判明）。最高速を引き上げる方式に変更した。
    v1.8.4: 「1.6秒だけ」の時間制もやめ、ぶつけるたび最高速が純粋に積み上がる
    方式に変更（本人の指示）。帰り→追撃へ持ち越し、ランが終わるまで消えない */
-const SMASH_TOP_STEP=2;        // 廃車1台ごとの最高速上乗せ（表示km/h）
-const SMASH_TOP_MAX=60;        // 上乗せの上限（表示km/h）
+const SMASH_TOP_STEP=2;        // 廃車1台ごとの最高速上乗せ（表示km/h）。v1.8.5: 上限なし（本人の指示）
 let smashTopBonus=0;           // 現在の積み上がり（表示km/h。resetCommonで0、追撃へは startChase が持ち越す）
 let smashCount=0;
 const NEAR_MISS_CD=0.8;      // 連続発火防止の全体クールダウン（秒）
@@ -2391,7 +2390,9 @@ function update(dt){
     if(state==="out") damageCargo(1.6*dt, null); }
   if(boostT>0) boostT-=dt;
   if(driftBoostT>0) driftBoostT-=dt;
-  speed=clamp(speed,0,MAX_SPEED*(auraOn?1.68:1.60)); // v0.4.4: 疾走+ドリフトボーナス込み最高速 (0.92+0.08+36/185+12/185≒1.26) を許容。v1.7: オーラ+15/185≒0.08 が全積みでも頭打ちにならないよう発動中だけ上限を 1.36 へ。v1.8.4: 廃車の積み上がり最大+60/185≒0.32 を含む全積み（≒1.66）まで許容
+  // v1.8.5: 廃車の積み上がりが上限なしになったため、絶対上限は固定値をやめ
+  // 「現在の上限速度（phaseTop）+ 0.12」の追随式にする（行きは従来の固定値）
+  speed=clamp(speed,0, state==="back"? MAX_SPEED*(phaseTop+0.12) : MAX_SPEED*(auraOn?1.44:1.36));
   // 移動
   const prevPos=position;
   position+=speed*dt;
@@ -2518,7 +2519,7 @@ function smashCar(car){
   smashCount++;
   speed=Math.min(speed+MAX_SPEED*SMASH_BOOST_FRAC, MAX_SPEED*1.30);
   boostT=Math.max(boostT, SMASH_BOOST_T);
-  smashTopBonus=Math.min(SMASH_TOP_MAX, smashTopBonus+SMASH_TOP_STEP); // v1.8.4: ぶつけるたび最高速が積み上がる（時間で消えない）
+  smashTopBonus+=SMASH_TOP_STEP; // v1.8.4: ぶつけるたび最高速が積み上がる（時間で消えない）。v1.8.5: 上限なし
   SE.smash(); vib(VIB.hit);
   fireBoostBurst(); // v1.8: 吹き飛ばしの瞬間にバースト演出（放射ライン＋FOVキック）
   const w=$("cvWrap"); w.classList.remove("shake"); void w.offsetWidth; w.classList.add("shake");
