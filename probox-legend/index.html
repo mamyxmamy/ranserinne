@@ -562,7 +562,7 @@
       <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.9.5</div>
+      <div class="verTag">v1.9.6</div>
     </div>
   </div>
 
@@ -579,7 +579,7 @@
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvBest" id="globalPlaysLine">🌍 みんなの累計プレイ： —</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.9.5</div>
+      <div class="verTag">v1.9.6</div>
     </div>
   </div>
 
@@ -2384,6 +2384,8 @@ function updateDrift(dt, playerSeg, steer){
   if(driftReleaseT>=DRIFT_EXIT_GRACE || kmh<DRIFT_EXIT_KMH) endDrift();
 }
 function update(dt){
+  // v1.9.6: ユイさんとの通話中はゲームを止める（描画だけ続く）
+  if(callPause && state==="back") return;
   gameClock+=dt;
   const playerSeg=findSegment(position);
   const spdPct=speed/MAX_SPEED;
@@ -2664,7 +2666,7 @@ function updateReturn(dt){
     showToast("残業確定…でも、完走しよう", true, 1800); SE.warn(); }
   if(comboTimer>0 && officeBeatT<=0){ comboTimer-=dt; if(comboTimer<=0) combo=0; } // v1.9.2: ビート中はコンボを維持
   // v1.9.5: 本社が見えてきたらユイさんから着信（前半）。後半は通過時に繋ぐ
-  if(leg===2 && yuiCallStage===0 && (trackLength-position)<=52000){ yuiCallStage=1; officeBeatT=14; startYuiPhase1(); }
+  if(leg===2 && yuiCallStage===0 && (trackLength-position)<=52000){ yuiCallStage=1; officeBeatT=14; callPause=true; startYuiPhase1(); }
   // 煽りイベント（中盤・1回・帰りのみ）
   const prog=position/trackLength;
   if(leg===2 && rivalState==="none"&&prog>0.40){
@@ -2710,7 +2712,7 @@ function resetCommon(){
   monoT=9; lastMonoIdx=-1;
   toastQueue.length=0; // 前ランのテロップを持ち越さない
   startedFromBack=false; auraOn=false; auraTrail=[]; auraAcc=0; auraFiredRun=false; // v1.7
-  yuiCallStage=0; officeBeatT=0; // v1.9.5: ユイさん着信ビートを初期化
+  yuiCallStage=0; officeBeatT=0; callPause=false; // v1.9.5: ユイさん着信ビートを初期化
   officeBeatTimers.forEach(clearTimeout); officeBeatTimers=[];
   const dcInit=$("driveCall"); if(dcInit) dcInit.classList.remove("show");
   resetComboCutin(); // v1.7: ミニカットインの表示状態も前ランから持ち越さない
@@ -3096,7 +3098,7 @@ function finishReturn(){
    そのまま追撃区間へ。速度・コンボ・ベタ踏み・オーラ・廃車ボーナスは
    全て継続する（resetCommon を通さない）。旧フロー（中間リザルト→
    showChaseBeat→課長へ電話→startChase）は到達しなくなったため残置。 */
-let officeBeatT=0, yuiCallStage=0;
+let officeBeatT=0, yuiCallStage=0, callPause=false;
 function passOffice(){
   state="back"; setPhaseUI(); // finishReturn が立てた result 状態を走行へ戻す
   vib(VIB.dual); // 通過のバイブ
@@ -3114,7 +3116,7 @@ function passOffice(){
   smashCount=0; driftBonusCount=0; dashMaxReached=0; dashMaxVoiced=false;
   ms180=false; ms200=false; pendingMs=0; // マイルストーンはレッグごと
   drifting=false; driftBoostT=0; hitCooldown=0; grazeCooldown=0;
-  yuiCallStage=2; officeBeatT=8; // 後半ビートの間はコンボタイマーを凍結する
+  yuiCallStage=2; officeBeatT=8; callPause=true; // 後半ビートの間はゲームを止める
   startYuiPhase2();
   // 最終ムービーは追撃の走行中にプリロードしておく（旧 startChase と同じ）
   const v=$("endingVideo"); if(v){ try{ v.preload="auto"; v.load(); }catch(e){} }
@@ -3138,6 +3140,7 @@ function startYuiPhase1(){
   beatTimer(0.0, ()=>{ if(state==="back"&&leg===2&&yuiCallStage===1) beatLine("ring",""); });
   beatTimer(0.8, ()=>{ if(state==="back"&&leg===2&&yuiCallStage===1) beatLine("yui","お疲れさまです！ 今、どのへんですか？"); });
   beatTimer(2.7, ()=>{ if(state==="back"&&leg===2&&yuiCallStage===1) beatLine("hero","もうすぐ会社だ。課長はまだいるか？"); });
+  beatTimer(4.1, ()=>{ if(yuiCallStage===1){ $("driveCall").classList.remove("show"); callPause=false; } }); // 前半が終わったら走行再開
 }
 function startYuiPhase2(){
   officeBeatTimers.forEach(clearTimeout); officeBeatTimers=[];
@@ -3162,7 +3165,7 @@ function driveTelop(){
   $("legendDetail").innerHTML="課長は家で待っている。コーヒーが冷める前に、届けろ。<br>"+
     "最終判定は <b>帰社＋追撃の合計タイム</b> ／ 速度もコンボも継続中";
   lt.classList.add("driveFlash"); lt.classList.add("show");
-  setTimeout(()=>{ lt.classList.remove("show"); lt.classList.remove("driveFlash"); }, 1900);
+  setTimeout(()=>{ lt.classList.remove("show"); lt.classList.remove("driveFlash"); callPause=false; }, 1900); // テロップが消えたら追撃走行を再開
 }
 /* ================= v1.6: 第3フェイズ「追撃」フロー =================
    帰社リザルト（中間）→「課長はもう帰っていた」→課長へ電話（2回目の小言＋
