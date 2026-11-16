@@ -14,6 +14,8 @@
 <meta name="twitter:image" content="https://mamyxmamy.github.io/ranserinne/probox-legend/ogp.jpg">
 <!-- v1.1: PWA（manifest＋アイコン）。SW登録は本体スクリプト末尾 -->
 <link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="assets-v11/icon-192.png">
+<link rel="apple-touch-icon" href="assets-v11/icon-192.png">
 <meta name="theme-color" content="#05070d">
 <link rel="apple-touch-icon" href="assets-v11/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -539,7 +541,7 @@
       <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.9</div>
+      <div class="verTag">v1.9.1</div>
     </div>
   </div>
 
@@ -556,7 +558,7 @@
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvBest" id="globalPlaysLine">🌍 みんなの累計プレイ： —</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.9</div>
+      <div class="verTag">v1.9.1</div>
     </div>
   </div>
 
@@ -3488,12 +3490,20 @@ const RankingUI={
     st.textContent="判定タイム "+this.fmtMs(ms)+" と総合点 "+(this.pending.score||0).toLocaleString()+"点 を両方のランキングに登録できます";
     btn.disabled=false;
   },
+  nameBlocked(name){ // v1.9.1: 公開ボード向けの軽い名前フィルター
+    const raw=String(name).toLowerCase();
+    if(raw.includes("http")||raw.includes("www.")||raw.includes(".com")) return true;
+    const norm=raw.replace(/[\s　_\-・.。]/g,"");
+    const NG=["死ね","しね","殺す","ころす","自殺","ちんこ","ちんちん","ちんぽ","まんこ","おまんこ","セックス","せっくす","sex","fuck","shit","porn","nigger","nigga","レイプ","れいぷ","rape","援交","うんこ","管理者","運営","公式","admin"];
+    return NG.some(w=>norm.includes(w));
+  },
   async register(){
     if(!this.pending||this.registered||this.registering) return;
     if(!window.ProboxFB||!window.ProboxFB.ready||this.netState!=="online"){ this.refreshRegUI(); return; }
     let name=($("rankNameInput").value||"").trim();
     if(!name) name="名無しの営業車";
     name=[...name].slice(0,16).join("");
+    if(this.nameBlocked(name)){ const st=$("rankRegStatus"); if(st) st.textContent="⚠ その名前は使えません。別の名前でお願いします"; return; }
     try{ localStorage.setItem(RANK_NAME_KEY, name); }catch(e){}
     this.registering=true; this.refreshRegUI();
     try{
