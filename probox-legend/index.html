@@ -562,7 +562,7 @@
       <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.9.3</div>
+      <div class="verTag">v1.9.4</div>
     </div>
   </div>
 
@@ -579,7 +579,7 @@
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvBest" id="globalPlaysLine">🌍 みんなの累計プレイ： —</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.9.3</div>
+      <div class="verTag">v1.9.4</div>
     </div>
   </div>
 
@@ -656,7 +656,7 @@
 
   <!-- v1.6: 最終ムービー（課長宅・爆破。本人が用意した実写動画の1.5倍速版） -->
   <div class="overlay" id="ovMovie">
-    <video id="endingVideo" src="ending-movie-v3.mp4" playsinline preload="metadata"></video>
+    <video id="endingVideo" src="ending-movie-v4.mp4" playsinline preload="metadata"></video>
 
   </div>
 
@@ -3284,9 +3284,9 @@ function showEndingMovie(){
   v.onended=()=>finishMovie();
   v.onerror=()=>finishMovie(); // 読めない環境では最終リザルトへ直行（劣化設計）
   /* v1.8.1: ムービーv2は無音のため、ゲーム側SEは「爆発音だけ」を同期させる（本人の指示）。
-     出火タイミング 1.29秒（v1.8.6: v3の速度ランプ編集で突撃部が短縮）で boom。timeupdate で判定し、スキップ時は movieDone ガードで鳴らさない */
+     出火タイミング 0.67秒（v1.9.4: v4で冒頭0.6秒をカットし突撃途中から開始）で boom。timeupdate で判定し、スキップ時は movieDone ガードで鳴らさない */
   let boomDone=false;
-  v.ontimeupdate=()=>{ if(!boomDone && !movieDone && v.currentTime>=1.29){ boomDone=true; try{ SE.boom(); }catch(e){} } };
+  v.ontimeupdate=()=>{ if(!boomDone && !movieDone && v.currentTime>=0.67){ boomDone=true; try{ SE.boom(); }catch(e){} } };
   try{ v.currentTime=0; const p=v.play(); if(p&&p.catch) p.catch(()=>finishMovie()); }catch(e){ finishMovie(); }
 }
 function finishMovie(){
