@@ -529,7 +529,7 @@
       <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.8.2</div>
+      <div class="verTag">v1.8.3</div>
     </div>
   </div>
 
@@ -545,7 +545,7 @@
       <button class="kvRankBtn" id="btnRank2">🏆 ランキング</button>
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.8.2</div>
+      <div class="verTag">v1.8.3</div>
     </div>
   </div>
 
@@ -945,7 +945,7 @@ const ROAD_W=2100;                 // 道路半幅（ワールド単位）
 const CAM_H=1050, CAM_DEPTH=1/(Math.tan(1.05/2)); // 約0.87
 const DRAW_DIST=110, FOG_DENSITY=5;
 const MAX_SPEED=SEG_LEN*60;        // 12000 /s
-const ACCEL=MAX_SPEED/4.2, BRAKE_DECEL=-MAX_SPEED*0.85, DECEL=-MAX_SPEED/6, OFFROAD_DECEL=-MAX_SPEED/1.2;
+const ACCEL=MAX_SPEED/3.6, BRAKE_DECEL=-MAX_SPEED*0.85, DECEL=-MAX_SPEED/6, OFFROAD_DECEL=-MAX_SPEED/1.2; // v1.8.3: ACCEL を /4.2→/3.6 に（約44→51km/h/s）。減速後の立て直しを速くする
 const CENTRIFUGAL=0.32;
 const PLAYER_W=0.42;               // 自車の見た目上の全幅（道路半幅比。実測 0.418 と一致）。v0.2-wipの判定は PLAYER_HALF を使用
 const TEIJI_LIMIT=90;              // 定時タイマー（秒・仮置き）
@@ -2371,7 +2371,7 @@ function update(dt){
     while(auraAcc>=1){ auraAcc-=1; spawnAuraParticle(); } }
   if(speedFlashT>0) speedFlashT-=dt;
   playerX += steer * dt * (1.1 + 2.6*spdPct) * (drifting? DRIFT_STEER_MULT : 1);
-  playerX -= dt*2*spdPct*spdPct*playerSeg.curve*CENTRIFUGAL*1.8 * (drifting? DRIFT_GRIP : 1); // 遠心力（ドリフト中は抑えて曲がり切れる）
+  playerX -= dt*2*spdPct*spdPct*playerSeg.curve*CENTRIFUGAL*1.8 * (drifting? DRIFT_GRIP : 1) * (state==="back"? 0.85 : 1); // 遠心力（ドリフト中は抑えて曲がり切れる）。v1.8.3: 帰り・追撃は遠心力を少し弱め、高速でもラインを保ちやすくする（路外へ流されて速度が死ぬ主因だった）
   playerX=clamp(playerX,-2.2,2.2);
   // 制限速度（区間キャップ＋フェイズ上限）
   const phaseTop = state==="out" ? 0.60 : (0.92+backTopBonus+dashBonus/185+(driftBoostT>0? DRIFT_BOOST_KMH/185:0)+(auraOn? AURA_KMH/185:0)+(smashBoostT>0? SMASH_TOP_KMH/185:0)); // v0.3: 疾走は社畜と別枠で加算（上限を設けない）。v0.4.4: ドリフトボーナスも別枠。v1.7: 虹色オーラ+15km/hも別枠。v1.8.2: 廃車ボーナス+12km/hも別枠
@@ -2384,9 +2384,9 @@ function update(dt){
   if(braking) speed+=BRAKE_DECEL*dt;
   else if(drifting) speed-=DRIFT_DECEL*dt; // v0.4.4: ドリフト中は緩やかに減速
   else if(speed<limit) speed+=ACCEL*dt*(boostT>0||driftBoostT>0||auraOn||smashBoostT>0?2.2:1); // v1.7: オーラ中もブースト並みの加速。v1.8.2: 廃車ボーナス中も同じ
-  else speed+=(-MAX_SPEED/2.2)*dt; // キャップ区間では穏やかに減速
+  else speed+=(-MAX_SPEED/3.2)*dt; // キャップ区間では穏やかに減速。v1.8.3: /2.2→/3.2（約84→58km/h/s）。ボーナス切れのたびに急に失速する感触を消す
   const offroad=Math.abs(playerX)>1.05;
-  if(offroad&&speed>MAX_SPEED*0.15){ speed+=OFFROAD_DECEL*dt*0.6;
+  if(offroad&&speed>MAX_SPEED*0.15){ speed+=OFFROAD_DECEL*dt*(state==="back"? 0.22 : 0.6); // v1.8.3: 帰り・追撃の路外減速を大幅に緩和（約-92→-34km/h/s）。カーブで肩に触れるたび速度が死ぬのが「上がらない」主因だった。行きの荷物ペナルティは従来どおり
     if(state==="out") damageCargo(1.6*dt, null); }
   if(boostT>0) boostT-=dt;
   if(driftBoostT>0) driftBoostT-=dt;
