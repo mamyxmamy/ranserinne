@@ -20,13 +20,32 @@
 
   // 正式版フェーズ1（設計書 §A）: キャラ別パラメータ。
   // vessel07 = 従来通り（HP60／PWR回復3／COVER可）。vessel04 "GOLIATH" = HP120／PWR回復2／常時EXPOSE。
+  // vessel09 "GHOST-TAPE"（設計書 DESIGN-GHOST-TAPE-DRAFT.md、2026-11-16 全決定）:
+  // HP30／PWR回復3／COVER可／NOISE範囲 −3〜5（逆位相残量）／固有OS『磁気ホールド』（canHold）。
   const CHARACTERS = Object.freeze({
-    vessel07: Object.freeze({ id: "vessel07", name: "VESSEL 07", code: "PANDORA", hp: PLAYER_HP, energyPerTurn: ENERGY_PER_TURN, canCover: true }),
-    vessel04: Object.freeze({ id: "vessel04", name: "VESSEL 04", code: "GOLIATH", hp: 120, energyPerTurn: 2, canCover: false }),
+    vessel07: Object.freeze({ id: "vessel07", name: "VESSEL 07", code: "PANDORA", hp: PLAYER_HP, energyPerTurn: ENERGY_PER_TURN, canCover: true, noiseMin: 0, noiseMax: NOISE_MAX, canHold: false }),
+    vessel04: Object.freeze({ id: "vessel04", name: "VESSEL 04", code: "GOLIATH", hp: 120, energyPerTurn: 2, canCover: false, noiseMin: 0, noiseMax: NOISE_MAX, canHold: false }),
+    vessel09: Object.freeze({ id: "vessel09", name: "VESSEL 09", code: "GHOST-TAPE", hp: 30, energyPerTurn: 3, canCover: true, noiseMin: -3, noiseMax: 5, canHold: true }),
   });
 
   function characterDef(id) {
     return CHARACTERS[id] || CHARACTERS.vessel07;
+  }
+
+  // 機体別NOISEクランプ。GHOST-TAPE の負数（逆位相残量）は帯域効果を持たず、
+  // 正の加算を相殺する緩衝材としてのみ働く（noiseBand は負数を静穏として扱う）。
+  function noiseLimitsFor(characterId) {
+    const def = characterDef(characterId);
+    return { min: def.noiseMin || 0, max: typeof def.noiseMax === "number" ? def.noiseMax : NOISE_MAX };
+  }
+
+  function clampNoiseFor(value, characterId) {
+    const lim = noiseLimitsFor(characterId);
+    return Math.max(lim.min, Math.min(lim.max, value || 0));
+  }
+
+  function clampNoise(state, value) {
+    return clampNoiseFor(value, state && state.characterId);
   }
 
   // A-2 帯域表（敵フェイズ判定）: atk = 敵の攻撃への上乗せ、extras = 追加行動の回数。
@@ -92,12 +111,28 @@
     root.Cards.get("goliath_sledgehammer"),
   ].filter(Boolean));
 
+  // 正式版: VESSEL 09 "GHOST-TAPE" 初期デッキ10枚（残響ニードル×4／消音テープ×4／テープ継ぎ×1／無音断章×1）
+  const GHOST_TAPE_DECK = Object.freeze([
+    root.Cards.get("ghost_echo_needle"),
+    root.Cards.get("ghost_echo_needle"),
+    root.Cards.get("ghost_echo_needle"),
+    root.Cards.get("ghost_echo_needle"),
+    root.Cards.get("ghost_mute_tape"),
+    root.Cards.get("ghost_mute_tape"),
+    root.Cards.get("ghost_mute_tape"),
+    root.Cards.get("ghost_mute_tape"),
+    root.Cards.get("ghost_tape_splice"),
+    root.Cards.get("ghost_silent_cut"),
+  ].filter(Boolean));
+
+  const DECKS_BY_CHARACTER = { vessel04: GOLIATH_DECK, vessel09: GHOST_TAPE_DECK };
+
   function deckIdsFor(characterId) {
-    return (characterId === "vessel04" ? GOLIATH_DECK : DECK).map((card) => card.id);
+    return (DECKS_BY_CHARACTER[characterId] || DECK).map((card) => card.id);
   }
 
   function defaultDeckFor(characterId) {
-    return (characterId === "vessel04" ? GOLIATH_DECK : DECK).slice();
+    return (DECKS_BY_CHARACTER[characterId] || DECK).slice();
   }
 
   const byId = new Map(root.Cards.all.map((card) => [card.id, card]));
@@ -154,6 +189,7 @@
       immuneToStun: false,
       vulnerable: 0,
       cancelNextIntent: 0,
+      scrapCharges: 0,
       dead: false,
       block: 0,
       patternIndex: 0,
@@ -173,6 +209,20 @@
       turnStartNoise: 0,
       cardsPlayedThisTurn: 0,
       drawPenaltyNext: 0,
+      drawBonusNext: 0,
+      // 『磁気ホールド』（GHOST-TAPE固有OS）: 敵フェイズ中の保持実体と、保持割引の対象実体ID
+      retained: null,
+      holdDiscountUid: 0,
+      // 共通プール拡張（DESIGN-COMMON-POOL-EXPANSION-DRAFT.md）:
+      // powers = 持続効果の汎用基盤。{ source, kind, value } の配列で、戦闘中ずっと残る。
+      //   kind "energy_per_turn" = ターン開始時に PWR +value（予備電源）。
+      //   将来の WEAVER（罠スタック）・REACTOR（臨界排熱）もこの配列へ種別を足して共有する想定。
+      powers: [],
+      // この戦闘で廃棄（exhaust）されたカードの累計枚数。圧縮穿孔（damage_per_exhausted）が参照する
+      exhaustedCount: 0,
+      // プレイヤー選択待ちの保留効果。{ kind: "search" } | { kind: "discard", draw }。
+      // 効果解決時に登録され、main.js の選択フェイズが resolvePick で確定させる
+      pendingPick: null,
       player: {
         hp: charDef.hp,
         hpMax: charDef.hp,
@@ -211,6 +261,40 @@
     return false;
   }
 
+  // 『磁気ホールド』の保持割引: 保持された実体だけが、次のターン中のみ実効PWR −1（下限0）。
+  // 実体は __uid を持つ複製オブジェクトで識別する（定義オブジェクトは共有・凍結されているため）。
+  let cardUidSeq = 0;
+
+  function effectiveCost(state, card) {
+    if (!card) return 0;
+    if (card.__uid && state && card.__uid === state.holdDiscountUid) {
+      return Math.max(0, (card.cost || 0) - 1);
+    }
+    return Math.max(0, card.cost || 0);
+  }
+
+  // 手札の各実体へ一意なIDを持つ複製を割り当てる（保持選択の開始時に UI から呼ぶ）。
+  function tagHandInstances(state) {
+    if (!state || !Array.isArray(state.hand)) return;
+    state.hand = state.hand.map((card) => {
+      if (card.__uid) return card;
+      cardUidSeq += 1;
+      return { ...card, __uid: cardUidSeq };
+    });
+  }
+
+  // ターン終了時、手札の1実体を保持枠へ移す。呪装／使用不能カードは保持できない。
+  function setRetained(state, uid) {
+    if (!state || !characterDef(state.characterId).canHold) return false;
+    const index = state.hand.findIndex((card) => card.__uid && card.__uid === uid);
+    if (index < 0) return false;
+    const card = state.hand[index];
+    if (card.unplayable || card.cost < 0) return false;
+    state.hand.splice(index, 1);
+    state.retained = card;
+    return true;
+  }
+
   function canPlay(state, card) {
     if (!card) return { ok: false, reason: "unknown" };
     if (state.player.hp <= 0) return { ok: false, reason: "down" };
@@ -221,7 +305,7 @@
     for (const requirement of card.requirements) {
       if (!requirementMet(state, requirement)) return { ok: false, reason: requirement };
     }
-    if (state.player.energy < card.cost) return { ok: false, reason: "energy" };
+    if (state.player.energy < effectiveCost(state, card)) return { ok: false, reason: "energy" };
     return { ok: true, reason: "" };
   }
 
@@ -248,11 +332,54 @@
     //   そのカード自身のNOISE加算前のNOISE（ctx.noiseBefore）を参照し、倍率が乗る。
     let noScale = false;
     if (effect.type === "damage_per_noise") {
-      effect = { ...effect, type: "damage", value: (state.turnStartNoise || 0) * (effect.value || 0) };
+      // GHOST-TAPE の負数（逆位相残量）は変換量へ数えない: 参照値は max(0, ターン開始時NOISE)
+      effect = { ...effect, type: "damage", value: Math.max(0, state.turnStartNoise || 0) * (effect.value || 0) };
       noScale = true;
     } else if (effect.type === "block_per_noise") {
-      effect = { ...effect, type: "block", value: (state.turnStartNoise || 0) * (effect.value || 0) };
+      effect = { ...effect, type: "block", value: Math.max(0, state.turnStartNoise || 0) * (effect.value || 0) };
       noScale = true;
+    } else if (effect.type === "damage_silence_bonus") {
+      // 静寂参照系（残響ニードル／無音断章／サイレンス・エンド）: 使用開始時点のNOISEが0以下なら per を加算
+      const base = ctx ? ctx.noiseBefore : (state.noise || 0);
+      effect = { ...effect, type: "damage", value: (effect.value || 0) + (base <= 0 ? (effect.per || 0) : 0) };
+    } else if (effect.type === "stun_if_silence") {
+      // 逆位相ノイズ: カード自身のNOISE適用後の現在NOISEが0以下ならスタン（playCard が効果解決前にNOISEを反映する）
+      if ((state.noise || 0) <= 0) addStun(state, effect.value || 1, log, true);
+      else log.push("逆位相不成立 (ノイズ過多)");
+      return;
+    } else if (effect.type === "stun_draw_if_max") {
+      // 幻聴テープ: スタンがこの効果で上限へ達したら1ドロー
+      const beforeStun = state.enemy.stun || 0;
+      addStun(state, effect.value || 1, log, true);
+      if (!state.enemy.immuneToStun && beforeStun < (state.enemy.stunMax || 3) && (state.enemy.stun || 0) >= (state.enemy.stunMax || 3)) {
+        const res = drawCards(state, 1);
+        for (const line of res.log) log.push(line);
+      }
+      return;
+    } else if (effect.type === "scrap_noise") {
+      // スクラップ・ノイズ: 敵の「次の攻撃行動1回分（全ヒット）」を半減するチャージを付与
+      state.enemy.scrapCharges = (state.enemy.scrapCharges || 0) + (effect.value || 1);
+      log.push(`SCRAP NOISE SET ×${state.enemy.scrapCharges} (次の攻撃 半減)`);
+      return;
+    } else if (effect.type === "draw_bonus_next") {
+      // フェードアウト: 次ターン開始時ドロー +1（同ターンに複数回使っても最大 +1）
+      state.drawBonusNext = Math.min(1, (state.drawBonusNext || 0) + (effect.value || 0));
+      log.push("次ターン ドロー +1 (予約)");
+      return;
+    } else if (effect.type === "recycle_discard") {
+      // リール・リサイクル: 捨て札から使用可能な1枚をランダムに手札へ。対象がなければ1ドロー。
+      // このカード自身は解決時点ではまだ手札にあるため対象にならない。
+      const candidates = state.discard.filter((card) => card && !card.unplayable && card.cost >= 0);
+      if (candidates.length === 0) {
+        const res = drawCards(state, 1);
+        for (const line of res.log) log.push(line);
+      } else {
+        const picked = candidates[Math.floor(Math.random() * candidates.length)];
+        state.discard.splice(state.discard.indexOf(picked), 1);
+        state.hand.push(picked);
+        log.push(`RECYCLE ${picked.name}`);
+      }
+      return;
     } else if (effect.type === "damage_plus_noise") {
       const base = ctx ? ctx.noiseBefore : (state.noise || 0);
       effect = { ...effect, type: "damage", value: (effect.value || 0) + base * (effect.per || 0) };
@@ -262,6 +389,40 @@
     } else if (effect.type === "damage_plus_played") {
       const played = ctx ? ctx.playedBefore : (state.cardsPlayedThisTurn || 0);
       effect = { ...effect, type: "damage", value: (effect.value || 0) + played * (effect.per || 0) };
+    } else if (effect.type === "damage_per_exhausted") {
+      // 圧縮穿孔（参照系）: 基礎値＋この戦闘で廃棄した枚数×per。このカード自身は廃棄されないため、
+      // 解決時点の exhaustedCount（過去の使用分のみ）を参照する。騒音力学の倍率は通常どおり乗る
+      effect = { ...effect, type: "damage", value: (effect.value || 0) + (state.exhaustedCount || 0) * (effect.per || 0) };
+    } else if (effect.type === "damage_stance_bonus") {
+      // 物陰の一撃（参照系）: 使用開始時点のスタンス（ctx.stanceBefore）が指定スタンスなら per を加算。
+      // ノイズで COVER が解ける前のスタンスで判定するため、ctx のスナップショットを使う。
+      // GOLIATH は常時EXPOSEなので COVER 指定では永遠に発動しない（設計書どおり意図的な非対称）
+      const stanceAtPlay = ctx ? ctx.stanceBefore : state.player.stance;
+      effect = { ...effect, type: "damage", value: (effect.value || 0) + (stanceAtPlay === (effect.stance || "COVER") ? (effect.per || 0) : 0) };
+    } else if (effect.type === "search") {
+      // 残響サーチ: 山札から1枚選んで手札へ。選択は UI（main.js の選択フェイズ）に委ね、
+      // ここでは保留だけ登録する。実際の移動は resolvePick が行う
+      state.pendingPick = { kind: "search" };
+      log.push("ECHO SEARCH 山札から1枚選択");
+      return;
+    } else if (effect.type === "discard_then_draw") {
+      // 箔の選別: 手札1枚を捨てて value 枚ドロー。捨てる札の選択を UI に委ね、保留だけ登録する。
+      // このカード自身は playFromHand の後処理で手札から離れるため、選択肢には含まれない
+      state.pendingPick = { kind: "discard", draw: effect.value || 1 };
+      log.push("FOIL SORT 捨てるカードを1枚選択");
+      return;
+    } else if (effect.type === "weaken_next") {
+      // 照準攪乱: 敵の「次の攻撃行動1回分（全ヒット）」を半減するチャージを付与（スクラップ・ノイズと同系・重ねがけ可）
+      state.enemy.weakenNext = (state.enemy.weakenNext || 0) + (effect.value || 1);
+      log.push(`AIM JAM SET ×${state.enemy.weakenNext} (次の攻撃 半減)`);
+      return;
+    } else if (effect.type === "power") {
+      // 持続パワー（予備電源）: state.powers へ登録し、戦闘の間ずっと残る。
+      // 発動タイミングは種別ごと（energy_per_turn は beginPlayerTurn）。同じカードを複数回使えば積み重なる
+      state.powers = state.powers || [];
+      state.powers.push({ source: (ctx && ctx.cardId) || effect.powerId || "power", kind: effect.kind || "", value: effect.value || 0 });
+      log.push(`POWER SET ${effect.powerId || effect.kind || "power"} (戦闘中 持続)`);
+      return;
     } else if (effect.type === "tread") {
       // 重圧歩行: このターンの敵フェイズ中、被攻撃ダメージを「カード使用前のNOISE」分だけ固定軽減
       state.player.tread = ctx ? ctx.noiseBefore : (state.noise || 0);
@@ -375,19 +536,21 @@
     // AudioManager.playPunch(intensity) で鳴らす。intensity はカードのノイズ値＋警報時+1。
     const check = canPlay(state, card);
     if (!check.ok) return { ok: false, reason: check.reason, log: [] };
-    state.player.energy -= Math.max(0, card.cost);
+    // 保持割引は実効コストで支払う（canPlay と同じ基準）
+    state.player.energy -= effectiveCost(state, card);
     const isGoliath = state.characterId === "vessel04";
-    // 効果解決の基準値: このカード自身のNOISE加算前のNOISEと、使用前までに切った枚数
-    const ctx = { noiseBefore: state.noise || 0, playedBefore: state.cardsPlayedThisTurn || 0 };
+    // 効果解決の基準値: このカード自身のNOISE加算前のNOISEと、使用前までに切った枚数、
+    // 使用開始時点のスタンス（物陰の一撃の stance_bonus 判定用）、使用カードID（power の出所記録用）
+    const ctx = { noiseBefore: state.noise || 0, playedBefore: state.cardsPlayedThisTurn || 0, stanceBefore: state.player.stance, cardId: card.id };
     // PROMPT-23: 潜伏中はノイズ-1（下限0）。ノイズの出るカードは潜伏を解くが、
     // COVER を付与するカード自身（CQC打撃など）は解除の例外とする
     // 正式版フェーズ1: GOLIATH は常時EXPOSEで潜伏の抑制・解除は一切発生しない
     const inCover = !isGoliath && state.player.stance === "COVER";
     const rawNoise = card.noise || 0;
-    // 負ノイズ（ノイズ・キャンセラー等）は潜伏の抑制対象外。そのまま増減し下限0で止める
+    // 負ノイズ（ノイズ・キャンセラー等）は潜伏の抑制対象外。そのまま増減する
     const effNoise = rawNoise < 0 ? rawNoise : (inCover ? Math.max(0, rawNoise - 1) : rawNoise);
-    // A-2: 上限10で頭打ち（10を超えるNOISEは切り捨て）
-    state.noise = Math.max(0, Math.min(NOISE_MAX, state.noise + effNoise));
+    // A-2: 機体別範囲で頭打ち（07／GOLIATH は 0〜10、GHOST-TAPE は −3〜5＝逆位相残量）
+    state.noise = clampNoise(state, state.noise + effNoise);
     const log = [];
     if (inCover && (rawNoise > 0 || card.breaksCover === true) && card.stance_change !== "COVER") {
       state.player.stance = "EXPOSE";
@@ -403,7 +566,7 @@
         // カード自体の効果（防護など）は通常どおり解決する。
         oversized = true;
         state.player.block += 5;
-        state.noise = Math.min(NOISE_MAX, state.noise + 1);
+        state.noise = clampNoise(state, state.noise + 1);
         log.push("[ERROR: OVERSIZED VESSEL]");
         log.push("COVER不発 → 代替処理: BLK +5 / NOISE +1");
       }
@@ -430,15 +593,24 @@
     return { ok: true, reason: "", log, breach, oversized };
   }
 
-  function playFromHand(state, cardId) {
-    const index = state.hand.findIndex((card) => card.id === cardId);
+  function playFromHand(state, cardId, uid) {
+    // uid が渡された場合はその実体を優先する（保持割引の対象実体を取り違えないため）
+    let index = uid ? state.hand.findIndex((card) => card.__uid && card.__uid === uid) : -1;
+    if (index < 0) index = state.hand.findIndex((card) => card.id === cardId);
     if (index < 0) return { ok: false, reason: "missing", log: [] };
     const card = state.hand[index];
     const result = playCard(state, card);
     if (!result.ok) return result;
     state.hand.splice(index, 1);
+    if (card.__uid && card.__uid === state.holdDiscountUid) {
+      state.holdDiscountUid = 0;
+      card.__heldNow = false;
+      result.log.push("HOLD割引 適用 (PWR −1)");
+    }
     if (card.isExhaust) {
       state.exhaust.push(card);
+      // 圧縮穿孔（damage_per_exhausted）の参照カウンタ。この戦闘の累計
+      state.exhaustedCount = (state.exhaustedCount || 0) + 1;
       result.log.push(`EXHAUST ${card.name}`);
     } else {
       state.discard.push(card);
@@ -468,8 +640,55 @@
     return { drawn, log };
   }
 
+  // ==== 共通プール拡張: プレイヤー選択（pendingPick）の候補提示と確定 ====
+  // search = 山札（drawPile）の中身が候補。discard = 現在の手札が候補（使用した箔の選別自身は
+  // playFromHand の後処理で既に手札を離れているため含まれない）。
+  function pickCandidates(state) {
+    if (!state || !state.pendingPick) return [];
+    if (state.pendingPick.kind === "search") return state.drawPile.slice();
+    if (state.pendingPick.kind === "discard") return state.hand.slice();
+    return [];
+  }
+
+  // cardId が null の場合は「候補なし」の自動解決（search は不発、discard はドローのみ実施）。
+  function resolvePick(state, cardId) {
+    const pick = state ? state.pendingPick : null;
+    if (!pick) return { ok: false, log: [] };
+    state.pendingPick = null;
+    const log = [];
+    if (pick.kind === "search") {
+      const index = cardId ? state.drawPile.findIndex((card) => card.id === cardId) : -1;
+      if (index < 0) {
+        log.push("ECHO SEARCH 不発 (山札に対象なし)");
+        return { ok: false, log };
+      }
+      const picked = state.drawPile.splice(index, 1)[0];
+      state.hand.push(picked);
+      log.push(`SEARCH ${picked.name} を手札へ`);
+      return { ok: true, log };
+    }
+    if (pick.kind === "discard") {
+      if (cardId) {
+        const index = state.hand.findIndex((card) => card.id === cardId);
+        if (index < 0) {
+          log.push("FOIL SORT 不発 (対象なし)");
+          return { ok: false, log };
+        }
+        const dropped = state.hand.splice(index, 1)[0];
+        state.discard.push(dropped);
+        log.push(`DISCARD ${dropped.name}`);
+      }
+      const res = drawCards(state, pick.draw || 1);
+      for (const line of res.log) log.push(line);
+      return { ok: true, log };
+    }
+    return { ok: false, log };
+  }
+
   function discardHand(state) {
     const moved = state.hand.splice(0, state.hand.length);
+    // 保持割引の表示フラグはターン終了で失効する（実体＝複製オブジェクトにだけ触る）
+    for (const card of moved) if (card.__uid) card.__heldNow = false;
     state.discard.push(...moved);
     return moved;
   }
@@ -480,6 +699,17 @@
 
   function beginPlayerTurn(state, rng) {
     beginTurn(state);
+    // 共通プール拡張: 持続パワー（state.powers）のターン開始時発動。
+    // energy_per_turn（予備電源）は beginTurn で energyMax へ戻った直後に上限を超えて加算する
+    // （上限で止めると意味がない。違法オーバークロックの overcharge と同じ扱い）。
+    // 将来の種別（WEAVER の罠・REACTOR の臨界排熱など）もここへ発動を足す。
+    const powerNotes = [];
+    for (const power of state.powers || []) {
+      if (power.kind === "energy_per_turn" && power.value) {
+        state.player.energy += power.value;
+        powerNotes.push(`POWER ${power.source} PWR +${power.value}`);
+      }
+    }
     // 正式版フェーズ1（A-2）: ターン開始時点のNOISEをスナップショットする（変換系の計算基準）。
     // あわせてターン内カウンタと重圧歩行の軽減をリセットする。
     state.turnStartNoise = state.noise || 0;
@@ -503,8 +733,23 @@
     const penalty = state.drawPenaltyNext || 0;
     state.drawPenaltyNext = 0;
     if (penalty > 0) notes.push(`DRAW -${penalty} (鋼圧プレス)`);
-    const drawn = drawCards(state, Math.max(0, HAND_SIZE - penalty), rng);
-    return { drawn: drawn.drawn, log: [`PWR ${state.player.energy}`, ...notes, ...drawn.log] };
+    // フェードアウトの「次ターン ドロー +1」予約（最大 +1）をここで消費する
+    const bonus = state.drawBonusNext || 0;
+    state.drawBonusNext = 0;
+    if (bonus > 0) notes.push(`DRAW +${bonus} (フェードアウト)`);
+    const drawn = drawCards(state, Math.max(0, HAND_SIZE - penalty + bonus), rng);
+    // 『磁気ホールド』: 保持実体を手札の左端へ戻し、このターンだけ保持割引を有効化する。
+    // 保持札は通常ドローの枚数に数えない（保持1枚＋通常ドロー）。
+    if (state.retained) {
+      const heldCard = state.retained;
+      state.retained = null;
+      heldCard.__heldNow = true;
+      state.holdDiscountUid = heldCard.__uid || 0;
+      state.hand.unshift(heldCard);
+      drawn.drawn.unshift(heldCard);
+      notes.push(`HOLD ${heldCard.name} (このターン PWR −1)`);
+    }
+    return { drawn: drawn.drawn, log: [`PWR ${state.player.energy}`, ...powerNotes, ...notes, ...drawn.log] };
   }
 
   function currentIntent(enemy) {
@@ -578,6 +823,23 @@
     }
   }
 
+  // スクラップ・ノイズ（敵デバフ）: 攻撃系行動1回分について、全ヒットの基礎値を半減する。
+  // 計算順序は「基礎値＋警報バフ＋照準 → 半減（切り捨て）→ COVER −2 → 固定軽減 → BLK相殺」。
+  // 非攻撃行動・スタン・キャンセルでは消費しない（strikeVolley を通らないため自然に残る）。
+  function isAttackIntent(intent) {
+    return !!intent && (intent.action === "attack" || intent.action === "heavy_attack" || intent.action === "attack_stun");
+  }
+
+  function scrapHalvedValue(state, intent, value) {
+    if (!isAttackIntent(intent)) return value;
+    if (!state.enemy) return value;
+    // 表示専用の実効値: スクラップ・ノイズ → 照準攪乱（weaken）の順に半減する（実解決の strikeVolley と同じ順序）
+    let shown = value;
+    if ((state.enemy.scrapCharges || 0) > 0) shown = Math.floor(shown / 2);
+    if ((state.enemy.weakenNext || 0) > 0) shown = Math.floor(shown / 2);
+    return shown;
+  }
+
   function strikeVolley(state, intent, log) {
     // PROMPT-23: 被ダメージ計算順序 = 基本値（+警報バフ）→ 潜伏-2 → 防護で相殺 → HP
     const hits = intent.hits || 1;
@@ -587,6 +849,18 @@
       value += state.alertAim;
       log.push(`照準 +${state.alertAim}`);
       state.alertAim = 0;
+    }
+    // スクラップ・ノイズ: この攻撃行動で1チャージだけ消費し、全ヒットを半減する
+    if (isAttackIntent(intent) && (state.enemy.scrapCharges || 0) > 0) {
+      state.enemy.scrapCharges -= 1;
+      value = Math.floor(value / 2);
+      log.push(`SCRAP NOISE: 攻撃半減 → ${value}dmg`);
+    }
+    // 照準攪乱（weaken）: スクラップと同系の半減チャージ。両方あれば順に半減する
+    if (isAttackIntent(intent) && (state.enemy.weakenNext || 0) > 0) {
+      state.enemy.weakenNext -= 1;
+      value = Math.floor(value / 2);
+      log.push(`AIM JAM: 攻撃半減 → ${value}dmg`);
     }
     let dealt = 0;
     let soakedTotal = 0;
@@ -703,10 +977,13 @@
     // v15.3 案A: 中央バナー用の「実行された行動」ラベル。表示中のインテント予告
     // （intentView）と同じく警報バフ＋照準を合算した実効値で組む。
     const effBuff = (state.alertBuff || 0) + (state.alertAim || 0);
-    const shownIntent = effBuff > 0
-      && (mainIntent.action === "attack" || mainIntent.action === "heavy_attack" || mainIntent.action === "attack_stun")
-      ? { ...mainIntent, value: (mainIntent.value || 0) + effBuff }
-      : mainIntent;
+    // スクラップ・ノイズのチャージがある場合は半減後の実効値でバナーを組む（表示専用・消費しない）
+    let shownIntent = mainIntent;
+    if (isAttackIntent(mainIntent)) {
+      const rawValue = (mainIntent.value || 0) + effBuff;
+      const shownValue = scrapHalvedValue(state, mainIntent, rawValue);
+      if (shownValue !== (mainIntent.value || 0)) shownIntent = { ...mainIntent, value: shownValue };
+    }
     const actionInfo = { label: intentText(shownIntent), kind: mainIntent.action || "" };
     const result = resolveIntent(state, mainIntent, log);
     result.action = actionInfo;
@@ -748,9 +1025,13 @@
     // 正式版フェーズ1（A-2）: 警報バフは現在の帯域から導出し、追加行動は帯域の回数（1 or 2）で予告する
     syncAlertBuff(state);
     const buff = (state.alertBuff || 0) + (state.alertAim || 0);
-    const shown = buff > 0 && (intent.action === "attack" || intent.action === "heavy_attack" || intent.action === "attack_stun")
-      ? { ...intent, value: (intent.value || 0) + buff }
-      : intent;
+    // スクラップ・ノイズのチャージがある間は、予告も半減後の実効値で出す（表示専用・消費しない）
+    let shown = intent;
+    if (isAttackIntent(intent)) {
+      const rawValue = (intent.value || 0) + buff;
+      const shownValue = scrapHalvedValue(state, intent, rawValue);
+      if (shownValue !== (intent.value || 0)) shown = { ...intent, value: shownValue };
+    }
     const label = intentText(shown);
     const kind = alertExtraKind(state);
     state.alertTelegraphed = kind;
@@ -768,6 +1049,11 @@
 
   function endTurn(state, rng) {
     const log = [];
+    // 選択保留（search／discard）はターン終了で消散する（UI側でも選択中はターン終了をブロックする）
+    state.pendingPick = null;
+    // 保持割引は「保持した次のターン」限り。使われなかった分の割引はここで失効する
+    // （同じ実体がこの後の保持選択で選び直された場合だけ、翌ターンに新しい割引が付く）。
+    state.holdDiscountUid = 0;
     const discarded = discardHand(state);
     log.push(`DISCARD ${discarded.length}`);
     const enemy = enemyTurn(state);
@@ -788,14 +1074,22 @@
   }
 
   function pileCount(state) {
-    return state.drawPile.length + state.hand.length + state.discard.length + (state.exhaust ? state.exhaust.length : 0);
+    return state.drawPile.length + state.hand.length + state.discard.length + (state.exhaust ? state.exhaust.length : 0) + (state.retained ? 1 : 0);
   }
 
   root.Battle = {
     DECK,
     GOLIATH_DECK,
+    GHOST_TAPE_DECK,
     CHARACTERS,
     characterDef,
+    noiseLimitsFor,
+    clampNoiseFor,
+    effectiveCost,
+    tagHandInstances,
+    setRetained,
+    pickCandidates,
+    resolvePick,
     deckIdsFor,
     ENERGY_PER_TURN,
     STUN_MAX,

@@ -79,6 +79,7 @@
       immuneToStun: src.immune_to_stun === true,
       vulnerable: 0,
       cancelNextIntent: 0,
+      scrapCharges: 0,
       dead: false,
       block: 0,
       patternIndex: 0,

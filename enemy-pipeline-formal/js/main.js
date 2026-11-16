@@ -100,6 +100,31 @@ function markAlertIntroSeen() {
   try { window.localStorage.setItem(ALERT_INTRO_STORE, "1"); }
   catch { /* storage unavailable */ }
 }
+// 解禁キャラ2 VESSEL 09 "GHOST-TAPE" の解禁フラグ（既存の初回のみストアと同じ localStorage 方式）。
+// 解禁条件（2026-11-16 決定）: VESSEL 04 "GOLIATH" を使ってランをクリアした時点。
+const GHOST_TAPE_UNLOCK_STORE = "enemy-pipeline-formal-ghosttape-unlock-v1";
+function ghostTapeUnlocked() {
+  try { return window.localStorage.getItem(GHOST_TAPE_UNLOCK_STORE) === "1"; }
+  catch { return false; }
+}
+function markGhostTapeUnlocked() {
+  try { window.localStorage.setItem(GHOST_TAPE_UNLOCK_STORE, "1"); }
+  catch { /* storage unavailable */ }
+}
+// 解禁キャラ1 VESSEL 04 "GOLIATH" の解禁フラグ（2026-11-16 本人承認でゲートを追加）。
+// 解禁条件: VESSEL 07 を使ってランをクリアした時点。解禁連鎖は 07 → GOLIATH → GHOST-TAPE。
+// 移行配慮: ゲート導入前に GOLIATH でクリア済み（= GHOST-TAPE 解禁済み）のプレイヤーは、
+// GOLIATH を遡ってロックしないよう解禁扱いにする。
+const GOLIATH_UNLOCK_STORE = "enemy-pipeline-formal-goliath-unlock-v1";
+function goliathUnlocked() {
+  if (ghostTapeUnlocked()) return true;
+  try { return window.localStorage.getItem(GOLIATH_UNLOCK_STORE) === "1"; }
+  catch { return false; }
+}
+function markGoliathUnlocked() {
+  try { window.localStorage.setItem(GOLIATH_UNLOCK_STORE, "1"); }
+  catch { /* storage unavailable */ }
+}
 async function maybeAlertIntro() {
   if (alertIntroSeen() || !battle || session.phase !== "combat") return;
   if (battle.player.hp <= 0 || battle.enemy.dead) return;
@@ -155,6 +180,26 @@ const CODE_BY_ID = {
   goliath_blowback: "BLB",
   goliath_heavy_tread: "TRD",
   goliath_purge_punish: "PRG",
+  ghost_echo_needle: "ECH",
+  ghost_mute_tape: "MUT",
+  ghost_tape_splice: "SPL",
+  ghost_silent_cut: "SCT",
+  ghost_phase_invert: "INV",
+  ghost_scrap_noise: "SCR",
+  ghost_fade_out: "FAD",
+  ghost_reel_recycle: "REC",
+  ghost_phantom_tape: "PHA",
+  ghost_silence_end: "SIL",
+  echo_search: "SCH",
+  foil_sort: "SRT",
+  dense_punch: "DPU",
+  staged_vent: "SVT",
+  aim_jam: "AJM",
+  shadow_strike: "SHS",
+  iron_door: "IDR",
+  reserve_cell: "RCL",
+  double_tap: "DTP",
+  silent_service: "SSV",
 };
 const INK_BY_CATEGORY = {
   CURSE: "curse",
@@ -165,6 +210,7 @@ const INK_BY_CATEGORY = {
   HAK: "digital",
   TEC: "tactic",
   DEF: "stealth",
+  ACOUSTIC: "acoustic",
 };
 
 function isCurse(card) {
@@ -196,6 +242,18 @@ function blurb(card) {
     if (effect.type === "damage_plus_noise") parts.push(`ダメージ ${effect.value}＋ノイズ×${effect.per}`);
     if (effect.type === "block_plus_noise") parts.push(`防護 +${effect.value}＋ノイズ×${effect.per}`);
     if (effect.type === "damage_plus_played") parts.push(`ダメージ ${effect.value}＋このターンの使用枚数×${effect.per}`);
+    if (effect.type === "damage_silence_bonus") parts.push(`ダメージ ${effect.value}（静寂時 +${effect.per}）`);
+    if (effect.type === "stun_if_silence") parts.push("使用後ノイズ0以下で スタン +1");
+    if (effect.type === "stun_draw_if_max") parts.push(`スタン +${effect.value}（最大到達で1ドロー）`);
+    if (effect.type === "scrap_noise") parts.push("敵の次の攻撃を半減");
+    if (effect.type === "draw_bonus_next") parts.push("次ターンのドロー +1");
+    if (effect.type === "recycle_discard") parts.push("捨て札から1枚回収（なければ1ドロー）");
+    if (effect.type === "search") parts.push("山札から1枚選んで手札へ");
+    if (effect.type === "discard_then_draw") parts.push(`手札1枚を捨てて${effect.value || 1}枚ドロー`);
+    if (effect.type === "damage_per_exhausted") parts.push(`ダメージ ${effect.value}＋この戦闘の廃棄枚数×${effect.per}`);
+    if (effect.type === "weaken_next") parts.push("敵の次の攻撃を半減");
+    if (effect.type === "damage_stance_bonus") parts.push(`ダメージ ${effect.value}（${effect.stance || "COVER"}時 +${effect.per}）`);
+    if (effect.type === "power") parts.push(effect.kind === "energy_per_turn" ? `戦闘中 毎ターン PWR +${effect.value}` : "戦闘中 持続効果");
     if (effect.type === "tread") parts.push("このターン被ダメをノイズ分軽減");
     if (effect.type === "draw_penalty_next") parts.push(`次ドロー -${effect.value}`);
     if (effect.type === "reset_noise") parts.push("ノイズ リセット");
@@ -215,11 +273,16 @@ function face(card) {
   const oversized = !!(typeof run !== "undefined" && run && run.character === "vessel04"
     && card.stance_change === "COVER" && card.type !== "attack");
   const rules = blurb(card);
+  // 『磁気ホールド』: 保持されて戻ってきた実体は、このターンだけ実効コスト −1 で表示する
+  const held = !!card.__heldNow;
   return {
     id: card.id,
+    uid: card.__uid || 0,
+    held,
     code: CODE_BY_ID[card.id] || CODE_BY_TYPE[card.type] || "ORD",
     name: card.name,
-    cost: card.cost,
+    cost: held ? Math.max(0, (card.cost || 0) - 1) : card.cost,
+    baseCost: card.cost,
     noise: card.noise,
     stance: card.stance_change || "",
     ink: INK_BY_CATEGORY[card.category] || "cqc",
@@ -304,6 +367,13 @@ const ui = {
   intentBanner: $("intent-banner"),
   bossPulse: $("boss-pulse"),
   endTurn: $("end-turn"),
+  holdBar: $("hold-bar"),
+  holdConfirm: $("hold-confirm"),
+  holdNone: $("hold-none"),
+  holdBack: $("hold-back"),
+  pickBar: $("pick-bar"),
+  pickMsg: $("pick-msg"),
+  pickConfirm: $("pick-confirm"),
   routeReturn: $("route-return"),
   piles: $("piles"),
   glass: $("glass-canvas"),
@@ -420,7 +490,7 @@ function sceneEl(name) {
 
 // v15.3: クリア画面のX投稿（intent）。本文にURLは入れず、ゲームURLは url パラメータに分ける
 // （本人のX運用「本文にURLを入れない」方針と整合させる）
-const GAME_PAGE_URL = "https://mamyxmamy.github.io/ranserinne/enemy-pipeline/";
+const GAME_PAGE_URL = "https://mamyxmamy.github.io/ranserinne/enemy-pipeline-formal/";
 function buildShareUrl() {
   const hp = run ? Math.max(0, Math.floor(run.hp || 0)) : 0;
   const hpMax = run ? (run.hpMax || 0) : 0;
@@ -533,6 +603,13 @@ function hideScenes() {
 }
 
 let shotTimer = 0;
+
+// 『磁気ホールド』選択フェイズの状態（null = 非選択中）。{ uid } で候補実体を保持する
+let holdPick = null;
+
+// 共通プール拡張の選択フェイズ（残響サーチ／箔の選別）の状態（null = 非選択中）。
+// { kind, candidates, index } で候補一覧と選択中インデックスを保持する
+let pickPick = null;
 
 let battle = Battle.createState();
 let route = null;
@@ -721,6 +798,11 @@ function makeCard(spec) {
   card.type = "button";
   card.className = "punchcard is-new";
   card.dataset.id = spec.id;
+  if (spec.uid) card.dataset.uid = String(spec.uid);
+  if (spec.held) {
+    card.classList.add("is-held");
+    card.dataset.held = "1";
+  }
   card.dataset.code = spec.code;
   card.dataset.name = spec.name;
   card.dataset.cost = String(spec.cost);
@@ -774,6 +856,12 @@ function makeCard(spec) {
   exhaustTag.textContent = "[ 廃棄 ]";
   exhaustTag.hidden = !spec.exhaust;
 
+  // 『磁気ホールド』保持札のバッジ（このターン限り PWR −1）
+  const holdTag = document.createElement("span");
+  holdTag.className = "punchcard__hold";
+  holdTag.textContent = spec.held ? `[ HOLD / PWR −1（元${spec.baseCost}）]` : "";
+  holdTag.hidden = !spec.held;
+
   const rules = document.createElement("span");
   rules.className = "punchcard__rules";
   rules.textContent = spec.rules || "";
@@ -791,7 +879,7 @@ function makeCard(spec) {
   stance.textContent = spec.stance || "—";
   foot.append(noise, stance);
 
-  card.append(head, stripe, holes, name, exhaustTag, rules, text, foot);
+  card.append(head, stripe, holes, name, exhaustTag, holdTag, rules, text, foot);
   card.addEventListener("animationend", () => {
     card.classList.remove("is-new", "is-rise");
   }, { once: true });
@@ -831,20 +919,40 @@ function renderStance() {
 }
 
 let lastNoiseShown = 0;
+let noiseMeterChar = "";
 function renderNoise() {
-  const max = (window.Battle && Battle.NOISE_MAX) || 10;
-  // v15.0: ノイズはラン全体の状態。戦闘中の値を run へ同期する（持ち越し・セーブ対象）
-  if (run && session.phase === "combat") run.noise = battle.noise;
-  ui.noiseValue.textContent = `${battle.noise}/${max}`;
+  const lim = (window.Battle && Battle.noiseLimitsFor) ? Battle.noiseLimitsFor(battle.characterId) : { min: 0, max: 10 };
+  const max = lim.max;
+  // v15.0: ノイズはラン全体の状態。戦闘中の値を run へ同期する（持ち越し・セーブ対象）。
+  // GHOST-TAPE の負数（逆位相残量）は戦闘内だけの資源で、ラン側へは 0 として同期する（戦闘終了で消散）。
+  if (run && session.phase === "combat") run.noise = Math.max(0, battle.noise);
+  ui.noiseValue.textContent = lim.min < 0 && battle.noise < 0
+    ? `${battle.noise}/${max}（逆位相残量）`
+    : `${battle.noise}/${max}`;
   // 正式版フェーズ1（A-2）: 現在の警報帯域名をノイズ表示の近くに出す
   if (ui.noiseBand && window.Battle && Battle.noiseBand) {
     ui.noiseBand.textContent = Battle.noiseBand(battle.noise).name;
   }
+  // 機体が変わったらメーターのセル構成を作り直す（GHOST-TAPE は −3〜5 の9セル＋ゼロ位置マーカー）
+  if (noiseMeterChar !== battle.characterId) {
+    noiseMeterChar = battle.characterId;
+    buildMeter();
+  }
   const cells = ui.noiseMeter.children;
   const rose = battle.noise > lastNoiseShown;
+  const zeroAt = lim.min < 0 ? -lim.min : 0;
   for (let i = 0; i < cells.length; i += 1) {
-    cells[i].className = "";
-    if (i < battle.noise) {
+    cells[i].className = lim.min < 0 && i === zeroAt ? "zero" : "";
+    if (lim.min < 0) {
+      // 負数側: ゼロ位置より左のセルを「逆位相残量」として点灯する
+      if (battle.noise < 0 && i >= zeroAt + battle.noise && i < zeroAt) cells[i].classList.add("reserve");
+      if (battle.noise > 0 && i >= zeroAt && i < zeroAt + battle.noise) {
+        cells[i].classList.add("on");
+        if (i >= zeroAt + max - 1) cells[i].classList.add("hot");
+        else if (i >= zeroAt + 2) cells[i].classList.add("warn");
+        if (rose && i >= zeroAt + lastNoiseShown) cells[i].classList.add("pulse");
+      }
+    } else if (i < battle.noise) {
       cells[i].classList.add("on");
       if (i >= max - 1) cells[i].classList.add("hot");
       else if (i >= 2) cells[i].classList.add("warn");
@@ -903,7 +1011,7 @@ function renderCombat() {
   const player = battle.player;
   const enemy = battle.enemy;
   // 正式版フェーズ1: 左パネルの素体名を使用キャラに合わせる
-  if (ui.vesselName) ui.vesselName.textContent = battle.characterId === "vessel04" ? "VESSEL 04" : "VESSEL 07";
+  if (ui.vesselName) ui.vesselName.textContent = (Battle.CHARACTERS[battle.characterId] || {}).name || "VESSEL 07";
   ui.hp.textContent = String(player.hp);
   const hpPct = Math.max(0, (player.hp / player.hpMax) * 100);
   ui.hpBar.style.width = `${hpPct}%`;
@@ -1001,7 +1109,7 @@ function syncEndButton() {
   else if (combat && battle.player.hp <= 0) ui.endTurn.textContent = "通信途絶";
   else ui.endTurn.textContent = "ターン終了 (END TURN)";
   const scripted = tutorialStep === "t1" || tutorialStep === "t3" || tutorialStep === "victory";
-  ui.endTurn.disabled = !combat || session.busy || radioOpen || scripted || !battle || battle.player.hp <= 0 || battle.enemy.dead;
+  ui.endTurn.disabled = !combat || session.busy || radioOpen || scripted || holdPick || pickPick || !battle || battle.player.hp <= 0 || battle.enemy.dead;
   ui.routeReturn.hidden = !reward;
   ui.routeReturn.disabled = !reward;
   ui.routeReturn.textContent = reward ? "回収しない" : "経路へ戻る";
@@ -1070,7 +1178,11 @@ function refreshHand() {
   if (session.phase === "reward") return;
   for (const el of ui.hopper.querySelectorAll(".punchcard:not(.punchcard--ghost)")) {
     if (el.dataset.id === "boot") continue;
-    const card = Battle.card(el.dataset.id);
+    // 保持割引は実体（__uid）単位で判定する。要素に uid があれば手札の実体を引く
+    const inst = el.dataset.uid && battle
+      ? battle.hand.find((c) => String(c.__uid || "") === el.dataset.uid)
+      : null;
+    const card = inst || Battle.card(el.dataset.id);
     if (!card) continue;
     const check = Battle.canPlay(battle, card);
     const scripted = tutorialLock(el.dataset.id);
@@ -1085,8 +1197,13 @@ function refreshHand() {
 
 function buildMeter() {
   ui.noiseMeter.replaceChildren();
-  const max = (window.Battle && Battle.NOISE_MAX) || 10;
-  for (let i = 0; i < max; i += 1) ui.noiseMeter.append(document.createElement("i"));
+  const lim = (window.Battle && Battle.noiseLimitsFor && battle) ? Battle.noiseLimitsFor(battle.characterId) : { min: 0, max: 10 };
+  const count = lim.max - lim.min;
+  for (let i = 0; i < count; i += 1) {
+    const cell = document.createElement("i");
+    if (lim.min < 0 && i === -lim.min) cell.className = "zero";
+    ui.noiseMeter.append(cell);
+  }
 }
 
 function idleSlotText() {
@@ -1130,10 +1247,12 @@ function onRead(data) {
     return;
   }
   if (session.phase !== "combat" || radioOpen || session.busy) return;
+  if (holdPick) return; // 『磁気ホールド』選択中はカード使用を受け付けない
+  if (pickPick) return; // 探索／選別の選択中もカード使用を受け付けない
   if (tutorialLock(data.id)) return;
   const beforeHp = battle.player.hp;
   const beforeEnemyHp = battle.enemy.hp;
-  const result = Battle.playFromHand(battle, data.id);
+  const result = Battle.playFromHand(battle, data.id, data.uid ? Number(data.uid) || 0 : 0);
   if (!result.ok) {
     pushLog(`REJECT  ${data.name}  ${reasonText(result.reason)}`);
     return;
@@ -1196,12 +1315,152 @@ async function settlePlay(cardId, beforeHp, breached) {
   if (battle.enemy.dead) {
     if (!(await maybeVictory())) openReward();
   }
+  // 共通プール拡張: 残響サーチ／箔の選別が選択保留（pendingPick）を残していたら選択フェイズを開く。
+  // 敵を倒した場合は上の報酬遷移が優先され、保留は戦闘終了とともに消散する
+  if (battle && battle.pendingPick && session.phase === "combat" && battle.player.hp > 0 && !battle.enemy.dead) {
+    openPickSelect();
+  }
+}
+
+// ==== 『磁気ホールド』（VESSEL 09 固有OS）: END TURN 後の専用選択フェイズ ====
+// 二段階方式（タップで候補 → 決定ボタンで確定）。「戻る」で通常フェイズへ戻れる。
+// 手札が空、または保持可能な札（呪装以外）がない場合はフェイズ自体をスキップする。
+function holdCandidatesExist() {
+  return !!battle && battle.hand.some((card) => !card.unplayable && card.cost >= 0);
+}
+
+function openHoldSelect() {
+  Battle.tagHandInstances(battle);
+  holdPick = { uid: 0 };
+  // 実体IDを要素へ行き渡らせるため、手札DOMを実体ベースで作り直す
+  ui.hopper.replaceChildren();
+  spawn(battle.hand.map(face));
+  refreshHand();
+  if (ui.holdBar) ui.holdBar.hidden = false;
+  if (ui.holdConfirm) ui.holdConfirm.disabled = true;
+  ui.note.textContent = "磁気ホールド：持ち越すカードを1枚選べ。保持したカードは次ターンだけ PWR −1。";
+  pushLog("MAGNETIC HOLD — 持ち越すカードを選択");
+  syncEndButton();
+}
+
+function closeHoldSelect() {
+  holdPick = null;
+  if (ui.holdBar) ui.holdBar.hidden = true;
+  for (const el of ui.hopper.querySelectorAll(".punchcard.is-holdpick")) el.classList.remove("is-holdpick");
+  syncEndButton();
+}
+
+function toggleHoldPick(el) {
+  if (!holdPick || !el || el.classList.contains("punchcard--ghost")) return;
+  const uid = Number(el.dataset.uid || 0);
+  if (!uid) return;
+  const card = battle.hand.find((c) => c.__uid === uid);
+  if (!card || card.unplayable || card.cost < 0) return;
+  if (holdPick.uid === uid) {
+    holdPick.uid = 0;
+    el.classList.remove("is-holdpick");
+  } else {
+    holdPick.uid = uid;
+    for (const other of ui.hopper.querySelectorAll(".punchcard.is-holdpick")) other.classList.remove("is-holdpick");
+    el.classList.add("is-holdpick");
+  }
+  if (ui.holdConfirm) ui.holdConfirm.disabled = !holdPick.uid;
+}
+
+async function finishHoldSelect(withHold) {
+  if (!holdPick) return;
+  const uid = withHold ? holdPick.uid : 0;
+  closeHoldSelect();
+  if (uid) {
+    const heldCard = battle.hand.find((c) => c.__uid === uid);
+    if (Battle.setRetained(battle, uid) && heldCard) pushLog(`HOLD ${heldCard.name}（次ターン PWR −1）`);
+  }
+  await runEnemyPhase();
+}
+
+// ==== 共通プール拡張: 探索（残響サーチ）／選別（箔の選別）の選択フェイズ ====
+// 『磁気ホールド』と同じ二段階方式（タップで候補 → 決定ボタンで確定）。
+// カードは使用済みのため「戻る」はない。候補が無い場合は UI を開かず即座に自動解決する
+// （search は不発、discard は捨てずにドローのみ）。
+function openPickSelect() {
+  if (!battle || !battle.pendingPick) return;
+  const candidates = Battle.pickCandidates(battle);
+  if (candidates.length === 0) {
+    const res = Battle.resolvePick(battle, null);
+    for (const line of res.log) pushLog(line);
+    renderCombat();
+    renderPiles();
+    refreshHand();
+    syncEndButton();
+    return;
+  }
+  pickPick = { kind: battle.pendingPick.kind, candidates, index: -1 };
+  ui.hopper.replaceChildren();
+  spawn(candidates.map(face));
+  // 候補要素へ出現順のインデックスを刻み、通常手札用のロック表示は外す（選択フェイズ専用の見た目にする）
+  ui.hopper.querySelectorAll(".punchcard:not(.punchcard--ghost)").forEach((el, i) => {
+    el.dataset.pickIndex = String(i);
+    el.classList.remove("is-locked");
+    el.removeAttribute("title");
+  });
+  const isSearch = pickPick.kind === "search";
+  if (ui.pickMsg) ui.pickMsg.textContent = isSearch
+    ? "残響サーチ：山札から手札に加えるカードを1枚選べ"
+    : "箔の選別：捨てるカードを1枚選べ（選んだ後に1枚引く）";
+  if (ui.pickBar) ui.pickBar.hidden = false;
+  if (ui.pickConfirm) ui.pickConfirm.disabled = true;
+  ui.note.textContent = isSearch ? "山札の中身から1枚を選べ。" : "捨てるカードを1枚選べ。";
+  pushLog(isSearch ? "ECHO SEARCH — 山札から選択" : "FOIL SORT — 捨てるカードを選択");
+  syncEndButton();
+}
+
+function closePickSelect() {
+  pickPick = null;
+  if (ui.pickBar) ui.pickBar.hidden = true;
+  syncEndButton();
+}
+
+function togglePickPick(el) {
+  if (!pickPick || !el || el.classList.contains("punchcard--ghost")) return;
+  const index = Number(el.dataset.pickIndex);
+  if (!Number.isInteger(index) || index < 0 || index >= pickPick.candidates.length) return;
+  if (pickPick.index === index) {
+    pickPick.index = -1;
+    el.classList.remove("is-pickpick");
+  } else {
+    pickPick.index = index;
+    for (const other of ui.hopper.querySelectorAll(".punchcard.is-pickpick")) other.classList.remove("is-pickpick");
+    el.classList.add("is-pickpick");
+  }
+  if (ui.pickConfirm) ui.pickConfirm.disabled = pickPick.index < 0;
+}
+
+function finishPickSelect() {
+  if (!pickPick || pickPick.index < 0) return;
+  const chosen = pickPick.candidates[pickPick.index];
+  closePickSelect();
+  const res = Battle.resolvePick(battle, chosen ? chosen.id : null);
+  for (const line of res.log) pushLog(line);
+  // 手札表示を通常状態へ戻す
+  ui.hopper.replaceChildren();
+  spawn(battle.hand.map(face));
+  renderCombat();
+  renderPiles();
+  refreshHand();
+  syncEndButton();
 }
 
 async function onEndTurn() {
   if (session.phase !== "combat" || session.busy || drag || radioOpen) return;
+  if (holdPick) return;
+  if (pickPick) return;
   if (!battle || battle.player.hp <= 0 || battle.enemy.dead) return;
   if (tutorialStep === "t1" || tutorialStep === "t3" || tutorialStep === "victory") return;
+  // GHOST-TAPE の通常戦闘では、敵フェイズの前に HOLD 選択フェイズを挟む
+  if (battle.characterId === "vessel09" && tutorialStep === "off" && holdCandidatesExist()) {
+    openHoldSelect();
+    return;
+  }
   // PROMPT-19: チュートリアルのターン遷移（敵フェーズ後に次の脚本を仕込む）
   if (tutorialStep === "t1end") {
     clearTutorialFocus();
@@ -1391,10 +1650,11 @@ function renderRoute() {
   const openIds = new Set(PipelineMap.available(route).map((node) => node.id));
   const shown = PipelineMap.shownType(here);
   // v15.0: 持ち越しノイズをマップでも表示する（警戒域はデータ属性で色付け）
-  const noiseNow = Math.max(0, Math.min(Battle.NOISE_MAX, (run && run.noise) || 0));
+  const noiseMax = Battle.noiseLimitsFor(run && run.character).max;
+  const noiseNow = Math.max(0, Math.min(noiseMax, (run && run.noise) || 0));
   ui.routePos.textContent = (here.floor === 0
     ? "NOW  射出点"
-    : `NOW  F${here.floor}  ${PipelineMap.label(shown)}`) + `  NOISE ${noiseNow}/${Battle.NOISE_MAX}`;
+    : `NOW  F${here.floor}  ${PipelineMap.label(shown)}`) + `  NOISE ${noiseNow}/${noiseMax}`;
   ui.routePos.dataset.alert = noiseNow >= 3 ? "1" : "";
   ui.routeHp.textContent = `HP ${run.hp}`;
   ui.scanCount.textContent = String(route.scansLeft);
@@ -1498,8 +1758,13 @@ let vesselSelectArmed = true;
 let vesselSelectSuppress = false;
 
 // 表示順（回転台の並び）。"locked" は未解禁枠: シルエット＋LOCKED表示のみで詳細は出さない。
-// 将来の解禁キャラはここへ id を差し込むだけで枠が増える。
-const VESSEL_ORDER = ["vessel07", "vessel04", "locked"];
+// GHOST-TAPE 解禁後は vessel09 が入り、将来の解禁キャラ用に locked 枠を1つ残す。
+// GOLIATH 未解禁の間は "locked04" 枠: GOLIATH の輪郭だけをシルエットで示し、詳細は出さない。
+function vesselOrder() {
+  if (ghostTapeUnlocked()) return ["vessel07", "vessel04", "vessel09", "locked"];
+  if (goliathUnlocked()) return ["vessel07", "vessel04", "locked"];
+  return ["vessel07", "locked04", "locked"];
+}
 let vesselCursor = 0;
 
 // 表示文（CRT表示／フレーバー）は本人の原文ママ（2026-11-14、設計書 §A に記録済み）。
@@ -1513,6 +1778,13 @@ const VESSEL_PROFILES = {
     sys: "[SYS] VESSEL 04 \"GOLIATH\" LINKED.\nWARNING: STEALTH MODULE NOT FOUND. MASS: CRITICAL.\n> 警告：隠蔽機構が欠損しています。総質量、規定値を大幅に超過。",
     flavor: "「これを潜伏作戦と呼ぶのは、上層部のひどい冗談だ。坑道採掘用のバカげた質量で、見つかる前にすべての防壁と警備AIを粉砕する。起動するだけで施設中に爆音が響き渡るが、気にするな。最後に立っているのがこちらなら、それは完璧なステルスだ。」",
     img: "assets/vessel04_goliath.webp", // 専用立ち絵（楕円ソフトアルファ済み）
+  },
+  // ⚠ あやね下書き・本人確認待ち（2026-11-16）: 07／GOLIATH の本人原文とは別物。
+  // 設計書 DESIGN-GHOST-TAPE-DRAFT.md §6 の叩き台を採用。通信兵の出自は匂わせに留め、断定はしていない。
+  vessel09: {
+    sys: "[SYS] VESSEL 09 \"GHOST-TAPE\" LINKED.\nMAGNETIC HOLD OS: READY. NOISE LIMIT: 05.\n> 逆位相補正を開始。存在しない音声を検出しています。",
+    flavor: "「こいつの装甲は、笑ってしまうほど薄い。代わりに機体の中では何十本もの磁気テープが回り続け、消すべき音、残すべき音、敵に聞かせるべきでない音を選別している。派手な勝ち方はできない。だが、すべての無駄を削ぎ落とした先で、敵は自分がいつ敗れたのか最後まで気づかない。」",
+    img: "assets/vessel09_ghosttape.webp", // 専用立ち絵（候補1「リール肩型」・楕円ソフトアルファ済み）
   },
 };
 
@@ -1535,19 +1807,20 @@ function vesselFigureEl(entry, pos) {
   visual.className = "vessel-figure__visual";
   const caption = document.createElement("p");
   caption.className = "vessel-figure__caption";
-  if (entry === "locked") {
+  if (entry === "locked" || entry === "locked04") {
     fig.classList.add("is-locked");
     // 未解禁はシルエットで存在だけを匂わせる（コンセプト画の布を被った素体）。
     // 既存の素体画像を真っ黒に潰して流用し、機体の判別はできない見せ方にする。
+    // locked04 は GOLIATH の立ち絵を黒潰しし、巨体の輪郭だけを見せる。
     const sil = document.createElement("img");
     sil.className = "vessel-figure__silhouette";
-    sil.src = "assets/cctv_vessel_expose.png";
+    sil.src = entry === "locked04" ? "assets/vessel04_goliath.webp" : "assets/cctv_vessel_expose.png";
     sil.alt = "";
     const lock = document.createElement("span");
     lock.className = "vessel-figure__lock";
     lock.textContent = "LOCKED";
     visual.append(sil, lock);
-    caption.textContent = "VESSEL ?? — CLASSIFIED";
+    caption.textContent = entry === "locked04" ? "VESSEL 04 — CLASSIFIED" : "VESSEL ?? — CLASSIFIED";
   } else {
     const def = Battle.CHARACTERS[entry];
     const profile = VESSEL_PROFILES[entry];
@@ -1559,7 +1832,7 @@ function vesselFigureEl(entry, pos) {
     } else {
       const glyph = document.createElement("span");
       glyph.className = "vessel-figure__glyph";
-      glyph.textContent = entry === "vessel04" ? "04" : "07";
+      glyph.textContent = entry.slice(-2);
       visual.append(glyph);
     }
     caption.textContent = def ? `${def.name} “${def.code}”` : entry;
@@ -1573,8 +1846,9 @@ function vesselFigureEl(entry, pos) {
 function renderVesselSelect(spinDir) {
   const stage = ui.vesselStage;
   if (!stage) return;
-  const n = VESSEL_ORDER.length;
-  const at = (off) => VESSEL_ORDER[(vesselCursor + off + n) % n];
+  const order = vesselOrder();
+  const n = order.length;
+  const at = (off) => order[(vesselCursor + off + n) % n];
   stage.replaceChildren(
     vesselFigureEl(at(-1), "left"),
     vesselFigureEl(at(0), "center"),
@@ -1589,10 +1863,12 @@ function renderVesselSelect(spinDir) {
   const cur = at(0);
   if (ui.vesselLaunch) ui.vesselLaunch.dataset.vessel = cur;
   if (ui.vesselPos) ui.vesselPos.textContent = `CAROUSEL ${vesselCursor + 1} / ${n}`;
-  if (cur === "locked") {
+  if (cur === "locked" || cur === "locked04") {
     // 未解禁: 詳細情報（説明・数値・デッキ）は出さない
-    if (ui.vesselInfoName) ui.vesselInfoName.textContent = "VESSEL ?? “????”";
-    if (ui.vesselInfoSys) ui.vesselInfoSys.textContent = "[SYS] — NO DATA —\n> 素体信号を捕捉できず。";
+    if (ui.vesselInfoName) ui.vesselInfoName.textContent = cur === "locked04" ? "VESSEL 04 “????”" : "VESSEL ?? “????”";
+    if (ui.vesselInfoSys) ui.vesselInfoSys.textContent = cur === "locked04"
+      ? "[SYS] — SIGNAL LOST —\n> 巨体の信号のみ捕捉。リンク権限なし。\n> 解禁条件: VESSEL 07 でランをクリア"
+      : "[SYS] — NO DATA —\n> 素体信号を捕捉できず。";
     if (ui.vesselInfoStats) ui.vesselInfoStats.textContent = "HP ?? ／ PWR回復 ??";
     if (ui.vesselInfoDeck) ui.vesselInfoDeck.textContent = "初期デッキ: CLASSIFIED";
     if (ui.vesselInfoFlavor) ui.vesselInfoFlavor.textContent = "SIGNAL NOT FOUND — 未解禁";
@@ -1607,7 +1883,7 @@ function renderVesselSelect(spinDir) {
   if (!def || !profile) return;
   if (ui.vesselInfoName) ui.vesselInfoName.textContent = `${def.name} “${def.code}”`;
   if (ui.vesselInfoSys) ui.vesselInfoSys.textContent = profile.sys;
-  if (ui.vesselInfoStats) ui.vesselInfoStats.textContent = `HP ${def.hp} ／ PWR回復 ${def.energyPerTurn}（毎ターン）`;
+  if (ui.vesselInfoStats) ui.vesselInfoStats.textContent = `HP ${def.hp} ／ PWR回復 ${def.energyPerTurn}（毎ターン）${def.noiseMax && def.noiseMax < Battle.NOISE_MAX ? ` ／ NOISE上限 ${def.noiseMax}` : ""}`;
   if (ui.vesselInfoDeck) ui.vesselInfoDeck.textContent = `初期デッキ: ${deckSummaryText(cur)}`;
   if (ui.vesselInfoFlavor) ui.vesselInfoFlavor.textContent = profile.flavor;
   if (ui.vesselLaunch) {
@@ -1617,14 +1893,14 @@ function renderVesselSelect(spinDir) {
 }
 
 function rotateVessel(dir) {
-  const n = VESSEL_ORDER.length;
+  const n = vesselOrder().length;
   vesselCursor = (vesselCursor + dir + n) % n;
   cueSE("switch");
   renderVesselSelect(dir);
 }
 
 function openVesselSelect() {
-  const idx = VESSEL_ORDER.indexOf(selectedVessel);
+  const idx = vesselOrder().indexOf(selectedVessel);
   vesselCursor = idx >= 0 ? idx : 0;
   renderVesselSelect(0);
   ui.hopper.replaceChildren();
@@ -1803,7 +2079,7 @@ function restoreRun() {
     floorCount: data.route.floorCount,
   };
   run = {
-    character: data.character === "vessel04" ? "vessel04" : "vessel07", // 正式版フェーズ1: 使用素体を復元
+    character: Battle.CHARACTERS[data.character] ? data.character : "vessel07", // 正式版: 使用素体を復元（既知IDのみ許可）
     hp: data.hp,
     hpMax: data.hpMax,
     noise: typeof data.noise === "number" ? Math.max(0, Math.min(Battle.NOISE_MAX, data.noise)) : 0, // v15.0: 持ち越しノイズを復元
@@ -2379,8 +2655,8 @@ async function beginCombat(encounter) {
   battle = Battle.createState(undefined, { relics: run.relics, deck: run.deck, character: run.character });
   battle.player.hp = Math.max(0, run.hp);
   battle.player.hpMax = run.hpMax;
-  // v15.0: 持ち越しノイズを戦闘の初期値にする
-  battle.noise = Math.max(0, Math.min(Battle.NOISE_MAX, run.noise || 0));
+  // v15.0: 持ち越しノイズを戦闘の初期値にする（機体別範囲でクランプ。ラン側は常に0以上）
+  battle.noise = Battle.clampNoiseFor(run.noise || 0, run.character);
   // 正式版フェーズ1（A-2）: 戦闘の第1ターンの変換基準も持ち越しノイズで初期化する
   battle.turnStartNoise = battle.noise;
   Battle.syncAlertBuff(battle);
@@ -2886,8 +3162,8 @@ async function openReward() {
     return;
   }
   run.hp = battle.player.hp;
-  // 正式版フェーズ1: GOLIATH のランでは共通プール＋専用プールから提示する
-  session.offer = Rewards.offer(Rewards.OFFER_COUNT, undefined, !!(run && run.character === "vessel04"));
+  // 正式版: 専用プールのあるキャラのランでは共通プール＋専用プールから提示する
+  session.offer = Rewards.offer(Rewards.OFFER_COUNT, undefined, run && run.character);
   ui.piles.hidden = true;
   ui.hopper.replaceChildren();
   ui.shotCall.hidden = true;
@@ -2929,6 +3205,16 @@ async function bossClearSequence() {
   }
   await delay(950);
   run.hp = battle.player.hp;
+  // 解禁キャラ1（2026-11-16 本人承認）: 07 を使ってランをクリアした時点で VESSEL 04 を解禁する
+  if (run && run.character === "vessel07" && !goliathUnlocked()) {
+    markGoliathUnlocked();
+    pushLog("NEW VESSEL SIGNAL — VESSEL 04 \"GOLIATH\" 解禁");
+  }
+  // 解禁キャラ2（2026-11-16 決定）: GOLIATH を使ってランをクリアした時点で VESSEL 09 を解禁する
+  if (run && run.character === "vessel04" && !ghostTapeUnlocked()) {
+    markGhostTapeUnlocked();
+    pushLog("NEW VESSEL SIGNAL — VESSEL 09 \"GHOST-TAPE\" 解禁");
+  }
   session.offer = [];
   ui.hopper.replaceChildren();
   ui.piles.hidden = true;
@@ -4025,6 +4311,18 @@ ui.hopper.addEventListener("pointerover", (event) => {
 ui.hopper.addEventListener("pointerdown", (event) => {
   const card = event.target.closest(".punchcard");
   if (!card || card.classList.contains("punchcard--ghost")) return;
+  // 『磁気ホールド』選択中はドラッグではなく候補の切り替えにする
+  if (holdPick) {
+    focusCard(card);
+    toggleHoldPick(card);
+    return;
+  }
+  // 探索／選別の選択中も同様に候補の切り替えにする
+  if (pickPick) {
+    focusCard(card);
+    togglePickPick(card);
+    return;
+  }
   if (event.pointerType === "touch" && focusedCardEl !== card) {
     focusCard(card);
     return;
@@ -4040,7 +4338,18 @@ document.addEventListener("pointerdown", (event) => {
 ui.hopper.addEventListener("keydown", (event) => {
   if (event.key !== "Enter" && event.key !== " ") return;
   const card = event.target.closest(".punchcard");
-  if (!card || drag || session.reading || cardHeld(card)) return;
+  if (!card || drag || session.reading) return;
+  if (holdPick) {
+    event.preventDefault();
+    toggleHoldPick(card);
+    return;
+  }
+  if (pickPick) {
+    event.preventDefault();
+    togglePickPick(card);
+    return;
+  }
+  if (cardHeld(card)) return;
   event.preventDefault();
   const rect = card.getBoundingClientRect();
   const lifted = lift(card, rect.left, rect.top);
@@ -4196,7 +4505,7 @@ if (ui.vesselNext) ui.vesselNext.addEventListener("click", () => { if (session.p
 if (ui.vesselLaunch) ui.vesselLaunch.addEventListener("click", () => {
   if (session.phase !== "vessel") return;
   const id = ui.vesselLaunch.dataset.vessel;
-  if (id && id !== "locked") chooseVessel(id);
+  if (id && !id.startsWith("locked")) chooseVessel(id);
 });
 ui.restart.addEventListener("click", () => {
   if (audio) audio.unlock();
@@ -4206,6 +4515,25 @@ ui.restart.addEventListener("click", () => {
 ui.endTurn.addEventListener("click", (event) => {
   event.stopPropagation();
   onEndTurn();
+});
+// 『磁気ホールド』選択フェイズの決定ボタン群
+if (ui.holdConfirm) ui.holdConfirm.addEventListener("click", (event) => {
+  event.stopPropagation();
+  void finishHoldSelect(true);
+});
+if (ui.holdNone) ui.holdNone.addEventListener("click", (event) => {
+  event.stopPropagation();
+  void finishHoldSelect(false);
+});
+if (ui.holdBack) ui.holdBack.addEventListener("click", (event) => {
+  event.stopPropagation();
+  closeHoldSelect();
+  ui.note.textContent = "条件を満たさないカードは、スリットが拒否する。";
+});
+// 共通プール拡張の選択フェイズの決定ボタン
+if (ui.pickConfirm) ui.pickConfirm.addEventListener("click", (event) => {
+  event.stopPropagation();
+  finishPickSelect();
 });
 ui.screen.addEventListener("click", () => {
   // 検収修正 2026-11-10 (PROMPT-20): 通信送りは戦闘以外（MAP/BOOT）の通信でも効かせる

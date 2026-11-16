@@ -83,6 +83,64 @@
       "flavor": "「……タイチョウ、ニゲ……テ……」",
       "effects": [ { "target": "player", "type": "unplayable" } ]
     },
+    /* ==== 共通プール拡張10種（設計書 DESIGN-COMMON-POOL-EXPANSION-DRAFT.md、2026-11-16 本人決定で10種一括） ====
+       全機体共通の報酬プールへ追加される。新規効果タイプ:
+       search = 山札から1枚選んで手札へ（選択は battle.js の pendingPick → main.js の選択フェイズ）。
+       discard_then_draw = 手札1枚を捨てて value 枚ドロー（同じく pendingPick 経由）。
+       damage_per_exhausted = 基礎値＋この戦闘の廃棄枚数×per（参照系。騒音力学の倍率が乗る）。
+       weaken_next = 敵の次の攻撃行動を半減（敵側チャージ）。
+       damage_stance_bonus = 使用開始時点のスタンスが stance と一致すれば per を加算（参照系）。
+       power = 持続効果を state.powers へ登録（kind: energy_per_turn = ターン開始時 PWR +value）。解決は js/battle.js。 */
+    {
+      "id": "echo_search", "name": "残響サーチ (ECHO SEARCH)", "cost": 1, "category": "TEC", "type": "skill", "noise": 1, "stance_change": null,
+      "flavor": "「穿孔済みの箔の束を指でなぞれば、欲しい一枚の手触りは分かる。目ではなく、勘で探せ。」",
+      "effects": [ { "target": "player", "type": "search", "value": 1 } ]
+    },
+    {
+      "id": "foil_sort", "name": "箔の選別 (FOIL SORT)", "cost": 0, "category": "TEC", "type": "skill", "noise": 0, "stance_change": null,
+      "flavor": "「使えない箔は、迷わず炉に放れ。未練はノイズより始末が悪い。」",
+      "effects": [ { "target": "player", "type": "discard_then_draw", "value": 1 } ]
+    },
+    {
+      "id": "dense_punch", "name": "圧縮穿孔 (DENSE PUNCH)", "cost": 2, "category": "TEC", "type": "attack", "noise": 2, "stance_change": null,
+      "flavor": "「捨てたはずの箔が、圧縮機の中でまだ息をしていた。全部まとめて、最後の一撃に変える。」",
+      "effects": [ { "target": "enemy", "type": "damage_per_exhausted", "value": 3, "per": 2 } ]
+    },
+    {
+      "id": "staged_vent", "name": "段階排熱 (STAGED VENT)", "cost": 1, "category": "DEF", "type": "skill", "noise": -3, "stance_change": null,
+      "flavor": "「一気に冷ますな、段階を踏め。熱も音も、急に消せば痕跡が残る。」",
+      "effects": [ { "target": "player", "type": "block", "value": 4 } ]
+    },
+    {
+      "id": "aim_jam", "name": "照準攪乱 (AIM JAM)", "cost": 1, "category": "HAK", "type": "skill", "noise": 1, "stance_change": null,
+      "flavor": "「照準は目じゃない、演算だ。その演算に、砂粒ひとつ放り込んでやれ。」",
+      "effects": [ { "target": "enemy", "type": "weaken_next", "value": 1 } ]
+    },
+    {
+      "id": "shadow_strike", "name": "物陰の一撃 (SHADOW STRIKE)", "cost": 1, "category": "CQC", "type": "attack", "noise": 1, "stance_change": null,
+      "flavor": "「物陰は隠れる場所じゃない。踏み込むための、助走だ。」",
+      "effects": [ { "target": "enemy", "type": "damage_stance_bonus", "value": 5, "per": 5, "stance": "COVER" } ]
+    },
+    {
+      "id": "iron_door", "name": "鉄扉バリケード (IRON DOOR)", "cost": 2, "category": "DEF", "type": "skill", "noise": 1, "stance_change": null,
+      "flavor": "「扉は開けるためだけにあるんじゃない。背に負って、盾にもなる。」",
+      "effects": [ { "target": "player", "type": "block", "value": 14 } ]
+    },
+    {
+      "id": "reserve_cell", "name": "予備電源 (RESERVE CELL)", "cost": 2, "category": "TEC", "type": "skill", "noise": 1, "stance_change": null, "isExhaust": true,
+      "flavor": "「予備は飾りじゃない。長丁場ってのは、こういう一手で勝敗が決まる。」",
+      "effects": [ { "target": "player", "type": "power", "kind": "energy_per_turn", "value": 1, "powerId": "reserve_cell" } ]
+    },
+    {
+      "id": "double_tap", "name": "二度打ち (DOUBLE TAP)", "cost": 2, "category": "GUN", "type": "attack", "noise": 3, "stance_change": "EXPOSE",
+      "flavor": "「一発で倒せると思うな。二発目は確認じゃない、念押しだ。」",
+      "effects": [ { "target": "enemy", "type": "damage", "value": 7, "hits": 2 } ]
+    },
+    {
+      "id": "silent_service", "name": "静音整備 (SILENT SERVICE)", "cost": 0, "category": "TEC", "type": "skill", "noise": -1, "stance_change": null, "isExhaust": true,
+      "flavor": "「整備ってのはな、静かな場所でやるもんだ。……今が、その静かな場所だ。」",
+      "effects": [ { "target": "player", "type": "heal", "value": 4 } ]
+    },
     /* ==== 正式版フェーズ1: VESSEL 04 "GOLIATH" 専用カード（設計書 DESIGN-MULTIPLAYER-FORMAL.md §A） ====
        効果タイプ damage_plus_noise / block_plus_noise / damage_plus_played は「参照系」
        （NOISEを消費せず、騒音力学の倍率が乗る）。damage_per_noise / block_per_noise は
@@ -136,6 +194,63 @@
       "id": "goliath_purge_punish", "name": "パージ＆パニッシュ (PURGE)", "cost": 1, "category": "HVY", "type": "attack", "noise": 0, "stance_change": null, "isExhaust": true,
       "flavor": "「臨界点に達した騒音と熱量を、装甲の一部ごとパージして標的に叩きつける。静寂が戻った後には、ひしゃげた鉄クズしか残らない。」",
       "effects": [ { "target": "enemy", "type": "damage_per_noise", "value": 6 }, { "target": "player", "type": "reset_noise", "value": 0 } ]
+    },
+    /* ==== 正式版: VESSEL 09 "GHOST-TAPE" 専用カード（設計書 DESIGN-GHOST-TAPE-DRAFT.md、2026-11-16 全決定） ====
+       カテゴリは ACOUSTIC（CQC の自動スタン+1 を避ける）。新規効果タイプ:
+       damage_silence_bonus = 使用開始時NOISEが0以下なら per を加算（参照系）。
+       stun_if_silence = 自身のNOISE適用後のNOISEが0以下ならスタン（逆位相ノイズ）。
+       scrap_noise = 敵に「次の攻撃行動を半減」チャージを付与。draw_bonus_next = 次ターンのドロー+1（上限+1）。
+       recycle_discard = 捨て札からランダム1枚を手札へ（対象なしなら1ドロー）。
+       stun_draw_if_max = スタンがこの効果で上限へ達したら1ドロー。解決は js/battle.js。 */
+    {
+      "id": "ghost_echo_needle", "name": "残響ニードル (ECHO NEEDLE)", "cost": 1, "category": "ACOUSTIC", "type": "attack", "noise": 1, "stance_change": null,
+      "flavor": "「磁気ヘッドに残った前ターンの残響を、細い針のように射出する。雑音の中ではただの掠り傷でも、静寂の中で放てば、その音は牙になる。」",
+      "effects": [ { "target": "enemy", "type": "damage_silence_bonus", "value": 4, "per": 3 } ]
+    },
+    {
+      "id": "ghost_mute_tape", "name": "消音テープ (MUTE TAPE)", "cost": 1, "category": "ACOUSTIC", "type": "skill", "noise": -1, "stance_change": "COVER",
+      "flavor": "「関節と穿孔口に粘着テープを何重にも巻き付け、駆動音を物理的に封じ込める。見た目は修理跡だらけでも、音だけは新品以上に静かだ。」",
+      "effects": [ { "target": "player", "type": "block", "value": 5 } ]
+    },
+    {
+      "id": "ghost_tape_splice", "name": "テープ継ぎ (TAPE SPLICE)", "cost": 1, "category": "ACOUSTIC", "type": "skill", "noise": 1, "stance_change": null, "isExhaust": true,
+      "flavor": "「切断された記録同士を、指先ほどのテープで無理やり繋ぎ直す。継ぎ目からは余計な音が漏れるが、失われたはずの選択肢が一瞬だけ戻ってくる。」",
+      "effects": [ { "target": "player", "type": "draw", "value": 2 } ]
+    },
+    {
+      "id": "ghost_silent_cut", "name": "無音断章 (SILENT CUT)", "cost": 2, "category": "ACOUSTIC", "type": "attack", "noise": 1, "stance_change": null,
+      "flavor": "「記録の無音部分だけを切り取り、刃として再構成する。敵が異常に気づいた時には、すでに再生ヘッドごと両断されている。」",
+      "effects": [ { "target": "enemy", "type": "damage_silence_bonus", "value": 8, "per": 4 } ]
+    },
+    {
+      "id": "ghost_phase_invert", "name": "逆位相ノイズ (PHASE-INVERT)", "cost": 1, "category": "ACOUSTIC", "type": "skill", "noise": -3, "stance_change": null,
+      "flavor": "「アナログ波で空間の音を食い殺し、敵のセンサーに致命的なエラーを吐かせる。」",
+      "effects": [ { "target": "enemy", "type": "stun_if_silence", "value": 1 } ]
+    },
+    {
+      "id": "ghost_scrap_noise", "name": "スクラップ・ノイズ (SCRAP NOISE)", "cost": 1, "category": "ACOUSTIC", "type": "skill", "noise": 1, "stance_change": null,
+      "flavor": "「再生不良のスクラップ音源を敵の照準系へ紛れ込ませる。敵は正確に狙っているつもりで、半拍遅れた幻聴へ向けて引き金を引く。」",
+      "effects": [ { "target": "enemy", "type": "scrap_noise", "value": 1 } ]
+    },
+    {
+      "id": "ghost_fade_out", "name": "フェードアウト (FADE OUT)", "cost": 1, "category": "ACOUSTIC", "type": "skill", "noise": -2, "stance_change": null,
+      "flavor": "「自機の駆動音を徐々に絞り、最後の一音を次のターンの先行入力として予約する。消え際の静けさが、未来の選択肢を一枚だけ増やす。」",
+      "effects": [ { "target": "player", "type": "block", "value": 7 }, { "target": "player", "type": "draw_bonus_next", "value": 1 } ]
+    },
+    {
+      "id": "ghost_reel_recycle", "name": "リール・リサイクル (REEL RECYCLE)", "cost": 1, "category": "ACOUSTIC", "type": "skill", "noise": 1, "stance_change": null,
+      "flavor": "「捨てられたテープを逆回転で巻き戻し、まだ使える一節だけを拾い上げる。過去の判断を拾い直す代わりに、余計な再生音が一つ増える。」",
+      "effects": [ { "target": "player", "type": "recycle_discard", "value": 1 } ]
+    },
+    {
+      "id": "ghost_phantom_tape", "name": "幻聴テープ (PHANTOM TAPE)", "cost": 2, "category": "ACOUSTIC", "type": "skill", "noise": 1, "stance_change": null,
+      "flavor": "「存在しない足音、存在しない銃声、存在しない味方の悲鳴。三重の幻聴を流し込まれた敵は、実在するこちらの姿だけを見失う。」",
+      "effects": [ { "target": "enemy", "type": "stun_draw_if_max", "value": 1 } ]
+    },
+    {
+      "id": "ghost_silence_end", "name": "サイレンス・エンド (SILENCE END)", "cost": 3, "category": "ACOUSTIC", "type": "attack", "noise": -2, "stance_change": null, "isExhaust": true,
+      "flavor": "「すべてのテープを止め、すべての幻聴を消し、最後に残った無音そのものを叩きつける。再び音が戻る頃には、敵の再生装置は二度と回らない。」",
+      "effects": [ { "target": "enemy", "type": "damage_silence_bonus", "value": 9, "per": 6 } ]
     },
   ];
 

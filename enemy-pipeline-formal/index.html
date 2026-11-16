@@ -350,6 +350,20 @@
               <div class="log" id="log" aria-live="polite"></div>
               <button type="button" class="end-turn" id="route-return" hidden>経路へ戻る</button>
               <button type="button" class="end-turn" id="end-turn" hidden>ターン終了 (END TURN)</button>
+              <div class="hold-bar" id="hold-bar" hidden role="group" aria-label="磁気ホールド選択">
+                <p class="hold-bar__msg">磁気ホールド：持ち越すカードを1枚選べ（保持したカードは次ターンだけ PWR −1）</p>
+                <div class="hold-bar__btns">
+                  <button type="button" class="end-turn hold-bar__go" id="hold-confirm" disabled>保持してターン終了</button>
+                  <button type="button" class="end-turn" id="hold-none">保持せずターン終了</button>
+                  <button type="button" class="end-turn" id="hold-back">戻る</button>
+                </div>
+              </div>
+              <div class="hold-bar" id="pick-bar" hidden role="group" aria-label="カード選択">
+                <p class="hold-bar__msg" id="pick-msg">カードを1枚選べ</p>
+                <div class="hold-bar__btns">
+                  <button type="button" class="end-turn hold-bar__go" id="pick-confirm" disabled>決定</button>
+                </div>
+              </div>
             </div>
             <div class="screen__glass" aria-hidden="true"></div>
             <div class="crt__curve" aria-hidden="true"></div>
