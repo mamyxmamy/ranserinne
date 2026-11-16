@@ -12,7 +12,6 @@
 <meta name="twitter:title" content="営業車ドライビングシミュレーター">
 <meta name="twitter:description" content="荷物をお客様にしっかり届けよう！丁寧な運転で、お客様も笑顔に。ブラウザで遊べる無料のドライブゲーム。">
 <meta name="twitter:image" content="https://mamyxmamy.github.io/ranserinne/probox-legend/ogp.jpg">
-
 <!-- v1.1: PWA（manifest＋アイコン）。SW登録は本体スクリプト末尾 -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#05070d">
@@ -406,6 +405,11 @@
   #finalNewRecord { display:none; margin-top:8px; background:#e5484d; color:#fff; font-weight:900;
                     border-radius:8px; padding:5px 10px; font-size:14px; letter-spacing:.1em; }
   .finalContent .resultRow { border-bottom-color:rgba(255,220,170,.30); }
+  /* v1.8追加修正: ニアミス内訳行だけはスマホ幅でも必ず1行に収める
+     （ラベルは縮小・折り返し禁止、値は少し小さくして nowrap） */
+  #finRowNear { flex-wrap:nowrap; }
+  #finRowNear span { white-space:nowrap; flex-shrink:0; font-size:12.5px; }
+  #finRowNear b { white-space:nowrap; font-size:11.5px; text-align:right; }
   #finTotalRow { font-size:17px; border-bottom:2px solid rgba(255,225,77,.65); }
   #finTotalRow b { color:#ffe14d; font-size:21px; }
   /* ---------- v1.7: 総合点（表示＋ローカル記録用。ランキングは従来どおり合計タイム） ---------- */
@@ -442,6 +446,28 @@
   #finTitleFx.fxMid #finalRankTitle { color:#ffe14d; text-shadow:0 0 14px rgba(255,225,77,.8),0 0 30px rgba(255,150,50,.5),0 1px 6px rgba(0,0,0,.85);
     animation:titleBounce .6s cubic-bezier(.2,1.4,.4,1) both; }
   #finTitleFx.fxLo #finalRankTitle { color:#ffe9a8; text-shadow:0 0 8px rgba(255,225,77,.45),0 1px 6px rgba(0,0,0,.85); }
+  /* ---------- v1.8追加: 最高称号「公道最速の白バン」専用の最強演出（fxRainbow） ----------
+     fxHi の一段上。称号は速い虹グラデ＋色相が回るグロー、サンバーストは虹色で
+     高速回転、フラッシュは白ではなく虹色に変化し、粒子は増量＋大型化する。
+     pos===0（30,000点〜）のときだけ finish() が付ける。他称号には付けない。 */
+  #finTitleFx.fxRainbow #finalRankTitle { background:linear-gradient(90deg,#ff004c,#ff8a00,#ffee00,#00e676,#00b0ff,#aa00ff,#ff004c);
+    background-size:300% 100%; -webkit-background-clip:text; background-clip:text; color:transparent; text-shadow:none;
+    animation:titleBounce .7s cubic-bezier(.2,1.5,.4,1) both, rainbowFlow 1.3s linear infinite, rainbowGlow 1.3s linear infinite; }
+  @keyframes rainbowGlow { 0% { filter:drop-shadow(0 0 12px rgba(255,0,76,.85)) drop-shadow(0 2px 5px rgba(0,0,0,.8)); }
+    25% { filter:drop-shadow(0 0 12px rgba(255,238,0,.85)) drop-shadow(0 2px 5px rgba(0,0,0,.8)); }
+    50% { filter:drop-shadow(0 0 12px rgba(0,230,118,.85)) drop-shadow(0 2px 5px rgba(0,0,0,.8)); }
+    75% { filter:drop-shadow(0 0 12px rgba(0,176,255,.85)) drop-shadow(0 2px 5px rgba(0,0,0,.8)); }
+    100% { filter:drop-shadow(0 0 12px rgba(255,0,76,.85)) drop-shadow(0 2px 5px rgba(0,0,0,.8)); } }
+  #finTitleFx.fxRainbow .titleRays { background:repeating-conic-gradient(from 0deg, rgba(255,0,76,.34) 0deg 6deg, rgba(255,238,0,.30) 6deg 12deg, rgba(0,230,118,.30) 12deg 18deg, rgba(0,176,255,.30) 18deg 24deg, rgba(170,0,255,.30) 24deg 30deg, rgba(255,0,76,0) 30deg 36deg);
+    animation:raysSpin 7s linear infinite, raysLifeRainbow 3.4s ease-out forwards; }
+  @keyframes raysLifeRainbow { 0% { opacity:0; } 8% { opacity:1; } 45% { opacity:.7; } 100% { opacity:.35; } }
+  #finTitleFx.fxRainbow .fxFlashEl { animation:rainbowFlash .8s ease-out .05s forwards; }
+  @keyframes rainbowFlash { 0% { opacity:.55; background:#ff004c; } 20% { background:#ff8a00; } 40% { background:#ffee00; }
+    60% { background:#00e676; } 80% { background:#00b0ff; opacity:.32; } 100% { background:#aa00ff; opacity:0; } }
+  /* v1.8追加: タイトル画面のベスト称号が最高称号のときだけ虹色にする */
+  .rainbowBestTitle { background:linear-gradient(90deg,#ff004c,#ff8a00,#ffee00,#00e676,#00b0ff,#aa00ff,#ff004c);
+    background-size:300% 100%; -webkit-background-clip:text; background-clip:text; color:transparent;
+    animation:rainbowFlow 1.6s linear infinite; font-weight:900; }
   #titleSparks { position:absolute; inset:0; z-index:2; pointer-events:none; }
   #titleSparks .spark { position:absolute; width:7px; height:7px; pointer-events:none;
     clip-path:polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%); }
@@ -499,7 +525,7 @@
       <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.7</div>
+      <div class="verTag">v1.8</div>
     </div>
   </div>
 
@@ -515,7 +541,7 @@
       <button class="kvRankBtn" id="btnRank2">🏆 ランキング</button>
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.7</div>
+      <div class="verTag">v1.8</div>
     </div>
   </div>
 
@@ -588,7 +614,7 @@
 
   <!-- v1.6: 最終ムービー（課長宅・爆破。本人が用意した実写動画の1.5倍速版） -->
   <div class="overlay" id="ovMovie">
-    <video id="endingVideo" src="ending-movie-v1-speed150.mp4" playsinline preload="metadata"></video>
+    <video id="endingVideo" src="ending-movie-v2.mp4" playsinline preload="metadata"></video>
     <div class="movieHint">タップでスキップ</div>
   </div>
 
@@ -751,6 +777,15 @@
    「state が back／result のときだけ表示」に戻して確定。蓄積計算・帰りの
    速度変換・リザルト内訳の解放量表示はすべて従来どおり維持。
    版数表示は「v1.5.5」に更新。
+   v1.8-wip: 本人の実機FB2件。(1) 最終リザルトの総合点カウントアップを緩速化:
+   総時間は停止込みで約5秒（従来2秒・easeOutCubic→easeInOutQuad）、称号が
+   切り替わる瞬間に約400msカウントを止めてポップを読ませる（本人が「全く
+   見えない」と明言したため）。タップスキップ・確定系表示の完了時統合は維持。
+   (2) 帰り＋追撃レグの速度感・エフェクト強化: 速度線を表示速度連動に変更
+   （130km/hから出現・210km/h相当で最大）、ドリフト火花パーティクル、
+   ブーストバースト（放射状ライン＋FOVの一瞬のキック、既存FOVキックと別枠合成）、
+   高速ビネット（160km/h超で速度連動）、速度マイルストーン小テロップ
+   （180/200km/h・レグごと初回のみ）。いずれも state==="back" 限定で行きには入れない。
    疑似3D（セグメント方式） / 単一HTML / BGMは外部mp3を任意再生
    ===================================================================== */
 const $ = id => document.getElementById(id);
@@ -830,6 +865,17 @@ const SE = {
       g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.20,t+0.03);
       g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
       s.connect(f); f.connect(g); g.connect(masterGain()||c.destination); s.start(t); s.stop(t+0.2); }catch(e){} },
+  /* v1.8: 最終ムービーv2（生成動画・無音）用の同期SE。rev=突撃の吹かし、boom=激突・大爆発 */
+  rev(){ beep(58,1.75,"sawtooth",0.055,168); beep(116,1.75,"square",0.02,330); },
+  boom(){ beep(130,1.5,"sine",0.5,28); beep(90,0.5,"sawtooth",0.2,34);
+    const c=ac(); if(!c) return; ensureFX(); if(!noiseBuf) return;
+    try{ const s=c.createBufferSource(); s.buffer=noiseBuf; s.playbackRate.value=0.7;
+      const f=c.createBiquadFilter(); f.type="lowpass"; f.Q.value=0.4;
+      const g=c.createGain(); const t=c.currentTime;
+      f.frequency.setValueAtTime(3200,t); f.frequency.exponentialRampToValueAtTime(120,t+1.5);
+      g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.65,t+0.03);
+      g.gain.exponentialRampToValueAtTime(0.001,t+1.7);
+      s.connect(f); f.connect(g); g.connect(masterGain()||c.destination); s.start(t); s.stop(t+1.8); }catch(e){} },
   /* v1.6: 吹き飛ばしの衝突音（低いドン＋金属ノイズの掃引）。noiseBuf が無い環境では beep のみ */
   smash(){ beep(95,0.24,"sawtooth",0.15,38); beep(220,0.10,"square",0.07,70);
     const c=ac(); if(!c) return; ensureFX(); if(!noiseBuf) return;
@@ -902,6 +948,7 @@ const PLAYER_W=0.42;               // 自車の見た目上の全幅（道路半
 const TEIJI_LIMIT=90;              // 定時タイマー（秒・仮置き）
 const STORE_KEY="probox_total_best_v1"; // v1.6: 合計タイム基準の新キー（旧 probox_demo_best_v1 とは混ぜない）
 let camDepthCur=CAM_DEPTH;         // v0.6: 実効カメラ深度（FOVキックで変化）
+let camDepthBase=CAM_DEPTH;        // v1.8: 速度連動FOVキック後の基準深度（バースト分は camDepthCur 側で合成）
 
 /* ---------------- 状態 ---------------- */
 let state="title"; // title | out | story | legend | back | fail | result | movie（v1.6）
@@ -1033,6 +1080,29 @@ try{ window.__v17Debug=()=>({ startedFromBack, auraOn, combo, comboMax, shachiku
   lastScore: (typeof lastScore!=="undefined")? lastScore : null,
   finCounting: (typeof finCountAnim!=="undefined")? !!finCountAnim : null,
   scoreTitleFor: (s)=>scoreTitleFor(s), scoreBest: loadScoreBest() }); }catch(e){}
+/* ---- v1.8: 帰り＋追撃の速度感・エフェクト強化（すべて state==="back" 限定） ----
+   速度線: 表示速度 130km/h から出現し 210km/h 相当で最大（SLINE_*）。
+   ドリフト火花: ドリフト中だけ後輪付近から散る（sparks・上限 SPARK_MAX）。
+   ブーストバースト: 吹き飛ばし／追い越しチェーン／ベタ踏み段階アップで発火し、
+   放射状ライン＋FOVの一瞬のキック（BURST_FOV・約0.28秒、既存キックと別枠合成）。
+   高速ビネット: 160km/h 超で速度連動（drawSpeedVignette 側）。
+   速度マイルストーン: 180/200km/h をレグごとに初回だけ小テロップ（ms180/ms200）。 */
+const SLINE_START_KMH=130, SLINE_FULL_KMH=210;
+const SPARK_MAX=110;
+const BURST_DUR=0.28, BURST_FOV=0.10; // ≒FOV +6 相当のキックを sin 包絡で約0.28秒
+const VIG_START_KMH=160, VIG_FULL_KMH=210, VIG_MAX_ALPHA=0.42;
+let sparks=[], sparkAcc=0;
+let burstT=0, burstEnvCur=0;
+let speedLineK=0;
+let ms180=false, ms200=false, pendingMs=0;
+let finCountLog=null; // v1.8: カウントアップ検収用 { t0, steps:[{title,atMs}], totalMs, doneAtMs }
+function fireBoostBurst(){ if(state!=="back") return; burstT=BURST_DUR; }
+try{ window.__v18Debug=()=>({ burstT:+burstT.toFixed(3), burstEnv:+burstEnvCur.toFixed(3),
+  camDepthCur:+camDepthCur.toFixed(4), camDepthBase:+camDepthBase.toFixed(4),
+  sparks: sparks.length, speedLineK:+speedLineK.toFixed(3),
+  vigAlpha:(typeof vigAlphaCur!=="undefined")? +vigAlphaCur.toFixed(3) : null,
+  ms180, ms200, pendingMs,
+  finCountLog: finCountLog? JSON.parse(JSON.stringify(finCountLog)) : null }); }catch(e){}
 let prevSteerOut=0, fullLockT=0, jerkFlipCd=0;
 const keys={left:false,right:false,brake:false};
 let touchSteer=0; // -1|0|1
@@ -1050,11 +1120,13 @@ function newRunSeed(){ runSeed=((Date.now()^(Math.random()*0x7fffffff))>>>0)||1;
 function loadBest(){ try{ const s=localStorage.getItem(STORE_KEY); return s?JSON.parse(s):null; }catch(e){ return null; } }
 function saveBest(d){ try{ localStorage.setItem(STORE_KEY,JSON.stringify(d)); }catch(e){} }
 function refreshBestLine(){ const b=loadBest();
-  const t = (b&&b.bestTotal!=null) ? ("ローカルベスト： 合計 "+fmtTime(b.bestTotal)+" ／ 称号「"+b.bestTitle+"」 ／ "+(b.plays||1)+"回目")
+  // v1.8追加: ベスト称号が最高称号「公道最速の白バン」のときだけ、その部分を虹色表示にする
+  const titleHtml = b? ("称号「"+(b.bestTitle==="公道最速の白バン"? '<span class="rainbowBestTitle">'+b.bestTitle+'</span>' : b.bestTitle)+"」") : "";
+  const t = (b&&b.bestTotal!=null) ? ("ローカルベスト： 合計 "+fmtTime(b.bestTotal)+" ／ "+titleHtml+" ／ "+(b.plays||1)+"回目")
               : "ローカルベスト： まだ記録なし";
   // v1.5: 未開示の間、初回（偽）タイトルに帰社ベストを表示してネタバレしない
-  $("bestLine").textContent = titleRevealed()? t : "ローカルベスト： まだ記録なし";
-  const kv=$("bestLineKV"); if(kv) kv.textContent=t; }
+  $("bestLine").innerHTML = titleRevealed()? t : "ローカルベスト： まだ記録なし";
+  const kv=$("bestLineKV"); if(kv) kv.innerHTML=t; }
 /* ---- v0.4.3: 正式タイトル開示フラグ（初回のみ開示演出／2回目以降はKVタイトル） ---- */
 const TITLE_REVEAL_KEY="probox_title_revealed_v1";
 try{ if(new URLSearchParams(location.search).get("title")==="reset") localStorage.removeItem(TITLE_REVEAL_KEY); }catch(e){}
@@ -1718,7 +1790,28 @@ function render(){
     for(const car of seg.cars) drawCar(seg,car,skyT);
   }
   drawPlayer(skyT);
+  drawSpeedVignette(); // v1.8: 高速ビネット（帰り・追撃のみ）
   if(DEBUG_HITBOX) drawHitboxDebug();
+}
+/* ---- v1.8: 高速ビネット ----
+   帰り・追撃で表示速度 160km/h を超えた分だけ、画面周辺にラジアルグラデーションの
+   暗がりを速度連動で重ねる。グラデーションは画面サイズごとにキャッシュして
+   毎フレーム生成しない。HUD は DOM 側（キャンバスより前面）なので視認性は保たれる。 */
+let vigGrad=null, vigW=0, vigH=0, vigAlphaCur=0;
+function drawSpeedVignette(){
+  vigAlphaCur=0;
+  if(state!=="back") return;
+  const kmh=speed/MAX_SPEED*185;
+  if(kmh<=VIG_START_KMH) return;
+  vigAlphaCur=clamp((kmh-VIG_START_KMH)/(VIG_FULL_KMH-VIG_START_KMH),0,1)*VIG_MAX_ALPHA;
+  if(!vigGrad||vigW!==W||vigH!==H){ vigW=W; vigH=H;
+    const r=Math.hypot(W,H)/2;
+    vigGrad=ctx.createRadialGradient(W/2,H/2,r*0.40, W/2,H/2,r*0.98);
+    vigGrad.addColorStop(0,"rgba(2,4,12,0)");
+    vigGrad.addColorStop(0.72,"rgba(2,4,12,0.18)");
+    vigGrad.addColorStop(1,"rgba(2,4,12,0.88)"); }
+  ctx.save(); ctx.globalAlpha=vigAlphaCur; ctx.fillStyle=vigGrad;
+  ctx.fillRect(0,0,W,H); ctx.restore();
 }
 function drawRoadSprite(seg, spr, skyT){
   const scale=seg.p1.screen.scale; if(scale<=0) return;
@@ -1963,16 +2056,25 @@ function drawPlayer(skyT){
   const wob=Math.sin(performance.now()/90)*speedPct*2.2;
   const pw=W*0.46, ph=pw*0.8;
   const cx=W/2 + shakeX + steerVis*pw*0.05, baseY=H-6+wob*0.4 + shakeY;
-  // v0.4.4→v0.6: 帰りの速度線は「実速度」に連動（本数・濃さ・長さが速度で変わる）。
-  // 区間ではなく実速度を見るので、終盤の下道でも速ければ強く出る。v0.6で本数と
-  // 長さ・濃さを増強し、FOVキックと同じ速度域で一気に立つようにした。
-  if(state==="back"&&speedPct>0.32){ const k=clamp((speedPct-0.32)/0.85,0,1);
-    const n=Math.round(4+speedPct*13)+(auraOn?5:0), len=W*(0.09+0.21*k); // v1.7: オーラ中は速度線も少し強める
-    ctx.strokeStyle= auraOn? "hsla("+((performance.now()/4)%360)+",100%,78%,"+(0.16+0.42*k).toFixed(3)+")"
-                           : "rgba(255,255,255,"+(0.10+0.40*k).toFixed(3)+")"; ctx.lineWidth=2;
+  // v1.8: 速度線は「表示速度」連動に変更。130km/h から出始め、210km/h 相当で
+  // 本数・長さ・不透明度が最大になる。低速では一切出ない（旧仕様は speedPct 連動で
+  // 約59km/h から出ていた）。オーラ中は本数+5・虹色化（v1.7仕様を継承）。
+  const kmhNow=speedPct*185;
+  speedLineK = state==="back"? clamp((kmhNow-SLINE_START_KMH)/(SLINE_FULL_KMH-SLINE_START_KMH),0,1) : 0;
+  if(state==="back"&&kmhNow>SLINE_START_KMH){ const k=speedLineK;
+    const n=Math.round(2+k*14)+(auraOn?5:0), len=W*(0.06+0.26*k);
+    ctx.strokeStyle= auraOn? "hsla("+((performance.now()/4)%360)+",100%,78%,"+(0.14+0.44*k).toFixed(3)+")"
+                           : "rgba(255,255,255,"+(0.08+0.44*k).toFixed(3)+")"; ctx.lineWidth=2;
     for(let i=0;i<n;i++){ const ly=H*0.45+((i*67+performance.now()/4)%(H*0.5));
       ctx.beginPath(); ctx.moveTo(0,ly); ctx.lineTo(len,ly); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(W,ly+20); ctx.lineTo(W-len,ly+20); ctx.stroke(); } }
+  // v1.8: ブーストバーストの放射状スピードライン（中心から外へ伸びる短い線を
+  // burstEnv の包絡で一瞬だけ出す。FOVキックと同時に起きる）
+  if(state==="back"&&burstEnvCur>0.02&&burstT>0){ const bp=1-burstT/BURST_DUR;
+    const bcx=W/2, bcy=H*0.52, bR0=Math.min(W,H)*0.17, bR1=bR0+W*0.55*bp;
+    ctx.strokeStyle="rgba(255,240,210,"+(0.55*burstEnvCur).toFixed(3)+")"; ctx.lineWidth=3;
+    for(let i=0;i<14;i++){ const a=(i/14)*Math.PI*2+0.22, c=Math.cos(a), s=Math.sin(a);
+      ctx.beginPath(); ctx.moveTo(bcx+c*bR0, bcy+s*bR0); ctx.lineTo(bcx+c*bR1, bcy+s*bR1); ctx.stroke(); } }
   // v1.7: 虹色オーラ（コンボ20以上）。色相が回転するハローを車体の後ろに敷き、
   // トレイル粒子を車体の手前に重ねる。描画はグラデ＋小円のみで軽量に保つ。
   if(auraOn&&state==="back"){
@@ -1993,6 +2095,10 @@ function drawPlayer(skyT){
   for(const p of smoke){ const a=0.34*(1-p.life/p.max); if(a<=0) continue;
     ctx.fillStyle="rgba(225,228,232,"+a.toFixed(3)+")";
     ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); }
+  // v1.8: ドリフト火花（煙と同じ層＝車体より後ろに、小さな橙色の点で描く）
+  for(const p of sparks){ const a=1-p.life/p.max; if(a<=0) continue;
+    ctx.fillStyle="rgba(255,"+(150+Math.floor(80*a))+",40,"+(0.85*a).toFixed(3)+")";
+    ctx.fillRect(p.x, p.y, 3, 2); }
   // v0.5: 帰りは実写スプライト（リーン画像使用時は二重に傾けない）、それ以外は従来の平たい絵
   ctx.save();
   const sprImg=pickPlayerSprite();
@@ -2167,6 +2273,17 @@ function spawnSmoke(){
     r:5+Math.random()*7, life:0, max:0.55+Math.random()*0.4 });
   if(smoke.length>90) smoke.splice(0, smoke.length-90);
 }
+/* v1.8: ドリフト火花（後輪付近から飛ぶオレンジ色の粒子。煙と同じ画面座標方式で、
+   初速は後方＋やや上、重力で放物線を描いて落ちる。ドリフト中だけ生成される） */
+function spawnSpark(){
+  const pw=W*0.46, cx=W/2 + steerVis*pw*0.05, baseY=H-6;
+  const side=Math.random()<0.5?-1:1;
+  sparks.push({ x:cx+side*pw*0.44 - driftDir*pw*0.04, y:baseY-2-Math.random()*3,
+    vx:(Math.random()*70-35) - driftDir*(50+Math.random()*90),
+    vy:-(20+Math.random()*60),
+    life:0, max:0.28+Math.random()*0.22 });
+  if(sparks.length>SPARK_MAX) sparks.splice(0, sparks.length-SPARK_MAX);
+}
 /* v1.7: 虹色オーラのトレイル粒子（自車の後方＝画面下方向へ流れながら消える） */
 function spawnAuraParticle(){
   const pw=W*0.46, cx=W/2 + steerVis*pw*0.05, baseY=H-6;
@@ -2202,6 +2319,7 @@ function updateDrift(dt, playerSeg, steer){
   if(Math.abs(steer)<0.35) driftReleaseT+=dt; else driftReleaseT=0;
   driftSeT-=dt; if(driftSeT<=0){ SE.drift(); driftSeT=0.28; } // スキール音を断続的に
   smokeAcc+=dt*46; while(smokeAcc>=1){ smokeAcc-=1; spawnSmoke(); }
+  sparkAcc+=dt*70; while(sparkAcc>=1){ sparkAcc-=1; spawnSpark(); } // v1.8: ドリフト火花
   if(driftReleaseT>=DRIFT_EXIT_GRACE || kmh<DRIFT_EXIT_KMH) endDrift();
 }
 function update(dt){
@@ -2212,7 +2330,12 @@ function update(dt){
   // 追従するので判定平面とスプライト接地位置の一致は保たれる。行きは上限速度が低く
   // FOV_START_PCT にほぼ届かないため実質帰り専用の効きになる。
   const fovK=clamp((spdPct-FOV_START_PCT)/(1-FOV_START_PCT),0,1);
-  camDepthCur=lerp(camDepthCur, CAM_DEPTH*(1-FOV_KICK_MAX*fovK), Math.min(1,dt*3));
+  camDepthBase=lerp(camDepthBase, CAM_DEPTH*(1-FOV_KICK_MAX*fovK), Math.min(1,dt*3));
+  // v1.8: ブーストバーストのFOVキック。速度連動キック（camDepthBase）とは別枠で、
+  // sin 包絡（約0.28秒で盛り上がって戻る）を乗算合成するので競合しない。
+  if(burstT>0) burstT=Math.max(0, burstT-dt);
+  burstEnvCur = burstT>0? Math.sin((1-burstT/BURST_DUR)*Math.PI) : 0;
+  camDepthCur=camDepthBase*(1-BURST_FOV*burstEnvCur);
   computePlayerGeom(camDepthCur);
   if(nearMissCd>0) nearMissCd-=dt;
   // ステア
@@ -2222,6 +2345,9 @@ function update(dt){
   driftVis=lerp(driftVis, drifting?1:0, Math.min(1,dt*8));
   for(let i=smoke.length-1;i>=0;i--){ const p=smoke[i]; p.life+=dt;
     p.x+=p.vx*dt; p.y-=p.vy*dt; p.r+=dt*26; if(p.life>=p.max) smoke.splice(i,1); }
+  // v1.8: ドリフト火花の更新（重力で加速しながら落ちて消える）
+  for(let i=sparks.length-1;i>=0;i--){ const p=sparks[i]; p.life+=dt;
+    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vy+=620*dt; if(p.life>=p.max) sparks.splice(i,1); }
   // v1.7: 虹色オーラのトレイル粒子（自車後方へ流れる軽量パーティクル。煙と同じ画面座標方式）
   for(let i=auraTrail.length-1;i>=0;i--){ const p=auraTrail[i]; p.life+=dt;
     p.x+=p.vx*dt; p.y+=p.vy*dt; if(p.life>=p.max) auraTrail.splice(i,1); }
@@ -2376,6 +2502,7 @@ function smashCar(car){
   speed=Math.min(speed+MAX_SPEED*SMASH_BOOST_FRAC, MAX_SPEED*1.30);
   boostT=Math.max(boostT, SMASH_BOOST_T);
   SE.smash(); vib(VIB.hit);
+  fireBoostBurst(); // v1.8: 吹き飛ばしの瞬間にバースト演出（放射ライン＋FOVキック）
   const w=$("cvWrap"); w.classList.remove("shake"); void w.offsetWidth; w.classList.add("shake");
   setTimeout(()=>w.classList.remove("shake"), 340); // 衝突の小シェイク（カットインと同じ仕組み）
   if(car===rivalCar && rivalState==="active"){
@@ -2397,9 +2524,10 @@ function onPassOut(car){
 function onPass(car){
   if(car===rivalCar && rivalState==="active"){
     rivalState="done"; bonusSec+=3; combo+=3; comboMax=Math.max(comboMax,combo); comboTimer=4;
-    showToast("……営業車、なめんなよ", false, 2200); SE.go(); return;
+    showToast("……営業車、なめんなよ", false, 2200); SE.go(); fireBoostBurst(); return; // v1.8
   }
   combo++; comboMax=Math.max(comboMax,combo); comboTimer=4;
+  if(combo>=2) fireBoostBurst(); // v1.8: 追い越しチェーン（2台目以降）の継続でバースト
   if(passBonus<6){ const gain=Math.min(0.12*comboMult, 6-passBonus); passBonus+=gain; bonusSec+=gain; }
   if(combo>0&&combo%5===0) showToast(combo+" 最速説コンボ！", false, 1100);
   SE.combo(combo);
@@ -2463,6 +2591,7 @@ function updateReturn(dt){
     while(dashTimer>=DASH_EVERY_SEC){ dashTimer-=DASH_EVERY_SEC;
       if(dashBonus<DASH_MAX_KMH){ dashBonus=Math.min(DASH_MAX_KMH, dashBonus+DASH_STEP_KMH);
         dashMaxReached=Math.max(dashMaxReached, dashBonus);
+        fireBoostBurst(); // v1.8: ベタ踏み段階アップの瞬間にもバースト
         if(dashBonus>=DASH_MAX_KMH && !dashMaxVoiced){ dashMaxVoiced=true; // SCRIPT-v1 §6: 疾走が伸びきった時の心の声
           showToast("誰も俺を止められねえ", true, 1300); }
         else if(dashBonus%12===0) showToast("🔥 ベタ踏み！ +"+dashBonus+" km/h", true, 900); } } }
@@ -2488,6 +2617,14 @@ function updateReturn(dt){
   if(auraNow && !auraOn) showToast("🌈 虹のオーラ解放！", false, 1400); // 発動は節目カットイン（20）と同時に知らせる
   if(auraNow) auraFiredRun=true;
   auraOn=auraNow;
+  // v1.8: 速度マイルストーン小テロップ（レグごとに初回のみ・180→200の順）。
+  // フラグはレグ開始（resetCommon）で戻る。コンボカットイン表示中は pendingMs に
+  // 保留し、カットインが引けてから出す（同時に重ねない）。
+  const kmhR=speed/MAX_SPEED*185;
+  if(!ms180 && kmhR>=180){ ms180=true; pendingMs=180; }
+  if(!ms200 && kmhR>=200){ ms200=true; pendingMs=200; }
+  if(pendingMs && !$("comboCutin").classList.contains("on")){
+    showToast("⚡ "+pendingMs+"km/h 突破！", true, 1300); pendingMs=0; }
 }
 
 /* ---------------- フロー ---------------- */
@@ -2507,6 +2644,9 @@ function resetCommon(){
   toastQueue.length=0; // 前ランのテロップを持ち越さない
   startedFromBack=false; auraOn=false; auraTrail=[]; auraAcc=0; auraFiredRun=false; // v1.7
   resetComboCutin(); // v1.7: ミニカットインの表示状態も前ランから持ち越さない
+  sparks=[]; sparkAcc=0; burstT=0; burstEnvCur=0; speedLineK=0; // v1.8: 火花／バースト／速度線
+  ms180=false; ms200=false; pendingMs=0; // v1.8: マイルストーンはレグごとにリセット
+  camDepthBase=CAM_DEPTH; // v1.8: FOV基準深度も戻す（camDepthCur は直後の計算で追従）
 }
 /* ---- v0.4.2-wip: オープニング（会社でのひとコマ→出発） ----
    タイトル → オープニング（ほんわかパネルで主人公の独り言）→「出発」ボタンで
@@ -2990,11 +3130,16 @@ let movieDone=false;
 function showEndingMovie(){
   state="movie"; setPhaseUI(); hideAllOverlays();
   movieDone=false;
-  stopBgm("kaeri"); // ムービーの音声は動画のものをそのまま使う
+  stopBgm("kaeri"); // v1.8: ムービーv2は無音の生成動画。音はゲーム側SEを同期させる（下記）
   $("ovMovie").classList.add("show");
   const v=$("endingVideo");
   v.onended=()=>finishMovie();
   v.onerror=()=>finishMovie(); // 読めない環境では最終リザルトへ直行（劣化設計）
+  /* v1.8: SE同期。突撃中は吹かし（rev）、出火タイミング 1.83秒（1.5倍速換算）で大爆発（boom）。
+     timeupdate で判定し、スキップ時は movieDone ガードで鳴らさない */
+  let boomDone=false;
+  v.ontimeupdate=()=>{ if(!boomDone && !movieDone && v.currentTime>=1.83){ boomDone=true; try{ SE.boom(); }catch(e){} } };
+  try{ SE.rev(); }catch(e){}
   try{ v.currentTime=0; const p=v.play(); if(p&&p.catch) p.catch(()=>finishMovie()); }catch(e){ finishMovie(); }
 }
 function finishMovie(){
@@ -3010,11 +3155,13 @@ const SCORE_KEY="probox_score_best_v1";
 function loadScoreBest(){ try{ const s=localStorage.getItem(SCORE_KEY); return s? JSON.parse(s):null; }catch(e){ return null; } }
 function saveScoreBest(o){ try{ localStorage.setItem(SCORE_KEY, JSON.stringify(o)); }catch(e){} }
 const SCORE_TITLES=[ // 下限点→称号（10段階・降順）
-  { min:22000, title:"神速の社畜神" }, { min:19000, title:"首都高の覇者" },
-  { min:16000, title:"公道最速の白バン" }, { min:13000, title:"伝説の営業車" },
-  { min:11000, title:"湾岸の疾風（かぜ）" }, { min:9000, title:"定時の貴公子" },
-  { min:7000, title:"首都高の申し子" }, { min:5000, title:"ちょっと速い営業マン" },
-  { min:3000, title:"帰宅途中の男" }, { min:0, title:"ただの営業車" } ];
+  // v1.8追加変更: 本人の実機スコア27,720が旧最高閾値22,000を大きく超えたため締め直し。
+  // 最高称号はゲームタイトルと同じ「公道最速の白バン」（本人の追加判断で名称割当を訂正）
+  { min:30000, title:"公道最速の白バン" }, { min:26000, title:"神速の社畜神" },
+  { min:22000, title:"首都高の覇者" }, { min:18000, title:"伝説の営業車" },
+  { min:15000, title:"湾岸の疾風（かぜ）" }, { min:12000, title:"定時の貴公子" },
+  { min:9000, title:"首都高の申し子" }, { min:6500, title:"ちょっと速い営業マン" },
+  { min:4000, title:"帰宅途中の男" }, { min:0, title:"ただの営業車" } ];
 function scoreTitleFor(score){ // pos: 0=最上位 … 9=最下位。演出は上位3段=fxHi／中位4段=fxMid／下位3段=fxLo
   let p=SCORE_TITLES.findIndex(t=>score>=t.min); if(p<0) p=SCORE_TITLES.length-1;
   return { title:SCORE_TITLES[p].title, pos:p, fx: p<=2? "fxHi" : (p<=6? "fxMid" : "fxLo") };
@@ -3032,9 +3179,10 @@ function computeScore(rd, totalShown){
   pts.total=pts.time+pts.shachi+pts.smash+pts.near+pts.dash+pts.combo+pts.cargo+pts.aura;
   return { pts, nt, smashTotal, dashMax, comboBest };
 }
-function spawnTitleSparks(n){ // 称号演出のキラキラ粒子（少量DOM＋CSSアニメのみ）
+function spawnTitleSparks(n, big){ // 称号演出のキラキラ粒子（少量DOM＋CSSアニメのみ。big は v1.8: 最高称号用の大型版）
   const box=$("titleSparks"); box.innerHTML="";
   for(let i=0;i<n;i++){ const s=document.createElement("span"); s.className="spark";
+    if(big){ s.style.width="11px"; s.style.height="11px"; }
     s.style.left=(8+Math.random()*84)+"%"; s.style.top=(10+Math.random()*70)+"%";
     s.style.background="hsl("+Math.floor(Math.random()*360)+",100%,72%)";
     s.style.setProperty("--dx", Math.round((Math.random()*2-1)*130)+"px");
@@ -3042,14 +3190,19 @@ function spawnTitleSparks(n){ // 称号演出のキラキラ粒子（少量DOM�
     s.style.animation="sparkFly "+(1.1+Math.random()*0.9).toFixed(2)+"s ease-out "+(Math.random()*0.3).toFixed(2)+"s forwards";
     box.appendChild(s); }
 }
-/* ---- v1.7追加: 最終リザルトの称号ランクアップ演出 ----
-   総合点の大数字が 0→最終値へカウントアップ（約2秒・easeOutCubic）し、称号は
-   最低段「ただの営業車」から始まって、カウント中のスコアがラダー境界を越える
-   たびに次の称号へ切り替わる（ポップ＋フラッシュ＋既存SEのピッチ上昇音）。
+/* ---- v1.7追加→v1.8改修: 最終リザルトの称号ランクアップ演出 ----
+   総合点の大数字が 0→最終値へカウントアップし、称号は最低段「ただの営業車」
+   から始まって、カウント中のスコアがラダー境界を越えるたびに次の称号へ
+   切り替わる（ポップ＋フラッシュ＋既存SEのピッチ上昇音）。
    最終値へ到達した瞬間に既存のパチンコ演出（fxクラス＋粒子）がフル発動して確定し、
    確定系表示（SCORE NEW RECORD／NEW RECORD／ランク検印）はその時に初めて出す。
-   演出中の画面タップ（click を capture で横取り）で即スキップして最終状態へ。 */
-const FIN_COUNT_MS=2000; // 仕様: 約1.6〜2.2秒
+   演出中の画面タップ（click を capture で横取り）で即スキップして最終状態へ。
+   v1.8: 本人の実機FB「全く見えない」を受けて緩速化。総時間は停止込みで約5秒。
+   称号が切り替わる瞬間に約400msカウントを止めて読ませる。停止回数は最終称号
+   から先に数えられるので、カウント本体の時間から差し引いて総時間を揃える。
+   イージングも easeOutCubic（序盤に境界が密集）から easeInOutQuad へ変更。 */
+const FIN_COUNT_TOTAL_MS=5000; // v1.8: 停止時間を含めた総時間の目安（約4.8〜5.2秒）
+const FIN_COUNT_HOLD_MS=400;   // v1.8: 称号ステップごとに止める時間
 let finCountAnim=null;   // { raf, skipHandler } 実行中のみ非null
 function cancelFinCount(){ if(!finCountAnim) return;
   cancelAnimationFrame(finCountAnim.raf);
@@ -3059,17 +3212,25 @@ function cancelFinCount(){ if(!finCountAnim) return;
 function startFinCountUp(total, st, opts){
   cancelFinCount(); // 再入（showFinalResult の再呼び出し）でも前回分を必ず止める
   const scoreEl=$("finScore"), titleEl=$("finalRankTitle"), fxBox=$("finTitleFx"), ov=$("ovFinalResult");
-  fxBox.classList.remove("fxHi","fxMid","fxLo","stepFlash");
+  fxBox.classList.remove("fxHi","fxMid","fxLo","fxRainbow","stepFlash");
   titleEl.classList.remove("stepPop");
   $("titleSparks").innerHTML=""; // 前回の確定時に出した粒子が残っていれば消す（確定時に出し直す）
   let curPos=SCORE_TITLES.length-1; // 最下位「ただの営業車」から
   titleEl.textContent="「"+SCORE_TITLES[curPos].title+"」";
   scoreEl.textContent="0"; scoreEl.classList.add("countTick");
+  // v1.8: 停止回数（＝最終称号までに跨ぐ境界の数）を先に数え、カウント本体の
+  // 時間から差し引く。総時間（カウント＋停止×回数）はスコア帯によらず約5秒。
+  const stepsTotal=Math.max(0, curPos-st.pos);
+  const countMs=Math.max(1400, FIN_COUNT_TOTAL_MS - stepsTotal*FIN_COUNT_HOLD_MS);
+  finCountLog={ t0:performance.now(), steps:[], totalMs:null, doneAtMs:null }; // v1.8: 検収用
   const finish=()=>{ if(!finCountAnim) return; cancelFinCount();
+    if(finCountLog&&finCountLog.doneAtMs==null){ finCountLog.doneAtMs=performance.now();
+      finCountLog.totalMs=Math.round(finCountLog.doneAtMs-finCountLog.t0); }
     scoreEl.textContent=total; scoreEl.classList.remove("countTick");
     titleEl.textContent="「"+st.title+"」"; titleEl.classList.remove("stepPop");
-    fxBox.classList.remove("fxHi","fxMid","fxLo","stepFlash"); void fxBox.offsetWidth; fxBox.classList.add(st.fx);
-    spawnTitleSparks(st.fx==="fxHi"? 16 : st.fx==="fxMid"? 7 : 0);
+    fxBox.classList.remove("fxHi","fxMid","fxLo","fxRainbow","stepFlash"); void fxBox.offsetWidth; fxBox.classList.add(st.fx);
+    if(st.pos===0) fxBox.classList.add("fxRainbow"); // v1.8: 最高称号「公道最速の白バン」だけ最強演出
+    spawnTitleSparks(st.pos===0? 30 : st.fx==="fxHi"? 16 : st.fx==="fxMid"? 7 : 0, st.pos===0);
     $("finScoreNew").style.display=opts.scoreIsNew? "inline-block":"none";
     $("finalNewRecord").style.display=opts.isNew? "inline-block":"none";
     const stampEl=$("finalStamp"); stampEl.textContent=opts.rank;
@@ -3077,10 +3238,16 @@ function startFinCountUp(total, st, opts){
     SE.stamp(); vib(VIB.stamp); };
   const skipHandler=(e)=>{ e.preventDefault(); e.stopPropagation(); finish(); };
   ov.addEventListener("click", skipHandler, true);
-  const t0=performance.now();
+  // v1.8: カウント経過は「停止していない時間」だけを積算する（hold 中は時計を止める）
+  let countElapsed=0, lastNow=performance.now(), holdUntil=0;
   const stepFn=(now)=>{ if(!finCountAnim) return;
-    const t=Math.min(1, Math.max(0,(now-t0)/FIN_COUNT_MS)); // rAF時刻が t0 以前のフレームでも負値にしない
-    const eased=1-Math.pow(1-t,3); // easeOutCubic: 前半で一気に伸び、終盤は一段ずつ噛みしめる
+    // 1フレームの前進は50msまでに制限する。大きなフレーム落ち（GC・撮影・通知等）が
+    // ホールド期間に重なると、その分が一気に加算されて称号を1段飛ばしてしまうため。
+    // 多少総時間が伸びても「一段ずつ読める」ことを優先する。
+    if(now>=holdUntil) countElapsed+=Math.min(50, Math.max(0, now-lastNow));
+    lastNow=now;
+    const t=Math.min(1, countElapsed/countMs);
+    const eased= t<0.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2; // easeInOutQuad: 序盤に境界が密集しない
     const val=Math.min(total, Math.max(0, Math.round(total*eased)));
     scoreEl.textContent=val;
     const s2=scoreTitleFor(val);
@@ -3088,8 +3255,12 @@ function startFinCountUp(total, st, opts){
       titleEl.textContent="「"+s2.title+"」";
       titleEl.classList.remove("stepPop"); void titleEl.offsetWidth; titleEl.classList.add("stepPop");
       fxBox.classList.remove("stepFlash"); void fxBox.offsetWidth; fxBox.classList.add("stepFlash");
-      SE.combo(9-curPos); } // 段が上がるほど高い音（既存SE流用）
-    if(t<1){ finCountAnim.raf=requestAnimationFrame(stepFn); }
+      SE.combo(9-curPos); // 段が上がるほど高い音（既存SE流用）
+      holdUntil=now+FIN_COUNT_HOLD_MS; // v1.8: 約400ms止めて称号を読ませる（ポップ/フラッシュ/SEは即時）
+      if(finCountLog) finCountLog.steps.push({ title:s2.title, atMs:Math.round(now-finCountLog.t0) }); }
+    // v1.8: 最終ステップが t=1 と同時に起きた場合も、ホールドが明けてから確定する
+    // （最終称号が一瞬でパチンコ演出に飲まれず、約400msは読めるようにする）
+    if(t<1 || now<holdUntil){ finCountAnim.raf=requestAnimationFrame(stepFn); }
     else finish(); };
   finCountAnim={ raf:requestAnimationFrame(stepFn), skipHandler };
 }
@@ -3129,7 +3300,8 @@ function showFinalResult(){
   $("finTotal").textContent=fmtTime(totalShown)+"（+"+sc.pts.time+"点）"; // v1.7: タイム点併記
   $("finScoreNew").style.display="none"; // 総合点の数字と確定バッジは startFinCountUp が出す
   const nt=sc.nt;
-  $("finNear").textContent="超ギリ "+nt[0]+" ・ ギリ "+nt[1]+" ・ 近 "+nt[2]+"（計 -"+((rd.nearSec||0)+(rd.chaseNearSec||0)).toFixed(1)+"秒）（+"+sc.pts.near+"点）";
+  // v1.8追加修正: 実機で2行に折り返したため文言を短縮（超N・ギリN・近N(-X.X秒)+N点。括弧は半角）
+  $("finNear").textContent="超"+nt[0]+"・ギリ"+nt[1]+"・近"+nt[2]+"(-"+((rd.nearSec||0)+(rd.chaseNearSec||0)).toFixed(1)+"秒)+"+sc.pts.near+"点";
   $("finRowNear").style.display= (nt[0]+nt[1]+nt[2])>0? "" : "none";
   $("finSmash").textContent=sc.smashTotal+"台（+"+sc.pts.smash+"点）";
   const driftTotal=(rd.driftCount||0)+(rd.chaseDriftCount||0);
