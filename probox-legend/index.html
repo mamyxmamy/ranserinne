@@ -525,7 +525,7 @@
       <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.8</div>
+      <div class="verTag">v1.8.1</div>
     </div>
   </div>
 
@@ -541,7 +541,7 @@
       <button class="kvRankBtn" id="btnRank2">🏆 ランキング</button>
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.8</div>
+      <div class="verTag">v1.8.1</div>
     </div>
   </div>
 
@@ -865,8 +865,7 @@ const SE = {
       g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.20,t+0.03);
       g.gain.exponentialRampToValueAtTime(0.001,t+0.18);
       s.connect(f); f.connect(g); g.connect(masterGain()||c.destination); s.start(t); s.stop(t+0.2); }catch(e){} },
-  /* v1.8: 最終ムービーv2（生成動画・無音）用の同期SE。rev=突撃の吹かし、boom=激突・大爆発 */
-  rev(){ beep(58,1.75,"sawtooth",0.055,168); beep(116,1.75,"square",0.02,330); },
+  /* v1.8: 最終ムービーv2（生成動画・無音）用の同期SE。v1.8.1で本人の指示により「爆発音だけ」に（吹かし音は廃止） */
   boom(){ beep(130,1.5,"sine",0.5,28); beep(90,0.5,"sawtooth",0.2,34);
     const c=ac(); if(!c) return; ensureFX(); if(!noiseBuf) return;
     try{ const s=c.createBufferSource(); s.buffer=noiseBuf; s.playbackRate.value=0.7;
@@ -2060,14 +2059,8 @@ function drawPlayer(skyT){
   // 本数・長さ・不透明度が最大になる。低速では一切出ない（旧仕様は speedPct 連動で
   // 約59km/h から出ていた）。オーラ中は本数+5・虹色化（v1.7仕様を継承）。
   const kmhNow=speedPct*185;
-  speedLineK = state==="back"? clamp((kmhNow-SLINE_START_KMH)/(SLINE_FULL_KMH-SLINE_START_KMH),0,1) : 0;
-  if(state==="back"&&kmhNow>SLINE_START_KMH){ const k=speedLineK;
-    const n=Math.round(2+k*14)+(auraOn?5:0), len=W*(0.06+0.26*k);
-    ctx.strokeStyle= auraOn? "hsla("+((performance.now()/4)%360)+",100%,78%,"+(0.14+0.44*k).toFixed(3)+")"
-                           : "rgba(255,255,255,"+(0.08+0.44*k).toFixed(3)+")"; ctx.lineWidth=2;
-    for(let i=0;i<n;i++){ const ly=H*0.45+((i*67+performance.now()/4)%(H*0.5));
-      ctx.beginPath(); ctx.moveTo(0,ly); ctx.lineTo(len,ly); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(W,ly+20); ctx.lineTo(W-len,ly+20); ctx.stroke(); } }
+  speedLineK = 0; // v1.8.1: 画面の左右端から出る白い横線（旧・速度線）は本人の指示で撤去。
+                  // 速度感はブーストバースト・高速ビネット・FOVキック・火花で担保する
   // v1.8: ブーストバーストの放射状スピードライン（中心から外へ伸びる短い線を
   // burstEnv の包絡で一瞬だけ出す。FOVキックと同時に起きる）
   if(state==="back"&&burstEnvCur>0.02&&burstT>0){ const bp=1-burstT/BURST_DUR;
@@ -2078,14 +2071,16 @@ function drawPlayer(skyT){
   // v1.7: 虹色オーラ（コンボ20以上）。色相が回転するハローを車体の後ろに敷き、
   // トレイル粒子を車体の手前に重ねる。描画はグラデ＋小円のみで軽量に保つ。
   if(auraOn&&state==="back"){
-    const hue=performance.now()/9%360, acx=cx, acy=baseY-ph*0.40;
+    // v1.8.1: ハローをスプライト全体（屋根から車体下端まで）を被う大きさに拡大（従来は車体中央寄りで上部が被さっていなかった）
+    const hue=performance.now()/9%360, acx=cx;
+    const cwB=pw/SPR_WF, topB=baseY-SPR_BF*cwB, acy=(topB+baseY)/2;
     const pulse=1+0.05*Math.sin(performance.now()/110);
-    const rg=ctx.createRadialGradient(acx,acy,ph*0.10, acx,acy,ph*0.95*pulse);
-    rg.addColorStop(0,"hsla("+hue+",100%,65%,.50)");
-    rg.addColorStop(0.55,"hsla("+((hue+90)%360)+",100%,60%,.26)");
+    const rg=ctx.createRadialGradient(acx,acy,ph*0.10, acx,acy,(baseY-topB)*0.62*pulse);
+    rg.addColorStop(0,"hsla("+hue+",100%,65%,.55)");
+    rg.addColorStop(0.55,"hsla("+((hue+90)%360)+",100%,60%,.30)");
     rg.addColorStop(1,"hsla("+((hue+200)%360)+",100%,60%,0)");
     ctx.fillStyle=rg; ctx.beginPath();
-    ctx.ellipse(acx,acy,pw*0.78*pulse,ph*0.95*pulse,0,0,7); ctx.fill();
+    ctx.ellipse(acx,acy,pw*0.68*pulse,(baseY-topB)*0.62*pulse,0,0,7); ctx.fill();
   }
   // v0.4.4: ドリフト中はタイヤ痕（地面の黒い帯）と煙を車体の後ろに描く
   const pcx=cx - driftDir*pw*0.05*driftVis; // テールが外へ流れる分の横ずれ
@@ -2116,6 +2111,15 @@ function drawPlayer(skyT){
   ctx.restore();
   // v1.7: オーラのトレイル粒子は車体より手前に重ねる（炎が車体を舐める見え方にする）
   if(auraOn&&state==="back"){
+    // v1.8.1: 車体そのものにも虹色の膜を加算で薄く重ね、車全体がオーラに包まれる見え方にする
+    const hue2=performance.now()/9%360, cw2=pw/SPR_WF, top2=baseY-SPR_BF*cw2, cy2=(top2+baseY)/2;
+    const pulse2=1+0.05*Math.sin(performance.now()/110);
+    const rg2=ctx.createRadialGradient(pcx,cy2,ph*0.08, pcx,cy2,(baseY-top2)*0.62*pulse2);
+    rg2.addColorStop(0,"hsla("+hue2+",100%,68%,.34)");
+    rg2.addColorStop(0.6,"hsla("+((hue2+90)%360)+",100%,62%,.20)");
+    rg2.addColorStop(1,"hsla("+((hue2+200)%360)+",100%,62%,0)");
+    ctx.save(); ctx.globalCompositeOperation="lighter"; ctx.fillStyle=rg2;
+    ctx.beginPath(); ctx.ellipse(pcx,cy2,pw*0.66*pulse2,(baseY-top2)*0.62*pulse2,0,0,7); ctx.fill(); ctx.restore();
     for(const p of auraTrail){ const a=0.55*(1-p.life/p.max); if(a<=0) continue;
       ctx.fillStyle="hsla("+p.hue+",100%,68%,"+a.toFixed(3)+")";
       ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,7); ctx.fill(); }
@@ -3130,16 +3134,15 @@ let movieDone=false;
 function showEndingMovie(){
   state="movie"; setPhaseUI(); hideAllOverlays();
   movieDone=false;
-  stopBgm("kaeri"); // v1.8: ムービーv2は無音の生成動画。音はゲーム側SEを同期させる（下記）
+  // v1.8.1: BGM（ユーロビート）はムービー中も止めずに流し続ける（本人の指示）。最終リザルトまでそのまま繋がる
   $("ovMovie").classList.add("show");
   const v=$("endingVideo");
   v.onended=()=>finishMovie();
   v.onerror=()=>finishMovie(); // 読めない環境では最終リザルトへ直行（劣化設計）
-  /* v1.8: SE同期。突撃中は吹かし（rev）、出火タイミング 1.83秒（1.5倍速換算）で大爆発（boom）。
-     timeupdate で判定し、スキップ時は movieDone ガードで鳴らさない */
+  /* v1.8.1: ムービーv2は無音のため、ゲーム側SEは「爆発音だけ」を同期させる（本人の指示）。
+     出火タイミング 1.83秒（1.5倍速換算）で boom。timeupdate で判定し、スキップ時は movieDone ガードで鳴らさない */
   let boomDone=false;
   v.ontimeupdate=()=>{ if(!boomDone && !movieDone && v.currentTime>=1.83){ boomDone=true; try{ SE.boom(); }catch(e){} } };
-  try{ SE.rev(); }catch(e){}
   try{ v.currentTime=0; const p=v.play(); if(p&&p.catch) p.catch(()=>finishMovie()); }catch(e){ finishMovie(); }
 }
 function finishMovie(){
