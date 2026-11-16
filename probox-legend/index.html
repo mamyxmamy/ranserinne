@@ -385,6 +385,22 @@
              filter:drop-shadow(0 0 6px rgba(255,255,255,.45)); }
   #stage[data-theme="b"] #auraBox { top:265px; }
   /* ---------- v1.6: 第3フェイズ「追撃」まわり ---------- */
+  /* ---------- v1.9.2: 走行中ハンズフリー着信（帰社通過ビート） ---------- */
+  #driveCall { position:absolute; left:50%; top:11%; transform:translate(-50%,-10px); width:min(92vw,440px);
+    z-index:12; background:rgba(6,10,20,.82); border:1.5px solid rgba(55,230,255,.65); border-radius:10px;
+    padding:9px 13px 11px; color:#eafcff; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s;
+    box-shadow:0 6px 24px rgba(0,0,0,.45); backdrop-filter:blur(3px); }
+  #driveCall.show { opacity:1; transform:translate(-50%,0); }
+  #driveCall .dcHead { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:5px; }
+  #driveCall .dcName { font-size:13px; font-weight:900; color:#FFB7DD; letter-spacing:.04em; }
+  #driveCall .dcSub { font-size:10.5px; color:rgba(234,252,255,.55); font-weight:700; }
+  #driveCall .dcLine { font-size:14.5px; font-weight:700; line-height:1.65; min-height:24px; }
+  #driveCall .dcWho { display:inline-block; font-size:11px; font-weight:900; border-radius:4px; padding:1px 7px; margin-right:8px; vertical-align:2px; }
+  #driveCall .dcWho.yui { background:rgba(255,62,165,.25); color:#FFB7DD; }
+  #driveCall .dcWho.hero { background:rgba(55,230,255,.22); color:#9beaff; }
+  #driveCall .dcWho.mind { background:rgba(255,214,120,.2); color:#ffd678; }
+  #legendTelop.driveFlash { pointer-events:none; }
+  #legendTelop.driveFlash #btnGoBack { display:none; }
   #chaseBeat { margin-top:14px; border-top:1.5px dashed rgba(255,62,165,.45); padding-top:12px; }
   #chaseBeat .beatText { font-size:13.5px; line-height:1.8; font-weight:700; }
   #chaseBeat .beatText .punch { color:#FF3EA5; text-shadow:0 0 8px rgba(255,62,165,.6); }
@@ -541,7 +557,7 @@
       <button class="bigBtn" id="btnStart">▶ お仕事をはじめる</button>
       <div class="sub" id="bestLine">ローカルベスト： まだ記録なし</div>
       <div class="tiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。<br>♪ BGMファイル（bgm_iki.mp3 等）が同フォルダにあれば再生されます（無くても無音で遊べます）。</div>
-      <div class="verTag">v1.9.1</div>
+      <div class="verTag">v1.9.2</div>
     </div>
   </div>
 
@@ -558,7 +574,7 @@
       <div class="kvBest" id="bestLineKV">ローカルベスト： まだ記録なし</div>
       <div class="kvBest" id="globalPlaysLine">🌍 みんなの累計プレイ： —</div>
       <div class="kvTiny">※本作品はフィクションです。登場する運転はゲーム内の演出であり、現実の道路では交通法規を守り、安全運転を心がけてください。</div>
-      <div class="verTag">v1.9.1</div>
+      <div class="verTag">v1.9.2</div>
     </div>
   </div>
 
@@ -694,6 +710,8 @@
   <div id="heroCutin"><img src="assets-v06/protagonist-cutin.webp" alt="キレる主人公">
     <div id="heroCutinText"><div class="bcVoice" id="heroRetort">（……なんだその文句は）</div><div class="bcLine">上等だ。<br>最速で帰ってやる</div></div>
   </div>
+  <!-- v1.9.2: 走行中ハンズフリー着信（帰社通過ビート用・操作は止めない） -->
+  <div id="driveCall"><div class="dcHead"><span class="dcName">📞 内勤のユイさん</span><span class="dcSub">ハンズフリー通話中</span></div><div class="dcLine" id="driveCallLine"></div></div>
   <!-- v1.7: コンボ節目ミニカットイン（帰り・追撃中のみ。ゲームは止めず右端に約1.2秒差し込む） -->
   <div id="comboCutin"><img src="assets-v06/protagonist-cutin.webp" alt="" aria-hidden="true">
     <div class="ccBody"><div class="ccCombo" id="ccComboNum">5 コンボ！</div><div class="ccLine" id="ccLine">まだまだ！</div></div>
@@ -2625,6 +2643,7 @@ function updateOutbound(dt, playerSeg, spdPct, steer, braking){
 function updateReturn(dt){
   // v1.6: 帰り（leg2）と追撃（leg3）でタイマーを分ける。疾走・コンボは両レッグ共通。
   if(leg===3) chaseTime+=dt; else backTime+=dt;
+  if(officeBeatT>0) officeBeatT-=dt; // v1.9.2: 帰社通過ビートの残り時間
   // v0.3 疾走加速：接触も擦りもせず走り続ける間だけ積み上がる
   // v0.4.4: ドリフト中はタイマーを止める（制御された滑りは無接触の内側。リセットはしない）
   // v1.6: 吹き飛ばしは疾走をリセットしない（接触が正のプレイになったため、タイマーは走行時間で進む）
@@ -2638,7 +2657,7 @@ function updateReturn(dt){
         else if(dashBonus%12===0) showToast("🔥 ベタ踏み！ +"+dashBonus+" km/h", true, 900); } } }
   if(leg===2 && !overtime&&backTime>TEIJI_LIMIT){ overtime=true;
     showToast("残業確定…でも、完走しよう", true, 1800); SE.warn(); }
-  if(comboTimer>0){ comboTimer-=dt; if(comboTimer<=0) combo=0; }
+  if(comboTimer>0 && officeBeatT<=0){ comboTimer-=dt; if(comboTimer<=0) combo=0; } // v1.9.2: ビート中はコンボを維持
   // 煽りイベント（中盤・1回・帰りのみ）
   const prog=position/trackLength;
   if(leg===2 && rivalState==="none"&&prog>0.40){
@@ -3024,6 +3043,11 @@ function finishReturn(){
             smash:smashCount, driftCount:driftBonusCount, dashMax:dashMaxReached,
             comboMax:comboMax, rivalDone:(rivalState==="done"), passBonus:passBonus,
             auraFired:auraFiredRun, fromBack:startedFromBack }; // v1.7
+  /* v1.9.2: 帰社は「通過」に変更。リザルト画面で止めず、そのまま追撃へ繋ぐ。
+     帰社の記録は runData に退避済み（内訳の表示は最終リザルトが担う）。
+     以下の中間リザルト描画は到達しない（旧フロー保存）。 */
+  passOffice();
+  return;
   $("rankTitle").textContent=R.rank+"ランク「"+R.title+"」";
   $("rankBand").textContent="帰社タイム（判定） "+fmtTime(effShown)+(overtime?"（残業のため評価調整）":"（定時帰社！）")+" ― 最終判定は合計タイム";
   $("rankComment").textContent=RANK_COMMENTS[R.rank]||"";
@@ -3055,6 +3079,81 @@ function finishReturn(){
   const stampEl=$("rankStamp"); stampEl.textContent=R.rank;
   stampEl.classList.remove("show"); void stampEl.offsetWidth; stampEl.classList.add("show");
   setTimeout(()=>{ SE.stamp(); vib(VIB.stamp); }, 250);
+}
+/* ================= v1.9.2: ノンストップ追撃 =================
+   帰社ゲート通過 → 走行中のまま内勤のユイさんからハンズフリー着信 →
+   「課長はもう帰った」の一報でブチ切れカットイン → 追撃の幕開けテロップ →
+   そのまま追撃区間へ。速度・コンボ・ベタ踏み・オーラ・廃車ボーナスは
+   全て継続する（resetCommon を通さない）。旧フロー（中間リザルト→
+   showChaseBeat→課長へ電話→startChase）は到達しなくなったため残置。 */
+let officeBeatT=0;
+function passOffice(){
+  state="back"; setPhaseUI(); // finishReturn が立てた result 状態を走行へ戻す
+  vib(VIB.dual); // 通過のバイブ
+  showToast("🏢 本社前を通過！ 帰社タイム（判定） "+fmtTime(runData.backEffShown), false, 2300);
+  leg=3; chaseTime=0;
+  srand(runSeed^0xCA5E); // レッグごとにシードをずらす（旧 startChase と同じ）
+  buildTrack(courseChase());
+  buildProgressMarkers();
+  position=SEG_LEN*2; // 新コース序盤へ。速度・自車位置はそのまま
+  cars=[]; passedSet=new Set();
+  seedTraffic(45, 0.24, 0.44, 60000); // ビートの間は前方を大きく空ける
+  rivalState="none"; rivalCar=null;
+  bonusSec=0; passBonus=0; // 追撃側のボーナス勘定はここから
+  nearMissCount=0; nearMissSec=0; nearMissByTier=[0,0,0]; nearMissCd=0;
+  smashCount=0; driftBonusCount=0; dashMaxReached=0; dashMaxVoiced=false;
+  ms180=false; ms200=false; pendingMs=0; // マイルストーンはレッグごと
+  drifting=false; driftBoostT=0; hitCooldown=0; grazeCooldown=0;
+  officeBeatT=10.5; // この間コンボタイマーを凍結する
+  startOfficeBeat();
+  // 最終ムービーは追撃の走行中にプリロードしておく（旧 startChase と同じ）
+  const v=$("endingVideo"); if(v){ try{ v.preload="auto"; v.load(); }catch(e){} }
+}
+const OFFICE_BEAT=[
+  [0.0, "ring", ""],
+  [0.8, "yui",  "お疲れさまです！ 今、どのへんですか？"],
+  [2.7, "hero", "会社の前を通過したところだ。課長は？"],
+  [4.6, "yui",  "あっ……課長なら、さっき帰りましたよ？ 『コーヒーは家まで届けさせろ』って言い残して"],
+  [7.2, "mind", "（……いつもいつも、嫌味を言いやがって）"],
+  [8.8, "cutin", ""],
+  [10.5, "telop", ""],
+];
+let officeBeatTimers=[];
+function startOfficeBeat(){
+  officeBeatTimers.forEach(clearTimeout); officeBeatTimers=[];
+  const dc=$("driveCall"), line=$("driveCallLine");
+  for(const step of OFFICE_BEAT){
+    const t=step[0], kind=step[1], text=step[2];
+    officeBeatTimers.push(setTimeout(()=>{
+      if(state!=="back"||leg!==3) return; // ランを離れていたら中止
+      if(kind==="ring"){ dc.classList.add("show"); line.innerHTML='<span class="dcWho yui">ユイ</span>着信中…'; try{ SE.msg(); }catch(e){} }
+      else if(kind==="cutin"){ dc.classList.remove("show"); driveCutin(); }
+      else if(kind==="telop"){ driveTelop(); }
+      else { dc.classList.add("show");
+        const who = kind==="yui"? '<span class="dcWho yui">ユイ</span>'
+                  : kind==="hero"? '<span class="dcWho hero">主人公</span>'
+                  : '<span class="dcWho mind">心の声</span>';
+        line.innerHTML=who+rankEscapeHtml(text); try{ SE.msg(); }catch(e){} }
+    }, t*1000));
+  }
+}
+function driveCutin(){
+  const hc=$("heroCutin"); if(!hc) return;
+  $("heroRetort").textContent="（……今日という今日は）";
+  const bl=hc.querySelector(".bcLine"); if(bl) bl.innerHTML="上等だ。<br>家まで届けてやる";
+  hc.classList.remove("out"); hc.classList.add("on");
+  try{ SE.go(); }catch(e){}
+  vib(VIB.stamp);
+  setTimeout(()=>{ hc.classList.remove("on"); hc.classList.add("out");
+    setTimeout(()=>hc.classList.remove("out"), 350); }, 1500);
+}
+function driveTelop(){
+  const lt=$("legendTelop"); if(!lt) return;
+  document.querySelector("#legendTelop .telopMain").textContent="追撃の幕開け";
+  $("legendDetail").innerHTML="課長は家で待っている。コーヒーが冷める前に、届けろ。<br>"+
+    "最終判定は <b>帰社＋追撃の合計タイム</b> ／ 速度もコンボも継続中";
+  lt.classList.add("driveFlash"); lt.classList.add("show");
+  setTimeout(()=>{ lt.classList.remove("show"); lt.classList.remove("driveFlash"); }, 1900);
 }
 /* ================= v1.6: 第3フェイズ「追撃」フロー =================
    帰社リザルト（中間）→「課長はもう帰っていた」→課長へ電話（2回目の小言＋
