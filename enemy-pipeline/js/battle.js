@@ -574,6 +574,11 @@
       state.alertTelegraphed = null;
       return { label: "無力", action: "", extra: null };
     }
+    if ((state.enemy.cancelNextIntent || 0) > 0) {
+      // 行動キャンセル予約中は予告自体を潰れたものとして出す（enemyTurn の消費順＝キャンセル→スタンに合わせ、スタン分岐より前で判定）
+      state.alertTelegraphed = null;
+      return { label: "CANCELLED", action: "cancelled", extra: null };
+    }
     const intent = currentIntent(state.enemy);
     if (!state.enemy.immuneToStun && (state.enemy.stun || 0) >= (state.enemy.stunMax || 3)) {
       // PROMPT-25: スタン（行動不能）のインテント表記は英字タグ STUNNED に統一する

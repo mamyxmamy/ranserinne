@@ -164,7 +164,7 @@ function isCurse(card) {
 function blurb(card) {
   const parts = [];
   if (isCurse(card)) return "呪装。リーダは受け付けない";
-  if (card.requirements.includes("target_stun_ge_1")) parts.push("要スタン");
+  if (card.requirements.includes("target_stun_ge_1")) parts.push("要スタン値 1以上");
   if (card.requirements.includes("target_stun_max")) parts.push("要スタン最大");
   for (const effect of card.effects) {
     if (effect.type === "damage" && effect.target === "player") parts.push(`自傷 ${effect.value}`);
@@ -212,7 +212,7 @@ function face(card) {
 
 function reasonText(reason) {
   if (reason === "energy") return "電力不足";
-  if (reason === "target_stun_ge_1") return "スタン不足";
+  if (reason === "target_stun_ge_1") return "スタン値不足";
   if (reason === "target_stun_max") return "スタン未最大";
   if (reason === "dead") return "すでに無力";
   if (reason === "down") return "通信途絶";
@@ -842,6 +842,20 @@ function fxEnemyHit() {
 }
 
 let lastHpShown = null;
+// スタンのピップは敵ごとの stunMax に合わせて個数を動的に揃える
+// （index.html の初期3個は最小構成。GATEKEEPER の stunMax=5 等にも追随する）
+function syncStunPips(current, max) {
+  while (ui.stunPips.children.length < max) {
+    const pip = document.createElement("i");
+    pip.classList.add("is-off");
+    ui.stunPips.append(pip);
+  }
+  while (ui.stunPips.children.length > max) ui.stunPips.lastElementChild.remove();
+  [...ui.stunPips.children].forEach((pip, index) => {
+    pip.classList.toggle("is-off", index >= current);
+  });
+}
+
 function renderCombat() {
   const player = battle.player;
   const enemy = battle.enemy;
@@ -881,9 +895,7 @@ function renderCombat() {
   } else {
     ui.stunPips.hidden = false;
     ui.stun.textContent = `${enemy.stun}/${enemy.stunMax}`;
-    [...ui.stunPips.children].forEach((pip, index) => {
-      pip.classList.toggle("is-off", index >= enemy.stun);
-    });
+    syncStunPips(enemy.stun, enemy.stunMax);
   }
   renderStance();
   renderNoise();

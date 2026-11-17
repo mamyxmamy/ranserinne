@@ -74,8 +74,10 @@ class AudioManager {
     this.booting = null;
     this.muted = false;
     try { this.muted = window.localStorage.getItem("enemy-pipeline-muted") === "1"; } catch { /* storage unavailable */ }
+    this._autoSuspended = false;
     this.loaded = this.preload();
     this.armUnlock();
+    this.armLifecycle();
   }
 
   setMuted(muted) {
@@ -181,6 +183,42 @@ class AudioManager {
     };
     window.addEventListener("pointerdown", poke, true);
     window.addEventListener("keydown", poke, true);
+  }
+
+  /* ライフサイクル連動: ページが裏に回ったら AudioContext 全体を suspend し、
+     BGM・環境音・心拍・再生中の SE の全系統を止める。表に戻ったら、自動で
+     止めた場合に限り resume し、kick で実再生を wanted（その時点の局面の曲）
+     に同期する。wanted / currentName は書き換えない。ミュート（setMuted の
+     gain 層）とは独立で、ミュート状態には干渉しない。 */
+  armLifecycle() {
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) this._suspendForHidden();
+      else this._resumeFromHidden();
+    });
+    /* タブ閉じ・遷移・bfcache 入りの即時停止用（保険）。bfcache から戻った
+       場合は pageshow / visibilitychange の表示経路で resume される。 */
+    window.addEventListener("pagehide", () => this._suspendForHidden());
+    window.addEventListener("pageshow", () => {
+      if (!document.hidden) this._resumeFromHidden();
+    });
+  }
+
+  _suspendForHidden() {
+    if (!this.ctx || this.ctx.state !== "running") return;
+    this._autoSuspended = true;
+    this.ctx.suspend().catch(() => {});
+  }
+
+  _resumeFromHidden() {
+    if (!this._autoSuspended) return;
+    this._autoSuspended = false;
+    if (!this.ctx || this.ctx.state === "running") return;
+    /* ジェスチャ無しの resume が保留される環境では、armUnlock のタップ経由
+       unlock()（resume ＋ kick）が保険として働く。 */
+    this.ctx.resume().then(() => {
+      this.kick();
+      this.kickAmbient();
+    }).catch(() => {});
   }
 
   unlock() {
