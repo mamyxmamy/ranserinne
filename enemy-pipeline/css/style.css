@@ -20,6 +20,10 @@
 html, body {
   margin: 0;
   height: 100%;
+  /* iOS Safari の自動テキストサイズ調整（text inflation）を止める。
+     px固定の箱に対して文字だけが拡大され、レイアウトが崩れるのを防ぐ（LAYOUT-SAFARI 調査 案1） */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -2121,8 +2125,10 @@ button { color: inherit; }
   height: auto;
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  grid-auto-rows: 3px;
-  gap: 2px;
+  /* DISPLAY-FIX: 孔ビットの占有高を 44px→29px に圧縮し、カード高が不足する帯でも
+     ビットが孔エリア外へ溢れないようにする（CARD-ART 調査 案B） */
+  grid-auto-rows: 2px;
+  gap: 1px;
   padding: 3px;
   background:
     repeating-linear-gradient(90deg, transparent 0 7px, rgba(0, 0, 0, 0.28) 7px 8px),
@@ -2143,10 +2149,19 @@ button { color: inherit; }
 }
 
 .punchcard__exhaust {
+  /* DISPLAY-FIX: grid-area を持たず自動配置で暗黙行を作り、狭い列で折り返して
+     カードの行高を大きく奪っていた（COL/JAK で約36px）ため、正式版と同様に
+     面の左下へ絶対配置で固定する（正式版 2026-11-15 の実機対応と同方式） */
+  position: absolute;
+  left: 6px;
+  bottom: 17px;
+  z-index: 2;
+  padding: 0 3px;
+  background: rgba(247, 236, 210, 0.88);
   color: var(--amber);
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.24em;
+  letter-spacing: 0.18em;
   text-align: left;
 }
 
@@ -2195,7 +2210,10 @@ button { color: inherit; }
 /* PROMPT-24: 手札（ホッパー内）のカードだけ文字を大きくし、肉眼で読めるようにする。
    報酬シーンのカードは従来寸法のまま（ステージ内に3枚収める制約があるため） */
 .hopper .punchcard__head, .hopper .punchcard__foot { font-size: 10.5px; }
-.hopper .punchcard__name { font-size: 13.5px; }
+/* DISPLAY-FIX: 手札カード（高さ≈100px）では内容の素の高さが約12px超過し、名前行が
+   2行目まで削られていた。名前を僅かに詰め＋行間・上下paddingを詰めて超過分を吸収する */
+.hopper .punchcard { padding-top: 3px; padding-bottom: 3px; gap: 1px 6px; }
+.hopper .punchcard__name { font-size: 12px; line-height: 1.12; }
 .hopper .punchcard__rules { font-size: 10.5px; }
 .hopper .punchcard__text { font-size: 10.5px; }
 .hopper .punchcard__flavor { font-size: 10px; }
@@ -2946,6 +2964,9 @@ body.is-dead .comms {
 .reward-offers .punchcard {
   margin-left: 0;
   height: auto;
+  /* DISPLAY-FIX: 低い画面で aspect-ratio 由来の高さ（120px幅→80px等）が内容の必要高を
+     下回り、名前・効果文の行と孔エリアが潰れるため、必要高の下限を保証する（CARD-ART 調査 案A） */
+  min-height: 108px;
   flex: 1 1 0;
   min-width: 0;
   max-width: 168px;
@@ -2954,6 +2975,9 @@ body.is-dead .comms {
 }
 
 .reward-offers .punchcard:hover { transform: translateY(-6px); }
+
+/* DISPLAY-FIX: 報酬面の効果文の行間を詰め、名前行が削られないようにする（正式版と同値） */
+.reward-offers .punchcard__rules { line-height: 1.15; }
 
 .reward-secured {
   margin: 10px 0 0;

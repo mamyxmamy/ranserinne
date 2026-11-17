@@ -234,7 +234,6 @@ const ui = {
   skip: $("skip"),
   desk: $("desk"),
   screen: $("screen"),
-  power: $("power"),
   mission: $("mission"),
   tactical: $("tactical"),
   log: $("log"),
@@ -910,10 +909,13 @@ function renderEnemyIntent() {
   ui.intent.dataset.action = view.action || "";
   // v15.0: 警戒段階では追加行動の予告をインテントに明示する
   ui.intent.dataset.alert = view.extra ? view.extra.kind : "";
-  const label = view.label
-    + ((battle.alertBuff || 0) > 0 ? ` 〈警報+${battle.alertBuff}〉` : "")
+  // DISPLAY-FIX: 上部バッジは基本ラベル＋警報までとし、〈追加行動：…〉は中央バナーだけに載せる。
+  // バッジが長いラベルで横に伸び、CCTV左上の TARGET 表示に重なるのを防ぐ（CARD-ART 調査 #3）
+  const badgeLabel = view.label
+    + ((battle.alertBuff || 0) > 0 ? ` 〈警報+${battle.alertBuff}〉` : "");
+  const label = badgeLabel
     + (view.extra ? ` 〈${view.extra.label}〉` : "");
-  imprint(ui.intent, label);
+  imprint(ui.intent, badgeLabel);
   // v15.3 案A: インテント予告は CCTV 中央下にも常時大きめに表示する
   // （上部バッジと同じ内容を、即時反映で大きく出す）
   if (ui.intentBanner) {
@@ -2007,6 +2009,7 @@ async function presentRadio(lines, opts = {}) {
   const live = () => token === radioToken && session.phase === wantPhase;
   for (let i = 0; i < lines.length; i += 1) {
     radioReady = false;
+    session.advance = false;
     ui.radioNext.hidden = true;
     const typed = await typeText(ui.radioLine, lines[i], live, { gap: 22, caret: true, radio: true });
     if (!typed || !live()) return false;
@@ -3921,7 +3924,6 @@ ui.diveBtn.addEventListener("click", (event) => {
 ui.introVideo.addEventListener("click", () => {
   if (attractStage === "title") diveFromTitle();
 });
-ui.power.addEventListener("click", () => { opening(); });
 ui.start.addEventListener("click", () => {
   if (audio) audio.unlock();
   if (session.phase !== "title" || session.busy) return;
@@ -3936,10 +3938,19 @@ ui.endTurn.addEventListener("click", (event) => {
   event.stopPropagation();
   onEndTurn();
 });
-ui.screen.addEventListener("click", () => {
-  // 検収修正 2026-11-10 (PROMPT-20): 通信送りは戦闘以外（MAP/BOOT）の通信でも効かせる
-  if (!radioReady || !radioOpen) return;
-  advanceRadio();
+// 通信送り（2026-11-17 UX修正。旧 ui.screen の click ハンドラから移行）:
+// 通信表示中は通信パネルの内外を問わず、画面のどこを押しても進む（戦闘以外＝MAP/BOOT の通信でも同様）。
+// pointerdown で拾うのは、カード操作等の preventDefault で click が潰れる経路でも効かせるため。
+// 表示中（印字中）のタップはその行を即時完了させ、表示済みのタップは次行へ送る。
+// ボタン内のタップは本来の動作（SOUND切替・END TURN等）を優先して進めない。
+document.addEventListener("pointerdown", (event) => {
+  if (!radioOpen) return;
+  if (event.target.closest && event.target.closest("button")) return;
+  if (radioReady) {
+    advanceRadio();
+    return;
+  }
+  session.advance = true; // 印字中のタップ → その行を即時完了させる
 });
 ui.routeReturn.addEventListener("click", () => {
   if (session.phase === "reward") skipReward();
