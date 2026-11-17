@@ -100,6 +100,16 @@ function markAlertIntroSeen() {
   try { window.localStorage.setItem(ALERT_INTRO_STORE, "1"); }
   catch { /* storage unavailable */ }
 }
+// BATTLE-ANIM JOB 0-2: 演出速度（×1／×2、U-5）の保存。サウンド設定と同じ localStorage 流儀。
+const ANIM_SPEED_STORE = "enemy-pipeline-formal-anim-speed-v1";
+function loadAnimSpeed() {
+  try { return window.localStorage.getItem(ANIM_SPEED_STORE) === "2" ? 2 : 1; }
+  catch { return 1; }
+}
+function saveAnimSpeed(x) {
+  try { window.localStorage.setItem(ANIM_SPEED_STORE, String(x)); }
+  catch { /* storage unavailable */ }
+}
 // 解禁キャラ2 VESSEL 09 "GHOST-TAPE" の解禁フラグ（既存の初回のみストアと同じ localStorage 方式）。
 // 解禁条件（2026-11-16 決定）: VESSEL 04 "GOLIATH" を使ってランをクリアした時点。
 const GHOST_TAPE_UNLOCK_STORE = "enemy-pipeline-formal-ghosttape-unlock-v1";
@@ -461,6 +471,7 @@ const ui = {
   piles: $("piles"),
   glass: $("glass-canvas"),
   cctvScene: $("cctv-scene"),
+  cctvMonitor: $("cctv-monitor"),
   cctvRoom: $("cctv-room"),
   cctvEnemy: $("cctv-enemy"),
   cctvLock: $("cctv-lock"),
@@ -539,6 +550,7 @@ const ui = {
   creditName: $("credit-name"),
   creditStart: $("credit-start"),
   soundToggle: $("sound-toggle"),
+  animSpeedToggle: $("anim-speed-toggle"),
   prologue: $("prologue"),
   prologueTerm: $("prologue-term"),
   prologuePrompt: $("prologue-prompt"),
@@ -995,6 +1007,47 @@ function spawn(list) {
   });
 }
 
+// 戦闘演出強化 段階1（JOB 1-2）: キャラ別 CCTV 待機画の解決。
+// CHARACTERS に cctv 定義がある機体（07）はその画を使い、無い機体は従来の汎用画。
+function vesselCctvSrc(cover) {
+  const generic = cover ? "assets/cctv_vessel_cover.png" : "assets/cctv_vessel_expose.png";
+  const def = (window.Battle && Battle.characterDef && battle) ? Battle.characterDef(battle.characterId) : null;
+  // characterDef は未知IDで vessel07 へ落ちるため、本人確認（def.id 一致）を通す。
+  const c = (def && def.id === battle.characterId) ? def.cctv : null;
+  if (!c) return generic;
+  return (cover ? c.cover : c.expose) || generic;
+}
+
+// 戦闘演出強化 段階1（JOB 1-3）: ポーズ画の読込完了レジストリ。
+// ポーズ切替は「読み込み済み」の画だけに限定し、間に合わない場合は待機画のまま
+// 時系列を止めない（設計 §1.4 のフォールバック方針）。
+const poseReady = new Set();
+function preloadPoseSrc(src) {
+  if (!src || poseReady.has(src)) return;
+  const img = new Image();
+  img.onload = () => poseReady.add(src);
+  img.onerror = () => { /* 読めない画はポーズ切替の対象から外れたままにする */ };
+  img.src = src;
+  if (img.complete && img.naturalWidth > 0) poseReady.add(src);
+}
+
+// 戦闘演出強化 段階1（JOB 1-2）: ラン開始時に使用素体のポーズ画を先読みする。
+// 読込は投げっぱなし（await しない）。失敗しても表示側のフォールバックで代替し、
+// 時系列は止めない。
+function preloadVesselCctv(characterId) {
+  const def = (window.Battle && Battle.characterDef) ? Battle.characterDef(characterId) : null;
+  const c = (def && def.id === characterId) ? def.cctv : null;
+  if (!c) return;
+  [c.expose, c.cover, c.attack, c.hitExpose].forEach((src) => preloadPoseSrc(src));
+}
+
+// 戦闘演出強化 段階1（JOB 1-3）: エンカウント開始時に敵ポーズ画を先読みする。
+function preloadEnemyCctv(enemy) {
+  if (!enemy) return;
+  preloadPoseSrc(enemy.image_attack);
+  preloadPoseSrc(enemy.image_hit);
+}
+
 function renderStance() {
   const stance = battle.player.stance;
   ui.stance.textContent = stance;
@@ -1006,9 +1059,14 @@ function renderStance() {
   // PROMPT-27: 素体レイヤーを態勢に連動させる（COVER=物陰に潜伏／EXPOSE=踏み出し）
   if (ui.cctvVessel) {
     const cover = stance === "COVER";
-    if (ui.cctvVessel.dataset.stance !== stance) {
-      ui.cctvVessel.dataset.stance = stance;
-      ui.cctvVessel.src = cover ? "assets/cctv_vessel_cover.png" : "assets/cctv_vessel_expose.png";
+    const stanceKey = (battle.characterId || "") + ":" + stance;
+    if (ui.cctvVessel.dataset.stance !== stanceKey) {
+      ui.cctvVessel.dataset.stance = stanceKey;
+      ui.cctvVessel.onerror = () => {
+        const generic = cover ? "assets/cctv_vessel_cover.png" : "assets/cctv_vessel_expose.png";
+        if (!ui.cctvVessel.src.endsWith(generic)) ui.cctvVessel.src = generic;
+      };
+      ui.cctvVessel.src = vesselCctvSrc(cover);
     }
     ui.cctvVessel.classList.toggle("is-cover", cover);
     ui.cctvVessel.classList.toggle("is-expose", !cover);
@@ -1016,12 +1074,12 @@ function renderStance() {
       ui.cctvAllyLock.classList.toggle("is-cover", cover);
       ui.cctvAllyLock.classList.toggle("is-expose", !cover);
       if (ui.cctvVessel.naturalWidth > 0) {
-        ui.cctvAllyLock.style.aspectRatio = ui.cctvVessel.naturalWidth + " / " + ui.cctvVessel.naturalHeight;
+        setCctvFxVar("--fx-vessel-ar", ui.cctvVessel.naturalWidth + " / " + ui.cctvVessel.naturalHeight);
         ui.cctvAllyLock.hidden = false;
       } else {
         ui.cctvVessel.onload = () => {
           if (ui.cctvVessel.naturalWidth > 0) {
-            ui.cctvAllyLock.style.aspectRatio = ui.cctvVessel.naturalWidth + " / " + ui.cctvVessel.naturalHeight;
+            setCctvFxVar("--fx-vessel-ar", ui.cctvVessel.naturalWidth + " / " + ui.cctvVessel.naturalHeight);
             ui.cctvAllyLock.hidden = false;
           }
         };
@@ -1074,8 +1132,21 @@ function renderNoise() {
   lastNoiseShown = battle.noise;
 }
 
+// BATTLE-ANIM JOB 0-2: 演出移動・枠アスペクト比の CSS 変数を設定する。
+// 変数はシーン（継承元）と、追随する枠要素自身の両方へ同じ値を入れる。枠側は変数への
+// transition（約80ms遅れ）で追随するため、枠自身に値を持たせる必要がある（css/style.css）。
+// アスペクト比（--fx-*-ar）は待機画ロード時にだけ設定し、戦闘中は固定する（設計 §4.2）。
+// ポーズ切替（段階1）ではこの関数を呼ばないこと。
+function setCctvFxVar(name, value) {
+  if (ui.cctvScene) ui.cctvScene.style.setProperty(name, value);
+  if (name.indexOf("--fx-enemy") === 0 && ui.cctvLock) ui.cctvLock.style.setProperty(name, value);
+  if (name.indexOf("--fx-vessel") === 0 && ui.cctvAllyLock) ui.cctvAllyLock.style.setProperty(name, value);
+}
+
 // v15.0 被弾・攻撃演出（juice）: CSSクラス駆動の軽量実装。SOUND OFF でも映像演出は出る。
 // 被弾 = フレーム小揺れ＋赤ビネットのパルス＋CCTVノイズバースト。攻撃命中 = ヒットストップ＋敵フラッシュ。
+// JOB 0-1 以降、これらの発火点はプレゼンテーション層の命中フェーズへ移っている
+// （onRead／runEnemyPhase の onFx フック）。ここに残るのは発火そのものの実装のみ。
 let dmgFxTimer = 0;
 let dmgBurstTimer = 0;
 let hitstopTimer = 0;
@@ -1107,7 +1178,8 @@ function fxEnemyHit() {
   if (ui.screen) {
     ui.screen.classList.add("is-hitstop");
     window.clearTimeout(hitstopTimer);
-    hitstopTimer = window.setTimeout(() => ui.screen.classList.remove("is-hitstop"), 85);
+    // ヒットストップは設計 §1.4 で 60ms（C フェーズの内数。旧 85ms から短縮）
+    hitstopTimer = window.setTimeout(() => ui.screen.classList.remove("is-hitstop"), 60);
   }
   if (ui.cctvScene) {
     ui.cctvScene.classList.remove("is-enemyhit");
@@ -1117,6 +1189,343 @@ function fxEnemyHit() {
     enemyHitTimer = window.setTimeout(() => ui.cctvScene.classList.remove("is-enemyhit"), 240);
   }
 }
+
+// ==== 戦闘演出エフェクト層（BATTLE-ANIM JOB 1-3：F-1〜F-5＋ポーズ表示切替）====
+// 設計正本: design/DESIGN-BATTLE-ANIM-DRAFT.md §1.2／§1.3／§3（F-1〜F-5）。
+// anim-pres のフック（onEventStart／onStep／onEventEnd）へ結線し、ポーズ切替・
+// 数字ポップ・盾・罠マーカー・射撃表現を「表示値の差分」と「フェイズ」から駆動する。
+// ポーズ画の無い機体・敵（他機体／GATEKEEPER 等）でも、ポーズ以外のエフェクトは
+// 単体で成立する（フォールバック時も効く形）。数値・論理には一切触れない。
+let fxLayer = null;
+let fxShieldEl = null;
+let fxTrapsEl = null;
+let shieldTimer = 0;
+let coverHitTimer = 0;
+const animTimers = new Set();
+
+function reducedMotionFx() {
+  try {
+    return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  } catch (err) {
+    return false;
+  }
+}
+
+// エフェクト用の遅延（演出速度に追随。スキップ時は onEventEnd 側の後始末で打ち切る）
+function animTimer(ms, fn) {
+  const speed = (window.AnimPres && AnimPres.getSpeed) ? Math.max(0.05, AnimPres.getSpeed()) : 1;
+  const id = window.setTimeout(() => { animTimers.delete(id); fn(); }, ms / speed);
+  animTimers.add(id);
+  return id;
+}
+function clearAnimTimers() {
+  for (const id of animTimers) window.clearTimeout(id);
+  animTimers.clear();
+}
+
+// エフェクト層の DOM は JS から生成する（index.html は変更しない）。
+// fxLayer はシーン最前面、盾は ALLY 枠の前面、罠マーカーは敵ロック枠と同形状の
+// ボックス（fxLayer 内で敵の足元へ重ねる）。
+function ensureFxLayer() {
+  if (fxLayer || !ui.cctvScene) return fxLayer;
+  fxLayer = document.createElement("div");
+  fxLayer.className = "cctv-fx";
+  fxLayer.setAttribute("aria-hidden", "true");
+  const traps = document.createElement("div");
+  traps.className = "cctv-fx__traps";
+  fxLayer.append(traps);
+  fxTrapsEl = traps;
+  ui.cctvScene.append(fxLayer);
+  if (ui.cctvAllyLock) {
+    fxShieldEl = document.createElement("div");
+    fxShieldEl.className = "cctv-monitor__shield";
+    fxShieldEl.hidden = true;
+    ui.cctvAllyLock.append(fxShieldEl);
+  }
+  return fxLayer;
+}
+
+// ---- ポーズ表示切替（JOB 1-2 からの申し送り）----
+// 世代トークンで競合を防ぐ：新しいポーズが入った側は、古いイベントの復帰で戻さない。
+const poseGen = { vessel: 0, enemy: 0 };
+
+function vesselCctvDef() {
+  const def = (window.Battle && Battle.characterDef && battle) ? Battle.characterDef(battle.characterId) : null;
+  return (def && def.id === battle.characterId) ? def.cctv : null;
+}
+
+function setVesselIdleSrc() {
+  if (!ui.cctvVessel || !battle) return;
+  const cover = battle.player.stance === "COVER";
+  ui.cctvVessel.onerror = () => {
+    const generic = cover ? "assets/cctv_vessel_cover.png" : "assets/cctv_vessel_expose.png";
+    if (!ui.cctvVessel.src.endsWith(generic)) ui.cctvVessel.src = generic;
+  };
+  ui.cctvVessel.src = vesselCctvSrc(cover);
+}
+
+// kind: "attack" | "hit"。切替できたら世代トークン、できなければ 0 を返す。
+// COVER 中の被弾は段階1では実ポーズが無いため、cover 画のまま ALLY 枠フラッシュで代替する。
+function setVesselPose(kind) {
+  if (!ui.cctvVessel || !battle) return 0;
+  const c = vesselCctvDef();
+  if (!c) return 0;
+  let src = null;
+  if (kind === "attack") src = c.attack || null;
+  else if (kind === "hit") {
+    if (battle.player.stance === "COVER") { flashAllyLockCoverHit(); return 0; }
+    src = c.hitExpose || null;
+  }
+  if (!src || !poseReady.has(src)) return 0;
+  poseGen.vessel += 1;
+  const gen = poseGen.vessel;
+  ui.cctvVessel.onerror = () => restoreVesselPose(gen);
+  ui.cctvVessel.src = src;
+  window.__fxPoseSwaps = (window.__fxPoseSwaps || 0) + 1;
+  return gen;
+}
+function restoreVesselPose(gen) {
+  if (!gen || gen !== poseGen.vessel) return;
+  poseGen.vessel += 1;
+  setVesselIdleSrc();
+}
+
+function setEnemyPose(kind) {
+  if (!ui.cctvEnemy || !battle || !battle.enemy) return 0;
+  const src = kind === "attack" ? battle.enemy.image_attack : battle.enemy.image_hit;
+  if (!src || src === battle.enemy.image || !poseReady.has(src)) return 0;
+  poseGen.enemy += 1;
+  const gen = poseGen.enemy;
+  ui.cctvEnemy.onerror = () => restoreEnemyPose(gen);
+  ui.cctvEnemy.src = src;
+  window.__fxPoseSwaps = (window.__fxPoseSwaps || 0) + 1;
+  return gen;
+}
+function restoreEnemyPose(gen) {
+  if (!gen || gen !== poseGen.enemy) return;
+  poseGen.enemy += 1;
+  if (ui.cctvEnemy && battle && battle.enemy && battle.enemy.image) {
+    ui.cctvEnemy.onerror = null;
+    ui.cctvEnemy.src = battle.enemy.image;
+  }
+}
+
+// ---- 演出移動（JOB 0-2 の CSS 変数へ結線。踏み込み／ノックバック）----
+function setFxMove(side, dx) {
+  setCctvFxVar(side === "enemy" ? "--fx-enemy-dx" : "--fx-vessel-dx", `${dx}px`);
+}
+function resetFxMove(side) {
+  setCctvFxVar(side === "enemy" ? "--fx-enemy-dx" : "--fx-vessel-dx", "0px");
+  setCctvFxVar(side === "enemy" ? "--fx-enemy-dy" : "--fx-vessel-dy", "0px");
+}
+
+// ---- F-1 ダメージ数字ポップ ----
+// side: "enemy"（与ダメ緑系） | "vessel"（被ダメ赤系／回復水色系／BLK グレー併記）
+function popNum(side, text, kind, dy) {
+  if (!ensureFxLayer()) return;
+  while (fxLayer.querySelectorAll(".cctv-fx__pop").length >= 8) {
+    const oldest = fxLayer.querySelector(".cctv-fx__pop");
+    if (!oldest) break;
+    oldest.remove();
+  }
+  const el = document.createElement("span");
+  el.className = `cctv-fx__pop is-${side} is-${kind}`;
+  el.textContent = text;
+  const jx = Math.round((Math.random() * 2 - 1) * 14);
+  el.style.marginLeft = `${jx}px`;
+  el.style.marginTop = `${(dy || 0) + Math.round((Math.random() * 2 - 1) * 6)}px`;
+  fxLayer.append(el);
+  window.__fxPops = (window.__fxPops || 0) + 1;
+  window.setTimeout(() => el.remove(), 650);
+}
+
+// ---- F-3 マズルフラッシュ＋曳光線（射撃系のみ。攻撃側の前面に出す）----
+function fxShot(side) {
+  if (reducedMotionFx() || !ensureFxLayer()) return;
+  const muzzle = document.createElement("div");
+  muzzle.className = `cctv-fx__muzzle is-${side}`;
+  const tracer = document.createElement("div");
+  tracer.className = `cctv-fx__tracer is-${side}`;
+  fxLayer.append(muzzle, tracer);
+  window.__fxShots = (window.__fxShots || 0) + 1;
+  window.setTimeout(() => { muzzle.remove(); tracer.remove(); }, 170);
+}
+
+// ---- F-4 防御の盾表示（ALLY 枠の前面に六角シールド閃光）----
+// mode: "full"（完全防御／待機防護の付与点） | "partial"（一部吸収）
+function fxShield(mode) {
+  ensureFxLayer();
+  if (!fxShieldEl) return;
+  fxShieldEl.hidden = false;
+  fxShieldEl.classList.remove("is-full", "is-partial");
+  void fxShieldEl.offsetWidth;
+  fxShieldEl.classList.add(mode === "partial" ? "is-partial" : "is-full");
+  window.__fxShield = (window.__fxShield || 0) + 1;
+  window.clearTimeout(shieldTimer);
+  shieldTimer = window.setTimeout(() => {
+    fxShieldEl.hidden = true;
+    fxShieldEl.classList.remove("is-full", "is-partial");
+  }, 450);
+}
+
+// COVER 中被弾の代替表現（段階1）: ALLY 枠を赤系に一瞬光らせる
+function flashAllyLockCoverHit() {
+  if (!ui.cctvAllyLock) return;
+  ui.cctvAllyLock.classList.remove("is-coverhit");
+  void ui.cctvAllyLock.offsetWidth;
+  ui.cctvAllyLock.classList.add("is-coverhit");
+  window.clearTimeout(coverHitTimer);
+  coverHitTimer = window.setTimeout(() => ui.cctvAllyLock.classList.remove("is-coverhit"), 320);
+}
+
+// ---- F-5 罠マーカー（敵の足元＝ロック枠下辺）----
+// 敵フェイズ再生中は「発動前の設置数」を表示側で保持し、発動のたびに減らす
+// （論理側の battle.traps は解決済みのため、そのままでは先に消えてしまう）。
+let trapDisplayCount = null;
+function renderTrapMarkers() {
+  if (!ensureFxLayer() || !fxTrapsEl) return;
+  const live = !!(battle && session.phase === "combat");
+  const n = !live ? 0
+    : (trapDisplayCount !== null ? trapDisplayCount : (Array.isArray(battle.traps) ? battle.traps.length : 0));
+  fxTrapsEl.replaceChildren();
+  for (let i = 0; i < n; i += 1) {
+    const mark = document.createElement("i");
+    mark.className = "cctv-fx__trapmark";
+    fxTrapsEl.append(mark);
+  }
+}
+function flashTrapFire() {
+  if (!fxTrapsEl) return;
+  fxTrapsEl.classList.add("is-flash");
+  window.setTimeout(() => fxTrapsEl.classList.remove("is-flash"), 260);
+  if (trapDisplayCount !== null && trapDisplayCount > 0) {
+    trapDisplayCount -= 1;
+    renderTrapMarkers();
+  }
+}
+
+// ---- フック工場（onRead／runEnemyPhase の AP.play へ渡す）----
+// ctx: { ranged, melee }（プレイヤー側の射撃／近接）、{ enemyRanged, enemyMelee }（敵側）
+function makeAnimFxHooks(ctx) {
+  const tokens = new WeakMap(); // ev -> { vessel, enemy }
+  const tokenOf = (ev) => {
+    let t = tokens.get(ev);
+    if (!t) { t = { vessel: 0, enemy: 0 }; tokens.set(ev, t); }
+    return t;
+  };
+  const scheduleShot = (side, ev) => {
+    if (reducedMotionFx()) return;
+    const at = ev.hits && ev.hits.length ? ev.hits[0].at
+      : (typeof ev.applyAt === "number" ? ev.applyAt : 0.3);
+    animTimer(Math.max(20, (at - 0.12) * 1000), () => fxShot(side));
+  };
+  return {
+    onFx(name) {
+      // 待機防護の BLK 付与点（U-13 の境界イベント）＝ F-4 の発火点
+      if (name === "guard") fxShield("full");
+    },
+    onEventStart(ev) {
+      if (!ev) return;
+      const t = tokenOf(ev);
+      if (ev.type === "vessel_attack") {
+        t.vessel = setVesselPose("attack");
+        if (!reducedMotionFx()) {
+          if (ctx.melee) setFxMove("vessel", 46);
+          else if (ctx.ranged) scheduleShot("vessel", ev);
+        }
+      } else if (ev.type === "enemy_attack") {
+        t.enemy = setEnemyPose("attack");
+        if (!reducedMotionFx()) {
+          if (ctx.enemyMelee) setFxMove("enemy", -46);
+          else if (ctx.enemyRanged) scheduleShot("enemy", ev);
+        }
+      } else if (ev.type === "trap_fire") {
+        if (fxTrapsEl) fxTrapsEl.classList.add("is-firing");
+      } else if (ev.type === "enemy_down") {
+        t.enemy = setEnemyPose("hit");
+      }
+    },
+    onStep(info) {
+      const { ev, prev, next, hitIndex } = info;
+      const isHit = typeof hitIndex === "number" && hitIndex >= 0;
+      // F-1: 表示値の差分から数字を出す（ゼロ差分は出さない）
+      const eLoss = prev.ehp - next.ehp;
+      if (eLoss > 0) popNum("enemy", `-${eLoss}`, "dmg", 0);
+      const eBlockLoss = prev.eblock - next.eblock;
+      if (eBlockLoss > 0 && ev.type !== "enemy_action") popNum("enemy", `BLK ${eBlockLoss}`, "block", 34);
+      const pLoss = prev.php - next.php;
+      if (pLoss > 0) popNum("vessel", `-${pLoss}`, "hurt", 0);
+      const pGain = next.php - prev.php;
+      if (pGain > 0) popNum("vessel", `+${pGain}`, "heal", 0);
+      const soaked = prev.pblock - next.pblock;
+      if (soaked > 0) {
+        popNum("vessel", `BLK ${soaked}`, "block", 34);
+        // F-4: BLK で防いだ瞬間。HP が減っていなければ完全防御
+        if (ev.type === "enemy_attack") fxShield(pLoss > 0 ? "partial" : "full");
+      }
+      const pBlockGain = next.pblock - prev.pblock;
+      if (pBlockGain > 0) popNum("vessel", `+${pBlockGain} BLK`, "block", 34);
+      // 被弾側のポーズ＋ノックバック（命中フェーズ）
+      const t = tokenOf(ev);
+      if (ev.type === "vessel_attack" && isHit) {
+        const g = setEnemyPose("hit");
+        if (g) t.enemy = g;
+        if (!reducedMotionFx()) setFxMove("enemy", 8);
+        if (hitIndex === 0) animTimer(140, () => resetFxMove("vessel"));
+        if (ctx.ranged && hitIndex > 0) fxShot("vessel");
+      } else if (ev.type === "enemy_attack" && isHit) {
+        const g = setVesselPose("hit");
+        if (g) t.vessel = g;
+        if (!reducedMotionFx()) setFxMove("vessel", -8);
+        if (hitIndex === 0) animTimer(140, () => resetFxMove("enemy"));
+        if (ctx.enemyRanged && hitIndex > 0) fxShot("enemy");
+      } else if (ev.type === "trap_fire" && hitIndex === -1) {
+        const g = setEnemyPose("hit");
+        if (g) t.enemy = g;
+        flashTrapFire();
+      } else if (ev.type === "self_damage" && hitIndex === -1) {
+        const g = setVesselPose("hit");
+        if (g) t.vessel = g;
+      }
+    },
+    onEventEnd(ev) {
+      if (!ev) return;
+      const t = tokenOf(ev);
+      if (t.vessel) restoreVesselPose(t.vessel);
+      if (t.enemy) restoreEnemyPose(t.enemy);
+      resetFxMove("vessel");
+      resetFxMove("enemy");
+      if (ev.type === "trap_fire" && fxTrapsEl) fxTrapsEl.classList.remove("is-firing");
+    },
+  };
+}
+
+// ==== 戦闘演出プレゼンテーション層（BATTLE-ANIM JOB 0-1）====
+// 表示用 HP／BLK／スタンを論理値と分離し、命中フェーズで一致させる（js/anim-pres.js）。
+// モジュールが無い環境（単体HTML等）では従来動作へフォールバックする。
+function renderDisplayVitals() {
+  const AP = window.AnimPres;
+  if (!AP || !AP.display || !battle) return;
+  const d = AP.display;
+  ui.hp.textContent = String(d.php);
+  const hpPct = Math.max(0, (d.php / battle.player.hpMax) * 100);
+  ui.hpBar.style.width = `${hpPct}%`;
+  if (ui.hpGhost) {
+    ui.hpGhost.style.transition = "none";
+    ui.hpGhost.style.width = `${hpPct}%`;
+  }
+  ui.block.textContent = String(d.pblock);
+  ui.enemyHp.textContent = String(d.ehp);
+  ui.enemyHpBar.style.width = `${Math.max(0, (d.ehp / battle.enemy.hpMax) * 100)}%`;
+  ui.enemyBlock.textContent = String(d.eblock);
+  if (!battle.enemy.immuneToStun) {
+    ui.stun.textContent = `${d.estun}/${battle.enemy.stunMax}`;
+    [...ui.stunPips.children].forEach((pip, index) => {
+      pip.classList.toggle("is-off", index >= d.estun);
+    });
+  }
+}
+if (window.AnimPres) AnimPres.bindRenderer(renderDisplayVitals);
 
 let lastHpShown = null;
 function renderCombat() {
@@ -1168,9 +1577,12 @@ function renderCombat() {
   renderNoise();
   renderEnemyIntent();
   renderTraps();
+  renderTrapMarkers(); // JOB 1-3: F-5 罠マーカー（CCTV 内・敵の足元）
   renderPurge();
   updateLowHpBgm();
   updateBossAlert();
+  // 戦闘演出（JOB 0-1）: 表示分離中は表示用数値を優先する
+  if (window.AnimPres) AnimPres.applyDisplay();
 }
 
 // 『アナログ・トラップ機構』: 設置中トラップのチップ列（左パネル・RELICS の流儀）。
@@ -1399,22 +1811,22 @@ function onRead(data) {
     claimReward(data.id);
     return;
   }
-  if (session.phase !== "combat" || radioOpen || session.busy) return;
+  if (session.phase !== "combat" || radioOpen || session.busy || (window.AnimPres && AnimPres.isPlaying())) return;
   if (holdPick) return; // 『磁気ホールド』選択中はカード使用を受け付けない
   if (pickPick) return; // 探索／選別の選択中もカード使用を受け付けない
   if (tutorialLock(data.id)) return;
   const beforeHp = battle.player.hp;
   const beforeEnemyHp = battle.enemy.hp;
+  const AP = window.AnimPres || null;
+  const beforeSnap = AP ? AP.snapshot(battle) : null;
   const result = Battle.playFromHand(battle, data.id, data.uid ? Number(data.uid) || 0 : 0);
   if (!result.ok) {
     pushLog(`REJECT  ${data.name}  ${reasonText(result.reason)}`);
     return;
   }
-  // v15.0: 敵にダメージが入ったら穿孔と同期したヒットストップ＋敵フラッシュ
-  if (battle.enemy.hp < beforeEnemyHp) fxEnemyHit();
   pushLog(`READ  ${data.name}  COST ${data.cost}`);
+  const played = Battle.card(data.id);
   if (audio && audio.playPunch) {
-    const played = Battle.card(data.id);
     const intensity = Math.max(0, (played ? played.noise || 0 : 0) + (result.breach ? 1 : 0));
     audio.playPunch(intensity);
   }
@@ -1423,16 +1835,54 @@ function onRead(data) {
   ui.note.textContent = battle.hand.length === 0
     ? "手札はない。ターンを終了せよ。"
     : "条件を満たさないカードは、スリットが拒否する。";
+  // 戦闘演出（JOB 0-1）: 表示用数値を使用前の値に留め、命中フェーズで論理値へ寄せる。
+  // 既存連鎖（BREACH／ピンチ／勝利判定）はタイムライン完了後に settlePlay へ渡す（U-12）
+  if (AP) {
+    const built = AP.buildPlayEvents({ state: battle, card: played, result, before: beforeSnap, after: AP.snapshot(battle) });
+    if (built.events.length) {
+      AP.begin(battle, beforeSnap);
+      renderCombat();
+      renderPiles();
+      refreshHand();
+      session.busy = true;
+      syncEndButton();
+      // JOB 1-3: エフェクト層フック（ポーズ／F-1〜F-5）。射撃系（GUN）は F-3、
+      // 近接系（CQC／HVY）は踏み込み、それ以外はポーズのみ。
+      const fxHooks = makeAnimFxHooks({
+        ranged: !!(played && played.category === "GUN"),
+        melee: !!(played && (played.category === "CQC" || played.category === "HVY")),
+      });
+      AP.play(built.events, {
+        onFx: (name, ev) => {
+          if (name === "enemyHit") fxEnemyHit();
+          else if (name === "playerDamage") fxPlayerDamage();
+          fxHooks.onFx(name, ev);
+        },
+        onEventStart: fxHooks.onEventStart,
+        onStep: fxHooks.onStep,
+        onEventEnd: fxHooks.onEventEnd,
+      }).then(() => {
+        clearAnimTimers();
+        session.busy = false;
+        syncEndButton();
+        settlePlay(data.id, beforeHp, !!result.breach, built.selfDamageFx);
+      });
+      return;
+    }
+  }
+  // v15.0: 敵にダメージが入ったら穿孔と同期したヒットストップ＋敵フラッシュ
+  if (battle.enemy.hp < beforeEnemyHp) fxEnemyHit();
   renderCombat();
   renderPiles();
   refreshHand();
   syncEndButton();
-  settlePlay(data.id, beforeHp, !!result.breach);
+  settlePlay(data.id, beforeHp, !!result.breach, false);
 }
 
-async function settlePlay(cardId, beforeHp, breached) {
+async function settlePlay(cardId, beforeHp, breached, animSelfFx) {
   // v15.0: 自傷などで自HPが減っていれば被弾演出を出す
-  if (battle.player.hp < beforeHp) fxPlayerDamage();
+  // （演出タイムラインで再生済みの場合は二重に出さない。JOB 0-1）
+  if (!animSelfFx && battle.player.hp < beforeHp) fxPlayerDamage();
   if (battle.player.hp <= 0) {
     openGameOver();
     return;
@@ -1636,6 +2086,7 @@ function finishPickSelect() {
 
 async function onEndTurn() {
   if (session.phase !== "combat" || session.busy || drag || radioOpen) return;
+  if (window.AnimPres && AnimPres.isPlaying()) return; // JOB 0-2: 演出再生中は受け付けない（キューなし）
   if (holdPick) return;
   if (pickPick) return;
   if (!battle || battle.player.hp <= 0 || battle.enemy.dead) return;
@@ -1667,6 +2118,9 @@ async function runEnemyPhase() {
   session.busy = true;
   syncEndButton();
   const beforeHp = battle.player.hp;
+  const AP = window.AnimPres || null;
+  const beforeSnap = AP ? AP.snapshot(battle) : null;
+  const beforeTrapCount = (battle.traps || []).length; // JOB 1-3: F-5 の表示側保持用
   const result = Battle.endTurn(battle);
   ui.hopper.replaceChildren();
   const downAt = result.log.indexOf("VESSEL DOWN");
@@ -1680,18 +2134,76 @@ async function runEnemyPhase() {
   const enemyStart = typeof result.enemyLogStart === "number" ? result.enemyLogStart : 1;
   const enemyEnd = enemyStart + enemyLog.length;
   const headline = enemyActionText(result.enemy);
+  // 戦闘演出（JOB 0-1）: ログを 前段（即時）／敵区間（命中フェーズへ同期・U-6）／後段（完了後）へ分ける。
+  // 順序と内容は従来と同一で、表示タイミングだけが変わる。
+  const preLines = [];
+  const enemyLines = [];
+  const postLines = [];
+  let resetLine = null;
   for (let i = 0; i < lines.length; i += 1) {
     const line = lines[i];
-    if (i === enemyStart && headline) pushLog(headline, "enemy-head");
-    const isEnemyLine = i >= enemyStart && i < enemyEnd;
-    const kind = !isEnemyLine ? undefined
-      : (line.startsWith("追加行動") ? "enemy-extra" : "enemy");
-    pushLog(line, kind);
+    if (i < enemyStart) {
+      // 境界イベント（臨界排熱スリップ／待機防護）の行はタイムライン側の短縮形で出す（U-13）
+      if (AP && (line.startsWith("臨界排熱 スリップ") || line.startsWith("待機防護"))) continue;
+      preLines.push(line);
+    } else if (i < enemyEnd) {
+      enemyLines.push({ text: line, kind: line.startsWith("追加行動") ? "enemy-extra" : "enemy" });
+    } else {
+      if (AP && result.exposedReset && line.startsWith("完全露呈")) { resetLine = line; continue; }
+      postLines.push(line);
+    }
   }
+  for (const line of preLines) pushLog(line);
+  if (headline) pushLog(headline, "enemy-head");
   showShotCall(result.enemy);
-  // v15.0: 敵フェーズで被弾したら被弾演出（追加行動の追撃分も result.enemy.damage に含まれる）
-  if (result.enemy && result.enemy.damage > 0) fxPlayerDamage();
-  renderCombat();
+  if (AP) {
+    AP.begin(battle, beforeSnap);
+    renderCombat();
+    const built = AP.buildEnemyPhaseEvents({ state: battle, result, before: beforeSnap, after: AP.snapshot(battle), enemyLines, resetLine });
+    let flushed = 0;
+    let fxDamageFired = false;
+    // JOB 1-3: エフェクト層フック。敵の射撃系（射撃／ガトリング）は F-3、近接系は踏み込み。
+    // グレネードは投擲のため踏み込みもマズルも付けない。
+    const actionLabel = (result.enemy && result.enemy.action && result.enemy.action.label) || "";
+    const actionKind = (result.enemy && result.enemy.action && result.enemy.action.kind) || "";
+    const enemyShot = /射撃|ガトリング/.test(actionLabel);
+    const enemyThrown = /グレネード/.test(actionLabel);
+    const fxHooks = makeAnimFxHooks({
+      enemyRanged: enemyShot,
+      enemyMelee: !enemyShot && !enemyThrown
+        && (actionKind === "attack" || actionKind === "heavy_attack" || actionKind === "attack_stun"),
+    });
+    // F-5: 再生中は発動前の設置数を表示側で保持し、発動ごとに減らす
+    trapDisplayCount = beforeTrapCount;
+    renderTrapMarkers();
+    await AP.play(built.events, {
+      onLog: (entry) => {
+        if (enemyLines.includes(entry)) flushed += 1;
+        pushLog(entry.text, entry.kind);
+      },
+      onFx: (name, ev) => {
+        if (name === "playerDamage") { fxDamageFired = true; fxPlayerDamage(); }
+        else if (name === "enemyHit") fxEnemyHit();
+        fxHooks.onFx(name, ev);
+      },
+      onEventStart: fxHooks.onEventStart,
+      onStep: fxHooks.onStep,
+      onEventEnd: fxHooks.onEventEnd,
+    });
+    trapDisplayCount = null;
+    clearAnimTimers();
+    // 安全弁: イベント列へ載らなかった敵ログがあれば順序どおり流し切る
+    for (let i = flushed; i < enemyLines.length; i += 1) pushLog(enemyLines[i].text, enemyLines[i].kind);
+    if (result.enemy && result.enemy.damage > 0 && !fxDamageFired) fxPlayerDamage();
+    for (const line of postLines) pushLog(line);
+    renderCombat();
+  } else {
+    for (const entry of enemyLines) pushLog(entry.text, entry.kind);
+    for (const line of postLines) pushLog(line);
+    // v15.0: 敵フェーズで被弾したら被弾演出（追加行動の追撃分も result.enemy.damage に含まれる）
+    if (result.enemy && result.enemy.damage > 0) fxPlayerDamage();
+    renderCombat();
+  }
   if (battle.player.hp <= 0) {
     session.busy = false;
     ui.note.textContent = "通信途絶。素体は失われた。";
@@ -2188,6 +2700,7 @@ function startRun() {
   run.tutorialPending = !tutorialCleared() && selectedVessel === "vessel07";
   resetTutorialState();
   session.dead = false;
+  preloadVesselCctv(selectedVessel);
   changeScene("MAP");
   ui.link.textContent = "INJECT";
   ui.ambush.hidden = true;
@@ -2821,7 +3334,7 @@ function setCctvImage(src, targetName, type) {
     ui.cctvScene.hidden = false;
     ui.cctvDummy.hidden = true;
     if (ui.cctvLock && ui.cctvEnemy.naturalWidth > 0) {
-      ui.cctvLock.style.aspectRatio = ui.cctvEnemy.naturalWidth + " / " + ui.cctvEnemy.naturalHeight;
+      setCctvFxVar("--fx-enemy-ar", ui.cctvEnemy.naturalWidth + " / " + ui.cctvEnemy.naturalHeight);
       ui.cctvLock.hidden = false;
     }
   };
@@ -2927,6 +3440,7 @@ async function beginCombat(encounter) {
   ui.contact.textContent = encounter.name;
   ui.enemyName.textContent = encounter.short || encounter.name;
   setCctvImage((battle.enemy && battle.enemy.image) || encounter.image || "", encounter.name, encounter.type);
+  preloadEnemyCctv(battle.enemy);
   ui.slotLabel.textContent = "READER LIVE";
   ui.note.textContent = "条件を満たさないカードは、スリットが拒否する。";
   ui.hopper.replaceChildren();
@@ -4533,7 +5047,10 @@ function onPointerUp(event) {
 function cardHeld(card) {
   // 検収修正 2026-11-10: BOOTカードも通信表示中は掴めない（通信中に読み取られるとカードだけ消えて進行不能になるため）
   if (session.phase === "await-boot") return radioOpen;
-  return session.phase === "combat" && (session.busy || radioOpen || tutorialLock(card.dataset.id));
+  // JOB 0-2: 入力ロックをプレゼンテーション層の再生完了まで拡張する（設計 §6）。
+  // 入力はキューに溜めず、その場で受け付けない（ドラッグ開始・キー操作の両経路がここを通る）
+  return session.phase === "combat" && (session.busy || radioOpen
+    || (window.AnimPres && AnimPres.isPlaying()) || tutorialLock(card.dataset.id));
 }
 
 function beginDrag(card, event) {
@@ -4686,6 +5203,31 @@ if (ui.soundToggle) {
   });
 }
 refreshSoundToggle();
+// BATTLE-ANIM JOB 0-2: 演出速度 ×1／×2（U-5）。タイトル設定（サウンド切替の隣）に配置し
+// localStorage に保存する。×2 でも SE は短縮しない——SE は命中点のフックで発火するため、
+// 再生器の速度は「命中フレームの時刻」を半分にするだけで、音そのものは切らない・縮めない。
+let animSpeed = loadAnimSpeed();
+function refreshAnimSpeedToggle() {
+  if (ui.animSpeedToggle) ui.animSpeedToggle.textContent = `[ ANIM: ×${animSpeed} ]`;
+}
+if (window.AnimPres) AnimPres.setSpeed(animSpeed);
+if (ui.animSpeedToggle) {
+  ui.animSpeedToggle.addEventListener("click", (event) => {
+    event.stopPropagation();
+    animSpeed = animSpeed === 2 ? 1 : 2;
+    saveAnimSpeed(animSpeed);
+    if (window.AnimPres) AnimPres.setSpeed(animSpeed);
+    refreshAnimSpeedToggle();
+  });
+}
+refreshAnimSpeedToggle();
+// JOB 0-2: CCTV タップで現在の1手を即完了させる逃げ道（設計 §6）。
+// 再生中以外は何もしない。スキップ時も表示は論理値へ完全一致する（再生器の finishDisplay が保証）。
+if (ui.cctvMonitor) {
+  ui.cctvMonitor.addEventListener("pointerdown", () => {
+    if (window.AnimPres && AnimPres.isPlaying()) AnimPres.skipCurrent();
+  });
+}
 if (ui.tutorialBtn) {
   // チュートリアルから開始: 完了フラグを消してから通常の起動フローへ（BOOT通信から再体験できる）
   ui.tutorialBtn.addEventListener("click", (event) => {

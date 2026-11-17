@@ -2605,9 +2605,21 @@ button { color: inherit; }
 }
 
 /* PROMPT-27: シーン合成（部屋／敵／素体の3層） */
+/* BATTLE-ANIM JOB 0-2: 演出用の移動量は CSS カスタムプロパティでシーンに載せ、
+   画像とロック枠が同じ変数を参照して同時に動く（設計 §4.2）。@property で長さとして
+   登録することで、枠側だけ transition（約80ms＝1コマ遅れの追随）を効かせられる。
+   @property 非対応環境では変数は素通しになり、枠は遅延なしで追随する（劣化のみ）。 */
+@property --fx-enemy-dx { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --fx-enemy-dy { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --fx-vessel-dx { syntax: "<length>"; inherits: true; initial-value: 0px; }
+@property --fx-vessel-dy { syntax: "<length>"; inherits: true; initial-value: 0px; }
 .cctv-monitor__scene {
   position: absolute;
   inset: 0;
+  --fx-enemy-dx: 0px;
+  --fx-enemy-dy: 0px;
+  --fx-vessel-dx: 0px;
+  --fx-vessel-dy: 0px;
 }
 
 .cctv-monitor__room {
@@ -2626,16 +2638,34 @@ button { color: inherit; }
   height: 94%;
   width: auto;
   filter: saturate(0.95) contrast(1.05) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 6px rgba(120, 255, 170, 0.35));
+  /* JOB 0-2: 演出移動（踏み込み／ノックバック等、段階1で結線）は変数経由。
+     待機微移動（U-8: ±2px、種別ではなく一律。ゴーストも同じ上下動で代替）は
+     独立プロパティ translate で常時アニメーション化し、transform（変数側）と競合させない。
+     ヒットストップ（.is-hitstop の animation-play-state: paused）の対象に含まれる */
+  transform: translate(var(--fx-enemy-dx), var(--fx-enemy-dy));
+  /* JOB 1-3: 踏み込み／ノックバックの移動を steps で効かせる（B フェイズ約0.15秒相当） */
+  transition: --fx-enemy-dx 150ms steps(3), --fx-enemy-dy 150ms steps(3);
+  animation: cctv-enemy-idle 3.7s steps(6) infinite;
+}
+@keyframes cctv-enemy-idle {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 2px; }
 }
 
 /* 敵のターゲットロック枠：監視カメラの自動追尾ボックス。
    敵の背後を暗く落として輪郭を分離し、四隅ブラケットで「捕捉中」を示す。
-   位置と高さは敵画像に一致させ、幅は JS が画像のアスペクト比から決める。 */
+   位置と高さは敵画像に一致させ、幅は待機画のアスペクト比（--fx-enemy-ar、JS が
+   待機画ロード時に設定し戦闘中は固定）から決まる。JOB 0-2: 移動は敵画と同じ
+   --fx-enemy-dx/dy を参照し、変数自体への transition で約80ms（1コマ）遅れて追随する
+   （「カメラが被写体を追い直す」感。設計 §4.2）。 */
 .cctv-monitor__lock {
   position: absolute;
   right: 4%;
   bottom: 1%;
   height: 94%;
+  aspect-ratio: var(--fx-enemy-ar, 4 / 3);
+  transform: translate(var(--fx-enemy-dx), var(--fx-enemy-dy));
+  transition: --fx-enemy-dx 80ms steps(2), --fx-enemy-dy 80ms steps(2);
   background-color: rgba(2, 16, 7, 0.42);
   backdrop-filter: brightness(0.68) saturate(0.85);
   -webkit-backdrop-filter: brightness(0.68) saturate(0.85);
@@ -2675,11 +2705,15 @@ button { color: inherit; }
 #cctv-scene[data-room="gate"] .cctv-monitor__lock { right: 7%; bottom: 2%; height: 84%; }
 
 /* 味方（素体）の認識枠：敵の緑ロックと対になる水色ブラケット＋ALLYタグ。
-   位置・高さは素体画像に一致させ、幅は JS が画像のアスペクト比から決める。 */
+   位置・高さは素体画像に一致させ、幅は待機画のアスペクト比（--fx-vessel-ar）から決まる。
+   JOB 0-2: 敵枠と同じく --fx-vessel-dx/dy を参照し、約80ms遅れて追随する。 */
 .cctv-monitor__allylock {
   position: absolute;
   left: 2%;
   bottom: 0;
+  aspect-ratio: var(--fx-vessel-ar, 4 / 3);
+  transform: translate(var(--fx-vessel-dx), var(--fx-vessel-dy));
+  transition: --fx-vessel-dx 80ms steps(2), --fx-vessel-dy 80ms steps(2);
   background-color: rgba(3, 14, 20, 0.35);
   backdrop-filter: brightness(0.78) saturate(0.9);
   -webkit-backdrop-filter: brightness(0.78) saturate(0.9);
@@ -2724,7 +2758,23 @@ button { color: inherit; }
   bottom: 0;
   width: auto;
   filter: saturate(0.95) contrast(1.05) drop-shadow(0 8px 8px rgba(0, 0, 0, 0.5));
+  /* JOB 0-2: 演出移動は変数経由（敵画と同方式）。待機微移動（U-8／設計 §2.4:
+     呼吸 ±2〜3px・周期 約2.4秒・steps(6)。COVER 時は振幅を半分に）は
+     独立プロパティ translate の常時アニメーション */
+  transform: translate(var(--fx-vessel-dx), var(--fx-vessel-dy));
+  /* JOB 1-3: 敵画と同じく移動変数へ steps トランジションを効かせる */
+  transition: --fx-vessel-dx 150ms steps(3), --fx-vessel-dy 150ms steps(3);
+  animation: cctv-vessel-idle 2.4s steps(6) infinite;
 }
+@keyframes cctv-vessel-idle {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 3px; }
+}
+@keyframes cctv-vessel-idle-cover {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 1px; }
+}
+.cctv-monitor__vessel.is-cover { animation-name: cctv-vessel-idle-cover; }
 
 .cctv-monitor__vessel.is-expose { height: 68%; }
 .cctv-monitor__vessel.is-cover { height: 50%; }
@@ -3657,6 +3707,153 @@ body.is-dead .comms {
   50% { filter: brightness(0.6) invert(0.25); transform: translateX(3px); }
   100% { filter: none; transform: translateX(0); }
 }
+
+/* ---------- BATTLE-ANIM JOB 1-3: エフェクト層（F-1〜F-5） ---------- */
+/* fxLayer はシーン最前面に JS が生成する。数字・曳光・罠マーカーの置き場 */
+.cctv-fx {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* F-1 ダメージ数字ポップ：計測表示として読ませるため、暗色の縁取り＋明度差を持たせる
+   （設計 §3 F-1 の可読性仕様）。フォントはガラス幅連動（cqw）で 360px 幅でも判読可 */
+.cctv-fx__pop {
+  position: absolute;
+  top: 24%;
+  font-family: "Courier New", monospace;
+  font-weight: 700;
+  font-size: clamp(17px, 6.8cqw, 38px);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  text-shadow:
+    -1px 0 0 #02130a, 1px 0 0 #02130a, 0 -1px 0 #02130a, 0 1px 0 #02130a,
+    -1px -1px 0 #02130a, 1px 1px 0 #02130a, -1px 1px 0 #02130a, 1px -1px 0 #02130a,
+    0 2px 6px rgba(0, 0, 0, 0.75);
+  animation: cctv-pop 0.55s steps(7) both;
+  z-index: 3;
+}
+.cctv-fx__pop.is-enemy { right: 15%; }
+.cctv-fx__pop.is-vessel { left: 15%; }
+.cctv-fx__pop.is-dmg { color: #86ffa4; }
+.cctv-fx__pop.is-hurt { color: #ff8a76; }
+.cctv-fx__pop.is-heal { color: #93e6ff; }
+.cctv-fx__pop.is-block { color: #ccd4dc; font-size: clamp(12px, 4.6cqw, 26px); }
+@keyframes cctv-pop {
+  0% { opacity: 0; transform: translateY(7px) scale(0.82); }
+  22% { opacity: 1; transform: translateY(0) scale(1.1); }
+  38% { opacity: 1; transform: translateY(-2px) scale(1); }
+  72% { opacity: 1; transform: translateY(-9px) scale(1); }
+  100% { opacity: 0; transform: translateY(-17px) scale(0.98); }
+}
+@keyframes cctv-pop-fade {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  75% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* F-3 マズルフラッシュ＋曳光線（射撃系のみ） */
+.cctv-fx__muzzle {
+  position: absolute;
+  top: 31%;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 252, 220, 0.98) 0%, rgba(255, 214, 120, 0.75) 38%, rgba(255, 170, 60, 0) 72%);
+  animation: cctv-muzzle 0.16s steps(2) both;
+  z-index: 2;
+}
+.cctv-fx__muzzle.is-vessel { left: 29%; }
+.cctv-fx__muzzle.is-enemy { left: 71%; }
+@keyframes cctv-muzzle {
+  0% { opacity: 0; transform: scale(0.6); }
+  35% { opacity: 1; transform: scale(1.15); }
+  100% { opacity: 0; transform: scale(0.9); }
+}
+.cctv-fx__tracer {
+  position: absolute;
+  top: 33%;
+  width: 40%;
+  height: 2px;
+  animation: cctv-tracer 0.16s steps(2) both;
+  z-index: 1;
+}
+.cctv-fx__tracer.is-vessel {
+  left: 30%;
+  background: linear-gradient(to right, rgba(255, 240, 190, 0.95), rgba(255, 240, 190, 0));
+}
+.cctv-fx__tracer.is-enemy {
+  right: 30%;
+  background: linear-gradient(to left, rgba(255, 240, 190, 0.95), rgba(255, 240, 190, 0));
+}
+@keyframes cctv-tracer {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* F-4 防御の盾表示：ALLY 枠の前面に六角シールドの閃光。完全防御＝水色、一部吸収＝橙 */
+.cctv-monitor__shield {
+  position: absolute;
+  inset: -4px;
+  clip-path: polygon(50% 0, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  opacity: 0;
+  pointer-events: none;
+}
+.cctv-monitor__shield.is-full {
+  background: radial-gradient(ellipse at center, rgba(140, 225, 255, 0.16) 55%, rgba(140, 225, 255, 0.5) 88%, rgba(190, 245, 255, 0.75) 100%);
+  animation: cctv-shield 0.45s steps(3) both;
+}
+.cctv-monitor__shield.is-partial {
+  background: radial-gradient(ellipse at center, rgba(255, 190, 110, 0.14) 55%, rgba(255, 180, 100, 0.45) 88%, rgba(255, 215, 160, 0.7) 100%);
+  animation: cctv-shield 0.45s steps(3) both;
+}
+@keyframes cctv-shield {
+  0% { opacity: 0; }
+  25% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* COVER 中被弾の代替表現（段階1）: ALLY 枠の赤系フラッシュ */
+.cctv-monitor__allylock.is-coverhit {
+  box-shadow: inset 0 0 0 2px rgba(255, 120, 90, 0.95), 0 0 16px rgba(255, 90, 60, 0.55);
+}
+
+/* F-5 罠マーカー：敵ロック枠と同形状のボックスを fxLayer 内に重ね、下辺に並べる。
+   位置・高さはロック枠の部屋別ルールと一致させる（幅は待機画 AR から決まる） */
+.cctv-fx__traps {
+  position: absolute;
+  right: 4%;
+  bottom: 1%;
+  height: 94%;
+  aspect-ratio: var(--fx-enemy-ar, 4 / 3);
+  transform: translate(var(--fx-enemy-dx), var(--fx-enemy-dy));
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 5px;
+  padding-bottom: 4px;
+}
+#cctv-scene[data-room="server"] .cctv-fx__traps { right: 9%; bottom: 4%; height: 68%; }
+#cctv-scene[data-room="corridor"] .cctv-fx__traps { right: 5%; bottom: 2%; height: 80%; }
+#cctv-scene[data-room="hangar"] .cctv-fx__traps { right: 13%; bottom: 5%; height: 64%; }
+#cctv-scene[data-room="gate"] .cctv-fx__traps { right: 7%; bottom: 2%; height: 84%; }
+.cctv-fx__trapmark {
+  width: 11px;
+  height: 11px;
+  background: #ffb84d;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+  filter: drop-shadow(0 0 4px rgba(255, 170, 60, 0.8));
+}
+.cctv-fx__traps.is-firing .cctv-fx__trapmark { animation: cctv-trap-blink 0.14s steps(2) infinite; }
+.cctv-fx__traps.is-flash .cctv-fx__trapmark { background: #fff3d6; filter: drop-shadow(0 0 9px rgba(255, 220, 150, 1)); }
+@keyframes cctv-trap-blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.25; }
+  100% { opacity: 1; }
+}
 /* 攻撃命中: ヒットストップ（全アニメーションを一瞬止める） */
 .screen.is-hitstop .screen__content *,
 .screen.is-hitstop .screen__content *::before,
@@ -3675,6 +3872,20 @@ body.is-dead .comms {
   .dmg-vignette.is-on { animation: none; }
   .cctv-monitor__scene.is-burst { animation: none; }
   .cctv-monitor__scene.is-enemyhit .cctv-monitor__enemy { animation: none; }
+  /* JOB 0-2: 移動・揺れ・ヒットストップを無効化し、ポーズ切替と数字ポップのみ残す（設計 §1.4）。
+     待機微移動は止め、演出移動の変数は 0 に固定し、枠の追随遅延も無くす。
+     ヒットストップは「全アニメーションの一時停止」で効くため、対象アニメーションが
+     無効な本モードでは実質無効になる（クラス自体は無害に残る） */
+  .cctv-monitor__enemy, .cctv-monitor__vessel { animation: none; translate: none; }
+  .cctv-monitor__scene, .cctv-monitor__scene * { --fx-enemy-dx: 0px !important; --fx-enemy-dy: 0px !important; --fx-vessel-dx: 0px !important; --fx-vessel-dy: 0px !important; }
+  .cctv-monitor__lock, .cctv-monitor__allylock { transition: none; }
+  /* JOB 1-3: 移動系（曳光・マズル・盾の閃光・罠の点滅）は止め、ポーズ切替と
+     数字ポップ（フェードのみ）だけを残す（設計 §1.4） */
+  .cctv-monitor__enemy, .cctv-monitor__vessel { transition: none; }
+  .cctv-fx__muzzle, .cctv-fx__tracer { display: none; }
+  .cctv-fx__pop { animation-name: cctv-pop-fade; animation-duration: 0.4s; }
+  .cctv-monitor__shield.is-full, .cctv-monitor__shield.is-partial { animation: none; }
+  .cctv-fx__traps.is-firing .cctv-fx__trapmark { animation: none; }
 }
 
 /* ---------- v15.3 案A: 敵インテント視認性強化＋ボス低耐久警告層 ---------- */

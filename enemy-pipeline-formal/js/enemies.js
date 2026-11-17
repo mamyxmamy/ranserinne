@@ -47,6 +47,16 @@
     enemy_gatekeeper: "GATEKEEPER",
   });
 
+  // 戦闘演出強化 段階1（JOB 1-2）: ポーズ画（攻撃／被弾）。カタログ本体とは分離して持ち、
+  // make() が image_attack／image_hit として配る。未登録の敵（GATEKEEPER 等）は
+  // make() 側で待機画（image）へフォールバックする。
+  const POSES = Object.freeze({
+    enemy_sentry: Object.freeze({ attack: "assets/cctv_enemy_sentry_attack.webp", hit: "assets/cctv_enemy_sentry_hit.webp" }),
+    enemy_cyborg_elite: Object.freeze({ attack: "assets/cctv_enemy_elite_attack.webp", hit: "assets/cctv_enemy_elite_hit.webp" }),
+    enemy_defense_mech: Object.freeze({ attack: "assets/cctv_enemy_mech_attack.webp", hit: "assets/cctv_enemy_mech_hit.webp" }),
+    enemy_rival_vessel: Object.freeze({ attack: "assets/cctv_enemy_ghost_attack.webp", hit: "assets/cctv_enemy_ghost_hit.webp" }),
+  });
+
   const ELITE_IDS = Object.freeze(CATALOG.map((enemy) => enemy.id));
   const byId = new Map([SENTRY, GATEKEEPER, ...CATALOG].map((enemy) => [enemy.id, enemy]));
 
@@ -67,10 +77,13 @@
   function make(id) {
     const src = get(id);
     if (!src) return null;
+    const poses = POSES[src.id] || {};
     return {
       id: src.id,
       name: src.name,
       image: src.image || "",
+      image_attack: poses.attack || src.image || "",
+      image_hit: poses.hit || src.image || "",
       short: SHORT[src.id] || src.name,
       hp: src.max_hp,
       hpMax: src.max_hp,
@@ -94,6 +107,7 @@
 
   root.Enemies = {
     CATALOG,
+    POSES,
     ELITE_IDS,
     get,
     make,

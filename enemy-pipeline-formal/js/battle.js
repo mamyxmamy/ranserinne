@@ -23,7 +23,10 @@
   // vessel09 "GHOST-TAPE"（設計書 DESIGN-GHOST-TAPE-DRAFT.md、2026-11-16 全決定）:
   // HP30／PWR回復3／COVER可／NOISE範囲 −3〜5（逆位相残量）／固有OS『磁気ホールド』（canHold）。
   const CHARACTERS = Object.freeze({
-    vessel07: Object.freeze({ id: "vessel07", name: "VESSEL 07", code: "PANDORA", hp: PLAYER_HP, energyPerTurn: ENERGY_PER_TURN, canCover: true, noiseMin: 0, noiseMax: NOISE_MAX, canHold: false }),
+    // vessel07 の cctv（戦闘演出強化 段階1／JOB 1-2）: キャラ別 CCTV 画のパス定義のみ。
+    // expose／cover は待機画（未指定キャラは従来の汎用画へフォールバック）、
+    // attack／hitExpose はポーズ画。プリロードは main.js の startRun が行う。
+    vessel07: Object.freeze({ id: "vessel07", name: "VESSEL 07", code: "PANDORA", hp: PLAYER_HP, energyPerTurn: ENERGY_PER_TURN, canCover: true, noiseMin: 0, noiseMax: NOISE_MAX, canHold: false, cctv: Object.freeze({ expose: "assets/cctv_vessel07_expose.webp", cover: "assets/cctv_vessel07_cover.webp", attack: "assets/cctv_vessel07_attack.webp", hitExpose: "assets/cctv_vessel07_hit_expose.webp" }) }),
     vessel04: Object.freeze({ id: "vessel04", name: "VESSEL 04", code: "GOLIATH", hp: 120, energyPerTurn: 2, canCover: false, noiseMin: 0, noiseMax: NOISE_MAX, canHold: false }),
     vessel09: Object.freeze({ id: "vessel09", name: "VESSEL 09", code: "GHOST-TAPE", hp: 30, energyPerTurn: 3, canCover: true, noiseMin: -3, noiseMax: 5, canHold: true }),
     // vessel13 "WEAVER"（設計書 DESIGN-WEAVER-DRAFT.md＋実装追補、2026-11-16 本人一括GO）:
