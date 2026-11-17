@@ -159,8 +159,8 @@ function markReactorUnlocked() {
 }
 async function maybeAlertIntro() {
   if (alertIntroSeen() || !battle || session.phase !== "combat") return;
-  if (battle.player.hp <= 0 || battle.enemy.dead) return;
-  if ((battle.noise || 0) < 3) return;
+  if (myPlayer().hp <= 0 || battle.enemy.dead) return;
+  if ((myPlayer().noise || 0) < 3) return;
   markAlertIntroSeen();
   await presentRadio([GRAY_ALERT_LINE]);
 }
@@ -168,6 +168,14 @@ const GRAY_PINCH = "パンドラ、応答しろ！ ……おい、死ぬんじ�
 const GRAY_WIN = "見事だ。……昔のようには動かんと言ったが、杞憂だったな。先へ進もう。";
 const GRAY_BOSS = "気をつけろパンドラ。パイプラインの最深部……防壁AIの直属防衛ユニットだ。これまでの雑魚とは火力が違うぞ。";
 const GRAY_CLEAR = "……やったか。見事だパンドラ。第一防壁の突破を確認した。これで本丸に近づける。……ひとまずは帰還しろ、酒を奢ってやる。";
+// JOB 3M-2 (C-6): マップクリア遷移時の Gray 通信。仮文言・3M-Tで差し替え（正式文言は文章フロー 3M-T で確定する）。
+const GRAY_MAP_CLEAR_L1 = "……抜けたか。次の層へ降りろ、パンドラ。通信は維持する。"; // 仮文言・3M-Tで差し替え
+const GRAY_MAP_CLEAR_L2 = "……第二層も突破したな。さらに深く降りろ、パンドラ。油断するな。"; // 仮文言・3M-Tで差し替え
+// JOB 3M-2 (C-6): 3マップ本適用のマップ幅（ROUTE-3MAP-IMPL-PLAN §8 論点6 確定値）
+const MAP_WIDTHS_3M = Object.freeze([3, 4, 4, 3, 2, 1]);
+// JOB 3M-2 (C-5/C-6): 第1・2層ボス撃破後の SALVAGE 報酬完了後にマップ遷移すべきことを示すフラグ。
+// claimReward / skipReward が finishCombat の代わりに advanceToNextMap() へ分岐するために使う。
+let pendingMapAdvance = false;
 const GRAY_DEATH = "パンドラッ！！……おい、どうした！応答しろ、パンドラァァァ！！";
 
 const BOOT = {
@@ -265,7 +273,7 @@ function isCurse(card) {
 function blurb(card) {
   const parts = [];
   if (isCurse(card)) return "呪装。リーダは受け付けない";
-  if (card.requirements.includes("target_stun_ge_1")) parts.push("要スタン");
+  if (card.requirements.includes("target_stun_ge_1")) parts.push("要スタン値 1以上");
   if (card.requirements.includes("target_stun_max")) parts.push("要スタン最大");
   if (card.requirements.includes("self_noise_le_0")) parts.push("要 静寂");
   for (const effect of card.effects) {
@@ -361,8 +369,8 @@ function face(card) {
   // 『炉心溶融』（REACTOR固有OS）: 現在のPWRでは足りないが HP を燃やして使用できるカードは
   // コスト数値を赤く点滅させる（makeCard の is-meltdown／CSS）。使用可否の最新化は refreshHand でも行う
   const meltdown = !!(typeof run !== "undefined" && run && run.character === "vessel00"
-    && typeof battle !== "undefined" && battle && battle.player
-    && !curse && (card.cost || 0) > (battle.player.energy || 0));
+    && typeof battle !== "undefined" && battle && myPlayer()
+    && !curse && (card.cost || 0) > (myPlayer().energy || 0));
   return {
     id: card.id,
     uid: card.__uid || 0,
@@ -390,7 +398,7 @@ function face(card) {
 
 function reasonText(reason) {
   if (reason === "energy") return "電力不足";
-  if (reason === "target_stun_ge_1") return "スタン不足";
+  if (reason === "target_stun_ge_1") return "スタン値不足";
   if (reason === "target_stun_max") return "スタン未最大";
   if (reason === "dead") return "すでに無力";
   if (reason === "down") return "通信途絶";
@@ -544,6 +552,10 @@ const ui = {
   clearScreen: $("clear-screen"),
   clearReturn: $("clear-return"),
   clearShare: $("clear-share"),
+  // JOB 3M-3: 専用クリア画面の実績表示とシート側 X 投稿リンク
+  clearStats: $("clear-stats"),
+  clearStatsSheet: $("clear-stats-sheet"),
+  clearShareSheet: $("clear-share-sheet"),
   creditCard: $("credit-card"),
   creditBy: $("credit-by"),
   creditName: $("credit-name"),
@@ -595,13 +607,47 @@ function buildShareUrl() {
   const hp = run ? Math.max(0, Math.floor(run.hp || 0)) : 0;
   const hpMax = run ? (run.hpMax || 0) : 0;
   const kills = run && run.kills ? run.kills : 0;
-  const text = `『Enemy Pipeline: Analog Espionage』正式版をクリア！ 第一防壁を突破した。残りHP ${hp}/${hpMax}・撃破${kills}体。\n#EnemyPipeline #個人ゲーム開発`;
+  // JOB 3M-3: 旧文の「第一防壁を突破した」は第1層だけの意味で全層突破（ランクリア）に合わないため、
+  // 無難な仮文言へ置き換えた。正式文言は文章フロー 3M-T で差し替える（仮文言・3M-T差し替え対象）。
+  const text = `『Enemy Pipeline: Analog Espionage』正式版をクリア！ 作戦を完了した。残りHP ${hp}/${hpMax}・撃破${kills}体。\n#EnemyPipeline #個人ゲーム開発`; // 仮文言・3M-Tで差し替え
   return `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(GAME_PAGE_URL)}`;
 }
 
 function refreshClearShare() {
-  if (!ui.clearShare) return;
-  ui.clearShare.href = buildShareUrl();
+  if (ui.clearShare) ui.clearShare.href = buildShareUrl();
+  if (ui.clearShareSheet) ui.clearShareSheet.href = buildShareUrl();
+}
+
+// JOB 3M-3: 専用クリア画面の実績表示。使用素体・残HP・撃破数・到達層を、全面オーバーレイと
+// デスク内シートの両方へ流し込む。値は run（と onRunClear の context があればそちら）を正とする。
+function clearStatsRows(context) {
+  const characterId = (context && context.characterId) || (run && run.character) || "vessel07";
+  const def = (window.Battle && Battle.CHARACTERS && Battle.CHARACTERS[characterId]) || {};
+  const vesselLabel = def.name ? (def.code ? `${def.name} "${def.code}"` : def.name) : characterId;
+  const hp = context ? Math.max(0, Math.floor(context.hp || 0)) : (run ? Math.max(0, Math.floor(run.hp || 0)) : 0);
+  const hpMax = context ? (context.hpMax || 0) : (run ? (run.hpMax || 0) : 0);
+  const kills = context ? (context.kills || 0) : (run && run.kills ? run.kills : 0);
+  const layers = context ? (context.layersCleared || context.mapIndex || 3) : (run ? (run.mapIndex || 1) : 1);
+  return [
+    `使用素体 ${vesselLabel}`,
+    `残HP ${hp}/${hpMax}`,
+    `撃破数 ${kills}`,
+    `到達 第${layers}層（全層突破）`,
+  ];
+}
+
+function updateClearStats(context) {
+  const rows = clearStatsRows(context);
+  for (const el of [ui.clearStats, ui.clearStatsSheet]) {
+    if (!el) continue;
+    el.replaceChildren();
+    for (const row of rows) {
+      const p = document.createElement("p");
+      p.className = "clear-stats__row";
+      p.textContent = row;
+      el.append(p);
+    }
+  }
 }
 
 // v15.4: GoatCounter イベント送信。計測は補助機能なので、失敗してもゲームは止めない。
@@ -630,6 +676,7 @@ function syncClearScreen(on) {
   if (on) {
     if (ui.clearScreen.hidden) trackEvent("/event/ep-clear", "EP Clear"); // v15.4: 表示遷移のときだけ数える
     refreshClearShare(); // v15.3: 表示時点の戦績で投稿URLを組み直す
+    updateClearStats(window.lastRunClearContext || null); // JOB 3M-3: 専用クリア画面の実績も表示時点の値で揃える
     ui.clearScreen.hidden = false;
     void ui.clearScreen.offsetWidth;
     ui.clearScreen.classList.add("is-on");
@@ -714,6 +761,29 @@ let pickPick = null;
 let battle = Battle.createState();
 let route = null;
 let run = null;
+
+// ==== MP-2-3: マルチプレイ段階(2) 単位2-3 — 自素体アダプタ ====
+// 描画・操作関数は battle.player や battle 直下のプレイヤー所有フィールドを直接引かず、
+// 自素体（battle.players[myPlayerId]）を返すこのアダプタ経由でアクセスする。
+// ソロでは myPlayerId は未指定（null）のため players[0] を指し、互換アクセサ
+// （battle.player 等）経由と完全に同じ対象・同じ値になる（参照の付け替えのみで、
+// ロジック・数値・乱数消費は一切変えない）。
+// 将来のマルチ描画では、接続時に自分の playerId を myPlayerId へ設定するだけで
+// 描画・操作の対象が自素体へ切り替わる（配線は段階(3)）。
+let myPlayerId = null;
+function myPlayer() {
+  if (!battle) return null;
+  const players = battle.players || [];
+  if (myPlayerId !== null && myPlayerId !== undefined) {
+    const mine = players.find((p) => p.playerId === myPlayerId);
+    if (mine) return mine;
+  }
+  return players[0] || battle.player || null;
+}
+function myCharacterId() {
+  const me = myPlayer();
+  return me ? me.characterId : (battle ? battle.characterId : undefined);
+}
 let routeToken = 0;
 let safehouseToken = 0;
 let safehouseChosen = false;
@@ -1010,9 +1080,9 @@ function spawn(list) {
 // CHARACTERS に cctv 定義がある機体（07）はその画を使い、無い機体は従来の汎用画。
 function vesselCctvSrc(cover) {
   const generic = cover ? "assets/cctv_vessel_cover.png" : "assets/cctv_vessel_expose.png";
-  const def = (window.Battle && Battle.characterDef && battle) ? Battle.characterDef(battle.characterId) : null;
+  const def = (window.Battle && Battle.characterDef && battle) ? Battle.characterDef(myCharacterId()) : null;
   // characterDef は未知IDで vessel07 へ落ちるため、本人確認（def.id 一致）を通す。
-  const c = (def && def.id === battle.characterId) ? def.cctv : null;
+  const c = (def && def.id === myCharacterId()) ? def.cctv : null;
   if (!c) return generic;
   return (cover ? c.cover : c.expose) || generic;
 }
@@ -1048,7 +1118,7 @@ function preloadEnemyCctv(enemy) {
 }
 
 function renderStance() {
-  const stance = battle.player.stance;
+  const stance = myPlayer().stance;
   ui.stance.textContent = stance;
   ui.stance.dataset.mode = stance;
   // PROMPT-23: 態勢バフを左パネルに明示する
@@ -1058,7 +1128,7 @@ function renderStance() {
   // PROMPT-27: 素体レイヤーを態勢に連動させる（COVER=物陰に潜伏／EXPOSE=踏み出し）
   if (ui.cctvVessel) {
     const cover = stance === "COVER";
-    const stanceKey = (battle.characterId || "") + ":" + stance;
+    const stanceKey = (myCharacterId() || "") + ":" + stance;
     if (ui.cctvVessel.dataset.stance !== stanceKey) {
       ui.cctvVessel.dataset.stance = stanceKey;
       ui.cctvVessel.onerror = () => {
@@ -1090,45 +1160,45 @@ function renderStance() {
 let lastNoiseShown = 0;
 let noiseMeterChar = "";
 function renderNoise() {
-  const lim = (window.Battle && Battle.noiseLimitsFor) ? Battle.noiseLimitsFor(battle.characterId) : { min: 0, max: 10 };
+  const lim = (window.Battle && Battle.noiseLimitsFor) ? Battle.noiseLimitsFor(myCharacterId()) : { min: 0, max: 10 };
   const max = lim.max;
   // v15.0: ノイズはラン全体の状態。戦闘中の値を run へ同期する（持ち越し・セーブ対象）。
   // GHOST-TAPE の負数（逆位相残量）は戦闘内だけの資源で、ラン側へは 0 として同期する（戦闘終了で消散）。
-  if (run && session.phase === "combat") run.noise = Math.max(0, battle.noise);
-  ui.noiseValue.textContent = lim.min < 0 && battle.noise < 0
-    ? `${battle.noise}/${max}（逆位相残量）`
-    : `${battle.noise}/${max}`;
+  if (run && session.phase === "combat") run.noise = Math.max(0, myPlayer().noise);
+  ui.noiseValue.textContent = lim.min < 0 && myPlayer().noise < 0
+    ? `${myPlayer().noise}/${max}（逆位相残量）`
+    : `${myPlayer().noise}/${max}`;
   // 正式版フェーズ1（A-2）: 現在の警報帯域名をノイズ表示の近くに出す
   if (ui.noiseBand && window.Battle && Battle.noiseBand) {
-    ui.noiseBand.textContent = Battle.noiseBand(battle.noise).name;
+    ui.noiseBand.textContent = Battle.noiseBand(myPlayer().noise).name;
   }
   // 機体が変わったらメーターのセル構成を作り直す（GHOST-TAPE は −3〜5 の9セル＋ゼロ位置マーカー）
-  if (noiseMeterChar !== battle.characterId) {
-    noiseMeterChar = battle.characterId;
+  if (noiseMeterChar !== myCharacterId()) {
+    noiseMeterChar = myCharacterId();
     buildMeter();
   }
   const cells = ui.noiseMeter.children;
-  const rose = battle.noise > lastNoiseShown;
+  const rose = myPlayer().noise > lastNoiseShown;
   const zeroAt = lim.min < 0 ? -lim.min : 0;
   for (let i = 0; i < cells.length; i += 1) {
     cells[i].className = lim.min < 0 && i === zeroAt ? "zero" : "";
     if (lim.min < 0) {
       // 負数側: ゼロ位置より左のセルを「逆位相残量」として点灯する
-      if (battle.noise < 0 && i >= zeroAt + battle.noise && i < zeroAt) cells[i].classList.add("reserve");
-      if (battle.noise > 0 && i >= zeroAt && i < zeroAt + battle.noise) {
+      if (myPlayer().noise < 0 && i >= zeroAt + myPlayer().noise && i < zeroAt) cells[i].classList.add("reserve");
+      if (myPlayer().noise > 0 && i >= zeroAt && i < zeroAt + myPlayer().noise) {
         cells[i].classList.add("on");
         if (i >= zeroAt + max - 1) cells[i].classList.add("hot");
         else if (i >= zeroAt + 2) cells[i].classList.add("warn");
         if (rose && i >= zeroAt + lastNoiseShown) cells[i].classList.add("pulse");
       }
-    } else if (i < battle.noise) {
+    } else if (i < myPlayer().noise) {
       cells[i].classList.add("on");
       if (i >= max - 1) cells[i].classList.add("hot");
       else if (i >= 2) cells[i].classList.add("warn");
       if (rose && i >= lastNoiseShown) cells[i].classList.add("pulse");
     }
   }
-  lastNoiseShown = battle.noise;
+  lastNoiseShown = myPlayer().noise;
 }
 
 // BATTLE-ANIM JOB 0-2: 演出移動・枠アスペクト比の CSS 変数を設定する。
@@ -1249,13 +1319,13 @@ function ensureFxLayer() {
 const poseGen = { vessel: 0, enemy: 0 };
 
 function vesselCctvDef() {
-  const def = (window.Battle && Battle.characterDef && battle) ? Battle.characterDef(battle.characterId) : null;
-  return (def && def.id === battle.characterId) ? def.cctv : null;
+  const def = (window.Battle && Battle.characterDef && battle) ? Battle.characterDef(myCharacterId()) : null;
+  return (def && def.id === myCharacterId()) ? def.cctv : null;
 }
 
 function setVesselIdleSrc() {
   if (!ui.cctvVessel || !battle) return;
-  const cover = battle.player.stance === "COVER";
+  const cover = myPlayer().stance === "COVER";
   ui.cctvVessel.onerror = () => {
     const generic = cover ? "assets/cctv_vessel_cover.png" : "assets/cctv_vessel_expose.png";
     if (!ui.cctvVessel.src.endsWith(generic)) ui.cctvVessel.src = generic;
@@ -1272,7 +1342,7 @@ function setVesselPose(kind) {
   let src = null;
   if (kind === "attack") src = c.attack || null;
   else if (kind === "hit") {
-    if (battle.player.stance === "COVER") { flashAllyLockCoverHit(); return 0; }
+    if (myPlayer().stance === "COVER") { flashAllyLockCoverHit(); return 0; }
     src = c.hitExpose || null;
   }
   if (!src || !poseReady.has(src)) return 0;
@@ -1385,7 +1455,7 @@ function renderTrapMarkers() {
   if (!ensureFxLayer() || !fxTrapsEl) return;
   const live = !!(battle && session.phase === "combat");
   const n = !live ? 0
-    : (trapDisplayCount !== null ? trapDisplayCount : (Array.isArray(battle.traps) ? battle.traps.length : 0));
+    : (trapDisplayCount !== null ? trapDisplayCount : (Array.isArray(myPlayer().traps) ? myPlayer().traps.length : 0));
   fxTrapsEl.replaceChildren();
   for (let i = 0; i < n; i += 1) {
     const mark = document.createElement("i");
@@ -1502,12 +1572,26 @@ function makeAnimFxHooks(ctx) {
 // ==== 戦闘演出プレゼンテーション層（BATTLE-ANIM JOB 0-1）====
 // 表示用 HP／BLK／スタンを論理値と分離し、命中フェーズで一致させる（js/anim-pres.js）。
 // モジュールが無い環境（単体HTML等）では従来動作へフォールバックする。
+// スタンのピップは敵ごとの stunMax に合わせて個数を動的に揃える
+// （index.html の初期3個は最小構成。GATEKEEPER の stunMax=5 等にも追随する）
+function syncStunPips(current, max) {
+  while (ui.stunPips.children.length < max) {
+    const pip = document.createElement("i");
+    pip.classList.add("is-off");
+    ui.stunPips.append(pip);
+  }
+  while (ui.stunPips.children.length > max) ui.stunPips.lastElementChild.remove();
+  [...ui.stunPips.children].forEach((pip, index) => {
+    pip.classList.toggle("is-off", index >= current);
+  });
+}
+
 function renderDisplayVitals() {
   const AP = window.AnimPres;
   if (!AP || !AP.display || !battle) return;
   const d = AP.display;
   ui.hp.textContent = String(d.php);
-  const hpPct = Math.max(0, (d.php / battle.player.hpMax) * 100);
+  const hpPct = Math.max(0, (d.php / myPlayer().hpMax) * 100);
   ui.hpBar.style.width = `${hpPct}%`;
   if (ui.hpGhost) {
     ui.hpGhost.style.transition = "none";
@@ -1519,19 +1603,17 @@ function renderDisplayVitals() {
   ui.enemyBlock.textContent = String(d.eblock);
   if (!battle.enemy.immuneToStun) {
     ui.stun.textContent = `${d.estun}/${battle.enemy.stunMax}`;
-    [...ui.stunPips.children].forEach((pip, index) => {
-      pip.classList.toggle("is-off", index >= d.estun);
-    });
+    syncStunPips(d.estun, battle.enemy.stunMax);
   }
 }
 if (window.AnimPres) AnimPres.bindRenderer(renderDisplayVitals);
 
 let lastHpShown = null;
 function renderCombat() {
-  const player = battle.player;
+  const player = myPlayer();
   const enemy = battle.enemy;
   // 正式版フェーズ1: 左パネルの素体名を使用キャラに合わせる
-  if (ui.vesselName) ui.vesselName.textContent = (Battle.CHARACTERS[battle.characterId] || {}).name || "VESSEL 07";
+  if (ui.vesselName) ui.vesselName.textContent = (Battle.CHARACTERS[myCharacterId()] || {}).name || "VESSEL 07";
   ui.hp.textContent = String(player.hp);
   const hpPct = Math.max(0, (player.hp / player.hpMax) * 100);
   ui.hpBar.style.width = `${hpPct}%`;
@@ -1568,9 +1650,7 @@ function renderCombat() {
   } else {
     ui.stunPips.hidden = false;
     ui.stun.textContent = `${enemy.stun}/${enemy.stunMax}`;
-    [...ui.stunPips.children].forEach((pip, index) => {
-      pip.classList.toggle("is-off", index >= enemy.stun);
-    });
+    syncStunPips(enemy.stun, enemy.stunMax);
   }
   renderStance();
   renderNoise();
@@ -1588,7 +1668,7 @@ function renderCombat() {
 // 戦闘中かつ設置がある時だけ出し、発動・再配置のたびに renderCombat 経由で最新化される
 function renderTraps() {
   if (!ui.traps) return;
-  const traps = (battle && session.phase === "combat" && Array.isArray(battle.traps)) ? battle.traps : [];
+  const traps = (battle && session.phase === "combat" && Array.isArray(myPlayer().traps)) ? myPlayer().traps : [];
   const live = traps.length > 0;
   ui.traps.hidden = !live;
   if (ui.trapsLabel) ui.trapsLabel.hidden = !live;
@@ -1607,14 +1687,14 @@ function renderTraps() {
 // 現在の蓄積（与ダメ加算とターン終了時スリップは同じ値）が戦闘中に読めるようにする
 function renderPurge() {
   if (!ui.purge) return;
-  const live = !!(battle && session.phase === "combat" && battle.characterId === "vessel00" && battle.purgeActive);
+  const live = !!(battle && session.phase === "combat" && myCharacterId() === "vessel00" && myPlayer().purgeActive);
   ui.purge.hidden = !live;
   if (ui.purgeLabel) ui.purgeLabel.hidden = !live;
   ui.purge.replaceChildren();
   if (!live) return;
   const chip = document.createElement("span");
   chip.className = "purge-chip";
-  const n = battle.purgeCount || 0;
+  const n = myPlayer().purgeCount || 0;
   chip.textContent = `臨界 +${n}（与ダメ +${n}／終了時スリップ ${n}）`;
   ui.purge.append(chip);
 }
@@ -1643,7 +1723,7 @@ function renderEnemyIntent() {
   // （〈追加行動：…〉込み）を常時表示し、中央バナーはラベルが変わったときだけ
   // 一度告知して消える（以後はバッジのみが残る）。
   const label = view.label
-    + ((battle.alertBuff || 0) > 0 ? ` 〈警報+${battle.alertBuff}〉` : "")
+    + ((myPlayer().alertBuff || 0) > 0 ? ` 〈警報+${myPlayer().alertBuff}〉` : "")
     + (view.extra ? ` 〈${view.extra.label}〉` : "");
   imprint(ui.intent, label);
   announceIntent(label, view);
@@ -1699,7 +1779,7 @@ function renderPiles() {
     return;
   }
   ui.piles.hidden = false;
-  ui.piles.innerHTML = `<span>山札 ${battle.drawPile.length}</span><span>手札 ${battle.hand.length}</span><span>捨て札 ${battle.discard.length}</span><span>廃棄 ${battle.exhaust ? battle.exhaust.length : 0}</span>`;
+  ui.piles.innerHTML = `<span>山札 ${myPlayer().drawPile.length}</span><span>手札 ${myPlayer().hand.length}</span><span>捨て札 ${myPlayer().discard.length}</span><span>廃棄 ${myPlayer().exhaust ? myPlayer().exhaust.length : 0}</span>`;
 }
 
 function syncEndButton() {
@@ -1707,10 +1787,10 @@ function syncEndButton() {
   const reward = session.phase === "reward";
   ui.endTurn.hidden = !combat;
   if (combat && battle.enemy.dead) ui.endTurn.textContent = "制圧完了";
-  else if (combat && battle.player.hp <= 0) ui.endTurn.textContent = "通信途絶";
+  else if (combat && myPlayer().hp <= 0) ui.endTurn.textContent = "通信途絶";
   else ui.endTurn.textContent = "ターン終了 (END TURN)";
   const scripted = tutorialStep === "t1" || tutorialStep === "t3" || tutorialStep === "victory";
-  ui.endTurn.disabled = !combat || session.busy || radioOpen || scripted || holdPick || pickPick || !battle || battle.player.hp <= 0 || battle.enemy.dead;
+  ui.endTurn.disabled = !combat || session.busy || radioOpen || scripted || holdPick || pickPick || !battle || myPlayer().hp <= 0 || battle.enemy.dead;
   ui.routeReturn.hidden = !reward;
   ui.routeReturn.disabled = !reward;
   ui.routeReturn.textContent = reward ? "回収しない" : "経路へ戻る";
@@ -1781,17 +1861,17 @@ function refreshHand() {
     if (el.dataset.id === "boot") continue;
     // 保持割引は実体（__uid）単位で判定する。要素に uid があれば手札の実体を引く
     const inst = el.dataset.uid && battle
-      ? battle.hand.find((c) => String(c.__uid || "") === el.dataset.uid)
+      ? myPlayer().hand.find((c) => String(c.__uid || "") === el.dataset.uid)
       : null;
     const card = inst || Battle.card(el.dataset.id);
     if (!card) continue;
-    const check = Battle.canPlay(battle, card);
+    const check = Battle.canPlay(battle, card, myPlayer());
     const scripted = tutorialLock(el.dataset.id);
     const locked = scripted || !check.ok;
     el.classList.toggle("is-locked", locked);
     // 『炉心溶融』: REACTOR のランで PWR不足だが HP で払えるカードはコストを赤点滅させる
-    const meltdown = !!(battle && battle.characterId === "vessel00" && check.ok && !card.unplayable
-      && Battle.effectiveCost(battle, card) > (battle.player.energy || 0));
+    const meltdown = !!(battle && myCharacterId() === "vessel00" && check.ok && !card.unplayable
+      && Battle.effectiveCost(battle, card) > (myPlayer().energy || 0));
     el.classList.toggle("is-meltdown", meltdown);
     el.classList.toggle("is-tutor", !scripted && ((tutorialStep === "t1" && el.dataset.id === "defend_cover") || (tutorialStep === "t3" && !tutorialLock(el.dataset.id))));
     const why = check.ok ? "" : reasonText(check.reason);
@@ -1802,7 +1882,7 @@ function refreshHand() {
 
 function buildMeter() {
   ui.noiseMeter.replaceChildren();
-  const lim = (window.Battle && Battle.noiseLimitsFor && battle) ? Battle.noiseLimitsFor(battle.characterId) : { min: 0, max: 10 };
+  const lim = (window.Battle && Battle.noiseLimitsFor && battle) ? Battle.noiseLimitsFor(myCharacterId()) : { min: 0, max: 10 };
   const count = lim.max - lim.min;
   for (let i = 0; i < count; i += 1) {
     const cell = document.createElement("i");
@@ -1855,11 +1935,11 @@ function onRead(data) {
   if (holdPick) return; // 『磁気ホールド』選択中はカード使用を受け付けない
   if (pickPick) return; // 探索／選別の選択中もカード使用を受け付けない
   if (tutorialLock(data.id)) return;
-  const beforeHp = battle.player.hp;
+  const beforeHp = myPlayer().hp;
   const beforeEnemyHp = battle.enemy.hp;
   const AP = window.AnimPres || null;
   const beforeSnap = AP ? AP.snapshot(battle) : null;
-  const result = Battle.playFromHand(battle, data.id, data.uid ? Number(data.uid) || 0 : 0);
+  const result = Battle.playFromHand(battle, data.id, data.uid ? Number(data.uid) || 0 : 0, myPlayer());
   if (!result.ok) {
     pushLog(`REJECT  ${data.name}  ${reasonText(result.reason)}`);
     return;
@@ -1872,7 +1952,7 @@ function onRead(data) {
   }
   for (const line of result.log) pushLog(line);
   if (battle.enemy.dead) ui.contact.textContent = "制圧完了";
-  ui.note.textContent = battle.hand.length === 0
+  ui.note.textContent = myPlayer().hand.length === 0
     ? "手札はない。ターンを終了せよ。"
     : "条件を満たさないカードは、スリットが拒否する。";
   // 戦闘演出（JOB 0-1）: 表示用数値を使用前の値に留め、命中フェーズで論理値へ寄せる。
@@ -1922,8 +2002,8 @@ function onRead(data) {
 async function settlePlay(cardId, beforeHp, breached, animSelfFx) {
   // v15.0: 自傷などで自HPが減っていれば被弾演出を出す
   // （演出タイムラインで再生済みの場合は二重に出さない。JOB 0-1）
-  if (!animSelfFx && battle.player.hp < beforeHp) fxPlayerDamage();
-  if (battle.player.hp <= 0) {
+  if (!animSelfFx && myPlayer().hp < beforeHp) fxPlayerDamage();
+  if (myPlayer().hp <= 0) {
     openGameOver();
     return;
   }
@@ -1960,7 +2040,7 @@ async function settlePlay(cardId, beforeHp, breached, animSelfFx) {
   }
   // 共通プール拡張: 残響サーチ／箔の選別が選択保留（pendingPick）を残していたら選択フェイズを開く。
   // 敵を倒した場合は上の報酬遷移が優先され、保留は戦闘終了とともに消散する
-  if (battle && battle.pendingPick && session.phase === "combat" && battle.player.hp > 0 && !battle.enemy.dead) {
+  if (battle && myPlayer().pendingPick && session.phase === "combat" && myPlayer().hp > 0 && !battle.enemy.dead) {
     openPickSelect();
   }
 }
@@ -1969,15 +2049,15 @@ async function settlePlay(cardId, beforeHp, breached, animSelfFx) {
 // 二段階方式（タップで候補 → 決定ボタンで確定）。「戻る」で通常フェイズへ戻れる。
 // 手札が空、または保持可能な札（呪装以外）がない場合はフェイズ自体をスキップする。
 function holdCandidatesExist() {
-  return !!battle && battle.hand.some((card) => !card.unplayable && card.cost >= 0);
+  return !!battle && myPlayer().hand.some((card) => !card.unplayable && card.cost >= 0);
 }
 
 function openHoldSelect() {
-  Battle.tagHandInstances(battle);
+  Battle.tagHandInstances(battle, myPlayer());
   holdPick = { uid: 0 };
   // 実体IDを要素へ行き渡らせるため、手札DOMを実体ベースで作り直す
   ui.hopper.replaceChildren();
-  spawn(battle.hand.map(face));
+  spawn(myPlayer().hand.map(face));
   refreshHand();
   if (ui.holdBar) ui.holdBar.hidden = false;
   if (ui.holdConfirm) ui.holdConfirm.disabled = true;
@@ -1997,7 +2077,7 @@ function toggleHoldPick(el) {
   if (!holdPick || !el || el.classList.contains("punchcard--ghost")) return;
   const uid = Number(el.dataset.uid || 0);
   if (!uid) return;
-  const card = battle.hand.find((c) => c.__uid === uid);
+  const card = myPlayer().hand.find((c) => c.__uid === uid);
   if (!card || card.unplayable || card.cost < 0) return;
   if (holdPick.uid === uid) {
     holdPick.uid = 0;
@@ -2015,8 +2095,8 @@ async function finishHoldSelect(withHold) {
   const uid = withHold ? holdPick.uid : 0;
   closeHoldSelect();
   if (uid) {
-    const heldCard = battle.hand.find((c) => c.__uid === uid);
-    if (Battle.setRetained(battle, uid) && heldCard) pushLog(`HOLD ${heldCard.name}（次ターン PWR −1）`);
+    const heldCard = myPlayer().hand.find((c) => c.__uid === uid);
+    if (Battle.setRetained(battle, uid, myPlayer()) && heldCard) pushLog(`HOLD ${heldCard.name}（次ターン PWR −1）`);
   }
   await runEnemyPhase();
 }
@@ -2026,10 +2106,10 @@ async function finishHoldSelect(withHold) {
 // カードは使用済みのため「戻る」はない。候補が無い場合は UI を開かず即座に自動解決する
 // （search は不発、discard は捨てずにドローのみ）。
 function openPickSelect() {
-  if (!battle || !battle.pendingPick) return;
-  const candidates = Battle.pickCandidates(battle);
+  if (!battle || !myPlayer().pendingPick) return;
+  const candidates = Battle.pickCandidates(battle, myPlayer());
   if (candidates.length === 0) {
-    const res = Battle.resolvePick(battle, null);
+    const res = Battle.resolvePick(battle, null, myPlayer());
     for (const line of res.log) pushLog(line);
     renderCombat();
     renderPiles();
@@ -2037,7 +2117,7 @@ function openPickSelect() {
     syncEndButton();
     return;
   }
-  pickPick = { kind: battle.pendingPick.kind, candidates, index: -1 };
+  pickPick = { kind: myPlayer().pendingPick.kind, candidates, index: -1 };
   ui.hopper.replaceChildren();
   spawn(candidates.map(face));
   // 候補要素へ出現順のインデックスを刻み、通常手札用のロック表示は外す（選択フェイズ専用の見た目にする）
@@ -2047,7 +2127,7 @@ function openPickSelect() {
     el.removeAttribute("title");
   });
   // 保留種別ごとの案内文（プール大拡充バッチB／Cで search_top／curse／trap_sacrifice を追加）
-  const pickDraw = (battle.pendingPick && battle.pendingPick.draw) || 1;
+  const pickDraw = (myPlayer().pendingPick && myPlayer().pendingPick.draw) || 1;
   const PICK_TEXT = {
     search: {
       msg: "残響サーチ：山札から手札に加えるカードを1枚選べ",
@@ -2055,7 +2135,7 @@ function openPickSelect() {
       log: "ECHO SEARCH — 山札から選択",
     },
     search_top: {
-      msg: `巻尺確認：山札の上${(battle.pendingPick && battle.pendingPick.n) || 3}枚から手札に加えるカードを1枚選べ（残りは捨て札へ）`,
+      msg: `巻尺確認：山札の上${(myPlayer().pendingPick && myPlayer().pendingPick.n) || 3}枚から手札に加えるカードを1枚選べ（残りは捨て札へ）`,
       note: "山札の上から1枚を選べ。残りは捨て札へ送られる。",
       log: "MEASURE — 山札の上から選択",
     },
@@ -2113,11 +2193,11 @@ function finishPickSelect() {
   if (!pickPick || pickPick.index < 0) return;
   const chosen = pickPick.candidates[pickPick.index];
   closePickSelect();
-  const res = Battle.resolvePick(battle, chosen ? chosen.id : null);
+  const res = Battle.resolvePick(battle, chosen ? chosen.id : null, myPlayer());
   for (const line of res.log) pushLog(line);
   // 手札表示を通常状態へ戻す
   ui.hopper.replaceChildren();
-  spawn(battle.hand.map(face));
+  spawn(myPlayer().hand.map(face));
   renderCombat();
   renderPiles();
   refreshHand();
@@ -2129,10 +2209,10 @@ async function onEndTurn() {
   if (window.AnimPres && AnimPres.isPlaying()) return; // JOB 0-2: 演出再生中は受け付けない（キューなし）
   if (holdPick) return;
   if (pickPick) return;
-  if (!battle || battle.player.hp <= 0 || battle.enemy.dead) return;
+  if (!battle || myPlayer().hp <= 0 || battle.enemy.dead) return;
   if (tutorialStep === "t1" || tutorialStep === "t3" || tutorialStep === "victory") return;
   // GHOST-TAPE の通常戦闘では、敵フェイズの前に HOLD 選択フェイズを挟む
-  if (battle.characterId === "vessel09" && tutorialStep === "off" && holdCandidatesExist()) {
+  if (myCharacterId() === "vessel09" && tutorialStep === "off" && holdCandidatesExist()) {
     openHoldSelect();
     return;
   }
@@ -2140,13 +2220,13 @@ async function onEndTurn() {
   if (tutorialStep === "t1end") {
     clearTutorialFocus();
     await runEnemyPhase();
-    if (session.phase !== "combat" || !battle || battle.player.hp <= 0 || battle.enemy.dead) return;
+    if (session.phase !== "combat" || !battle || myPlayer().hp <= 0 || battle.enemy.dead) return;
     await setupTutTurn2();
     return;
   }
   if (tutorialStep === "t2") {
     await runEnemyPhase();
-    if (session.phase !== "combat" || !battle || battle.player.hp <= 0 || battle.enemy.dead) return;
+    if (session.phase !== "combat" || !battle || myPlayer().hp <= 0 || battle.enemy.dead) return;
     await setupTutTurn3();
     return;
   }
@@ -2157,14 +2237,14 @@ async function runEnemyPhase() {
   if (session.phase !== "combat" || session.busy || !battle) return;
   session.busy = true;
   syncEndButton();
-  const beforeHp = battle.player.hp;
+  const beforeHp = myPlayer().hp;
   const AP = window.AnimPres || null;
   const beforeSnap = AP ? AP.snapshot(battle) : null;
-  const beforeTrapCount = (battle.traps || []).length; // JOB 1-3: F-5 の表示側保持用
-  const result = Battle.endTurn(battle);
+  const beforeTrapCount = (myPlayer().traps || []).length; // JOB 1-3: F-5 の表示側保持用
+  const result = Battle.endTurn(battle, undefined, myPlayer());
   ui.hopper.replaceChildren();
   const downAt = result.log.indexOf("VESSEL DOWN");
-  const lines = battle.player.hp <= 0 && downAt >= 0 ? result.log.slice(0, downAt + 1) : result.log;
+  const lines = myPlayer().hp <= 0 && downAt >= 0 ? result.log.slice(0, downAt + 1) : result.log;
   // v15.3 案A: 敵ターン開始の中央バナー＋敵行動ログの色分け。
   // endTurn のログは [DISCARD行, ...敵ログ, ...自ターン開始ログ] の順で組まれているため、
   // 敵ログの区間を位置で特定して色分けする。区間の先頭には見出し行も残す。
@@ -2244,7 +2324,7 @@ async function runEnemyPhase() {
     if (result.enemy && result.enemy.damage > 0) fxPlayerDamage();
     renderCombat();
   }
-  if (battle.player.hp <= 0) {
+  if (myPlayer().hp <= 0) {
     session.busy = false;
     ui.note.textContent = "通信途絶。素体は失われた。";
     syncEndButton();
@@ -2389,14 +2469,17 @@ function renderRoute() {
   // v15.0: 持ち越しノイズをマップでも表示する（警戒域はデータ属性で色付け）
   const noiseMax = Battle.noiseLimitsFor(run && run.character).max;
   const noiseNow = Math.max(0, Math.min(noiseMax, (run && run.noise) || 0));
+  // JOB 3M-2 (C-8): 層表示を併記する（第◯層／LAYER n/3）。層の正は run.mapIndex、route.mapIndex はフォールバック。
+  const layerNow = (run && run.mapIndex >= 1 && run.mapIndex <= 3) ? run.mapIndex
+    : (route.mapIndex >= 1 && route.mapIndex <= 3 ? route.mapIndex : 1);
   ui.routePos.textContent = (here.floor === 0
     ? "NOW  射出点"
-    : `NOW  F${here.floor}  ${PipelineMap.label(shown)}`) + `  NOISE ${noiseNow}/${noiseMax}`;
+    : `NOW  F${here.floor}  ${PipelineMap.label(shown)}`) + `  第${layerNow}層 LAYER ${layerNow}/3  NOISE ${noiseNow}/${noiseMax}`;
   ui.routePos.dataset.alert = noiseNow >= 3 ? "1" : "";
   ui.routeHp.textContent = `HP ${run.hp}`;
   ui.scanCount.textContent = String(route.scansLeft);
   ui.scan.disabled = session.busy || radioOpen || tutorialStep === "map" || route.scansLeft <= 0 || openIds.size === 0;
-  ui.link.textContent = here.floor === 0 ? "INJECT" : `FLOOR ${here.floor}/${route.floorCount}`;
+  ui.link.textContent = here.floor === 0 ? "INJECT" : `LAYER ${layerNow}/3 FLOOR ${here.floor}/${route.floorCount}`;
   ui.routeFloors.replaceChildren();
   ui.routeFloors.append(floorRow([route.nodes[route.originId]], "IN", openIds, here));
   for (const floor of route.floors) {
@@ -2859,14 +2942,28 @@ function startRun() {
     deck: Battle.deckIdsFor(selectedVessel),
     noise: 0, // v15.0: ノイズはラン全体で持ち越す（開始時は0）
     kills: 0, // v15.3: 撃破数（クリア画面のX投稿サマリ用）
+    mapIndex: 1, // JOB 3M-1 (C-1): 層（1〜3）の正は run 側に置く。route は現在のマップだけを持つ
   };
-  route = PipelineMap.generate();
+  route = PipelineMap.generate(undefined, { mapIndex: run.mapIndex, widths: MAP_WIDTHS_3M });
   // 正式版フェーズ1: 初回戦闘の脚本チュートリアルは 07 前提（潜伏・PWR 3 の説明）なので、
   // GOLIATH のランでは行わない（通常戦闘として開始する）。
   run.tutorialPending = !tutorialCleared() && selectedVessel === "vessel07";
   resetTutorialState();
   session.dead = false;
   preloadVesselCctv(selectedVessel);
+  enterMap({
+    applyRelics: true,
+    extraLogs: ["経路図を展開。次のノードを選べ"],
+    note: () => `光っているノードが次の区画。アナログスキャンは${route.scansLeft}回。`,
+    tutorial: true,
+  });
+}
+
+// JOB 3M-2 (C-6): マップ進入処理の共通化。startRun 末尾・enterRestoredMap・マップ遷移で共用する。
+// options.applyRelics: true のときだけ on_map_generation 系レリックを再付与する（復元時は付与しない＝
+//   保存済みの scansLeft をそのまま使う）。options.note は文字列または scansLeft 確定後に評価する関数。
+// options.tutorial: true のときだけ新規ラン用のマップチュートリアル判定を行う。
+function enterMap(options = {}) {
   changeScene("MAP");
   ui.link.textContent = "INJECT";
   ui.ambush.hidden = true;
@@ -2877,14 +2974,14 @@ function startRun() {
   ui.hopper.replaceChildren();
   ui.slotLabel.textContent = "ROUTE SELECT";
   ui.log.replaceChildren();
-  pushLog(`${Battle.CHARACTERS[selectedVessel].name} INJECTED`);
-  applyMapRelics();
-  pushLog("経路図を展開。次のノードを選べ");
-  ui.note.textContent = `光っているノードが次の区画。アナログスキャンは${route.scansLeft}回。`;
+  pushLog(`${Battle.CHARACTERS[run.character].name} INJECTED`);
+  if (options.applyRelics) applyMapRelics();
+  for (const line of options.extraLogs || []) pushLog(line);
+  ui.note.textContent = typeof options.note === "function" ? options.note() : (options.note || "光っているノードが次の区画。");
   renderRelics();
   renderRoute();
   syncEndButton();
-  if (run.tutorialPending) void maybeMapTutorial();
+  if (options.tutorial && run.tutorialPending) void maybeMapTutorial();
 }
 
 function tutorialCleared() {
@@ -2908,12 +3005,13 @@ function saveGame(pending) {
   try {
     if (!run || !route) return;
     const data = {
-      v: 1,
+      v: 2, // JOB 3M-1 (C-10): mapIndex 追加に伴い v:2 へ。旧 v:1 セーブは互換なし（loadGame で弾く）
       character: run.character || "vessel07", // 正式版フェーズ1: 使用素体も保存する
       hp: run.hp,
       hpMax: run.hpMax,
       noise: Math.max(0, Math.min(Battle.NOISE_MAX, run.noise || 0)), // v15.0: 持ち越しノイズも保存する
       kills: run.kills || 0, // v15.3: 撃破数も保存する
+      mapIndex: run.mapIndex >= 1 && run.mapIndex <= 3 ? run.mapIndex : 1, // JOB 3M-1 (C-1/C-10)
       relics: (run.relics || []).slice(),
       deck: (run.deck || []).slice(),
       route: {
@@ -2936,7 +3034,10 @@ function loadGame() {
     const raw = window.localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
-    if (!data || !data.route || !data.route.nodes || !data.route.currentId
+    // JOB 3M-1 (C-10): 版数ガード。v:2 以外（旧 v:1 等）は読み込まない＝CONTINUE を出さない。
+    // 解禁キー等の別枠 localStorage 記録には触れない（対象は SAVE_KEY のみ）。
+    if (!data || data.v !== 2) return null;
+    if (!data.route || !data.route.nodes || !data.route.currentId
       || !Array.isArray(data.deck) || typeof data.hp !== "number") return null;
     return data;
   } catch { return null; }
@@ -2988,6 +3089,7 @@ function restoreRun() {
   for (const node of Object.values(nodes)) {
     for (const to of node.edges || []) links.push({ from: node.id, to });
   }
+  const restoredMapIndex = data.mapIndex >= 1 && data.mapIndex <= 3 ? data.mapIndex : 1; // JOB 3M-1 (C-1/C-10)
   route = {
     floors, nodes, links,
     originId: data.route.originId,
@@ -2995,11 +3097,13 @@ function restoreRun() {
     scansLeft: data.route.scansLeft,
     scanMax: data.route.scanMax,
     floorCount: data.route.floorCount,
+    mapIndex: restoredMapIndex,
   };
   run = {
     character: Battle.CHARACTERS[data.character] ? data.character : "vessel07", // 正式版: 使用素体を復元（既知IDのみ許可）
     hp: data.hp,
     hpMax: data.hpMax,
+    mapIndex: restoredMapIndex,
     noise: typeof data.noise === "number" ? Math.max(0, Math.min(Battle.NOISE_MAX, data.noise)) : 0, // v15.0: 持ち越しノイズを復元
     kills: typeof data.kills === "number" ? data.kills : 0, // v15.3: 撃破数を復元
     relics: Array.isArray(data.relics) ? data.relics.slice() : [],
@@ -3027,22 +3131,12 @@ function restoreRun() {
 }
 
 function enterRestoredMap() {
-  changeScene("MAP");
-  ui.link.textContent = "INJECT";
-  ui.ambush.hidden = true;
-  ui.endTurn.hidden = true;
-  ui.routeReturn.hidden = true;
-  ui.piles.hidden = true;
-  ui.shotCall.hidden = true;
-  ui.hopper.replaceChildren();
-  ui.slotLabel.textContent = "ROUTE SELECT";
-  ui.log.replaceChildren();
-  pushLog(`${Battle.CHARACTERS[run.character].name} INJECTED`);
-  pushLog("記録データを復元。経路図を再展開");
-  ui.note.textContent = "光っているノードが次の区画。";
-  renderRelics();
-  renderRoute();
-  syncEndButton();
+  // JOB 3M-2 (C-6): マップ進入処理は enterMap() に共通化。復元ではレリック再付与はしない。
+  enterMap({
+    applyRelics: false,
+    extraLogs: ["記録データを復元。経路図を再展開"],
+    note: "光っているノードが次の区画。",
+  });
 }
 
 function setTutorialStep(step) {
@@ -3100,19 +3194,19 @@ function setTutorialFocus(step) {
 let tutMapNodeId = null;
 
 function rigHand(ids) {
-  battle.drawPile.push(...battle.hand.splice(0, battle.hand.length));
+  myPlayer().drawPile.push(...myPlayer().hand.splice(0, myPlayer().hand.length));
   const pulled = [];
   for (const id of ids) {
-    let idx = battle.drawPile.findIndex((c) => c.id === id);
-    if (idx >= 0) { pulled.push(battle.drawPile.splice(idx, 1)[0]); continue; }
-    idx = battle.discard.findIndex((c) => c.id === id);
-    if (idx >= 0) { pulled.push(battle.discard.splice(idx, 1)[0]); continue; }
+    let idx = myPlayer().drawPile.findIndex((c) => c.id === id);
+    if (idx >= 0) { pulled.push(myPlayer().drawPile.splice(idx, 1)[0]); continue; }
+    idx = myPlayer().discard.findIndex((c) => c.id === id);
+    if (idx >= 0) { pulled.push(myPlayer().discard.splice(idx, 1)[0]); continue; }
     const def = Battle.card(id);
     if (def) pulled.push(def);
   }
-  battle.hand = pulled;
+  myPlayer().hand = pulled;
   ui.hopper.replaceChildren();
-  spawn(battle.hand.map(face));
+  spawn(myPlayer().hand.map(face));
   renderPiles();
   refreshHand();
 }
@@ -3340,7 +3434,7 @@ function rigTutorialDraw(state) {
 }
 
 function dealOpeningHand() {
-  const started = Battle.beginPlayerTurn(battle);
+  const started = Battle.beginPlayerTurn(battle, undefined, myPlayer());
   for (const line of started.log) pushLog(line);
   spawn(started.drawn.map(face));
   renderCombat();
@@ -3349,13 +3443,13 @@ function dealOpeningHand() {
 }
 
 function pinchCrossed(beforeHp) {
-  if (!battle || pinchHeard || battle.player.hp <= 0) return false;
-  const max = battle.player.hpMax || 1;
-  return beforeHp * 10 > max * 3 && battle.player.hp * 10 <= max * 3;
+  if (!battle || pinchHeard || myPlayer().hp <= 0) return false;
+  const max = myPlayer().hpMax || 1;
+  return beforeHp * 10 > max * 3 && myPlayer().hp * 10 <= max * 3;
 }
 
 async function drainPinch() {
-  if (!pinchQueued || session.phase !== "combat" || !battle || battle.player.hp <= 0) return;
+  if (!pinchQueued || session.phase !== "combat" || !battle || myPlayer().hp <= 0) return;
   pinchQueued = false;
   await presentRadio([GRAY_PINCH], { flash: true });
 }
@@ -3524,8 +3618,8 @@ let lowHpBgmActive = false;
 function updateLowHpBgm() {
   if (!audio || !battle) return;
   if (currentScene !== "BATTLE" || bossBgm) { lowHpBgmActive = false; return; }
-  const hp = battle.player.hp;
-  const max = battle.player.hpMax || 1;
+  const hp = myPlayer().hp;
+  const max = myPlayer().hpMax || 1;
   // 敗北時はGAMEOVER曲が優先（ここでは低耐久へ倒さず、状態だけ畳む）
   if (hp <= 0) { lowHpBgmActive = false; return; }
   if (!lowHpBgmActive && hp * 10 <= max * 3) {
@@ -3562,9 +3656,9 @@ function setBossAlert(on) {
 }
 
 function updateBossAlert() {
-  if (!battle || !battle.player) { setBossAlert(false); return; }
-  const hp = battle.player.hp;
-  const max = battle.player.hpMax || 1;
+  if (!battle || !myPlayer()) { setBossAlert(false); return; }
+  const hp = myPlayer().hp;
+  const max = myPlayer().hpMax || 1;
   const inBossCombat = bossBgm && currentScene === "BATTLE" && session.phase === "combat" && hp > 0;
   if (!inBossCombat) { setBossAlert(false); return; }
   if (!bossLowHpAlert && hp * 10 <= max * 3) setBossAlert(true);
@@ -3578,14 +3672,14 @@ async function beginCombat(encounter) {
   pinchQueued = false;
   saveGame(encounter); // PROMPT-24: バトル突入時に保存（復元時はこの戦闘の開始時から）
   battle = Battle.createState(undefined, { relics: run.relics, deck: run.deck, character: run.character });
-  battle.player.hp = Math.max(0, run.hp);
-  battle.player.hpMax = run.hpMax;
+  myPlayer().hp = Math.max(0, run.hp);
+  myPlayer().hpMax = run.hpMax;
   // v15.0: 持ち越しノイズを戦闘の初期値にする（機体別範囲でクランプ。ラン側は常に0以上）
-  battle.noise = Battle.clampNoiseFor(run.noise || 0, run.character);
+  myPlayer().noise = Battle.clampNoiseFor(run.noise || 0, run.character);
   // 正式版フェーズ1（A-2）: 戦闘の第1ターンの変換基準も持ち越しノイズで初期化する
-  battle.turnStartNoise = battle.noise;
-  Battle.syncAlertBuff(battle);
-  lastNoiseShown = battle.noise;
+  myPlayer().turnStartNoise = myPlayer().noise;
+  Battle.syncAlertBuff(battle, myPlayer());
+  lastNoiseShown = myPlayer().noise;
   if (!(encounter.enemyId && Battle.applyEnemy(battle, encounter.enemyId))) {
     battle.enemy.name = encounter.name;
     battle.enemy.hp = encounter.hp;
@@ -3598,7 +3692,7 @@ async function beginCombat(encounter) {
   // ボス戦では提供曲をゆっくりフェードインさせる（クリア画面まで継続）
   bossBgm = encounter.type === "BOSS";
   // 低耐久のまま次の戦闘へ入る場合は、開始時点のHPで低耐久状態を初期化する
-  lowHpBgmActive = !bossBgm && battle.player.hp > 0 && battle.player.hp * 10 <= (battle.player.hpMax || 1) * 3;
+  lowHpBgmActive = !bossBgm && myPlayer().hp > 0 && myPlayer().hp * 10 <= (myPlayer().hpMax || 1) * 3;
   if (audio && bossBgm) audio.fadeSeconds = 2.2;
   changeScene("BATTLE");
   if (audio) audio.fadeSeconds = 0.7;
@@ -4067,13 +4161,21 @@ async function openReward() {
   // v15.3: 撃破数カウント（クリア画面のX投稿サマリ用）。openReward は勝利確定後の単一入口
   // （チュートリアル完了戦闘も victoryRadio 経由でここに合流する）で、戦闘ごとに1回だけ数える
   if (run && !battle.killCounted) { battle.killCounted = true; run.kills = (run.kills || 0) + 1; }
-  if (!window.Rewards) {
-    finishCombat();
+  const here = route && route.nodes ? route.nodes[route.currentId] : null;
+  const isBoss = !!(here && here.hiddenType === "BOSS");
+  // JOB 3M-2 (C-5): ボス分岐を分離する。第3層（最終層）のボス撃破だけが従来どおり
+  // bossClearSequence（ランクリア）へ。第1・2層はマップクリアとして通常の SALVAGE 報酬を
+  // 挟み、報酬完了後に advanceToNextMap() へ遷移する（pendingMapAdvance で claim/skip に伝える）。
+  // 解禁処理・clearSave・計測は第1・2層では発火させない（bossClearSequence 側にのみ残る）。
+  pendingMapAdvance = false;
+  if (isBoss && run && (run.mapIndex || 1) >= 3) {
+    await bossClearSequence();
     return;
   }
-  const here = route && route.nodes ? route.nodes[route.currentId] : null;
-  if (here && here.hiddenType === "BOSS") {
-    await bossClearSequence();
+  if (isBoss) pendingMapAdvance = true;
+  if (!window.Rewards) {
+    if (pendingMapAdvance) { pendingMapAdvance = false; await advanceToNextMap(); }
+    else finishCombat();
     return;
   }
   session.busy = true;
@@ -4106,6 +4208,30 @@ async function openReward() {
   session.busy = false;
   syncEndButton();
 }
+
+// ============================================================
+// JOB 3M-3 (C-7): ランクリア確定フック onRunClear(context)
+// ------------------------------------------------------------
+// bossClearSequence() は第3層ボス撃破時（＝ランクリア）専用として確定した
+// （第1・2層は openReward の分岐で advanceToNextMap 側へ流れ、ここには来ない）。
+// 解禁連鎖・clearSave・GoatCounter 計測（syncClearScreen 経由の /event/ep-clear）・
+// X投稿URL生成はすべてランクリア側にのみ残り、このフックもランクリア時に1回だけ発火する。
+//
+// 将来の深度別エンディング（STORY-ENDINGS-DRAFT: 深度ごとの断片／真エンド3択 等）は、
+// 深度実装とセットでこのフックへ接続する前提である。エンディング側は context を受け取り、
+// 既定のクリア画面表示を断片表示等へ差し替える形で組み込むこと。
+// 差し替え・検証は window.onRunClear をラップ／差し替えることで行える
+// （bossClearSequence は window.onRunClear 経由で呼ぶ）。
+// context は将来のエンディング分岐が要る最小限:
+//   { characterId, hp, hpMax, kills, mapIndex, layersCleared, depth }
+//   ※ depth は層とは別軸で現行未実装のため null（深度実装時にここへ実値を渡す）。
+function onRunClear(context) {
+  // 現時点のフック先は従来動作のみ: 実績を流し込んで専用クリア画面を表示する。
+  updateClearStats(context);
+  changeScene("CLEAR");
+}
+window.onRunClear = onRunClear;
+window.lastRunClearContext = null;
 
 async function bossClearSequence() {
   session.busy = true;
@@ -4155,13 +4281,70 @@ async function bossClearSequence() {
   ui.hopper.replaceChildren();
   ui.piles.hidden = true;
   clearSave(); // PROMPT-24: ラン完走時はセーブを破棄する
-  changeScene("CLEAR");
+  // JOB 3M-3: ランクリア確定点。CLEAR 遷移の直前に単一フック onRunClear を1回だけ呼ぶ。
+  // context は run.hp 同期と解禁処理の完了後に確定した値で組み立てる。
+  const runClearContext = {
+    characterId: run ? run.character : "vessel07",
+    hp: run ? Math.max(0, Math.floor(run.hp || 0)) : 0,
+    hpMax: run ? (run.hpMax || 0) : 0,
+    kills: run && run.kills ? run.kills : 0,
+    mapIndex: run ? (run.mapIndex || 3) : 3,
+    layersCleared: run ? (run.mapIndex || 3) : 3,
+    depth: null, // 深度は別軸・未実装（フック接続時に実値を渡す）
+  };
+  window.lastRunClearContext = runClearContext;
+  const runClearHook = (typeof window.onRunClear === "function") ? window.onRunClear : onRunClear;
+  runClearHook(runClearContext);
   if (ui.fadeMask) {
     ui.fadeMask.classList.remove("is-on");
     window.setTimeout(() => { ui.fadeMask.hidden = true; }, 950);
   }
   session.busy = false;
   syncEndButton();
+}
+
+// JOB 3M-2 (C-6): マップクリア遷移シーケンス。第1・2層ボスの SALVAGE 報酬完了後に呼ばれる。
+// 引き継ぎ仕様（計画 §3／§8 確定）: HP・デッキ・レリック・撃破数は run のまま引き継ぐ。
+// NOISE は持ち越す（遷移では -1 しない。冷ましはセーフハウスの役割）。過去マップの route は破棄し、
+// 次マップを幅 [3,4,4,3,2,1]・層パラメータ付きで新規生成する。スキャンと on_map_generation 系
+// レリックはマップごとに再付与する（enterMap の applyRelics 経由）。
+async function advanceToNextMap() {
+  if (!run || (run.mapIndex || 1) >= 3) return;
+  pendingMapAdvance = false;
+  session.busy = true;
+  session.offer = [];
+  // HP 同期（ボス戦の残 HP を run へ。報酬経路でも同期済みだが遷移の入口で担保する）
+  if (battle && battle.player) run.hp = battle.player.hp;
+  // JOB 3M-2 (C-9): ボス曲を引きずらず MAP 曲へ戻すため、遷移時に明示的に解除する
+  bossBgm = false;
+  const clearedLayer = run.mapIndex || 1;
+  const fromPhase = session.phase === "reward" ? "reward" : "combat";
+  // Gray 通信（仮文言・3M-Tで差し替え）: GRAY_MAP_CLEAR_L1 / L2 は仮置き文言
+  const line = clearedLayer === 1 ? GRAY_MAP_CLEAR_L1 : GRAY_MAP_CLEAR_L2;
+  await presentRadio([line], { phase: fromPhase });
+  if (!run) { session.busy = false; return; }
+  // フェード（bossClearSequence と同じ fadeMask の流用）
+  if (ui.fadeMask) {
+    ui.fadeMask.hidden = false;
+    void ui.fadeMask.offsetWidth;
+    ui.fadeMask.classList.add("is-on");
+  }
+  await delay(950);
+  run.mapIndex = Math.min(3, clearedLayer + 1);
+  route = PipelineMap.generate(undefined, { mapIndex: run.mapIndex, widths: MAP_WIDTHS_3M });
+  routeToken += 1;
+  enterMap({
+    applyRelics: true,
+    extraLogs: ["経路図を展開。次のノードを選べ"],
+    note: () => `光っているノードが次の区画。アナログスキャンは${route.scansLeft}回。`,
+  });
+  if (ui.fadeMask) {
+    ui.fadeMask.classList.remove("is-on");
+    window.setTimeout(() => { ui.fadeMask.hidden = true; }, 950);
+  }
+  session.busy = false;
+  syncEndButton();
+  saveGame(); // 遷移後の現在マップを保存する（復元は現在のマップのみが対象）
 }
 
 function renderRewardOffers() {
@@ -4195,6 +4378,8 @@ function claimReward(id) {
       await presentRadio(GRAY_EXHAUST_LINES, { phase: "reward" });
       if (session.phase !== "reward") return;
     }
+    // JOB 3M-2 (C-5/C-6): 第1・2層ボスの報酬完了後は同一マップへ戻らず次マップへ遷移する
+    if (pendingMapAdvance) { await advanceToNextMap(); return; }
     finishCombat();
   }, 950);
 }
@@ -4202,6 +4387,8 @@ function claimReward(id) {
 function skipReward() {
   if (session.phase !== "reward") return;
   pushLog("SALVAGE  見送った");
+  // JOB 3M-2 (C-5/C-6): 報酬を見送った場合も第1・2層ボスなら次マップへ遷移する
+  if (pendingMapAdvance) { void advanceToNextMap(); return; }
   finishCombat();
 }
 
@@ -5522,6 +5709,9 @@ function returnToTerminal() {
   if (audio) audio.unlock();
   if (session.phase !== "clear") return;
   // クリア画面を抜けたらボスBGMは役目を終える（ゆっくりフェードアウト）
+  // JOB 3M-3: 専用クリア画面の「タイトルへ戻る」導線（全面オーバーレイ #clear-return と
+  // デスク内シート #return-terminal の共通先）。showTitle() → changeScene("TITLE") で
+  // BGM はタイトル曲へ戻り、BOOT カードが再配置されて新規ランを開始できる状態になる。
   bossBgm = false;
   if (audio) audio.fadeSeconds = 1.6;
   showTitle(); // changeScene("TITLE") 経由で全面黒レイヤーも消える

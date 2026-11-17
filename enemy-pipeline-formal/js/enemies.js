@@ -39,12 +39,49 @@
     ]),
   });
 
+  /* JOB 3M-1 (C-4): 第2・3層ボスの仮プロファイル。
+     仮である旨を明記する: GATEKEEPER の数値・行動パターンの複製に別IDと仮名を付けただけであり、
+     本プロファイル（アーキビスト／エコー）は敵実装ジョブで差し替える。
+     パターンまで複製するのは、applyEnemy 失敗時に哨戒兵パターン化してしまう仕様への対策
+     （ROUTE-3MAP-IMPL-PLAN §4）。画像は GATEKEEPER の CCTV 画を流用する。 */
+  const GATEKEEPER_L2 = Object.freeze({
+    id: "enemy_gatekeeper_l2",
+    name: "第2層番人（仮）",
+    image: "assets/cctv_enemy_gatekeeper.png",
+    max_hp: 120,
+    max_stun: 5,
+    immune_to_stun: false,
+    intent_pattern: Object.freeze([
+      Object.freeze({ action: "buff", name: "警戒態勢", value: 12 }),
+      Object.freeze({ action: "attack", name: "制圧射撃", value: 10 }),
+      Object.freeze({ action: "heavy_attack", name: "グレネード", value: 16 }),
+      Object.freeze({ action: "attack", name: "ガトリング", value: 5, hits: 2 }),
+    ]),
+  });
+
+  const GATEKEEPER_L3 = Object.freeze({
+    id: "enemy_gatekeeper_l3",
+    name: "第3層番人（仮）",
+    image: "assets/cctv_enemy_gatekeeper.png",
+    max_hp: 120,
+    max_stun: 5,
+    immune_to_stun: false,
+    intent_pattern: Object.freeze([
+      Object.freeze({ action: "buff", name: "警戒態勢", value: 12 }),
+      Object.freeze({ action: "attack", name: "制圧射撃", value: 10 }),
+      Object.freeze({ action: "heavy_attack", name: "グレネード", value: 16 }),
+      Object.freeze({ action: "attack", name: "ガトリング", value: 5, hits: 2 }),
+    ]),
+  });
+
   const SHORT = Object.freeze({
     enemy_cyborg_elite: "重装兵",
     enemy_defense_mech: "センチネル",
     enemy_rival_vessel: "ゴースト",
     enemy_sentry: "哨戒兵",
     enemy_gatekeeper: "GATEKEEPER",
+    enemy_gatekeeper_l2: "第2層番人（仮）",
+    enemy_gatekeeper_l3: "第3層番人（仮）",
   });
 
   // 戦闘演出強化 段階1（JOB 1-2／1-5）: ポーズ画（攻撃／被弾）。カタログ本体とは分離して持ち、
@@ -56,10 +93,13 @@
     enemy_defense_mech: Object.freeze({ attack: "assets/cctv_enemy_mech_attack.webp", hit: "assets/cctv_enemy_mech_hit.webp" }),
     enemy_rival_vessel: Object.freeze({ attack: "assets/cctv_enemy_ghost_attack.webp", hit: "assets/cctv_enemy_ghost_hit.webp" }),
     enemy_gatekeeper: Object.freeze({ attack: "assets/cctv_enemy_gatekeeper_attack.webp", hit: "assets/cctv_enemy_gatekeeper_hit.webp" }),
+    // JOB 3M-1 (C-4): 仮プロファイルは GATEKEEPER のポーズ画も流用する
+    enemy_gatekeeper_l2: Object.freeze({ attack: "assets/cctv_enemy_gatekeeper_attack.webp", hit: "assets/cctv_enemy_gatekeeper_hit.webp" }),
+    enemy_gatekeeper_l3: Object.freeze({ attack: "assets/cctv_enemy_gatekeeper_attack.webp", hit: "assets/cctv_enemy_gatekeeper_hit.webp" }),
   });
 
   const ELITE_IDS = Object.freeze(CATALOG.map((enemy) => enemy.id));
-  const byId = new Map([SENTRY, GATEKEEPER, ...CATALOG].map((enemy) => [enemy.id, enemy]));
+  const byId = new Map([SENTRY, GATEKEEPER, GATEKEEPER_L2, GATEKEEPER_L3, ...CATALOG].map((enemy) => [enemy.id, enemy]));
 
   function get(id) {
     return byId.get(id) || null;

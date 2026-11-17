@@ -72,8 +72,17 @@
   }
 
   // 警報バフは「現在の帯域」から導出する（旧仕様の BREACH ごとの累積 +3 は廃止）
-  function syncAlertBuff(state) {
+  // 単位2-2（J2）: alert 系は PlayerState 側へ移設した。syncAlertBuff は対象プレイヤー
+  // （第2引数／スコープ／既定 players[0]）の noise からその素体の alertBuff を算出する。
+  // players を持たない旧形 state では従来どおり state 自身へ書く。
+  function syncAlertBuff(state, ref) {
+    const player = resolvePlayer(state, ref);
+    if (player) {
+      player.alertBuff = noiseBand(player.noise).atk;
+      return player.alertBuff;
+    }
     state.alertBuff = noiseBand(state.noise).atk;
+    return state.alertBuff;
   }
 
   // 騒音力学（GOLIATH専用パッシブ）: 与ダメージと獲得BLKへの倍率。
@@ -237,69 +246,73 @@
     };
   }
 
-  function createState(rng, options) {
-    const relics = options && Array.isArray(options.relics) ? options.relics.slice() : [];
-    const enemy = root.Enemies ? root.Enemies.make("enemy_sentry") : fallbackSentry();
-    const charDef = characterDef(options && options.character);
-    const deck = resolveDeck(options && options.deck, charDef.id);
+  // ==== 段階(2) 単位2-1: PlayerState 化（MULTIPLAYER-IMPL-PLAN.md §2.2／§2.3） ====
+  // state.players[] が正本。各 PlayerState は「旧 state.player の中身（hp〜tread）＋
+  // 旧 state 直下のプレイヤー所有分」を丸ごとフラットに持つ（playerId／characterId 付き）。
+  // state 直下の旧フィールドは attachPlayerCompat が players[0] へ委譲する互換アクセサとして残し、
+  // players.length === 1 では従来と完全一致する（main.js・relics.js・battle.js 内部処理は
+  // 無変更で従来どおり state.player／state.hand 等を触り、それが players[0] に届く）。
+  // alert 系（alertBuff／alertAim／alertTelegraphed）は本単位では共有のまま据え置く（2-2 で移設）。
+  const PLAYER_CORE_FIELDS = Object.freeze(["hp", "hpMax", "energy", "energyMax", "stance", "block", "stagger", "halveNext", "tread"]);
+  // 単位2-2: alertBuff／alertAim／alertTelegraphed も PlayerState 側へ移設したため、
+  // 互換アクセサの委譲対象に含める（state.alertBuff 等は players[0] の値を返す）。
+  const PLAYER_OWNED_FIELDS = Object.freeze([
+    "characterId", "turnStartNoise", "cardsPlayedThisTurn", "drawPenaltyNext", "drawBonusNext",
+    "retained", "holdDiscountUid", "powers", "exhaustedCount", "nextAttackBonus", "pendingPick",
+    "traps", "purgeActive", "purgeCount", "noise", "hand", "drawPile", "discard", "exhaust",
+    "alertBuff", "alertAim", "alertTelegraphed",
+  ]);
+
+  function makePlayerState(entry, rng, index) {
+    const def = characterDef(entry && (entry.characterId || entry.character));
+    const deck = resolveDeck(entry && entry.deck, def.id);
+    const hpMax = entry && typeof entry.hpMax === "number" ? entry.hpMax
+      : (entry && typeof entry.hp === "number" ? entry.hp : def.hp);
+    const hp = entry && typeof entry.hp === "number" ? entry.hp : hpMax;
+    const noise = clampNoiseFor(entry && typeof entry.noise === "number" ? entry.noise : 0, def.id);
     return {
-      relics,
-      characterId: charDef.id,
+      playerId: (entry && entry.playerId) || `player${(index || 0) + 1}`,
+      characterId: def.id,
+      hp,
+      hpMax,
+      energy: def.energyPerTurn,
+      energyMax: def.energyPerTurn,
+      stance: "EXPOSE",
+      block: 0,
+      stagger: 0,
+      halveNext: 0,
+      tread: 0,
       // A-2 変換ルール: 変換系効果は「ターン開始時点のNOISEスナップショット」で計算する
-      turnStartNoise: 0,
+      turnStartNoise: noise,
       cardsPlayedThisTurn: 0,
       drawPenaltyNext: 0,
       drawBonusNext: 0,
       // 『磁気ホールド』（GHOST-TAPE固有OS）: 敵フェイズ中の保持実体と、保持割引の対象実体ID
       retained: null,
       holdDiscountUid: 0,
-      // 共通プール拡張（DESIGN-COMMON-POOL-EXPANSION-DRAFT.md）:
-      // powers = 持続効果の汎用基盤。{ source, kind, value } の配列で、戦闘中ずっと残る。
-      //   kind "energy_per_turn" = ターン開始時に PWR +value（予備電源）。
-      // プール大拡充バッチBで種別を追加（発動は beginPlayerTurn／endTurn）:
-      //   "block_per_turn" = ターン開始時に BLK +value（残響バッテリー）。
-      //   "vent_per_turn" = ターン開始時に NOISE −value（予備ギア／静寂領域）。
-      //   "turn_start_noise_damage" = ターン開始時に敵へ開始時NOISE×value ダメージ（圧力鍋）。
-      //   "standby_armor_up" = 余剰電力装甲の変換率 +value（塹壕モード。endTurn が参照）。
-      // プール大拡充バッチCで追加:
-      //   "trap_damage_up" = 罠の発動ダメージ +value（監視の目。罠の発動箇所が参照）。
+      // 共通プール拡張: powers = 持続効果の汎用基盤。{ source, kind, value } の配列で、戦闘中ずっと残る
+      // （種別の詳細は従来の createState 内コメントどおり。発動は beginPlayerTurn／endTurn）
       powers: [],
       // この戦闘で廃棄（exhaust）されたカードの累計枚数。圧縮穿孔（damage_per_exhausted）が参照する
       exhaustedCount: 0,
       // プール大拡充バッチB（プリミティブ #4 next_attack_bonus）: 次に解決する敵ダメージ効果へ
-      // 一度だけ加算される保留ボーナス（07専用 P-08「迎撃の構え」用の基盤）。消費は applyEffect のダメージ適用部
+      // 一度だけ加算される保留ボーナス。消費は applyEffect のダメージ適用部
       nextAttackBonus: 0,
-      // プレイヤー選択待ちの保留効果。{ kind: "search" } | { kind: "discard", draw } | { kind: "reposition", draw }。
-      // バッチBで追加: { kind: "search_top", n } | { kind: "curse", draw } | { kind: "trap_sacrifice", draw }。
-      // 効果解決時に登録され、main.js の選択フェイズが resolvePick で確定させる
+      // プレイヤー選択待ちの保留効果。効果解決時に登録され、main.js の選択フェイズが resolvePick で確定させる
       pendingPick: null,
-      // 『アナログ・トラップ機構』（WEAVER固有OS）: 設置済み罠のスタック。
-      // 要素は { cardId, kind, trigger, minNoise, damage, cut, stun, cancel }。戦闘ごとに空で始まり、
-      // 戦闘終了で state ごと破棄される（次戦闘へは漏れない）。発動した罠は exhaust へ送られる。
+      // 『アナログ・トラップ機構』（WEAVER固有OS）: 設置済み罠のスタック。戦闘ごとに空で始まる
       traps: [],
-      // 『臨界排熱』（REACTOR固有OS）: purgeActive = 炉心臨界で始動したか、purgeCount = 蓄積値。
-      // 始動後、廃棄カードを使うたび +1 し、敵への基本ダメージ全てに +purgeCount が乗り、
-      // ターン終了時に purgeCount 分のスリップダメージ（コスト扱い）を受ける。
-      // 戦闘内のみ有効で、state は戦闘ごとに生成されるため戦闘終了で自然に消滅する。
+      // 『臨界排熱』（REACTOR固有OS）: purgeActive = 炉心臨界で始動したか、purgeCount = 蓄積値（戦闘内のみ）
       purgeActive: false,
       purgeCount: 0,
-      player: {
-        hp: charDef.hp,
-        hpMax: charDef.hp,
-        energy: charDef.energyPerTurn,
-        energyMax: charDef.energyPerTurn,
-        stance: "EXPOSE",
-        block: 0,
-        stagger: 0,
-        halveNext: 0,
-        tread: 0,
-      },
-      enemy,
-      noise: 0,
+      // 単位2-2（J2）: 帯域は素体ごと。alertBuff は自 noise の帯域から syncAlertBuff が算出、
+      // alertAim は追加行動「照準」で自素体に付き次に自素体が受ける攻撃で消費、
+      // alertTelegraphed は自素体に向けられた追加行動の予告。ready は終了宣言（endTurn）。
       alertBuff: 0,
       alertAim: 0,
       alertTelegraphed: null,
-      turn: 1,
+      ready: false,
+      noise,
       drawPile: shuffle(deck, rng),
       hand: [],
       discard: [],
@@ -307,11 +320,474 @@
     };
   }
 
+  // state 直下の旧フィールド群を players[0] へ委譲する互換アクセサを付ける。
+  // state.player は players[0] そのものを返す（hp／energy／stance 等の直接読み書きが従来どおり届く）。
+  // state.player への丸ごと代入は、核フィールド（hp〜tread）のマージとして受ける（実運用では発生しない）。
+  function attachPlayerCompat(state) {
+    if (!state || !Array.isArray(state.players) || state.players.length === 0) return state;
+    const defs = {};
+    for (const field of PLAYER_OWNED_FIELDS) {
+      defs[field] = {
+        enumerable: true,
+        configurable: true,
+        get() { return this.players[0][field]; },
+        set(value) { this.players[0][field] = value; },
+      };
+    }
+    defs.player = {
+      enumerable: true,
+      configurable: true,
+      get() { return this.players[0]; },
+      set(value) {
+        if (!value || typeof value !== "object" || value === this.players[0]) return;
+        const core = value.player && typeof value.player === "object" ? value.player : value;
+        const target = this.players[0];
+        for (const field of PLAYER_CORE_FIELDS) {
+          if (typeof core[field] !== "undefined") target[field] = core[field];
+        }
+      },
+    };
+    Object.defineProperties(state, defs);
+    return state;
+  }
+
+  // ==== 段階(2) 単位2-2: 戦闘解決の複数化ヘルパー ====
+  // 方針: 内部ロジック（applyEffect／strikeVolley 等）は従来どおり「state.player／state.hand／
+  // state.noise 等が行動プレイヤーを指す state」を受け取る形を維持し、行動プレイヤーが
+  // players[0] 以外のときは scopeFor がそのプレイヤーへ委譲するビューを渡す。
+  // players[0] が対象のとき（ソロ含む）は state そのものを返すため、挙動・数値は従来と一致する。
+  function rootOf(state) {
+    return (state && state.__rootState) || state;
+  }
+
+  // プレイヤー指定の解決。ref は playerId 文字列／players の index／PlayerState 自身／
+  // { playerId } ／ { player } のいずれでもよい。未指定時はスコープ中のプレイヤー、
+  // それも無ければ players[0]。players を持たない state では null。
+  function resolvePlayer(state, ref) {
+    if (state && state.__scopedPlayer) {
+      if (typeof ref === "undefined" || ref === null) return state.__scopedPlayer;
+      const found = resolvePlayer(state.__rootState, ref);
+      return found || state.__scopedPlayer;
+    }
+    const root = rootOf(state);
+    if (!root || !Array.isArray(root.players) || root.players.length === 0) return null;
+    if (typeof ref === "undefined" || ref === null) return root.players[0];
+    if (typeof ref === "number") return root.players[ref] || null;
+    if (typeof ref === "string") return root.players.find((p) => p.playerId === ref) || null;
+    if (typeof ref === "object") {
+      if (root.players.includes(ref)) return ref;
+      if (ref.player && typeof ref.player === "object") {
+        const found = resolvePlayer(root, ref.player);
+        if (found) return found;
+      }
+      if (ref.playerId) return root.players.find((p) => p.playerId === ref.playerId) || null;
+      if (typeof ref.index === "number") return root.players[ref.index] || null;
+    }
+    return null;
+  }
+
+  function alivePlayers(state) {
+    const root = rootOf(state);
+    if (!root || !Array.isArray(root.players)) return [];
+    return root.players.filter((p) => p && (p.hp || 0) > 0);
+  }
+
+  function isPartyDown(state) {
+    const root = rootOf(state);
+    return !!(root && Array.isArray(root.players) && root.players.length > 0
+      && root.players.every((p) => (p.hp || 0) <= 0));
+  }
+
+  function isAllReady(state) {
+    const alive = alivePlayers(state);
+    return alive.length > 0 && alive.every((p) => p.ready);
+  }
+
+  const BAND_TIER = Object.freeze({ calm: 0, alert: 1, breach: 2, pursuit: 3, lockdown: 4, exposed: 5 });
+
+  // 排除優先度（J2／計画 §2.2）: 帯域に入っている生存素体のうち、最も帯域が高い素体。
+  // 同帯域では noise の大きい方を優先し、それも同じなら並び順（players の index）が早い方。
+  // includeTelegraphed=true のときは、予告（alertTelegraphed）を持つ素体も候補に含める
+  // （ノイズが下がって帯域を抜けた場合の「追加行動 取消」を検出するため。enemyTurn 用）。
+  function priorityPlayer(state, includeTelegraphed) {
+    let best = null;
+    for (const p of alivePlayers(state)) {
+      const band = noiseBand(p.noise);
+      if (band.extras <= 0 && !(includeTelegraphed && p.alertTelegraphed)) continue;
+      if (!best) { best = p; continue; }
+      const bestBand = noiseBand(best.noise);
+      if (BAND_TIER[band.id] > BAND_TIER[bestBand.id]) best = p;
+      else if (BAND_TIER[band.id] === BAND_TIER[bestBand.id] && (p.noise || 0) > (best.noise || 0)) best = p;
+    }
+    return best;
+  }
+
+  // 敵の主行動の対象: 予告済み（state.targetPlayerId）で生存していればそれを引き継ぎ、
+  // 無ければ生存素体からランダムに選んで targetPlayerId に保持する（予告の安定化）。
+  // 候補が1体だけのときは乱数を消費しない（ソロの乱数列を従来と一致させるため）。
+  function selectTargetPlayer(state, rng) {
+    const root = rootOf(state);
+    const alive = alivePlayers(root);
+    if (alive.length === 0) return null;
+    if (root.targetPlayerId) {
+      const stored = alive.find((p) => p.playerId === root.targetPlayerId);
+      if (stored) return stored;
+    }
+    let picked = alive[0];
+    if (alive.length > 1) {
+      const roll = typeof rng === "function" ? rng() : Math.random();
+      picked = alive[Math.min(alive.length - 1, Math.floor(roll * alive.length))];
+    }
+    root.targetPlayerId = picked.playerId;
+    return picked;
+  }
+
+  function alertInfoFor(state, ref) {
+    const player = resolvePlayer(state, ref);
+    if (!player) return null;
+    return {
+      playerId: player.playerId,
+      noise: player.noise || 0,
+      band: noiseBand(player.noise),
+      alertBuff: player.alertBuff || 0,
+      alertAim: player.alertAim || 0,
+      alertTelegraphed: player.alertTelegraphed || null,
+    };
+  }
+
+  // 行動プレイヤーへ委譲するビュー。共有分（players／enemy／relics／turn／targetPlayerId）は
+  // root へ、プレイヤー所有分と state.player は対象プレイヤーへ委譲する。
+  // 対象が players[0] のときは root そのものを返す（従来経路と完全同一）。
+  function scopeFor(state, player) {
+    const root = rootOf(state);
+    if (!root || !Array.isArray(root.players) || root.players.length === 0) return state;
+    const target = player || root.players[0];
+    if (state && state.__scopedPlayer === target) return state;
+    if (target === root.players[0]) return root;
+    const view = { __scopedPlayer: target, __rootState: root };
+    const defs = {};
+    for (const key of ["players", "enemy", "relics", "turn", "targetPlayerId", "partySize", "scaling"]) {
+      defs[key] = {
+        enumerable: true, configurable: true,
+        get() { return root[key]; },
+        set(value) { root[key] = value; },
+      };
+    }
+    for (const field of PLAYER_OWNED_FIELDS) {
+      defs[field] = {
+        enumerable: true, configurable: true,
+        get() { return target[field]; },
+        set(value) { target[field] = value; },
+      };
+    }
+    defs.player = {
+      enumerable: true, configurable: true,
+      get() { return target; },
+      set(value) {
+        if (!value || typeof value !== "object" || value === target) return;
+        const core = value.player && typeof value.player === "object" ? value.player : value;
+        for (const field of PLAYER_CORE_FIELDS) {
+          if (typeof core[field] !== "undefined") target[field] = core[field];
+        }
+      },
+    };
+    Object.defineProperties(view, defs);
+    return view;
+  }
+
+  // ==== 単位2-4: 人数スケーリングの下地（設計書§4／MULTIPLAYER-IMPL-PLAN §2.3 単位2-4） ====
+  // 倍率表は設計書§4 の確定値（2人 HP×1.8／3人 ×2.6・攻撃+1／4人 ×3.4・攻撃+2）。
+  // bossHp は「ボスは別途専用倍率」（設計書§4 備考）の置き場で、段階(4) 4-1 で実測調整する
+  // 前提のため当面は通常倍率と同値を置く。攻撃の上乗せはインテントのパターン値
+  // （attack／heavy_attack／attack_stun の value）にのみ適用する（帯域の追加行動は対象外）。
+  // 適用は createState の options.scaling === true のときだけ（既定は無効＝従来挙動と完全一致。
+  // 段階(4) 4-1 でラン開始の配線時に ON にする）。
+  const PARTY_SCALING = Object.freeze({
+    1: Object.freeze({ hp: 1.0, attack: 0, bossHp: 1.0 }),
+    2: Object.freeze({ hp: 1.8, attack: 0, bossHp: 1.8 }),
+    3: Object.freeze({ hp: 2.6, attack: 1, bossHp: 2.6 }),
+    4: Object.freeze({ hp: 3.4, attack: 2, bossHp: 3.4 }),
+  });
+  // 層ボスは enemies.js 側にボス印が無いため ID で判定する（map.js の LAYER_BOSS_IDS と一致させること）
+  const BOSS_ENEMY_IDS = Object.freeze(["enemy_gatekeeper", "enemy_gatekeeper_l2", "enemy_gatekeeper_l3"]);
+
+  function partyScalingFor(partySize) {
+    const size = Math.max(1, Math.min(4, Math.floor(partySize) || 1));
+    return PARTY_SCALING[size];
+  }
+
+  function isBossEnemy(enemy) {
+    return !!enemy && BOSS_ENEMY_IDS.includes(enemy.id);
+  }
+
+  // 生成直後の敵1体へスケーリングを適用する。__scaled の印で二重適用を防ぐ
+  // （印は serialize の敵ディープコピーにも残るため、復元後の再適用も起きない）。
+  function applyScalingToEnemy(state, enemy) {
+    const scaling = state && state.scaling;
+    if (!scaling || !enemy || enemy.__scaled) return enemy;
+    const hpMul = isBossEnemy(enemy) ? scaling.bossHp : scaling.hp;
+    enemy.hpMax = Math.max(1, Math.round((enemy.hpMax || 0) * hpMul));
+    enemy.hp = enemy.hpMax;
+    if (scaling.attack) {
+      for (const step of enemy.pattern || []) {
+        if (step && (step.action === "attack" || step.action === "heavy_attack" || step.action === "attack_stun")) {
+          step.value = (step.value || 0) + scaling.attack;
+        }
+      }
+    }
+    enemy.__scaled = true;
+    return enemy;
+  }
+
+  function createState(rng, options) {
+    const relics = options && Array.isArray(options.relics) ? options.relics.slice() : [];
+    const enemy = root.Enemies ? root.Enemies.make("enemy_sentry") : fallbackSentry();
+    // 単位2-1: options.party = [{ playerId, characterId, deck, hp, hpMax, noise }] を追加。
+    // 未指定時は現行の単一指定（character／deck 等）から party 1人を合成し、既存の呼び出し
+    // （タイトル試行・startRun・チュートリアル）は無変更で動く。
+    let partyEntries;
+    if (options && Array.isArray(options.party) && options.party.length > 0) {
+      partyEntries = options.party;
+    } else {
+      const charDef = characterDef(options && options.character);
+      partyEntries = [{
+        playerId: options && options.playerId,
+        characterId: charDef.id,
+        deck: options && options.deck,
+        hp: options && options.hp,
+        hpMax: options && options.hpMax,
+        noise: options && options.noise,
+      }];
+    }
+    const players = partyEntries.map((entry, index) => makePlayerState(entry, rng, index));
+    // 単位2-4: 人数とスケーリングの下地を state に保持する。partySize は options.partySize
+    // 優先（無ければ実人数、1〜4 にクランプ）。scaling は options.scaling === true のときだけ
+    // 倍率表の行を複製して保持し、生成直後の敵へ適用する。既定（未指定）は scaling=null で、
+    // 敵の数値・乱数消費は従来と完全一致する。
+    const partySize = Math.max(1, Math.min(4, Math.floor((options && options.partySize) || players.length) || 1));
+    const scalingRow = partyScalingFor(partySize);
+    const scaling = options && options.scaling === true
+      ? { hp: scalingRow.hp, attack: scalingRow.attack, bossHp: scalingRow.bossHp }
+      : null;
+    const state = {
+      relics,
+      players,
+      enemy,
+      // 単位2-2: alert 系は PlayerState 側へ移設済み（state.alertBuff 等は互換アクセサが
+      // players[0] へ委譲する）。state 直下に残るのは敵インテントの予告対象のみ。
+      targetPlayerId: null,
+      turn: 1,
+      partySize,
+      scaling,
+    };
+    if (scaling) applyScalingToEnemy(state, state.enemy);
+    return attachPlayerCompat(state);
+  }
+
+  // ==== 単位2-1: 状態のシリアライズ／復元（スナップショット用） ====
+  // serializeState は plain object（JSON 化可能）だけを返す。カードは定義オブジェクトへの
+  // 参照ではなく { id, __uid?, __heldNow? } の参照形にし、hydrateState が定義へ引き直す。
+  function plainClone(value) {
+    if (value === null || typeof value === "undefined") return value;
+    return JSON.parse(JSON.stringify(value));
+  }
+
+  function serializeCard(card) {
+    if (!card) return null;
+    const ref = { id: card.id };
+    if (card.__uid) ref.__uid = card.__uid;
+    if (card.__heldNow) ref.__heldNow = true;
+    return ref;
+  }
+
+  function serializePlayer(player) {
+    return {
+      playerId: player.playerId,
+      characterId: player.characterId,
+      hp: player.hp,
+      hpMax: player.hpMax,
+      energy: player.energy,
+      energyMax: player.energyMax,
+      stance: player.stance,
+      block: player.block,
+      stagger: player.stagger,
+      halveNext: player.halveNext,
+      tread: player.tread,
+      noise: player.noise,
+      turnStartNoise: player.turnStartNoise,
+      cardsPlayedThisTurn: player.cardsPlayedThisTurn,
+      drawPenaltyNext: player.drawPenaltyNext,
+      drawBonusNext: player.drawBonusNext,
+      retained: serializeCard(player.retained),
+      holdDiscountUid: player.holdDiscountUid,
+      traps: plainClone(player.traps || []),
+      powers: plainClone(player.powers || []),
+      pendingPick: plainClone(player.pendingPick || null),
+      exhaustedCount: player.exhaustedCount,
+      nextAttackBonus: player.nextAttackBonus,
+      purgeActive: !!player.purgeActive,
+      purgeCount: player.purgeCount || 0,
+      alertBuff: player.alertBuff || 0,
+      alertAim: player.alertAim || 0,
+      alertTelegraphed: player.alertTelegraphed || null,
+      ready: !!player.ready,
+      hand: (player.hand || []).map(serializeCard),
+      drawPile: (player.drawPile || []).map(serializeCard),
+      discard: (player.discard || []).map(serializeCard),
+      exhaust: (player.exhaust || []).map(serializeCard),
+    };
+  }
+
+  function playersOf(state) {
+    if (state && Array.isArray(state.players) && state.players.length > 0) return state.players;
+    // 互換: players を持たない旧形 state（player＋直下フィールド）からも 1人分を合成する
+    const core = (state && state.player) || {};
+    return [{
+      playerId: "player1",
+      characterId: state && state.characterId,
+      hp: core.hp, hpMax: core.hpMax, energy: core.energy, energyMax: core.energyMax,
+      stance: core.stance, block: core.block, stagger: core.stagger, halveNext: core.halveNext, tread: core.tread,
+      noise: state && state.noise, turnStartNoise: state && state.turnStartNoise,
+      cardsPlayedThisTurn: state && state.cardsPlayedThisTurn,
+      drawPenaltyNext: state && state.drawPenaltyNext, drawBonusNext: state && state.drawBonusNext,
+      retained: state && state.retained, holdDiscountUid: state && state.holdDiscountUid,
+      traps: state && state.traps, powers: state && state.powers, pendingPick: state && state.pendingPick,
+      exhaustedCount: state && state.exhaustedCount, nextAttackBonus: state && state.nextAttackBonus,
+      purgeActive: state && state.purgeActive, purgeCount: state && state.purgeCount,
+      alertBuff: state && state.alertBuff, alertAim: state && state.alertAim,
+      alertTelegraphed: state && state.alertTelegraphed, ready: false,
+      hand: (state && state.hand) || [], drawPile: (state && state.drawPile) || [],
+      discard: (state && state.discard) || [], exhaust: (state && state.exhaust) || [],
+    }];
+  }
+
+  function serializeState(state) {
+    if (!state) return null;
+    return {
+      version: 1,
+      kind: "enemy-pipeline-battle-state",
+      relics: (state.relics || []).slice(),
+      turn: state.turn || 1,
+      alertBuff: state.alertBuff || 0,
+      alertAim: state.alertAim || 0,
+      alertTelegraphed: plainClone(state.alertTelegraphed || null),
+      targetPlayerId: state.targetPlayerId || null,
+      partySize: state.partySize || playersOf(state).length,
+      scaling: state.scaling ? { hp: state.scaling.hp, attack: state.scaling.attack, bossHp: state.scaling.bossHp } : null,
+      enemy: plainClone(state.enemy || null),
+      players: playersOf(state).map(serializePlayer),
+    };
+  }
+
+  function hydrateCard(ref) {
+    if (!ref) return null;
+    const id = typeof ref === "string" ? ref : ref.id;
+    const def = lookup(id);
+    if (!def) return null;
+    if (ref && typeof ref === "object" && ref.__uid) {
+      const copy = { ...def, __uid: ref.__uid };
+      if (ref.__heldNow) copy.__heldNow = true;
+      if (copy.__uid > cardUidSeq) cardUidSeq = copy.__uid;
+      return copy;
+    }
+    return def;
+  }
+
+  function hydratePlayer(data, index) {
+    const src = data && typeof data === "object" ? data : {};
+    const core = src.player && typeof src.player === "object" ? src.player : src;
+    const def = characterDef(src.characterId || src.character || core.characterId);
+    const hpMax = typeof core.hpMax === "number" ? core.hpMax : def.hp;
+    const num = (value, fallback) => (typeof value === "number" ? value : fallback);
+    return {
+      playerId: src.playerId || `player${index + 1}`,
+      characterId: def.id,
+      hp: num(core.hp, hpMax),
+      hpMax,
+      energy: num(core.energy, def.energyPerTurn),
+      energyMax: num(core.energyMax, def.energyPerTurn),
+      stance: core.stance || "EXPOSE",
+      block: num(core.block, 0),
+      stagger: num(core.stagger, 0),
+      halveNext: num(core.halveNext, 0),
+      tread: num(core.tread, 0),
+      noise: clampNoiseFor(num(src.noise, 0), def.id),
+      turnStartNoise: num(src.turnStartNoise, 0),
+      cardsPlayedThisTurn: num(src.cardsPlayedThisTurn, 0),
+      drawPenaltyNext: num(src.drawPenaltyNext, 0),
+      drawBonusNext: num(src.drawBonusNext, 0),
+      retained: hydrateCard(src.retained),
+      holdDiscountUid: num(src.holdDiscountUid, 0),
+      traps: plainClone(src.traps || []),
+      powers: plainClone(src.powers || []),
+      pendingPick: plainClone(src.pendingPick || null),
+      exhaustedCount: num(src.exhaustedCount, 0),
+      nextAttackBonus: num(src.nextAttackBonus, 0),
+      purgeActive: !!src.purgeActive,
+      purgeCount: num(src.purgeCount, 0),
+      alertBuff: num(src.alertBuff, 0),
+      alertAim: num(src.alertAim, 0),
+      alertTelegraphed: src.alertTelegraphed || null,
+      ready: !!src.ready,
+      hand: (src.hand || []).map(hydrateCard).filter(Boolean),
+      drawPile: (src.drawPile || []).map(hydrateCard).filter(Boolean),
+      discard: (src.discard || []).map(hydrateCard).filter(Boolean),
+      exhaust: (src.exhaust || []).map(hydrateCard).filter(Boolean),
+    };
+  }
+
+  function hydrateState(data) {
+    if (!data || typeof data !== "object") return null;
+    let playerDataList;
+    if (Array.isArray(data.players) && data.players.length > 0) {
+      playerDataList = data.players;
+    } else if (data.player || data.hand || data.characterId) {
+      // 旧形スナップショット（players なし）も 1人分として復元できるようにする
+      playerDataList = [{
+        playerId: data.playerId, characterId: data.characterId, player: data.player,
+        noise: data.noise, turnStartNoise: data.turnStartNoise,
+        cardsPlayedThisTurn: data.cardsPlayedThisTurn, drawPenaltyNext: data.drawPenaltyNext,
+        drawBonusNext: data.drawBonusNext, retained: data.retained, holdDiscountUid: data.holdDiscountUid,
+        traps: data.traps, powers: data.powers, pendingPick: data.pendingPick,
+        exhaustedCount: data.exhaustedCount, nextAttackBonus: data.nextAttackBonus,
+        purgeActive: data.purgeActive, purgeCount: data.purgeCount,
+        hand: data.hand, drawPile: data.drawPile, discard: data.discard, exhaust: data.exhaust,
+      }];
+    } else {
+      playerDataList = [{}];
+    }
+    const players = playerDataList.map((entry, index) => hydratePlayer(entry, index));
+    const state = {
+      relics: Array.isArray(data.relics) ? data.relics.slice() : [],
+      players,
+      enemy: data.enemy ? plainClone(data.enemy) : fallbackSentry(),
+      targetPlayerId: data.targetPlayerId || null,
+      turn: data.turn || 1,
+      // 単位2-4: 人数とスケーリングも往復で保持する。敵はスナップショットの値（適用済み）を
+      // そのまま復元するため、ここでは再適用しない（__scaled の印もコピーに残っている）。
+      partySize: typeof data.partySize === "number" ? data.partySize : players.length,
+      scaling: data.scaling ? plainClone(data.scaling) : null,
+    };
+    attachPlayerCompat(state);
+    // 旧形スナップショット（alert が state 直下にのみある 2-1 形式）互換:
+    // players[0] 側に alert フィールドが無い場合だけ、直下の値を引き継ぐ
+    const firstEntry = playerDataList[0] || {};
+    if (typeof data.alertBuff === "number" && !("alertBuff" in firstEntry)) state.alertBuff = data.alertBuff;
+    if (typeof data.alertAim === "number" && !("alertAim" in firstEntry)) state.alertAim = data.alertAim;
+    if ("alertTelegraphed" in data && !("alertTelegraphed" in firstEntry)) {
+      state.alertTelegraphed = data.alertTelegraphed ? plainClone(data.alertTelegraphed) : null;
+    }
+    return state;
+  }
+
   function applyEnemy(state, id) {
     if (!root.Enemies) return false;
     const enemy = root.Enemies.make(id);
     if (!enemy) return false;
     state.enemy = enemy;
+    // 単位2-4: スケーリング有効（state.scaling あり）のときだけ生成した敵へ倍率を適用する。
+    // 無効時は従来と完全一致。
+    if (state && state.scaling) applyScalingToEnemy(state, enemy);
     return true;
   }
 
@@ -337,7 +813,8 @@
   }
 
   // 手札の各実体へ一意なIDを持つ複製を割り当てる（保持選択の開始時に UI から呼ぶ）。
-  function tagHandInstances(state) {
+  function tagHandInstances(state, ref) {
+    state = scopeFor(state, resolvePlayer(state, ref));
     if (!state || !Array.isArray(state.hand)) return;
     state.hand = state.hand.map((card) => {
       if (card.__uid) return card;
@@ -347,7 +824,8 @@
   }
 
   // ターン終了時、手札の1実体を保持枠へ移す。呪装／使用不能カードは保持できない。
-  function setRetained(state, uid) {
+  function setRetained(state, uid, ref) {
+    state = scopeFor(state, resolvePlayer(state, ref));
     if (!state || !characterDef(state.characterId).canHold) return false;
     const index = state.hand.findIndex((card) => card.__uid && card.__uid === uid);
     if (index < 0) return false;
@@ -385,8 +863,14 @@
     return !!trapEffectOf(card);
   }
 
-  function canPlay(state, card) {
+  function canPlay(state, card, ref) {
+    const actor = resolvePlayer(state, ref);
+    state = scopeFor(state, actor);
     if (!card) return { ok: false, reason: "unknown" };
+    // 単位2-2: マルチで終了宣言済み（ready）のプレイヤーは行動できない（ソロでは ready は常に false）
+    if (actor && actor.ready && Array.isArray(state.players) && state.players.length > 1) {
+      return { ok: false, reason: "ready" };
+    }
     if (state.player.hp <= 0) return { ok: false, reason: "down" };
     if (state.enemy.dead) return { ok: false, reason: "dead" };
     if (card.unplayable || card.cost < 0 || (card.effects || []).some((effect) => effect.type === "unplayable")) {
@@ -436,7 +920,11 @@
     return !!card && (card.unplayable || card.type === "curse" || (card.cost || 0) < 0);
   }
 
-  function applyEffect(state, effect, log, ctx) {
+  function applyEffect(state, effect, log, ctx, ref) {
+    // 単位2-2: 行動プレイヤーは第5引数か ctx.player／ctx.playerId で指定できる（既定は従来どおり）
+    const actorRef = typeof ref !== "undefined" ? ref
+      : (ctx && (typeof ctx.player !== "undefined" ? ctx.player : ctx.playerId));
+    state = scopeFor(state, resolvePlayer(state, actorRef));
     if (effect.type === "unplayable") return;
     // 正式版フェーズ1（設計書 A-2）: 効果の解決規則。
     // - 変換系（damage_per_noise / block_per_noise = 音響フレア／ジャミング・フレア／パージ＆パニッシュ）:
@@ -793,7 +1281,8 @@
     }
   }
 
-  function playCard(state, card) {
+  function playCard(state, card, ref) {
+    state = scopeFor(state, resolvePlayer(state, ref));
     // 音響穿孔サウンド（ピーーッガガガ…＋ガシャシャン！）は UI 側（main.js の onRead）が
     // AudioManager.playPunch(intensity) で鳴らす。intensity はカードのノイズ値＋警報時+1。
     const check = canPlay(state, card);
@@ -814,7 +1303,7 @@
     const isGoliath = state.characterId === "vessel04";
     // 効果解決の基準値: このカード自身のNOISE加算前のNOISEと、使用前までに切った枚数、
     // 使用開始時点のスタンス（物陰の一撃の stance_bonus 判定用）、使用カードID（power の出所記録用）
-    const ctx = { noiseBefore: state.noise || 0, playedBefore: state.cardsPlayedThisTurn || 0, stanceBefore: state.player.stance, cardId: card.id };
+    const ctx = { noiseBefore: state.noise || 0, playedBefore: state.cardsPlayedThisTurn || 0, stanceBefore: state.player.stance, cardId: card.id, player: resolvePlayer(state) };
     // PROMPT-23: 潜伏中はノイズ-1（下限0）。ノイズの出るカードは潜伏を解くが、
     // COVER を付与するカード自身（CQC打撃など）は解除の例外とする
     // 正式版フェーズ1: GOLIATH は常時EXPOSEで潜伏の抑制・解除は一切発生しない
@@ -871,7 +1360,14 @@
     return { ok: true, reason: "", log, breach, oversized };
   }
 
-  function playFromHand(state, cardId, uid) {
+  function playFromHand(state, cardId, uid, ref) {
+    // 単位2-2: 第4引数で行動プレイヤーを指定できる。第3引数（uid は常に数値）に
+    // 数値でない値が来た場合は、それをプレイヤー指定とみなす
+    if (typeof ref === "undefined" && typeof uid !== "undefined" && typeof uid !== "number") {
+      ref = uid;
+      uid = 0;
+    }
+    state = scopeFor(state, resolvePlayer(state, ref));
     // uid が渡された場合はその実体を優先する（保持割引の対象実体を取り違えないため）
     let index = uid ? state.hand.findIndex((card) => card.__uid && card.__uid === uid) : -1;
     if (index < 0) index = state.hand.findIndex((card) => card.id === cardId);
@@ -906,11 +1402,14 @@
     return result;
   }
 
-  function beginTurn(state) {
+  function beginTurn(state, ref) {
+    state = scopeFor(state, resolvePlayer(state, ref));
     state.player.energy = state.player.energyMax;
   }
 
-  function drawCards(state, count, rng) {
+  function drawCards(state, count, rng, ref) {
+    if (typeof ref === "undefined" && rng && typeof rng !== "function") { ref = rng; rng = undefined; }
+    state = scopeFor(state, resolvePlayer(state, ref));
     const drawn = [];
     const log = [];
     for (let i = 0; i < count; i += 1) {
@@ -931,7 +1430,8 @@
   // ==== 共通プール拡張: プレイヤー選択（pendingPick）の候補提示と確定 ====
   // search = 山札（drawPile）の中身が候補。discard = 現在の手札が候補（使用した箔の選別自身は
   // playFromHand の後処理で既に手札を離れているため含まれない）。
-  function pickCandidates(state) {
+  function pickCandidates(state, ref) {
+    state = scopeFor(state, resolvePlayer(state, ref));
     if (!state || !state.pendingPick) return [];
     if (state.pendingPick.kind === "search") return state.drawPile.slice();
     // search_top（プリミティブ #1）: 山札の「上」は drawPile の末尾側（drawCards が pop で引く）。
@@ -952,7 +1452,8 @@
   }
 
   // cardId が null の場合は「候補なし」の自動解決（search は不発、discard はドローのみ実施）。
-  function resolvePick(state, cardId) {
+  function resolvePick(state, cardId, ref) {
+    state = scopeFor(state, resolvePlayer(state, ref));
     const pick = state ? state.pendingPick : null;
     if (!pick) return { ok: false, log: [] };
     state.pendingPick = null;
@@ -1242,7 +1743,8 @@
     return out;
   }
 
-  function discardHand(state) {
+  function discardHand(state, ref) {
+    state = scopeFor(state, resolvePlayer(state, ref));
     const moved = state.hand.splice(0, state.hand.length);
     // 保持割引の表示フラグはターン終了で失効する（実体＝複製オブジェクトにだけ触る）
     for (const card of moved) if (card.__uid) card.__heldNow = false;
@@ -1254,7 +1756,12 @@
     return { log: applyRelics(state, "start_of_combat") };
   }
 
-  function beginPlayerTurn(state, rng) {
+  function beginPlayerTurn(state, rng, ref) {
+    if (typeof ref === "undefined" && rng && typeof rng !== "function") { ref = rng; rng = undefined; }
+    const actor = resolvePlayer(state, ref);
+    state = scopeFor(state, actor);
+    // 単位2-2: 自ターン開始で終了宣言（ready）は解除される
+    if (actor) actor.ready = false;
     beginTurn(state);
     // 共通プール拡張: 持続パワー（state.powers）のターン開始時発動。
     // energy_per_turn（予備電源）は beginTurn で energyMax へ戻った直後に上限を超えて加算する
@@ -1530,43 +2037,70 @@
     return strikeVolley(state, intent, log);
   }
 
-  function enemyTurn(state) {
+  // ==== 単位2-2: 敵フェイズの複数化（設計書 §3／J2） ====
+  // 主行動の対象は生存素体からランダムに選び、intentView が state.targetPlayerId に
+  // 予告・保持したものを引き継ぐ（未予告ならここで抽選）。複数ヒットは対象1体に集中する
+  // （strikeVolley が対象素体のスコープで解決するため自然にそうなる）。
+  // 帯域の攻撃上乗せ（alertBuff／alertAim）は対象素体自身の値をその素体への攻撃にだけ適用し、
+  // 追加行動は帯域が最も高い素体（排除優先度）へ向ける。罠は主対象の素体の設置分だけが
+  // 主行動の前に発動する（解釈の根拠は MP-2-2-MEMO.md）。
+  function enemyTurn(state, rng) {
+    const root = rootOf(state);
     const log = [];
-    // v15.0: 警戒の予告（インテント表示時に記録された追加行動の種類）を引き継ぐ
-    const telegraphed = state.alertTelegraphed || null;
-    state.alertTelegraphed = null;
-    if (state.enemy.dead) {
+    const hasPlayers = !!(root && Array.isArray(root.players) && root.players.length > 0);
+    // 追加行動の予告（alertTelegraphed）は排除優先度の素体が保持する。全員分を読んでから消す
+    const pri = hasPlayers ? priorityPlayer(root, true) : null;
+    const telegraphed = hasPlayers
+      ? (pri ? (pri.alertTelegraphed || null) : null)
+      : (root ? (root.alertTelegraphed || null) : null);
+    if (hasPlayers) { for (const p of root.players) p.alertTelegraphed = null; }
+    else if (root) root.alertTelegraphed = null;
+    const alertBase = {
+      telegraphed, kind: null, cancelled: false,
+      targetPlayerId: hasPlayers && root.targetPlayerId ? root.targetPlayerId : null,
+      priorityPlayerId: pri ? pri.playerId : null,
+      extraTargetPlayerId: null,
+    };
+    if (root.enemy.dead) {
       log.push("TARGET DOWN");
-      return { log, outcome: "down", damage: 0, call: "", action: null, alert: { telegraphed, kind: null, cancelled: false } };
+      return { log, outcome: "down", damage: 0, call: "", action: null, targetPlayerId: alertBase.targetPlayerId, alert: { ...alertBase } };
     }
-    if (state.enemy.cancelNextIntent > 0) {
-      state.enemy.cancelNextIntent -= 1;
-      advancePattern(state.enemy);
+    if (root.enemy.cancelNextIntent > 0) {
+      root.enemy.cancelNextIntent -= 1;
+      advancePattern(root.enemy);
+      if (hasPlayers) root.targetPlayerId = null;
       log.push("INTENT CANCELLED");
-      return { log, outcome: "cancelled", damage: 0, call: "CANCELLED", action: { label: "CANCELLED", kind: "cancelled" }, alert: { telegraphed, kind: null, cancelled: !!telegraphed } };
+      return { log, outcome: "cancelled", damage: 0, call: "CANCELLED", action: { label: "CANCELLED", kind: "cancelled" }, targetPlayerId: alertBase.targetPlayerId, alert: { ...alertBase, cancelled: !!telegraphed } };
     }
     // 検収修正 2026-11-10 (PROMPT-19): スタン最大で敵の行動をショート（設計欠落の補完）
-    if (!state.enemy.immuneToStun && (state.enemy.stun || 0) >= (state.enemy.stunMax || 3)) {
-      state.enemy.stun = 0;
-      advancePattern(state.enemy);
+    if (!root.enemy.immuneToStun && (root.enemy.stun || 0) >= (root.enemy.stunMax || 3)) {
+      root.enemy.stun = 0;
+      advancePattern(root.enemy);
+      if (hasPlayers) root.targetPlayerId = null;
       log.push("STUNNED - 行動ショート");
-      return { log, outcome: "stunned", damage: 0, call: "STUNNED", action: { label: "STUNNED", kind: "stunned" }, alert: { telegraphed, kind: null, cancelled: !!telegraphed } };
+      return { log, outcome: "stunned", damage: 0, call: "STUNNED", action: { label: "STUNNED", kind: "stunned" }, targetPlayerId: alertBase.targetPlayerId, alert: { ...alertBase, cancelled: !!telegraphed } };
     }
-    // 『アナログ・トラップ機構』（WEAVER）: 行動しない確定ケース（dead／キャンセル／スタン最大）を
-    // 抜けた後、警報バフ確定・インテント解決の前に設置罠の発動を判定する（1か所に集約）。
-    // 罠で敵が倒れたら行動は発生せず、集音地雷が起爆したら行動自体をキャンセルする
-    // （cancelNextIntent の分岐と同じ結果。パターンは1つ進み、追加行動も発生しない）。
-    let mainIntent = currentIntent(state.enemy);
-    if ((state.traps || []).length > 0) {
-      const trapRes = resolveTrapsBeforeAction(state, mainIntent, log);
-      if (trapRes.dead || state.enemy.dead) {
+    // 主行動の対象（生存素体から。予告済みならそれを引き継ぐ）
+    const main = hasPlayers ? selectTargetPlayer(root, rng) : null;
+    if (hasPlayers && !main) {
+      log.push("ALL VESSELS DOWN");
+      return { log, outcome: "party_down", damage: 0, call: "", action: null, targetPlayerId: null, alert: { ...alertBase, targetPlayerId: null } };
+    }
+    const mView = hasPlayers ? scopeFor(root, main) : root;
+    // 『アナログ・トラップ機構』: 主対象の素体の罠だけが主行動の前に発動する
+    let mainIntent = currentIntent(root.enemy);
+    if ((mView.traps || []).length > 0) {
+      const trapRes = resolveTrapsBeforeAction(mView, mainIntent, log);
+      if (trapRes.dead || root.enemy.dead) {
         log.push("TARGET DOWN");
-        return { log, outcome: "down", damage: 0, call: "", action: null, alert: { telegraphed, kind: null, cancelled: false } };
+        if (hasPlayers) root.targetPlayerId = null;
+        return { log, outcome: "down", damage: 0, call: "", action: null, targetPlayerId: main ? main.playerId : null, alert: { ...alertBase, targetPlayerId: main ? main.playerId : null } };
       }
       if (trapRes.cancelled) {
-        advancePattern(state.enemy);
+        advancePattern(root.enemy);
+        if (hasPlayers) root.targetPlayerId = null;
         log.push("INTENT CANCELLED (TRAP)");
-        return { log, outcome: "cancelled", damage: 0, call: "CANCELLED", action: { label: "CANCELLED", kind: "cancelled" }, alert: { telegraphed, kind: null, cancelled: !!telegraphed } };
+        return { log, outcome: "cancelled", damage: 0, call: "CANCELLED", action: { label: "CANCELLED", kind: "cancelled" }, targetPlayerId: main ? main.playerId : null, alert: { ...alertBase, targetPlayerId: main ? main.playerId : null, cancelled: !!telegraphed } };
       }
       // 迎撃鉄線系の攻撃軽減は、解決に渡すインテントの複製へ先に適用する（表示用 shownIntent にも反映される）
       if (trapRes.attackCut > 0 && isAttackIntent(mainIntent)) {
@@ -1574,136 +2108,260 @@
         log.push(`鉄線が攻撃を鈍らせる (攻撃値 -${trapRes.attackCut})`);
       }
     }
-    // 正式版フェーズ1（A-2）: 敵フェイズ開始時点の帯域で警報バフを確定させる
-    syncAlertBuff(state);
+    // 正式版フェーズ1（A-2）: 敵フェイズ開始時点の対象素体の帯域で警報バフを確定させる
+    syncAlertBuff(mView);
     // v15.3 案A: 中央バナー用の「実行された行動」ラベル。表示中のインテント予告
-    // （intentView）と同じく警報バフ＋照準を合算した実効値で組む。
-    const effBuff = (state.alertBuff || 0) + (state.alertAim || 0);
+    // （intentView）と同じく対象素体の警報バフ＋照準を合算した実効値で組む。
+    const effBuff = ((main ? main.alertBuff : root.alertBuff) || 0) + ((main ? main.alertAim : root.alertAim) || 0);
     // スクラップ・ノイズのチャージがある場合は半減後の実効値でバナーを組む（表示専用・消費しない）
     let shownIntent = mainIntent;
     if (isAttackIntent(mainIntent)) {
       const rawValue = (mainIntent.value || 0) + effBuff;
-      const shownValue = scrapHalvedValue(state, mainIntent, rawValue);
+      const shownValue = scrapHalvedValue(mView, mainIntent, rawValue);
       if (shownValue !== (mainIntent.value || 0)) shownIntent = { ...mainIntent, value: shownValue };
     }
     const actionInfo = { label: intentText(shownIntent), kind: mainIntent.action || "" };
-    const result = resolveIntent(state, mainIntent, log);
+    const mainHpBefore = main ? main.hp : 0;
+    const result = resolveIntent(mView, mainIntent, log);
     result.action = actionInfo;
-    advancePattern(state.enemy);
-    // 正式版フェーズ1（A-2）: 帯域の追加行動（通常行動の後に実施）。
-    // 警戒/BREACH帯域=1回、追跡強化/LOCKDOWN/完全露呈=2回。ノイズが3未満へ下がっていれば取消。
-    const band = noiseBand(state.noise);
-    const alert = { telegraphed, kind: null, cancelled: false, count: 0, band: band.id };
-    if (state.player.hp > 0 && !state.enemy.dead) {
+    result.targetPlayerId = main ? main.playerId : null;
+    advancePattern(root.enemy);
+    // 正式版フェーズ1（A-2）＋単位2-2（J2）: 帯域の追加行動は排除優先度の素体へ向ける。
+    // 回数はその素体の帯域で決まり、攻撃上乗せ・照準の消費もその素体自身の値を使う。
+    // ノイズが3未満へ下がっていれば取消（予告を持っていた素体について判定する）。
+    const band = pri ? noiseBand(pri.noise) : noiseBand(0);
+    const alert = {
+      telegraphed, kind: null, cancelled: false, count: 0, band: band.id,
+      targetPlayerId: main ? main.playerId : null,
+      priorityPlayerId: pri ? pri.playerId : null,
+      extraTargetPlayerId: null,
+    };
+    const damageByPlayer = {};
+    if (main) damageByPlayer[main.playerId] = Math.max(0, mainHpBefore - main.hp);
+    if (pri && pri.hp > 0 && !root.enemy.dead) {
       if (band.extras > 0) {
+        const pView = scopeFor(root, pri);
+        syncAlertBuff(pView);
+        alert.extraTargetPlayerId = pri.playerId;
+        const priHpBefore = pri.hp;
         for (let i = 0; i < band.extras; i += 1) {
-          const kind = (i === 0 && telegraphed) ? telegraphed : (alertExtraKind(state) || "pursuit");
+          const kind = (i === 0 && telegraphed) ? telegraphed : (alertExtraKind(pView) || "pursuit");
           alert.kind = kind;
           alert.count += 1;
-          executeAlertExtra(state, kind, mainIntent, log, result);
-          if (state.player.hp <= 0 || state.enemy.dead) break;
+          executeAlertExtra(pView, kind, mainIntent, log, result);
+          if (pri.hp <= 0 || root.enemy.dead) break;
         }
+        damageByPlayer[pri.playerId] = (damageByPlayer[pri.playerId] || 0) + Math.max(0, priHpBefore - pri.hp);
       } else if (telegraphed) {
         alert.cancelled = true;
         log.push("追加行動 取消 (ノイズ低下)");
       }
     }
+    result.damageByPlayer = damageByPlayer;
     result.alert = alert;
+    if (hasPlayers) root.targetPlayerId = null;
     return result;
   }
 
-  function intentView(state) {
-    if (state.enemy.dead) {
-      state.alertTelegraphed = null;
-      return { label: "無力", action: "", extra: null };
+
+  // 単位2-2: インテント予告は対象プレイヤーを含めて返す（targetPlayerId＝主行動の対象、
+  // priorityPlayerId／extraTargetPlayerId＝追加行動の対象＝排除優先度の素体）。
+  // 対象は一度選んだら state.targetPlayerId に保持し、敵フェイズで消費されるまで変わらない。
+  // 追加行動の予告（extra）は排除優先度の素体の帯域から組み、その素体に alertTelegraphed を記録する。
+  function intentView(state, ref) {
+    const root = rootOf(state);
+    const hasPlayers = !!(root && Array.isArray(root.players) && root.players.length > 0);
+    const clearTele = () => {
+      if (hasPlayers) { for (const p of root.players) p.alertTelegraphed = null; }
+      else if (root) root.alertTelegraphed = null;
+    };
+    if (root.enemy.dead) {
+      clearTele();
+      return { label: "無力", action: "", extra: null, targetPlayerId: null, priorityPlayerId: null, extraTargetPlayerId: null };
     }
-    const intent = currentIntent(state.enemy);
-    if (!state.enemy.immuneToStun && (state.enemy.stun || 0) >= (state.enemy.stunMax || 3)) {
+    if ((root.enemy.cancelNextIntent || 0) > 0) {
+      // 行動キャンセル予約中は予告自体を潰れたものとして出す（enemyTurn の消費順＝キャンセル→スタンに合わせ、スタン分岐より前で判定）
+      clearTele();
+      return { label: "CANCELLED", action: "cancelled", extra: null, targetPlayerId: root.targetPlayerId || null, priorityPlayerId: null, extraTargetPlayerId: null };
+    }
+    const intent = currentIntent(root.enemy);
+    if (!root.enemy.immuneToStun && (root.enemy.stun || 0) >= (root.enemy.stunMax || 3)) {
       // PROMPT-25: スタン（行動不能）のインテント表記は英字タグ STUNNED に統一する
-      state.alertTelegraphed = null;
-      return { label: "STUNNED", action: "stunned", extra: null };
+      clearTele();
+      return { label: "STUNNED", action: "stunned", extra: null, targetPlayerId: root.targetPlayerId || null, priorityPlayerId: null, extraTargetPlayerId: null };
     }
-    // v15.0: 表示値は警報バフ＋照準を合算。警戒中は追加行動も予告する（予告は state に記録し、敵ターンが引き継ぐ）
-    // 正式版フェーズ1（A-2）: 警報バフは現在の帯域から導出し、追加行動は帯域の回数（1 or 2）で予告する
-    syncAlertBuff(state);
-    const buff = (state.alertBuff || 0) + (state.alertAim || 0);
+    // 主行動の対象（明示指定があればその素体、無ければ予告済み／ランダムで選んで保持する）
+    const main = hasPlayers
+      ? ((typeof ref !== "undefined" && ref !== null) ? resolvePlayer(root, ref) : selectTargetPlayer(root))
+      : null;
+    if (hasPlayers && main) root.targetPlayerId = main.playerId;
+    const mView = hasPlayers && main ? scopeFor(root, main) : root;
+    // v15.0: 表示値は対象素体の警報バフ＋照準を合算。警戒中は追加行動も予告する
+    // 正式版フェーズ1（A-2）: 警報バフは対象素体の現在の帯域から導出する
+    syncAlertBuff(mView);
+    const buff = ((main ? main.alertBuff : root.alertBuff) || 0) + ((main ? main.alertAim : root.alertAim) || 0);
     // スクラップ・ノイズのチャージがある間は、予告も半減後の実効値で出す（表示専用・消費しない）
     let shown = intent;
     if (isAttackIntent(intent)) {
       const rawValue = (intent.value || 0) + buff;
-      const shownValue = scrapHalvedValue(state, intent, rawValue);
+      const shownValue = scrapHalvedValue(mView, intent, rawValue);
       if (shownValue !== (intent.value || 0)) shown = { ...intent, value: shownValue };
     }
     const label = intentText(shown);
-    const kind = alertExtraKind(state);
-    state.alertTelegraphed = kind;
-    const band = noiseBand(state.noise);
+    // 追加行動の予告は排除優先度（帯域が最も高い素体）について組み、その素体へ記録する
+    const pri = hasPlayers ? priorityPlayer(root, false) : null;
+    const pView = pri ? scopeFor(root, pri) : null;
+    if (pView) syncAlertBuff(pView);
+    const kind = pView ? alertExtraKind(pView) : (hasPlayers ? null : alertExtraKind(root));
+    clearTele();
+    if (pri) pri.alertTelegraphed = kind;
+    else if (!hasPlayers) root.alertTelegraphed = kind;
+    const band = pri ? noiseBand(pri.noise) : noiseBand(hasPlayers ? 0 : (root.noise || 0));
     const extra = kind
-      ? { kind, count: band.extras, label: band.extras > 1 ? `${ALERT_EXTRA_LABEL[kind]} ×${band.extras}` : ALERT_EXTRA_LABEL[kind] }
+      ? { kind, count: band.extras, label: band.extras > 1 ? `${ALERT_EXTRA_LABEL[kind]} ×${band.extras}` : ALERT_EXTRA_LABEL[kind], targetPlayerId: pri ? pri.playerId : null }
       : null;
     // PROMPT-25: ラベルが STUNNED のインテント（チュートリアルの強制インテント等）も同じタグ表示にする
-    return { label, action: label === "STUNNED" ? "stunned" : (intent.action || ""), extra };
+    return {
+      label,
+      action: label === "STUNNED" ? "stunned" : (intent.action || ""),
+      extra,
+      targetPlayerId: main ? main.playerId : null,
+      priorityPlayerId: pri ? pri.playerId : null,
+      extraTargetPlayerId: pri ? pri.playerId : null,
+    };
   }
 
-  function intentLabel(state) {
-    return intentView(state).label;
+  function intentLabel(state, ref) {
+    return intentView(state, ref).label;
   }
 
-  function endTurn(state, rng) {
-    const log = [];
-    // 選択保留（search／discard／reposition）はターン終了で消散する（UI側でも選択中はターン終了をブロックする）
-    state.pendingPick = null;
+
+  // ==== 単位2-2: endTurn の「全員 ready で敵フェイズ」構造 ====
+  // マルチ（players.length > 1）では、endTurn(state, rng, playerRef) はそのプレイヤーの
+  // 終了宣言（ready）を記録するだけでは敵フェイズに入らず、全ての生存プレイヤーが
+  // ready になった時点で初めて、ターン終了時処理（プレイヤーごと）→敵フェイズ1回→
+  // 次ターン開始（生存プレイヤーごと）を一括解決する。未 ready の間は
+  // { allReady:false, readyCount, aliveCount, enemy:null } を返す。
+  // players.length === 1（ソロ）では宣言と同時に全員 ready となり、従来と同一の
+  // 順序・ログ・戻り値で即時解決する（不変条件）。
+  // 各プレイヤーのターン終了時処理（従来 endTurn の冒頭部。対象プレイヤーのスコープで実行）
+  function applyPlayerEndProcessing(view, log) {
+    // 選択保留（search／discard／reposition）はターン終了で消散する
+    view.pendingPick = null;
     // 『臨界排熱』（REACTOR固有OS）: 始動中はターン終了時に purgeCount 分のスリップダメージを
     // 受ける（コスト扱い＝BLK・軽減の対象外。0以下で敗北＝自滅あり）。
     // ヒートシンク（power kind "slip_halve"）がある場合は半減（切り上げ）
-    if (state.characterId === "vessel00" && state.purgeActive && (state.purgeCount || 0) > 0 && state.player.hp > 0) {
-      let slip = state.purgeCount || 0;
-      const halved = (state.powers || []).some((power) => power.kind === "slip_halve");
+    if (view.characterId === "vessel00" && view.purgeActive && (view.purgeCount || 0) > 0 && view.player.hp > 0) {
+      let slip = view.purgeCount || 0;
+      const halved = (view.powers || []).some((power) => power.kind === "slip_halve");
       if (halved) slip = Math.ceil(slip / 2);
-      state.player.hp = Math.max(0, state.player.hp - slip);
-      log.push(`臨界排熱 スリップ ${slip}  HP ${state.player.hp}`);
-      if (state.player.hp === 0) log.push("VESSEL DOWN (焼死)");
+      view.player.hp = Math.max(0, view.player.hp - slip);
+      log.push(`臨界排熱 スリップ ${slip}  HP ${view.player.hp}`);
+      if (view.player.hp === 0) log.push("VESSEL DOWN (焼死)");
     }
     // 『余剰電力装甲』（WEAVER固有OS）: ターン終了時点で残っているPWR × standbyArmor を
     // BLK に加算してから敵フェイズに入る（加算分はそのまま敵フェイズの攻撃を受ける。
-    // 残ったBLKの失効は従来どおり次の自ターン開始時）。磁気ホールド等の他処理より前に行う
-    const endCharDef = characterDef(state.characterId);
-    if (endCharDef.standbyArmor && (state.player.energy || 0) > 0) {
+    // 残ったBLKの失効は従来どおり次の自ターン開始時）
+    const endCharDef = characterDef(view.characterId);
+    if (endCharDef.standbyArmor && (view.player.energy || 0) > 0) {
       // プリミティブ #19 standby_armor_up（WEAVER W-08「塹壕モード」用の基盤）:
       // 変換率は機体固有値＋持続パワーの加算分
-      const armorUp = (state.powers || [])
+      const armorUp = (view.powers || [])
         .filter((power) => power.kind === "standby_armor_up")
         .reduce((sum, power) => sum + (power.value || 0), 0);
-      const armorGain = state.player.energy * (endCharDef.standbyArmor + armorUp);
-      state.player.block = (state.player.block || 0) + armorGain;
+      const armorGain = view.player.energy * (endCharDef.standbyArmor + armorUp);
+      view.player.block = (view.player.block || 0) + armorGain;
       log.push(`待機防護 +${armorGain}`);
     }
     // 保持割引は「保持した次のターン」限り。使われなかった分の割引はここで失効する
-    // （同じ実体がこの後の保持選択で選び直された場合だけ、翌ターンに新しい割引が付く）。
-    state.holdDiscountUid = 0;
-    const discarded = discardHand(state);
+    view.holdDiscountUid = 0;
+    const discarded = discardHand(view);
     log.push(`DISCARD ${discarded.length}`);
-    // UI（main.js runEnemyPhase）が敵ログの区間を特定するための開始位置。
-    // 待機防護など敵フェイズ前の行が増えても色分けがずれないよう、実位置を返す
-    const enemyLogStart = log.length;
-    const enemy = enemyTurn(state);
-    log.push(...enemy.log);
-    // 正式版フェーズ1（A-2）: 完全露呈の天井リセット。ノイズ10の敵フェイズは LOCKDOWN 相当で
-    // 解決し（noiseBand／enemyTurn 側）、フェイズ終了時に NOISE を 5 へ落とす（熱は深く残る）。
-    let exposedReset = false;
-    if ((state.noise || 0) >= NOISE_MAX) {
-      state.noise = 5;
-      syncAlertBuff(state);
-      exposedReset = true;
-      log.push("完全露呈 - 警報リセット  NOISE 5 (熱が残っている)");
-    }
-    state.turn += 1;
-    const started = beginPlayerTurn(state, rng);
-    log.push(...started.log);
-    return { log, discarded, drawn: started.drawn, enemy, exposedReset, enemyLogStart };
+    return discarded;
   }
 
-  function pileCount(state) {
+  // 全員 ready 後の 一括解決。ソロ（players.length === 1）では従来 endTurn と同一の
+  // 処理順・ログ順になる（終了処理→敵フェイズ→完全露呈リセット→turn+1→自ターン開始）。
+  // マルチでは死亡した素体の終了処理・次ターン開始は行わない（戦闘中復帰なし）。
+  function resolveFullTurn(root, rng) {
+    const log = [];
+    const single = root.players.length === 1;
+    const perPlayer = {};
+    const discardedAll = [];
+    const drawnAll = [];
+    for (const p of root.players) {
+      perPlayer[p.playerId] = { discarded: [], drawn: [] };
+      if (!single && (p.hp || 0) <= 0) { p.ready = false; continue; }
+      const discarded = applyPlayerEndProcessing(scopeFor(root, p), log);
+      discardedAll.push(...discarded);
+      perPlayer[p.playerId].discarded = discarded;
+    }
+    // UI（main.js runEnemyPhase）が敵ログの区間を特定するための開始位置
+    const enemyLogStart = log.length;
+    const enemy = enemyTurn(root, rng);
+    log.push(...enemy.log);
+    // 正式版フェーズ1（A-2）: 完全露呈の天井リセット。ノイズ10の敵フェイズは LOCKDOWN 相当で
+    // 解決し（noiseBand／enemyTurn 側）、フェイズ終了時にその素体の NOISE を 5 へ落とす
+    let exposedReset = false;
+    for (const p of root.players) {
+      if ((p.noise || 0) >= NOISE_MAX) {
+        p.noise = 5;
+        p.alertBuff = noiseBand(p.noise).atk;
+        exposedReset = true;
+        log.push(single
+          ? "完全露呈 - 警報リセット  NOISE 5 (熱が残っている)"
+          : `完全露呈 - 警報リセット  NOISE 5 (熱が残っている) [${p.playerId}]`);
+      }
+    }
+    root.turn += 1;
+    for (const p of root.players) {
+      if (!single && (p.hp || 0) <= 0) { p.ready = false; continue; }
+      const started = beginPlayerTurn(root, rng, p);
+      log.push(...started.log);
+      drawnAll.push(...started.drawn);
+      perPlayer[p.playerId].drawn = started.drawn;
+    }
+    const partyDown = isPartyDown(root);
+    return { log, discarded: discardedAll, drawn: drawnAll, enemy, exposedReset, enemyLogStart, allReady: true, perPlayer, defeat: partyDown, partyDown };
+  }
+
+  function endTurn(state, rng, ref) {
+    const root = rootOf(state);
+    if (!root || !Array.isArray(root.players) || root.players.length === 0) {
+      return { ok: false, allReady: false, log: [], discarded: [], drawn: [], enemy: null, exposedReset: false, enemyLogStart: 0 };
+    }
+    if (root.players.length === 1) {
+      root.players[0].ready = true;
+      return resolveFullTurn(root, rng);
+    }
+    const declarer = resolvePlayer(state, ref) || root.players[0];
+    if ((declarer.hp || 0) > 0) {
+      // 宣言したプレイヤーの選択保留はその時点で消散する（従来の endTurn 冒頭処理に相当）
+      declarer.pendingPick = null;
+      declarer.ready = true;
+    }
+    const alive = alivePlayers(root);
+    if (alive.length === 0) {
+      return {
+        ok: true, allReady: true, defeat: true, partyDown: true,
+        log: ["ALL VESSELS DOWN"], discarded: [], drawn: [],
+        enemy: { log: [], outcome: "party_down", damage: 0, call: "", action: null, targetPlayerId: null, alert: { telegraphed: null, kind: null, cancelled: false, count: 0, band: "calm", targetPlayerId: null, priorityPlayerId: null, extraTargetPlayerId: null } },
+        exposedReset: false, enemyLogStart: 0, perPlayer: {},
+      };
+    }
+    if (!alive.every((p) => p.ready)) {
+      return {
+        ok: true, ready: true, allReady: false, playerId: declarer.playerId,
+        readyCount: alive.filter((p) => p.ready).length, aliveCount: alive.length,
+        log: [], discarded: [], drawn: [], enemy: null, exposedReset: false, enemyLogStart: 0,
+      };
+    }
+    return resolveFullTurn(root, rng);
+  }
+
+
+  function pileCount(state, ref) {
+    state = scopeFor(state, resolvePlayer(state, ref));
     return state.drawPile.length + state.hand.length + state.discard.length + (state.exhaust ? state.exhaust.length : 0) + (state.retained ? 1 : 0) + (state.traps ? state.traps.length : 0);
   }
 
@@ -1738,6 +2396,8 @@
     startCombat,
     shuffle,
     createState,
+    serializeState,
+    hydrateState,
     applyEnemy,
     requirementMet,
     canPlay,
@@ -1752,5 +2412,18 @@
     intentLabel,
     intentView,
     pileCount,
+    // 単位2-2: マルチプレイ用 API（対象プレイヤーの解決／生存・ready・帯域の参照）
+    resolvePlayer,
+    alivePlayers,
+    isPartyDown,
+    isAllReady,
+    priorityPlayer,
+    alertInfoFor,
+    selectTargetPlayer,
+    declareEndTurn: endTurn,
+    // 単位2-4: 人数スケーリングの下地（倍率表と参照ヘルパー。適用の ON は段階(4)）
+    PARTY_SCALING,
+    partyScalingFor,
+    isBossEnemy,
   };
 })(typeof window !== "undefined" ? window : globalThis);

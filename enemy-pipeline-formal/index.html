@@ -137,10 +137,15 @@
     </div>
   </section>
 
+  <!-- JOB 3M-3: 正式版専用クリア画面（全面オーバーレイ）。旧デモ版由来の謝辞見出し表示は
+       本人の確定判断（計画 判断記録・論点7）で廃止。
+       見出し等の文言は仮文言であり、正式文言は文章フロー 3M-T で差し替える（3M-3-MEMO 参照）。
+       実績（使用素体・残HP・撃破数）は main.js の updateClearStats() が表示時に流し込む。 -->
   <section class="clear-screen" id="clear-screen" hidden aria-label="クリア">
     <p class="clear-screen__kicker">【 MISSION ACCOMPLISHED 】</p>
-    <h2 class="clear-screen__title">THANK YOU FOR PLAYING</h2>
-    <p class="clear-screen__sub">- FORMAL VERSION -</p>
+    <h2 class="clear-screen__title">全層突破</h2><!-- 仮文言・3M-Tで差し替え -->
+    <p class="clear-screen__sub">作戦完了 — FORMAL VERSION</p><!-- 仮文言・3M-Tで差し替え -->
+    <div class="clear-screen__stats" id="clear-stats" aria-label="ランの実績"></div>
     <div class="clear-screen__actions">
       <button type="button" class="clear-screen__return" id="clear-return">RETURN TO TERMINAL（タイトルへ戻る）</button>
       <a class="clear-screen__return clear-screen__share" id="clear-share" href="https://x.com/intent/post" target="_blank" rel="noopener">POST TO X</a>
@@ -345,10 +350,14 @@
                 <button type="button" class="sheet__go" id="restart-run">通信途絶 (CONNECTION LOST)</button>
               </div>
 
+              <!-- JOB 3M-3: 正式版専用クリア画面（デスク内シート）。全面オーバーレイ #clear-screen と対で、
+                   文言は仮文言（正式文言は 3M-T で差し替え）。実績は main.js の updateClearStats() が流し込む。 -->
               <div class="scene scene--sheet" id="scene-clear" hidden>
                 <p class="sheet__kicker sheet__kicker--clear">【 MISSION ACCOMPLISHED 】</p>
                 <h2 class="sheet__title">PIPELINE BREACHED</h2>
-                <p class="sheet__copy">THANK YOU FOR PLAYING - FORMAL VERSION</p>
+                <p class="sheet__copy">全層を突破し、作戦は完了した。</p><!-- 仮文言・3M-Tで差し替え -->
+                <div class="clear-stats clear-stats--sheet" id="clear-stats-sheet" aria-label="ランの実績"></div>
+                <a class="sheet__go clear-sheet__share" id="clear-share-sheet" href="https://x.com/intent/post" target="_blank" rel="noopener">POST TO X</a>
                 <button type="button" class="sheet__go" id="return-terminal">RETURN TO TERMINAL（タイトルへ戻る）</button>
               </div>
             </div>

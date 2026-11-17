@@ -104,7 +104,21 @@
     return ids[hash % ids.length];
   }
 
-  function encounterFor(node) {
+  /* JOB 3M-1 (C-3): 層ボスIDテーブル。encounterFor はこのテーブル経由で層ボスを解決する。
+     第1層は従来の GATEKEEPER ハードコードと等価。第2・3層は enemies.js の仮プロファイル
+     （GATEKEEPER の複製）を指し、敵実装ジョブで本プロファイルへ差し替える置き場。 */
+  const LAYER_BOSS_IDS = Object.freeze({
+    1: "enemy_gatekeeper",
+    2: "enemy_gatekeeper_l2",
+    3: "enemy_gatekeeper_l3",
+  });
+
+  function bossIdForLayer(mapIndex) {
+    const idx = mapIndex >= 1 && mapIndex <= 3 ? mapIndex : 1;
+    return LAYER_BOSS_IDS[idx];
+  }
+
+  function encounterFor(node, mapIndex) {
     const type = node.hiddenType;
     if (type === "BATTLE") {
       return { kind: "combat", type, name: "サイボーグ哨戒兵", short: "哨戒兵", hp: 30 };
@@ -123,6 +137,20 @@
       };
     }
     if (type === "BOSS") {
+      // JOB 3M-1 (C-3): 層ボスIDテーブル経由で解決。第1層は従来ハードコードと等価な値になる。
+      const bossId = bossIdForLayer(mapIndex);
+      const profile = root.Enemies && root.Enemies.get(bossId);
+      if (profile) {
+        return {
+          kind: "combat",
+          type,
+          enemyId: profile.id,
+          name: profile.name,
+          short: (root.Enemies.short && root.Enemies.short(profile.id)) || profile.name,
+          hp: profile.max_hp,
+          image: profile.image || "",
+        };
+      }
       return { kind: "combat", type, enemyId: "enemy_gatekeeper", name: "重装甲サイボーグ『GATEKEEPER』", short: "GATEKEEPER", hp: 120, image: "assets/cctv_enemy_gatekeeper.png" };
     }
     if (type === "SAFEHOUSE") return { kind: "rest", type, heal: REST_HEAL };
@@ -140,6 +168,10 @@
   function generate(rng, options) {
     const random = randomOf(rng);
     const opts = options || {};
+    // JOB 3M-1 (C-2): 層パラメータ（options.mapIndex / options.layer、1〜3）を受け取れるようにする。
+    // 幅の既定値は当面現行 DEFAULT_WIDTHS のまま（本適用は次工程 3M-2）。生成ロジック自体は流用。
+    const rawLayer = opts.mapIndex != null ? opts.mapIndex : opts.layer;
+    const mapIndex = rawLayer >= 1 && rawLayer <= 3 ? rawLayer : 1;
     const widths = Array.isArray(opts.widths) && opts.widths.length > 0
       ? opts.widths.map((n) => Math.max(1, n | 0))
       : DEFAULT_WIDTHS.slice();
@@ -188,6 +220,7 @@
       scansLeft: scans,
       scanMax: scans,
       floorCount: floors.length,
+      mapIndex, // JOB 3M-1 (C-2): このマップが属する層（正は run.mapIndex、route は現在のマップ分のみ保持）
     };
   }
 
@@ -251,7 +284,7 @@
       ok: true,
       node: target,
       ambush: target.isFake === true,
-      encounter: encounterFor(target),
+      encounter: encounterFor(target, map && map.mapIndex),
     };
   }
 
@@ -270,5 +303,7 @@
     move,
     grantScans,
     encounterFor,
+    LAYER_BOSS_IDS,
+    bossIdForLayer,
   };
 })(typeof window !== "undefined" ? window : globalThis);

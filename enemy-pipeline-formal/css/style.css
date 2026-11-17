@@ -3168,6 +3168,35 @@ button { color: inherit; }
   text-decoration: none;
 }
 
+/* JOB 3M-3: 専用クリア画面のラン実績表示（全面オーバーレイ／デスク内シート共通の行組み） */
+.clear-screen__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: clamp(12px, 1.6vw, 16px);
+  letter-spacing: 0.1em;
+  color: #b9ffcb;
+  text-shadow: 0 0 6px rgba(0, 255, 80, 0.4);
+}
+
+.clear-stats__row { margin: 0; }
+
+.clear-stats--sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 8px 0 4px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+
+.clear-sheet__share {
+  display: inline-block;
+  text-decoration: none;
+  margin-right: 8px;
+}
+
 body.is-dead .comms {
   position: relative;
   z-index: 1001;
