@@ -47,14 +47,15 @@
     enemy_gatekeeper: "GATEKEEPER",
   });
 
-  // 戦闘演出強化 段階1（JOB 1-2）: ポーズ画（攻撃／被弾）。カタログ本体とは分離して持ち、
-  // make() が image_attack／image_hit として配る。未登録の敵（GATEKEEPER 等）は
+  // 戦闘演出強化 段階1（JOB 1-2／1-5）: ポーズ画（攻撃／被弾）。カタログ本体とは分離して持ち、
+  // make() が image_attack／image_hit として配る。未登録の敵は
   // make() 側で待機画（image）へフォールバックする。
   const POSES = Object.freeze({
     enemy_sentry: Object.freeze({ attack: "assets/cctv_enemy_sentry_attack.webp", hit: "assets/cctv_enemy_sentry_hit.webp" }),
     enemy_cyborg_elite: Object.freeze({ attack: "assets/cctv_enemy_elite_attack.webp", hit: "assets/cctv_enemy_elite_hit.webp" }),
     enemy_defense_mech: Object.freeze({ attack: "assets/cctv_enemy_mech_attack.webp", hit: "assets/cctv_enemy_mech_hit.webp" }),
     enemy_rival_vessel: Object.freeze({ attack: "assets/cctv_enemy_ghost_attack.webp", hit: "assets/cctv_enemy_ghost_hit.webp" }),
+    enemy_gatekeeper: Object.freeze({ attack: "assets/cctv_enemy_gatekeeper_attack.webp", hit: "assets/cctv_enemy_gatekeeper_hit.webp" }),
   });
 
   const ELITE_IDS = Object.freeze(CATALOG.map((enemy) => enemy.id));

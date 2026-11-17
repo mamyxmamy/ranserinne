@@ -20,6 +20,10 @@
 html, body {
   margin: 0;
   height: 100%;
+  /* iOS Safari の自動テキストサイズ調整（text inflation）を止める。
+     px固定の箱に対して文字だけが拡大され、レイアウトが崩れるのを防ぐ（LAYOUT-SAFARI 調査 案1） */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -2211,8 +2215,10 @@ button { color: inherit; }
   height: auto;
   display: grid;
   grid-template-columns: repeat(6, 1fr);
-  grid-auto-rows: 3px;
-  gap: 2px;
+  /* DISPLAY-FIX: 孔ビットの占有高を 44px→29px に圧縮し、カード高が不足する帯でも
+     ビットが孔エリア外へ溢れないようにする（CARD-ART 調査 案B） */
+  grid-auto-rows: 2px;
+  gap: 1px;
   padding: 3px;
   background:
     repeating-linear-gradient(90deg, transparent 0 7px, rgba(0, 0, 0, 0.28) 7px 8px),
@@ -3252,6 +3258,9 @@ body.is-dead .comms {
 .reward-offers .punchcard {
   margin-left: 0;
   height: auto;
+  /* DISPLAY-FIX: 低い画面で aspect-ratio 由来の高さ（104px幅→69px等）が内容の必要高を
+     下回り、名前・効果文の行と孔エリアが潰れるため、必要高の下限を保証する（CARD-ART 調査 案A） */
+  min-height: 104px;
   flex: 1 1 0;
   min-width: 0;
   max-width: 168px;

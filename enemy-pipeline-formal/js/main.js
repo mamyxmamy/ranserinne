@@ -415,7 +415,6 @@ const ui = {
   skip: $("skip"),
   desk: $("desk"),
   screen: $("screen"),
-  power: $("power"),
   mission: $("mission"),
   tactical: $("tactical"),
   log: $("log"),
@@ -1638,10 +1637,13 @@ function renderEnemyIntent() {
   ui.intent.dataset.action = view.action || "";
   // v15.0: 警戒段階では追加行動の予告をインテントに明示する
   ui.intent.dataset.alert = view.extra ? view.extra.kind : "";
-  const label = view.label
-    + ((battle.alertBuff || 0) > 0 ? ` 〈警報+${battle.alertBuff}〉` : "")
+  // DISPLAY-FIX: 上部バッジは基本ラベル＋警報までとし、〈追加行動：…〉は中央バナーだけに載せる。
+  // バッジが長いラベルで横に伸び、CCTV左上の TARGET 表示に重なるのを防ぐ（CARD-ART 調査 #3）
+  const badgeLabel = view.label
+    + ((battle.alertBuff || 0) > 0 ? ` 〈警報+${battle.alertBuff}〉` : "");
+  const label = badgeLabel
     + (view.extra ? ` 〈${view.extra.label}〉` : "");
-  imprint(ui.intent, label);
+  imprint(ui.intent, badgeLabel);
   // 実機報告 2026-11-15: 戦闘中はインテント表示を CCTV 中央のバナー1か所に統一する
   // （v15.3 案A の上部バッジとの二重表示はやめる。バッジは戦闘外のフェイズ表示専用）
   ui.intent.style.display = "none";
@@ -2499,28 +2501,29 @@ const LOCKED_VESSEL_INFO = {
 };
 let vesselCursor = 0;
 
-// 表示文（CRT表示／フレーバー）: 2026-11-17「選択画面フレーバー正典版書き換え」で仮実装。
-// 下書き SELECT-PROFILE-DRAFT.md → 独立精査 SELECT-PROFILE-AUDIT.md（要修正2点反映済み）→ 本人の最終判断待ち。
-// 07／04 は本人原文への提案として書き換えた仮実装であり、確定ではない。詳細は SELECT-PROFILE-REWRITE-REPORT.md。
+// 表示文（CRT表示／フレーバー）: 2026-11-17「選択画面フレーバー正典版書き換え」で全件確定。
+// 下書き SELECT-PROFILE-DRAFT.md → 独立精査 SELECT-PROFILE-AUDIT.md（要修正2点反映済み）→ 本人が確認リスト #1〜#8 を全件確定し、最終形を反映済み。
+// 詳細は SELECT-PROFILE-FINAL-REPORT.md（仮実装時の経緯は SELECT-PROFILE-REWRITE-REPORT.md）。
 const VESSEL_PROFILES = {
   vessel07: {
     sys: "[SYS] VESSEL 07 ONLINE.\nBALANCED CQC & STEALTH PROTOCOLS ACTIVE.\n> 汎用潜入素体・リンク確立。",
     flavor: "「使い古された型落ちの機体だが、泥臭い潜入任務には一番手に馴染む。最新鋭のデジタル防壁も、駆動音を殺して放つアナログな物理打撃（CQC）の連続には対応できない。誰の体だったかは、もう記録に残っていない。それでも手は覚えている。生き残りたければ、基本を忘れるな。」",
     img: "assets/cctv_vessel_expose.png",
   },
+  // 2026-11-17 本人確定（確認リスト #1）: flavor は案B（盾役を匂わせる）。「坑道採掘用」は正典（部隊の盾役の義体）により除去済み。
   vessel04: {
     sys: "[SYS] VESSEL 04 \"GOLIATH\" LINKED.\nWARNING: STEALTH MODULE NOT FOUND. MASS: CRITICAL.\n> 警告：隠蔽機構が欠損しています。総質量、規定値を大幅に超過。",
-    flavor: "「これを潜伏作戦と呼ぶのは、上層部のひどい冗談だ。バカげた質量で、見つかる前にすべての防壁と警備AIを粉砕する。起動するだけで施設中に爆音が響き渡るが、気にするな。こいつは昔から、弾の飛ぶ場所で一番前に立ってきた。最後に立っているのがこちらなら、それは完璧なステルスだ。」",
+    flavor: "「これを潜伏作戦と呼ぶのは、上層部のひどい冗談だ。誰かの前に立つためだけに盛られたバカげた質量で、見つかる前にすべての防壁と警備AIを粉砕する。起動するだけで施設中に爆音が響き渡るが、気にするな。最後に立っているのがこちらなら、それは完璧なステルスだ。」",
     img: "assets/vessel04_goliath.webp", // 専用立ち絵（楕円ソフトアルファ済み）
   },
-  // ⚠ 2026-11-17 正典版書き換えで仮実装（本人の最終判断待ち）: 「聞き手」の残響を足し、精査の圧縮案を反映。
+  // 2026-11-17 本人確定（確認リスト #4）: 「聞き手」の残響を足した下書き改訂案の全文で確定（精査の圧縮案は不採用）。
   // 通信兵の出自は匂わせに留め、性別・兵種の断定はしていない。
   vessel09: {
     sys: "[SYS] VESSEL 09 \"GHOST-TAPE\" LINKED.\nMAGNETIC HOLD OS: READY. NOISE LIMIT: 05.\n> 逆位相補正を開始。存在しない音声を検出しています。",
-    flavor: "「こいつの装甲は、笑ってしまうほど薄い。代わりに機体の中では何十本もの磁気テープが回り続け、消すべき音と残すべき音を選別している。派手な勝ち方はできない。だが無駄を削ぎ落とした先で、敵は自分がいつ敗れたのか最後まで気づかない。今もテープは回り続けている。誰の声も、最後まで聞き届けるために。」",
+    flavor: "「こいつの装甲は、笑ってしまうほど薄い。代わりに機体の中では何十本もの磁気テープが回り続け、消すべき音と残すべき音を選別している。派手な勝ち方はできない。だが、すべての無駄を削ぎ落とした先で、敵は自分がいつ敗れたのか最後まで気づかない。今もテープは回り続けている。誰の声も、最後まで聞き届けるために。」",
     img: "assets/vessel09_ghosttape.webp", // 専用立ち絵（候補1「リール肩型」・楕円ソフトアルファ済み）
   },
-  // ⚠ 2026-11-17 正典版書き換えで仮実装（本人の最終判断待ち）: 精査に従い「死線（ワイヤー）」のルビを復元
+  // 2026-11-17 本人確定（確認リスト #5・#6）: 精査に従い「死線（ワイヤー）」のルビを復元し、sys の「罠師」明示は現行のまま確定
   // （本人の WEAVER 設計書 §1 の命名。下書きの「糸と鉄線」への置換は精査で却下）。
   // 罠師・寡黙な職人肌の出自は匂わせに留め、過去の断定はしていない（実装追補 §5）。
   // 立ち絵は 2026-11-17 に候補1「蜘蛛型＋背部ボビン」を本人が公式として選択・配線済み。
@@ -2529,9 +2532,9 @@ const VESSEL_PROFILES = {
     flavor: "「こいつは自分から殴りに行く機体じゃない。暗がりに死線（ワイヤー）を張り巡らせ、わざと音を立てて敵を誘い、踏み込んできたところを静かに仕留める。……昔、誰かが言っていたそうだ。『罠は待つ者の味方だ』と。派手さはない。だが格納庫で一番、帰りを待つ価値のある背中だ。」",
     img: "assets/vessel13_weaver.webp", // 専用立ち絵（候補1「蜘蛛型＋背部ボビン」・楕円ソフトアルファ済み）
   },
-  // ⚠ 2026-11-17 正典版書き換えで仮実装（本人の最終判断待ち）: 下書き案A＋精査修正（「統括リンクの刻印」）。
+  // 2026-11-17 本人確定（確認リスト #7・#8）: 下書き案A（重い）＋精査修正（「統括リンクの刻印」）で確定。
   // 最初の犠牲者の素性（パンドラの元妻）は直書きしない規律を守り、「最初の犠牲者」「棺桶」の仄めかしに留める。
-  // sys は下書き案を仮採用（REACTOR実装バッチの仮文との差分は SELECT-PROFILE-REWRITE-REPORT.md に明記）。
+  // sys は下書き案で確定（REACTOR実装バッチの仮文との差分は SELECT-PROFILE-REWRITE-REPORT.md に明記）。
   vessel00: {
     sys: "[SYS] VESSEL 00 \"REACTOR\" LINKED.\nWARNING: LIMITER NOT FOUND. CORE TEMP: RISING.\n> 警告：安全装置が存在しません。炉心温度、上昇中。",
     flavor: "「格納庫の奥に、鍵をかけて封じてある一体がある。部隊が編まれる前に作られた実験機。リミッターという言葉が生まれる前に死んだ、最初の犠牲者の棺桶だ。繋げば今も熱を持っている。だがこの機体に、統括リンクの刻印はない。無理やり繋いだ分だけ、返ってくる痛みも一番強い。それでも降りるというのなら止めはしない。覚悟だけはしておけ。」",
@@ -3271,6 +3274,7 @@ async function presentRadio(lines, opts = {}) {
   const live = () => token === radioToken && session.phase === wantPhase;
   for (let i = 0; i < lines.length; i += 1) {
     radioReady = false;
+    session.advance = false;
     ui.radioNext.hidden = true;
     const typed = await typeText(ui.radioLine, lines[i], live, { gap: 22, caret: true, radio: true });
     if (!typed || !live()) return false;
@@ -5290,7 +5294,6 @@ ui.diveBtn.addEventListener("click", (event) => {
 ui.introVideo.addEventListener("click", () => {
   if (attractStage === "title") diveFromTitle();
 });
-ui.power.addEventListener("click", () => { opening(); });
 ui.start.addEventListener("click", () => {
   if (audio) audio.unlock();
   if (session.phase !== "title" || session.busy) return;
@@ -5332,10 +5335,19 @@ if (ui.pickConfirm) ui.pickConfirm.addEventListener("click", (event) => {
   event.stopPropagation();
   finishPickSelect();
 });
-ui.screen.addEventListener("click", () => {
-  // 検収修正 2026-11-10 (PROMPT-20): 通信送りは戦闘以外（MAP/BOOT）の通信でも効かせる
-  if (!radioReady || !radioOpen) return;
-  advanceRadio();
+// 通信送り（2026-11-17 UX修正。旧 ui.screen の click ハンドラから移行）:
+// 通信表示中は通信パネルの内外を問わず、画面のどこを押しても進む（戦闘以外＝MAP/BOOT の通信でも同様）。
+// pointerdown で拾うのは、カード操作等の preventDefault で click が潰れる経路でも効かせるため。
+// 表示中（印字中）のタップはその行を即時完了させ、表示済みのタップは次行へ送る。
+// ボタン内のタップは本来の動作（SOUND切替・END TURN等）を優先して進めない。
+document.addEventListener("pointerdown", (event) => {
+  if (!radioOpen) return;
+  if (event.target.closest && event.target.closest("button")) return;
+  if (radioReady) {
+    advanceRadio();
+    return;
+  }
+  session.advance = true; // 印字中のタップ → その行を即時完了させる
 });
 ui.routeReturn.addEventListener("click", () => {
   if (session.phase === "reward") skipReward();
