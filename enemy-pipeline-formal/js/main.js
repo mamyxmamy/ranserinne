@@ -136,6 +136,17 @@ function markWeaverUnlocked() {
   try { window.localStorage.setItem(WEAVER_UNLOCK_STORE, "1"); }
   catch { /* storage unavailable */ }
 }
+// 解禁キャラ4（最終機体）VESSEL 00 "REACTOR" の解禁フラグ（実装追補 DESIGN-REACTOR-IMPL-ADDENDUM.md、2026-11-17 本人決定）。
+// 解禁条件: VESSEL 13 "WEAVER" を使ってランをクリアした時点。解禁連鎖は 07 → GOLIATH → GHOST-TAPE → WEAVER → REACTOR で完成する。
+const REACTOR_UNLOCK_STORE = "enemy-pipeline-formal-reactor-unlock-v1";
+function reactorUnlocked() {
+  try { return window.localStorage.getItem(REACTOR_UNLOCK_STORE) === "1"; }
+  catch { return false; }
+}
+function markReactorUnlocked() {
+  try { window.localStorage.setItem(REACTOR_UNLOCK_STORE, "1"); }
+  catch { /* storage unavailable */ }
+}
 async function maybeAlertIntro() {
   if (alertIntroSeen() || !battle || session.phase !== "combat") return;
   if (battle.player.hp <= 0 || battle.enemy.dead) return;
@@ -288,6 +299,15 @@ function blurb(card) {
     if (effect.type === "damage_hold_bonus") parts.push(`ダメージ ${effect.value}（保持中 +${effect.per}）`);
     if (effect.type === "damage_per_negative_noise") parts.push(`ダメージ ${effect.value}＋逆位相×${effect.per}`);
     if (effect.type === "block_per_trap") parts.push(`防護 +${effect.value}＋設置罠×${effect.per}（最大+${effect.cap}）`);
+    // REACTOR 専用プリミティブ（DESIGN-POOL-EXPANSION2-DRAFT.md §6、2026-11-17 実装）
+    if (effect.type === "damage_per_hp_lost") parts.push((effect.perHp || 1) > 1
+      ? `ダメージ ${effect.value}＋減少HP/${effect.perHp}`
+      : `ダメージ ${effect.value}＋減少HP`);
+    if (effect.type === "damage_per_slip") parts.push(`ダメージ ${effect.value}＋臨界カウンタ×${effect.per}`);
+    if (effect.type === "damage_equal_hp_fraction") parts.push(`ダメージ ${effect.value}＋現在HP/${effect.denom || 2}（自傷 現在HP/${effect.denom || 2}）`);
+    if (effect.type === "purge_start") parts.push("臨界排熱 始動（廃棄で蓄積／ターン終了時スリップ）");
+    if (effect.type === "purge_reduce") parts.push(`臨界カウンタ −${effect.value}`);
+    if (effect.type === "draw_if_hp_le") parts.push(`${effect.value}ドロー（HP${Math.round((effect.threshold || 0.25) * 100)}%以下なら${effect.bonus}ドロー）`);
     if (effect.type === "next_attack_bonus") parts.push(`次の攻撃 +${effect.value}`);
     if (effect.type === "trap" && effect.kind === "audio_mine") parts.push(`設置：NOISE ${effect.minNoise || 3}以上で敵行動時に発動 ${effect.damage}ダメージ＋行動キャンセル`);
     if (effect.type === "trap" && effect.kind === "echo_mine") parts.push(`設置：NOISE ${effect.minNoise || 2}以上で敵行動時に発動 ${effect.damage}ダメージ＋スタン +${effect.stun || 0}`);
@@ -305,6 +325,7 @@ function blurb(card) {
       : effect.kind === "turn_start_noise_damage" ? `戦闘中 毎ターン 開始時ノイズ×${effect.value}ダメージ`
       : effect.kind === "standby_armor_up" ? `戦闘中 待機防護の変換率 +${effect.value}`
       : effect.kind === "trap_damage_up" ? `戦闘中 罠ダメージ +${effect.value}`
+      : effect.kind === "slip_halve" ? "戦闘中 ターン終了時のスリップ半減（切り上げ）"
       : "戦闘中 持続効果");
     if (effect.type === "tread") parts.push("このターン被ダメをノイズ分軽減");
     if (effect.type === "draw_penalty_next") parts.push(`次ドロー -${effect.value}`);
@@ -327,10 +348,16 @@ function face(card) {
   const rules = blurb(card);
   // 『磁気ホールド』: 保持されて戻ってきた実体は、このターンだけ実効コスト −1 で表示する
   const held = !!card.__heldNow;
+  // 『炉心溶融』（REACTOR固有OS）: 現在のPWRでは足りないが HP を燃やして使用できるカードは
+  // コスト数値を赤く点滅させる（makeCard の is-meltdown／CSS）。使用可否の最新化は refreshHand でも行う
+  const meltdown = !!(typeof run !== "undefined" && run && run.character === "vessel00"
+    && typeof battle !== "undefined" && battle && battle.player
+    && !curse && (card.cost || 0) > (battle.player.energy || 0));
   return {
     id: card.id,
     uid: card.__uid || 0,
     held,
+    meltdown,
     code: CODE_BY_ID[card.id] || CODE_BY_TYPE[card.type] || "ORD",
     name: card.name,
     cost: held ? Math.max(0, (card.cost || 0) - 1) : card.cost,
@@ -436,6 +463,8 @@ const ui = {
   cctvScene: $("cctv-scene"),
   cctvRoom: $("cctv-room"),
   cctvEnemy: $("cctv-enemy"),
+  cctvLock: $("cctv-lock"),
+  cctvAllyLock: $("cctv-allylock"),
   cctvVessel: $("cctv-vessel"),
   cctvDummy: $("cctv-dummy"),
   cctvTarget: $("cctv-target"),
@@ -468,6 +497,8 @@ const ui = {
   relicsLabel: $("relics-label"),
   traps: $("traps"),
   trapsLabel: $("traps-label"),
+  purge: $("purge"),
+  purgeLabel: $("purge-label"),
   relicTip: $("relic-tip"),
   relicTipName: $("relic-tip-name"),
   relicTipBody: $("relic-tip-body"),
@@ -868,6 +899,7 @@ function makeCard(spec) {
   card.dataset.stance = spec.stance || "";
   card.dataset.ink = spec.ink;
   if (spec.exhaust) { card.classList.add("is-exhaust"); card.dataset.exhaust = "1"; }
+  if (spec.meltdown) card.classList.add("is-meltdown");
   if (spec.curse) card.classList.add("is-curse");
   if (spec.oversized) card.classList.add("is-oversized");
   if (spec.flavor) card.dataset.flavor = spec.flavor;
@@ -880,6 +912,7 @@ function makeCard(spec) {
   const code = document.createElement("span");
   code.textContent = spec.code;
   const cost = document.createElement("span");
+  cost.className = "punchcard__cost";
   cost.textContent = spec.curse ? "呪装" : `PWR ${spec.cost}`;
   head.append(code, cost);
 
@@ -979,6 +1012,21 @@ function renderStance() {
     }
     ui.cctvVessel.classList.toggle("is-cover", cover);
     ui.cctvVessel.classList.toggle("is-expose", !cover);
+    if (ui.cctvAllyLock) {
+      ui.cctvAllyLock.classList.toggle("is-cover", cover);
+      ui.cctvAllyLock.classList.toggle("is-expose", !cover);
+      if (ui.cctvVessel.naturalWidth > 0) {
+        ui.cctvAllyLock.style.aspectRatio = ui.cctvVessel.naturalWidth + " / " + ui.cctvVessel.naturalHeight;
+        ui.cctvAllyLock.hidden = false;
+      } else {
+        ui.cctvVessel.onload = () => {
+          if (ui.cctvVessel.naturalWidth > 0) {
+            ui.cctvAllyLock.style.aspectRatio = ui.cctvVessel.naturalWidth + " / " + ui.cctvVessel.naturalHeight;
+            ui.cctvAllyLock.hidden = false;
+          }
+        };
+      }
+    }
   }
 }
 
@@ -1120,6 +1168,7 @@ function renderCombat() {
   renderNoise();
   renderEnemyIntent();
   renderTraps();
+  renderPurge();
   updateLowHpBgm();
   updateBossAlert();
 }
@@ -1141,6 +1190,22 @@ function renderTraps() {
     chip.textContent = def ? def.name.replace(/\s*\(.+\)$/, "") : trap.cardId;
     ui.traps.append(chip);
   }
+}
+
+// 『臨界排熱』（REACTOR固有OS）: 始動中の蓄積チップ（左パネル・TRAPS の流儀）。
+// 現在の蓄積（与ダメ加算とターン終了時スリップは同じ値）が戦闘中に読めるようにする
+function renderPurge() {
+  if (!ui.purge) return;
+  const live = !!(battle && session.phase === "combat" && battle.characterId === "vessel00" && battle.purgeActive);
+  ui.purge.hidden = !live;
+  if (ui.purgeLabel) ui.purgeLabel.hidden = !live;
+  ui.purge.replaceChildren();
+  if (!live) return;
+  const chip = document.createElement("span");
+  chip.className = "purge-chip";
+  const n = battle.purgeCount || 0;
+  chip.textContent = `臨界 +${n}（与ダメ +${n}／終了時スリップ ${n}）`;
+  ui.purge.append(chip);
 }
 
 function renderEnemyIntent() {
@@ -1272,6 +1337,10 @@ function refreshHand() {
     const scripted = tutorialLock(el.dataset.id);
     const locked = scripted || !check.ok;
     el.classList.toggle("is-locked", locked);
+    // 『炉心溶融』: REACTOR のランで PWR不足だが HP で払えるカードはコストを赤点滅させる
+    const meltdown = !!(battle && battle.characterId === "vessel00" && check.ok && !card.unplayable
+      && Battle.effectiveCost(battle, card) > (battle.player.energy || 0));
+    el.classList.toggle("is-meltdown", meltdown);
     el.classList.toggle("is-tutor", !scripted && ((tutorialStep === "t1" && el.dataset.id === "defend_cover") || (tutorialStep === "t3" && !tutorialLock(el.dataset.id))));
     const why = check.ok ? "" : reasonText(check.reason);
     el.dataset.lock = why;
@@ -1879,7 +1948,8 @@ let vesselSelectSuppress = false;
 // WEAVER 未解禁の間は "locked13" 枠（locked04 と同じ流儀）。WEAVER 解禁後は vessel13 が入り、
 // 将来の解禁キャラ（REACTOR）用に locked 枠を1つ残す。
 function vesselOrder() {
-  if (weaverUnlocked()) return ["vessel07", "vessel04", "vessel09", "vessel13", "locked"];
+  if (reactorUnlocked()) return ["vessel07", "vessel04", "vessel09", "vessel13", "vessel00"];
+  if (weaverUnlocked()) return ["vessel07", "vessel04", "vessel09", "vessel13", "locked00"];
   if (ghostTapeUnlocked()) return ["vessel07", "vessel04", "vessel09", "locked13", "locked"];
   if (goliathUnlocked()) return ["vessel07", "vessel04", "locked"];
   return ["vessel07", "locked04", "locked"];
@@ -1901,6 +1971,13 @@ const LOCKED_VESSEL_INFO = {
     caption: "VESSEL 13 — CLASSIFIED",
     sil: "assets/cctv_vessel_expose.png",
   },
+  // locked00 は REACTOR の立ち絵を黒潰しし、肋骨状の輪郭だけを見せる（locked04 と同じ流儀）。
+  locked00: {
+    name: "VESSEL 00 “????”",
+    sys: "[SYS] — SIGNAL LOST —\n> 格納庫最奥から微弱な熱源反応。リンク権限なし。\n> 解禁条件: WEAVER でランをクリア",
+    caption: "VESSEL 00 — CLASSIFIED",
+    sil: "assets/vessel00_reactor.webp",
+  },
   locked: {
     name: "VESSEL ?? “????”",
     sys: "[SYS] — NO DATA —\n> 素体信号を捕捉できず。",
@@ -1910,32 +1987,43 @@ const LOCKED_VESSEL_INFO = {
 };
 let vesselCursor = 0;
 
-// 表示文（CRT表示／フレーバー）は本人の原文ママ（2026-11-14、設計書 §A に記録済み）。
+// 表示文（CRT表示／フレーバー）: 2026-11-17「選択画面フレーバー正典版書き換え」で仮実装。
+// 下書き SELECT-PROFILE-DRAFT.md → 独立精査 SELECT-PROFILE-AUDIT.md（要修正2点反映済み）→ 本人の最終判断待ち。
+// 07／04 は本人原文への提案として書き換えた仮実装であり、確定ではない。詳細は SELECT-PROFILE-REWRITE-REPORT.md。
 const VESSEL_PROFILES = {
   vessel07: {
     sys: "[SYS] VESSEL 07 ONLINE.\nBALANCED CQC & STEALTH PROTOCOLS ACTIVE.\n> 汎用潜入素体・リンク確立。",
-    flavor: "「使い古された型落ちの量産機だが、泥臭い潜入任務には一番手に馴染む。最新鋭のデジタル防壁も、駆動音を殺して放つアナログな物理打撃（CQC）の連続には対応できない。生き残りたければ、基本を忘れるな。」",
+    flavor: "「使い古された型落ちの機体だが、泥臭い潜入任務には一番手に馴染む。最新鋭のデジタル防壁も、駆動音を殺して放つアナログな物理打撃（CQC）の連続には対応できない。誰の体だったかは、もう記録に残っていない。それでも手は覚えている。生き残りたければ、基本を忘れるな。」",
     img: "assets/cctv_vessel_expose.png",
   },
   vessel04: {
     sys: "[SYS] VESSEL 04 \"GOLIATH\" LINKED.\nWARNING: STEALTH MODULE NOT FOUND. MASS: CRITICAL.\n> 警告：隠蔽機構が欠損しています。総質量、規定値を大幅に超過。",
-    flavor: "「これを潜伏作戦と呼ぶのは、上層部のひどい冗談だ。坑道採掘用のバカげた質量で、見つかる前にすべての防壁と警備AIを粉砕する。起動するだけで施設中に爆音が響き渡るが、気にするな。最後に立っているのがこちらなら、それは完璧なステルスだ。」",
+    flavor: "「これを潜伏作戦と呼ぶのは、上層部のひどい冗談だ。バカげた質量で、見つかる前にすべての防壁と警備AIを粉砕する。起動するだけで施設中に爆音が響き渡るが、気にするな。こいつは昔から、弾の飛ぶ場所で一番前に立ってきた。最後に立っているのがこちらなら、それは完璧なステルスだ。」",
     img: "assets/vessel04_goliath.webp", // 専用立ち絵（楕円ソフトアルファ済み）
   },
-  // ⚠ あやね下書き・本人確認待ち（2026-11-16）: 07／GOLIATH の本人原文とは別物。
-  // 設計書 DESIGN-GHOST-TAPE-DRAFT.md §6 の叩き台を採用。通信兵の出自は匂わせに留め、断定はしていない。
+  // ⚠ 2026-11-17 正典版書き換えで仮実装（本人の最終判断待ち）: 「聞き手」の残響を足し、精査の圧縮案を反映。
+  // 通信兵の出自は匂わせに留め、性別・兵種の断定はしていない。
   vessel09: {
     sys: "[SYS] VESSEL 09 \"GHOST-TAPE\" LINKED.\nMAGNETIC HOLD OS: READY. NOISE LIMIT: 05.\n> 逆位相補正を開始。存在しない音声を検出しています。",
-    flavor: "「こいつの装甲は、笑ってしまうほど薄い。代わりに機体の中では何十本もの磁気テープが回り続け、消すべき音、残すべき音、敵に聞かせるべきでない音を選別している。派手な勝ち方はできない。だが、すべての無駄を削ぎ落とした先で、敵は自分がいつ敗れたのか最後まで気づかない。」",
+    flavor: "「こいつの装甲は、笑ってしまうほど薄い。代わりに機体の中では何十本もの磁気テープが回り続け、消すべき音と残すべき音を選別している。派手な勝ち方はできない。だが無駄を削ぎ落とした先で、敵は自分がいつ敗れたのか最後まで気づかない。今もテープは回り続けている。誰の声も、最後まで聞き届けるために。」",
     img: "assets/vessel09_ghosttape.webp", // 専用立ち絵（候補1「リール肩型」・楕円ソフトアルファ済み）
   },
-  // ⚠ あやね下書き・本人確認待ち（2026-11-16）: 07／GOLIATH の本人原文とは別物。
+  // ⚠ 2026-11-17 正典版書き換えで仮実装（本人の最終判断待ち）: 精査に従い「死線（ワイヤー）」のルビを復元
+  // （本人の WEAVER 設計書 §1 の命名。下書きの「糸と鉄線」への置換は精査で却下）。
   // 罠師・寡黙な職人肌の出自は匂わせに留め、過去の断定はしていない（実装追補 §5）。
   // 立ち絵は 2026-11-17 に候補1「蜘蛛型＋背部ボビン」を本人が公式として選択・配線済み。
   vessel13: {
     sys: "[SYS] VESSEL 13 \"WEAVER\" LINKED.\nTRAP SYSTEMS ARMED. STANDBY ARMOR ONLINE.\n> 罠師の素体・リンク確立。",
-    flavor: "「こいつは自分から殴りに行く機体じゃない。暗がりに死線を張り巡らせ、わざと音を立てて敵を誘い、踏み込んできたところを静かに仕留める。……昔、誰かが言っていたそうだ。『罠は待つ者の味方だ』と。派手さはない。だが格納庫で一番、帰りを待つ価値のある背中だ。」",
+    flavor: "「こいつは自分から殴りに行く機体じゃない。暗がりに死線（ワイヤー）を張り巡らせ、わざと音を立てて敵を誘い、踏み込んできたところを静かに仕留める。……昔、誰かが言っていたそうだ。『罠は待つ者の味方だ』と。派手さはない。だが格納庫で一番、帰りを待つ価値のある背中だ。」",
     img: "assets/vessel13_weaver.webp", // 専用立ち絵（候補1「蜘蛛型＋背部ボビン」・楕円ソフトアルファ済み）
+  },
+  // ⚠ 2026-11-17 正典版書き換えで仮実装（本人の最終判断待ち）: 下書き案A＋精査修正（「統括リンクの刻印」）。
+  // 最初の犠牲者の素性（パンドラの元妻）は直書きしない規律を守り、「最初の犠牲者」「棺桶」の仄めかしに留める。
+  // sys は下書き案を仮採用（REACTOR実装バッチの仮文との差分は SELECT-PROFILE-REWRITE-REPORT.md に明記）。
+  vessel00: {
+    sys: "[SYS] VESSEL 00 \"REACTOR\" LINKED.\nWARNING: LIMITER NOT FOUND. CORE TEMP: RISING.\n> 警告：安全装置が存在しません。炉心温度、上昇中。",
+    flavor: "「格納庫の奥に、鍵をかけて封じてある一体がある。部隊が編まれる前に作られた実験機。リミッターという言葉が生まれる前に死んだ、最初の犠牲者の棺桶だ。繋げば今も熱を持っている。だがこの機体に、統括リンクの刻印はない。無理やり繋いだ分だけ、返ってくる痛みも一番強い。それでも降りるというのなら止めはしない。覚悟だけはしておけ。」",
+    img: "assets/vessel00_reactor.webp", // 専用立ち絵（公式「肋骨炉心」・楕円ソフトアルファ済み）
   },
 };
 
@@ -2727,14 +2815,20 @@ function setCctvImage(src, targetName, type) {
     ui.cctvRoom.src = room.src;
     ui.cctvScene.dataset.room = room.key;
   }
+  if (ui.cctvLock) ui.cctvLock.hidden = true;
   if (!src) return;
   ui.cctvEnemy.onload = () => {
     ui.cctvScene.hidden = false;
     ui.cctvDummy.hidden = true;
+    if (ui.cctvLock && ui.cctvEnemy.naturalWidth > 0) {
+      ui.cctvLock.style.aspectRatio = ui.cctvEnemy.naturalWidth + " / " + ui.cctvEnemy.naturalHeight;
+      ui.cctvLock.hidden = false;
+    }
   };
   ui.cctvEnemy.onerror = () => {
     ui.cctvScene.hidden = true;
     ui.cctvDummy.hidden = false;
+    if (ui.cctvLock) ui.cctvLock.hidden = true;
   };
   ui.cctvEnemy.src = src;
 }
@@ -3370,6 +3464,11 @@ async function bossClearSequence() {
   if (run && run.character === "vessel09" && !weaverUnlocked()) {
     markWeaverUnlocked();
     pushLog("NEW VESSEL SIGNAL — VESSEL 13 \"WEAVER\" 解禁");
+  }
+  // 解禁キャラ4・最終機体（2026-11-17 本人決定）: WEAVER を使ってランをクリアした時点で VESSEL 00 を解禁する
+  if (run && run.character === "vessel13" && !reactorUnlocked()) {
+    markReactorUnlocked();
+    pushLog("NEW VESSEL SIGNAL — VESSEL 00 \"REACTOR\" 解禁");
   }
   session.offer = [];
   ui.hopper.replaceChildren();

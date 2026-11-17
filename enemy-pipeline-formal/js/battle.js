@@ -30,6 +30,11 @@
     // HP50／PWR回復3／NOISE上限5／固有OS『アナログ・トラップ機構』（state.traps）と
     // 『余剰電力装甲』（standbyArmor: 残PWR×4 をターン終了時に BLK へ変換）。
     vessel13: Object.freeze({ id: "vessel13", name: "VESSEL 13", code: "WEAVER", hp: 50, energyPerTurn: 3, canCover: true, noiseMin: 0, noiseMax: 5, canHold: false, standbyArmor: 4 }),
+    // vessel00 "REACTOR"（設計書 DESIGN-REACTOR-DRAFT.md＋実装追補 DESIGN-REACTOR-IMPL-ADDENDUM.md、2026-11-17 本人決定）:
+    // HP80／PWR回復4（全機体トップ）／NOISE 0〜5。固有OS『炉心溶融』＝PWR不足分を HP 5/PWR の
+    // コストで払って使用可（コストは BLK・軽減の対象外、HP 0 以下で敗北＝自滅あり）。
+    // 固有OS『臨界排熱』＝purgeActive／purgeCount（戦闘内のみ。始動は炉心臨界、廃棄カードで +1）。
+    vessel00: Object.freeze({ id: "vessel00", name: "VESSEL 00", code: "REACTOR", hp: 80, energyPerTurn: 4, canCover: true, noiseMin: 0, noiseMax: 5, canHold: false }),
   });
 
   function characterDef(id) {
@@ -143,7 +148,21 @@
     root.Cards.get("weaver_decoy_spin"),
   ].filter(Boolean));
 
-  const DECKS_BY_CHARACTER = { vessel04: GOLIATH_DECK, vessel09: GHOST_TAPE_DECK, vessel13: WEAVER_DECK };
+  // 正式版: VESSEL 00 "REACTOR" 初期デッキ10枚（溶断打撃×4／強制冷却×4／炉心臨界×1／放射熱撃×1）
+  const REACTOR_DECK = Object.freeze([
+    root.Cards.get("reactor_melt_strike"),
+    root.Cards.get("reactor_melt_strike"),
+    root.Cards.get("reactor_melt_strike"),
+    root.Cards.get("reactor_melt_strike"),
+    root.Cards.get("reactor_coolant"),
+    root.Cards.get("reactor_coolant"),
+    root.Cards.get("reactor_coolant"),
+    root.Cards.get("reactor_coolant"),
+    root.Cards.get("reactor_core_critical"),
+    root.Cards.get("reactor_radiant_strike"),
+  ].filter(Boolean));
+
+  const DECKS_BY_CHARACTER = { vessel04: GOLIATH_DECK, vessel09: GHOST_TAPE_DECK, vessel13: WEAVER_DECK, vessel00: REACTOR_DECK };
 
   function deckIdsFor(characterId) {
     return (DECKS_BY_CHARACTER[characterId] || DECK).map((card) => card.id);
@@ -255,6 +274,12 @@
       // 要素は { cardId, kind, trigger, minNoise, damage, cut, stun, cancel }。戦闘ごとに空で始まり、
       // 戦闘終了で state ごと破棄される（次戦闘へは漏れない）。発動した罠は exhaust へ送られる。
       traps: [],
+      // 『臨界排熱』（REACTOR固有OS）: purgeActive = 炉心臨界で始動したか、purgeCount = 蓄積値。
+      // 始動後、廃棄カードを使うたび +1 し、敵への基本ダメージ全てに +purgeCount が乗り、
+      // ターン終了時に purgeCount 分のスリップダメージ（コスト扱い）を受ける。
+      // 戦闘内のみ有効で、state は戦闘ごとに生成されるため戦闘終了で自然に消滅する。
+      purgeActive: false,
+      purgeCount: 0,
       player: {
         hp: charDef.hp,
         hpMax: charDef.hp,
@@ -381,7 +406,11 @@
       && !(state.traps && state.traps.length > 0)) {
       return { ok: false, reason: "no_traps" };
     }
-    if (state.player.energy < effectiveCost(state, card)) return { ok: false, reason: "energy" };
+    // 『炉心溶融』（REACTOR固有OS）: PWR不足でも使用可。不足分は playCard が HP 5/PWR の
+    // コストとして徴収する（HPが不足分を下回っても使用でき、0以下になれば敗北＝自滅あり）
+    if (state.player.energy < effectiveCost(state, card) && state.characterId !== "vessel00") {
+      return { ok: false, reason: "energy" };
+    }
     return { ok: true, reason: "" };
   }
 
@@ -602,6 +631,51 @@
       // 総起爆: 設置中の罠をすべて条件無視で即時発動させる（詳細は detonateAllTraps）
       detonateAllTraps(state, log);
       return;
+    } else if (effect.type === "purge_start") {
+      // 炉心臨界: 臨界排熱を始動する。以後の蓄積（廃棄で +1）とターン終了時スリップが有効になる。
+      // 既に始動している場合は二重始動しない（蓄積はこのカード自身の廃棄分が playFromHand で数えられる）
+      if (state.characterId === "vessel00" && !state.purgeActive) {
+        state.purgeActive = true;
+        log.push("臨界排熱 始動 (CRITICAL PURGE)");
+      } else if (state.purgeActive) {
+        log.push("臨界排熱 は始動中");
+      }
+      return;
+    } else if (effect.type === "purge_reduce") {
+      // 圧力弁／冷却液フラッシュ／残り火の再生（プリミティブ purge_reduce）:
+      // 臨界カウンタを下げる。与ダメ蓄積とスリップは同じカウンタを参照するため連動して下がる
+      const before = state.purgeCount || 0;
+      state.purgeCount = Math.max(0, before - (effect.value || 0));
+      if (state.purgeCount !== before) log.push(`臨界排熱 蓄積 ${before} → ${state.purgeCount}`);
+      return;
+    } else if (effect.type === "damage_per_hp_lost") {
+      // 熱爪／放射新星／放射熱撃（プリミティブ damage_per_hp_lost、参照系）:
+      // 基礎値＋floor（減少HP ÷ perHp）。perHp は除数（既存の per＝乗数とは意味が逆。取り違え防止に別名）
+      const lost = Math.max(0, (state.player.hpMax || 0) - (state.player.hp || 0));
+      effect = { ...effect, type: "damage", value: (effect.value || 0) + Math.floor(lost / (effect.perHp || 1)) };
+    } else if (effect.type === "damage_per_slip") {
+      // 排熱ブラスト／過熱撃（プリミティブ damage_per_slip、参照系）:
+      // 基礎値＋現在の臨界カウンタ×per。未始動ならカウンタは 0 のため基礎値のみ
+      effect = { ...effect, type: "damage", value: (effect.value || 0) + (state.purgeCount || 0) * (effect.per || 0) };
+    } else if (effect.type === "damage_equal_hp_fraction") {
+      // 燃え尽き（プリミティブ damage_equal_hp_fraction）: 現在HP ÷ denom（切り捨て）を
+      // 自傷として受け（コスト扱い。BLK・軽減の対象外）、同値を敵ダメージへ加算する
+      const frac = Math.floor((state.player.hp || 0) / (effect.denom || 2));
+      if (frac > 0) {
+        state.player.hp = Math.max(0, state.player.hp - frac);
+        log.push(`燃え尽き 自傷 ${frac}`);
+        log.push(`HP ${state.player.hp}`);
+        if (state.player.hp === 0) log.push("VESSEL DOWN");
+      }
+      effect = { ...effect, type: "damage", value: (effect.value || 0) + frac };
+    } else if (effect.type === "draw_if_hp_le") {
+      // 最後の灯（プリミティブ draw_if_hp_le）: HP割合が threshold 以下なら bonus 枚、通常は value 枚
+      const ratio = (state.player.hpMax || 0) > 0 ? (state.player.hp || 0) / state.player.hpMax : 1;
+      const count = ratio <= (typeof effect.threshold === "number" ? effect.threshold : 0.25)
+        ? (effect.bonus || effect.value || 0) : (effect.value || 0);
+      const res = drawCards(state, count);
+      for (const line of res.log) log.push(line);
+      return;
     }
     let amount = effect.value;
     // 騒音力学の倍率（GOLIATHのみ）: 敵へのダメージと自BLK獲得に適用。自傷・回復等には適用しない
@@ -609,6 +683,12 @@
       && ((effect.target === "enemy" && effect.type === "damage")
         || (effect.target === "player" && effect.type === "block"))) {
       amount = Math.round(amount * noiseScale(state, ctx));
+    }
+    // 『臨界排熱』（REACTOR固有OS）: 始動中は敵への基本ダメージ全てに purgeCount を加算する。
+    // 上の変換（damage_per_slip 等）を経た通常ダメージにも乗る。自傷（player対象）には乗せない
+    if (state.characterId === "vessel00" && state.purgeActive
+      && effect.target === "enemy" && effect.type === "damage") {
+      amount += state.purgeCount || 0;
     }
     if (effect.target === "enemy" && effect.type === "damage") {
       // next_attack_bonus（プリミティブ #4）: 保留ボーナスはこのダメージ効果の初撃にだけ加算して消費する。
@@ -717,6 +797,17 @@
     if (!check.ok) return { ok: false, reason: check.reason, log: [] };
     // 保持割引は実効コストで支払う（canPlay と同じ基準）
     state.player.energy -= effectiveCost(state, card);
+    // 『炉心溶融』（REACTOR固有OS）: PWRが不足した分は HP 5/PWR のコストで支払う。
+    // コストは BLK・被ダメ軽減の対象外（直接HPから引く）。効果解決より前に支払うため、
+    // 放射熱撃などの「減少HP」参照にも燃やした分が数えられる。HP 0 以下なら敗北（自滅）
+    let meltdownHp = 0;
+    let meltdownDeficit = 0;
+    if (state.characterId === "vessel00" && state.player.energy < 0) {
+      meltdownDeficit = -state.player.energy;
+      state.player.energy = 0;
+      meltdownHp = meltdownDeficit * 5;
+      state.player.hp = Math.max(0, state.player.hp - meltdownHp);
+    }
     const isGoliath = state.characterId === "vessel04";
     // 効果解決の基準値: このカード自身のNOISE加算前のNOISEと、使用前までに切った枚数、
     // 使用開始時点のスタンス（物陰の一撃の stance_bonus 判定用）、使用カードID（power の出所記録用）
@@ -731,6 +822,11 @@
     // A-2: 機体別範囲で頭打ち（07／GOLIATH は 0〜10、GHOST-TAPE は −3〜5＝逆位相残量）
     state.noise = clampNoise(state, state.noise + effNoise);
     const log = [];
+    if (meltdownHp > 0) {
+      log.push(`炉心溶融: PWR不足 ${meltdownDeficit} を HP ${meltdownHp} で支払い`);
+      log.push(`HP ${state.player.hp}`);
+      if (state.player.hp === 0) log.push("VESSEL DOWN (炉心溶融)");
+    }
     if (inCover && (rawNoise > 0 || card.breaksCover === true) && card.stance_change !== "COVER") {
       state.player.stance = "EXPOSE";
       log.push("COVER BROKEN");
@@ -795,6 +891,12 @@
       // 圧縮穿孔（damage_per_exhausted）の参照カウンタ。この戦闘の累計
       state.exhaustedCount = (state.exhaustedCount || 0) + 1;
       result.log.push(`EXHAUST ${card.name}`);
+      // 『臨界排熱』（REACTOR固有OS）: 始動後に廃棄カードを使うたび purgeCount +1。
+      // 炉心臨界自身も廃棄カードであり、その使用で始動した直後に +1 される（始動時点から数える）
+      if (state.characterId === "vessel00" && state.purgeActive) {
+        state.purgeCount = (state.purgeCount || 0) + 1;
+        result.log.push(`臨界排熱 蓄積 ${state.purgeCount} (与ダメ +${state.purgeCount} / 終了時スリップ ${state.purgeCount})`);
+      }
     } else {
       state.discard.push(card);
     }
@@ -1548,6 +1650,17 @@
     const log = [];
     // 選択保留（search／discard／reposition）はターン終了で消散する（UI側でも選択中はターン終了をブロックする）
     state.pendingPick = null;
+    // 『臨界排熱』（REACTOR固有OS）: 始動中はターン終了時に purgeCount 分のスリップダメージを
+    // 受ける（コスト扱い＝BLK・軽減の対象外。0以下で敗北＝自滅あり）。
+    // ヒートシンク（power kind "slip_halve"）がある場合は半減（切り上げ）
+    if (state.characterId === "vessel00" && state.purgeActive && (state.purgeCount || 0) > 0 && state.player.hp > 0) {
+      let slip = state.purgeCount || 0;
+      const halved = (state.powers || []).some((power) => power.kind === "slip_halve");
+      if (halved) slip = Math.ceil(slip / 2);
+      state.player.hp = Math.max(0, state.player.hp - slip);
+      log.push(`臨界排熱 スリップ ${slip}  HP ${state.player.hp}`);
+      if (state.player.hp === 0) log.push("VESSEL DOWN (焼死)");
+    }
     // 『余剰電力装甲』（WEAVER固有OS）: ターン終了時点で残っているPWR × standbyArmor を
     // BLK に加算してから敵フェイズに入る（加算分はそのまま敵フェイズの攻撃を受ける。
     // 残ったBLKの失効は従来どおり次の自ターン開始時）。磁気ホールド等の他処理より前に行う
@@ -1596,6 +1709,7 @@
     GOLIATH_DECK,
     GHOST_TAPE_DECK,
     WEAVER_DECK,
+    REACTOR_DECK,
     TRAP_LIMIT,
     isTrapCard,
     CHARACTERS,

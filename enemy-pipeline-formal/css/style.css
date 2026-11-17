@@ -984,6 +984,44 @@ button { color: inherit; }
   padding: 1px 5px;
 }
 
+/* 『臨界排熱』（REACTOR固有OS）: 始動中の蓄積チップ（TRAPS と同じ流儀、色は炉心の橙） */
+.purge-label {
+  margin: 6px 0 2px;
+  color: #8d948e;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+}
+
+.purge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0;
+  flex: none;
+}
+
+.purge .purge-chip {
+  border: 1px solid rgba(255, 122, 40, 0.7);
+  background: rgba(96, 34, 4, 0.3);
+  color: #ffb37a;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  line-height: 1.15;
+  padding: 1px 5px;
+}
+
+/* 『炉心溶融』（REACTOR固有OS）: PWR不足を HP で払えるカードのコスト数値を赤く点滅させる */
+.punchcard.is-meltdown .punchcard__cost {
+  color: #ff5340;
+  animation: meltdown-blink 0.7s steps(2, start) infinite;
+}
+
+@keyframes meltdown-blink {
+  50% { opacity: 0.2; }
+}
+
 .stage {
   position: relative;
   flex: 1;
@@ -2585,10 +2623,100 @@ button { color: inherit; }
   position: absolute;
   right: 4%;
   bottom: 1%;
-  height: 76%;
+  height: 94%;
   width: auto;
-  filter: saturate(0.95) contrast(1.05) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.5));
+  filter: saturate(0.95) contrast(1.05) drop-shadow(0 10px 10px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 6px rgba(120, 255, 170, 0.35));
 }
+
+/* 敵のターゲットロック枠：監視カメラの自動追尾ボックス。
+   敵の背後を暗く落として輪郭を分離し、四隅ブラケットで「捕捉中」を示す。
+   位置と高さは敵画像に一致させ、幅は JS が画像のアスペクト比から決める。 */
+.cctv-monitor__lock {
+  position: absolute;
+  right: 4%;
+  bottom: 1%;
+  height: 94%;
+  background-color: rgba(2, 16, 7, 0.42);
+  backdrop-filter: brightness(0.68) saturate(0.85);
+  -webkit-backdrop-filter: brightness(0.68) saturate(0.85);
+  background-image:
+    linear-gradient(to right, rgba(130, 255, 180, 0.95), rgba(130, 255, 180, 0.95)),
+    linear-gradient(to bottom, rgba(130, 255, 180, 0.95), rgba(130, 255, 180, 0.95)),
+    linear-gradient(to left, rgba(130, 255, 180, 0.95), rgba(130, 255, 180, 0.95)),
+    linear-gradient(to bottom, rgba(130, 255, 180, 0.95), rgba(130, 255, 180, 0.95)),
+    linear-gradient(to right, rgba(130, 255, 180, 0.95), rgba(130, 255, 180, 0.95)),
+    linear-gradient(to top, rgba(130, 255, 180, 0.95), rgba(130, 255, 180, 0.95)),
+    linear-gradient(to left, rgba(130, 255, 180, 0.95), rgba(130, 255, 180, 0.95)),
+    linear-gradient(to top, rgba(130, 255, 180, 0.95), rgba(130, 255, 180, 0.95));
+  background-size: 18px 2px, 2px 18px, 18px 2px, 2px 18px, 18px 2px, 2px 18px, 18px 2px, 2px 18px;
+  background-position: left top, left top, right top, right top, left bottom, left bottom, right bottom, right bottom;
+  background-repeat: no-repeat;
+  box-shadow: inset 0 0 0 1px rgba(130, 255, 180, 0.28);
+  overflow: hidden;
+  pointer-events: none;
+}
+.cctv-monitor__lock::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -12%;
+  height: 12%;
+  background: linear-gradient(to bottom, transparent, rgba(130, 255, 180, 0.20), transparent);
+  animation: cctv-lock-scan 3.2s linear infinite;
+}
+@keyframes cctv-lock-scan {
+  0% { top: -12%; }
+  100% { top: 104%; }
+}
+#cctv-scene[data-room="server"] .cctv-monitor__lock { right: 9%; bottom: 4%; height: 68%; }
+#cctv-scene[data-room="corridor"] .cctv-monitor__lock { right: 5%; bottom: 2%; height: 80%; }
+#cctv-scene[data-room="hangar"] .cctv-monitor__lock { right: 13%; bottom: 5%; height: 64%; }
+#cctv-scene[data-room="gate"] .cctv-monitor__lock { right: 7%; bottom: 2%; height: 84%; }
+
+/* 味方（素体）の認識枠：敵の緑ロックと対になる水色ブラケット＋ALLYタグ。
+   位置・高さは素体画像に一致させ、幅は JS が画像のアスペクト比から決める。 */
+.cctv-monitor__allylock {
+  position: absolute;
+  left: 2%;
+  bottom: 0;
+  background-color: rgba(3, 14, 20, 0.35);
+  backdrop-filter: brightness(0.78) saturate(0.9);
+  -webkit-backdrop-filter: brightness(0.78) saturate(0.9);
+  background-image:
+    linear-gradient(to right, rgba(125, 220, 255, 0.95), rgba(125, 220, 255, 0.95)),
+    linear-gradient(to bottom, rgba(125, 220, 255, 0.95), rgba(125, 220, 255, 0.95)),
+    linear-gradient(to left, rgba(125, 220, 255, 0.95), rgba(125, 220, 255, 0.95)),
+    linear-gradient(to bottom, rgba(125, 220, 255, 0.95), rgba(125, 220, 255, 0.95)),
+    linear-gradient(to right, rgba(125, 220, 255, 0.95), rgba(125, 220, 255, 0.95)),
+    linear-gradient(to top, rgba(125, 220, 255, 0.95), rgba(125, 220, 255, 0.95)),
+    linear-gradient(to left, rgba(125, 220, 255, 0.95), rgba(125, 220, 255, 0.95)),
+    linear-gradient(to top, rgba(125, 220, 255, 0.95), rgba(125, 220, 255, 0.95));
+  background-size: 14px 2px, 2px 14px, 14px 2px, 2px 14px, 14px 2px, 2px 14px, 14px 2px, 2px 14px;
+  background-position: left top, left top, right top, right top, left bottom, left bottom, right bottom, right bottom;
+  background-repeat: no-repeat;
+  box-shadow: inset 0 0 0 1px rgba(125, 220, 255, 0.25);
+  pointer-events: none;
+}
+.cctv-monitor__allylock.is-expose { height: 68%; }
+.cctv-monitor__allylock.is-cover { height: 50%; }
+.cctv-monitor__allytag {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: rgba(160, 230, 255, 0.95);
+  text-shadow: 0 0 4px rgba(60, 180, 255, 0.7);
+}
+#cctv-scene[data-room="server"] .cctv-monitor__allylock.is-expose { left: 12%; bottom: 4%; height: 53%; }
+#cctv-scene[data-room="server"] .cctv-monitor__allylock.is-cover { left: 16%; bottom: 46%; height: 27%; }
+#cctv-scene[data-room="corridor"] .cctv-monitor__allylock.is-expose { left: 1%; bottom: 2%; height: 57%; }
+#cctv-scene[data-room="corridor"] .cctv-monitor__allylock.is-cover { left: 3%; bottom: 34%; height: 27%; }
+#cctv-scene[data-room="hangar"] .cctv-monitor__allylock.is-expose { left: 26%; bottom: 5%; height: 51%; }
+#cctv-scene[data-room="hangar"] .cctv-monitor__allylock.is-cover { left: 9%; bottom: 43%; height: 25%; }
+#cctv-scene[data-room="gate"] .cctv-monitor__allylock.is-expose { left: 3%; bottom: 2%; height: 57%; }
+#cctv-scene[data-room="gate"] .cctv-monitor__allylock.is-cover { left: 4%; bottom: 22%; height: 25%; }
 
 .cctv-monitor__vessel {
   position: absolute;
@@ -2602,16 +2730,16 @@ button { color: inherit; }
 .cctv-monitor__vessel.is-cover { height: 50%; }
 
 /* 部屋ごとの配置：遠近（接地ライン・大きさ）と物陰の位置に合わせる */
-#cctv-scene[data-room="server"] .cctv-monitor__enemy { right: 9%; bottom: 4%; height: 54%; }
+#cctv-scene[data-room="server"] .cctv-monitor__enemy { right: 9%; bottom: 4%; height: 68%; }
 #cctv-scene[data-room="server"] .cctv-monitor__vessel.is-expose { left: 12%; bottom: 4%; height: 53%; }
 #cctv-scene[data-room="server"] .cctv-monitor__vessel.is-cover { left: 16%; bottom: 46%; height: 27%; }
-#cctv-scene[data-room="corridor"] .cctv-monitor__enemy { right: 5%; bottom: 2%; height: 64%; }
+#cctv-scene[data-room="corridor"] .cctv-monitor__enemy { right: 5%; bottom: 2%; height: 80%; }
 #cctv-scene[data-room="corridor"] .cctv-monitor__vessel.is-expose { left: 1%; bottom: 2%; height: 57%; }
 #cctv-scene[data-room="corridor"] .cctv-monitor__vessel.is-cover { left: 3%; bottom: 34%; height: 27%; }
-#cctv-scene[data-room="hangar"] .cctv-monitor__enemy { right: 13%; bottom: 5%; height: 51%; }
+#cctv-scene[data-room="hangar"] .cctv-monitor__enemy { right: 13%; bottom: 5%; height: 64%; }
 #cctv-scene[data-room="hangar"] .cctv-monitor__vessel.is-expose { left: 26%; bottom: 5%; height: 51%; }
 #cctv-scene[data-room="hangar"] .cctv-monitor__vessel.is-cover { left: 9%; bottom: 43%; height: 25%; }
-#cctv-scene[data-room="gate"] .cctv-monitor__enemy { right: 7%; bottom: 2%; height: 68%; }
+#cctv-scene[data-room="gate"] .cctv-monitor__enemy { right: 7%; bottom: 2%; height: 84%; }
 #cctv-scene[data-room="gate"] .cctv-monitor__vessel.is-expose { left: 3%; bottom: 2%; height: 57%; }
 #cctv-scene[data-room="gate"] .cctv-monitor__vessel.is-cover { left: 4%; bottom: 22%; height: 25%; }
 
@@ -3133,6 +3261,7 @@ body.is-dead .comms {
 
 @media (prefers-reduced-motion: reduce) {
   .radio--danger .radio__line { animation: none; }
+  .cctv-monitor__lock::after { animation: none; }
   .cctv-monitor__enemy.is-glitching { animation: none; }
   .glass-flash { animation: none; }
 }
@@ -3145,6 +3274,8 @@ body.is-dead .comms {
   .relics-label { display: none; }
   .traps-label { display: none; }
   .traps .trap-chip { font-size: 9px; line-height: 1.15; padding: 1px 2px; white-space: nowrap; overflow: hidden; }
+  .purge-label { display: none; }
+  .purge .purge-chip { font-size: 9px; line-height: 1.15; padding: 1px 2px; white-space: nowrap; overflow: hidden; }
   .hint { display: none; }
   /* PROMPT-24: 低い画面ではリーダーを詰め、浮いた分を手札カードの高さに回す */
   .reader { padding: 2px 8px 2px; }

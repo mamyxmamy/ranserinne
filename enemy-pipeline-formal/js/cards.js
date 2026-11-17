@@ -734,6 +734,127 @@
       "flavor": "「皆伝とは、学んだ全ての型を順に繋ぎ、最後の一撃へ畳み込む免許だ。この一巡で繋いだ型の一つ一つが、この斬撃の重さに名を連ねている。」",
       "effects": [ { "target": "enemy", "type": "damage_plus_played", "value": 6, "per": 4 } ]
     },
+    /* ==== 正式版: VESSEL 00 "REACTOR" 初期デッキ4種＋専用プール18種（設計書 DESIGN-REACTOR-DRAFT.md §3 本人設計＋
+       DESIGN-POOL-EXPANSION2-DRAFT.md §6、実装追補 DESIGN-REACTOR-IMPL-ADDENDUM.md、2026-11-17 本人決定） ====
+       カテゴリは HVY／DEF／TEC（CQC の自動スタン+1 を避ける。GHOST-TAPE／WEAVER と同じ理由）。
+       新規効果タイプ（解決は js/battle.js）:
+       purge_start = 臨界排熱を始動する（炉心臨界専用。以後、廃棄カードを使うたび purgeCount +1）。
+       damage_per_hp_lost = 基礎値＋floor（減少HP ÷ perHp）。perHp は除数（既存 per＝乗数と意味が逆。取り違え防止に別名）。
+       damage_per_slip = 基礎値＋現在の臨界カウンタ×per。
+       damage_equal_hp_fraction = 基礎値＋floor（現在HP ÷ denom）を敵へ、同値を自傷として受ける。
+       purge_reduce = 臨界カウンタを value 下げる（下限0。与ダメ蓄積とスリップが連動して下がる）。
+       draw_if_hp_le = HP割合が threshold 以下なら bonus 枚、そうでなければ value 枚ドロー。
+       power kind "slip_halve" = ターン終了時のスリップダメージを半減（切り上げ）。 */
+    {
+      "id": "reactor_melt_strike", "name": "溶断打撃 (MELT-CUT)", "cost": 1, "category": "HVY", "type": "attack", "noise": 1, "stance_change": null,
+      "flavor": "「通常のマニピュレーターではない。むき出しになった超高熱のジェネレーター・コアを、直接敵の装甲に押し付ける。切るでも殴るでもない、純粋な『溶断』。」",
+      "effects": [ { "target": "enemy", "type": "damage", "value": 5 } ]
+    },
+    {
+      "id": "reactor_coolant", "name": "強制冷却 (COOLANT)", "cost": 1, "category": "DEF", "type": "skill", "noise": -1, "stance_change": null,
+      "flavor": "「機体の隙間から有毒な冷却液を撒き散らし、一時的な熱の壁と静寂を作る。しかし、根本的な炉心の暴走はすでに誰にも止められない。」",
+      "effects": [ { "target": "player", "type": "block", "value": 4 } ]
+    },
+    {
+      "id": "reactor_core_critical", "name": "炉心臨界 (CORE CRITICAL)", "cost": 0, "category": "TEC", "type": "skill", "noise": 2, "stance_change": null, "isExhaust": true,
+      "flavor": "「安全弁を物理的に破壊し、致死量の熱量と電力を強制的に引き出す。焼け焦げた神経接続から伝わる激痛は、この機体がまだ生きているという唯一の証明だ。」",
+      "effects": [ { "target": "player", "type": "damage", "value": 10 }, { "target": "player", "type": "add_energy", "value": 3, "overcharge": true }, { "target": "player", "type": "purge_start", "value": 1 } ]
+    },
+    {
+      "id": "reactor_radiant_strike", "name": "放射熱撃 (RADIANT)", "cost": 2, "category": "HVY", "type": "attack", "noise": 2, "stance_change": null,
+      "flavor": "「失われた装甲の隙間から漏れ出す超高熱を、そのまま光線のように放つ。機体が死に近づき、ボロボロに砕け散るほど、その熱量は美しく凶悪に輝く。」",
+      "effects": [ { "target": "enemy", "type": "damage_per_hp_lost", "value": 4, "perHp": 2 } ]
+    },
+    {
+      "id": "reactor_heat_claw", "name": "熱爪 (HEAT CLAW)", "cost": 1, "category": "HVY", "type": "attack", "noise": 1, "stance_change": null,
+      "flavor": "「炉心の熱で赤く膨らんだ爪は、掴むのではなく触れた先から溶かし切る。機体が傷つき熱の回りが狂うほど、爪の溶断は深く、速くなる。」",
+      "effects": [ { "target": "enemy", "type": "damage_per_hp_lost", "value": 5, "perHp": 4 } ]
+    },
+    {
+      "id": "reactor_slag_armor", "name": "スラグ装甲 (SLAG ARMOR)", "cost": 1, "category": "DEF", "type": "skill", "noise": 0, "stance_change": null,
+      "flavor": "「熱で溶けた装甲をあえて流し、冷えて固まったスラグを新たな鎧とする。溶融と凝固を繰り返した層は硬い。ただし固まるまでの熱は、内側も焼く。」",
+      "effects": [ { "target": "player", "type": "block", "value": 5 }, { "target": "player", "type": "damage", "value": 2 } ]
+    },
+    {
+      "id": "reactor_vent_blast", "name": "排熱ブラスト (VENT BLAST)", "cost": 2, "category": "TEC", "type": "attack", "noise": 2, "stance_change": null,
+      "flavor": "「行き場を失った排熱を安全弁から一方向へ噴き出させ、炎の圧力ごと敵へ叩きつける。溜め込んだ代償が深いほど、噴き出す熱は重くなる。」",
+      "effects": [ { "target": "enemy", "type": "damage_per_slip", "value": 4, "per": 3 } ]
+    },
+    {
+      "id": "reactor_coolant_flush", "name": "冷却液フラッシュ (COOLANT FLUSH)", "cost": 1, "category": "TEC", "type": "skill", "noise": -1, "stance_change": null, "isExhaust": true,
+      "flavor": "「冷却液を一気に循環させ、暴走する炉心を無理やり冷ます。熱を捨てれば命は延びる。だが力は熱そのものだ。捨てた分だけ、確実に弱くなる。」",
+      "effects": [ { "target": "player", "type": "purge_reduce", "value": 2 }, { "target": "player", "type": "block", "value": 4 } ]
+    },
+    {
+      "id": "reactor_chain_reaction", "name": "連鎖反応 (CHAIN REACTION)", "cost": 0, "category": "TEC", "type": "skill", "noise": 2, "stance_change": null,
+      "flavor": "「炉心の反応は、一度始まれば次の反応を呼び続ける。回線の向こうからの指示も、上がり続ける熱も、焼けていく自機の傷も、誰にも止められない。」",
+      "effects": [ { "target": "player", "type": "draw", "value": 2 }, { "target": "player", "type": "damage", "value": 4 } ]
+    },
+    {
+      "id": "reactor_meltdown_rush", "name": "溶融突撃 (MELTDOWN RUSH)", "cost": 2, "category": "HVY", "type": "attack", "noise": 2, "stance_change": null,
+      "flavor": "「装甲の継ぎ目が溶け始めた体で、そのまま全質量を敵へ叩き込む。突撃の熱と衝撃で自機も焼ける。だが止まれる頃には、敵の方が先に溶けている。」",
+      "effects": [ { "target": "enemy", "type": "damage", "value": 12 }, { "target": "player", "type": "damage", "value": 3 } ]
+    },
+    {
+      "id": "reactor_ember_regen", "name": "残り火の再生 (EMBER REGEN)", "cost": 2, "category": "TEC", "type": "skill", "noise": 0, "stance_change": null, "isExhaust": true,
+      "flavor": "「消えかけの残り火を掻き集め、熱を落として機体の修復へ回す。完全に冷えればただの鉄屑だ。まだ熱いうちにしか、再生の余地は残っていない。」",
+      "effects": [ { "target": "player", "type": "heal", "value": 6 }, { "target": "player", "type": "purge_reduce", "value": 1 } ]
+    },
+    {
+      "id": "reactor_pressure_valve", "name": "圧力弁 (PRESSURE VALVE)", "cost": 0, "category": "DEF", "type": "skill", "noise": -1, "stance_change": null,
+      "flavor": "「小さな圧力弁を細かく開閉し、炉心の圧力を少しずつ逃がして身を守る。弁ひとつの加減が、爆発と延命の境目を決める地味で確かな仕事だ。」",
+      "effects": [ { "target": "player", "type": "block", "value": 3 }, { "target": "player", "type": "purge_reduce", "value": 1 } ]
+    },
+    {
+      "id": "reactor_overheat_strike", "name": "過熱撃 (OVERHEAT STRIKE)", "cost": 1, "category": "HVY", "type": "attack", "noise": 1, "stance_change": null,
+      "flavor": "「熱で膨張した関節は、設計を超えた速度と力で軋みながら動く。溜まった熱が深いほど一撃は重い。だが関節の寿命も、同じだけ削れている。」",
+      "effects": [ { "target": "enemy", "type": "damage_per_slip", "value": 3, "per": 2 } ]
+    },
+    {
+      "id": "reactor_core_surge", "name": "炉心サージ (CORE SURGE)", "cost": 0, "category": "TEC", "type": "skill", "noise": 2, "stance_change": null, "isExhaust": true,
+      "flavor": "「炉心の出力弁を直接開き、定格を超えた電力を回路へ流し込む。炉心臨界ほど大げさな真似ではない。だが内側が焼ける痛みは、寸分も変わらない。」",
+      "effects": [ { "target": "player", "type": "add_energy", "value": 3, "overcharge": true }, { "target": "player", "type": "damage", "value": 6 } ]
+    },
+    {
+      "id": "reactor_radiant_nova", "name": "放射新星 (RADIANT NOVA)", "cost": 3, "category": "HVY", "type": "attack", "noise": 3, "stance_change": null, "isExhaust": true,
+      "flavor": "「失われた装甲の隙間から漏れる熱を、一度に全開放する。欠けた分だけ熱は激しく噴き上がり、死に際の星のように、敵もろとも戦場を焼く。」",
+      "effects": [ { "target": "enemy", "type": "damage_per_hp_lost", "value": 6, "perHp": 1 } ]
+    },
+    {
+      "id": "reactor_ash_guard", "name": "灰の防壁 (ASH GUARD)", "cost": 2, "category": "DEF", "type": "skill", "noise": 1, "stance_change": null,
+      "flavor": "「燃え尽きた灰の層は、熱を通さない確かな断熱材になる。自機の焼け跡を掻き集めて厚く塗り、敵の火力も自らの熱も遮る。自分が灰になる、その前に。」",
+      "effects": [ { "target": "player", "type": "block", "value": 13 } ]
+    },
+    {
+      "id": "reactor_heat_sink", "name": "ヒートシンク (HEAT SINK)", "cost": 2, "category": "TEC", "type": "skill", "noise": 1, "stance_change": null, "isExhaust": true,
+      "flavor": "「装甲の内側に放熱板を展開し、溜まった熱の逃げ道を無理やり作る。熱を捨て切ることはできない。だが焼け死ぬまでの時間だけは、確実に買える。」",
+      "effects": [ { "target": "player", "type": "power", "kind": "slip_halve", "value": 1, "powerId": "reactor_heat_sink" } ]
+    },
+    {
+      "id": "reactor_burn_out", "name": "燃え尽き (BURN OUT)", "cost": 2, "category": "HVY", "type": "attack", "noise": 2, "stance_change": null, "isExhaust": true,
+      "flavor": "「残りの命そのものを燃料へ変え、炉心の全出力を一度に解き放つ。満ちているほど大きく燃え、敵の装甲も自機の未来も、区別なく焼き尽くす。」",
+      "effects": [ { "target": "enemy", "type": "damage_equal_hp_fraction", "value": 10, "denom": 2 } ]
+    },
+    {
+      "id": "reactor_quick_melt", "name": "急速溶断 (QUICK MELT)", "cost": 0, "category": "HVY", "type": "attack", "noise": 1, "stance_change": null,
+      "flavor": "「炉心の熱を細く絞り、小さく速い溶断を立て続けに走らせる。一撃の浅さは回数で補う。溶断とは本来、時間をかけて深くしていく仕事だ。」",
+      "effects": [ { "target": "enemy", "type": "damage", "value": 4 } ]
+    },
+    {
+      "id": "reactor_second_heart", "name": "第二の心臓 (SECOND HEART)", "cost": 3, "category": "TEC", "type": "skill", "noise": 1, "stance_change": null, "isExhaust": true,
+      "flavor": "「補助炉を常時駆動させ、本来の炉心とは別に電力を生み続ける。第二の心臓は止まることを知らない。代わりに、熱が冷めることも二度とない。」",
+      "effects": [ { "target": "player", "type": "power", "kind": "energy_per_turn", "value": 1, "powerId": "reactor_second_heart" } ]
+    },
+    {
+      "id": "reactor_grave_heat", "name": "墓標の熱 (GRAVE HEAT)", "cost": 2, "category": "TEC", "type": "attack", "noise": 1, "stance_change": null,
+      "flavor": "「熱で膨張し変形した関節の一撃は、敵の駆動系まで歪ませて動きを止める。二度と元に戻らない変形は、この機体の歩いた道の墓標として残る。」",
+      "effects": [ { "target": "enemy", "type": "damage", "value": 6 }, { "target": "enemy", "type": "stun", "value": 1 } ]
+    },
+    {
+      "id": "reactor_last_light", "name": "最後の灯 (LAST LIGHT)", "cost": 1, "category": "TEC", "type": "skill", "noise": 1, "stance_change": null,
+      "flavor": "「消えかけた炉心は、最後に一度だけ大きく燃え上がる。熱に浮かされた回線の感度が跳ね上がり、向こうからの指示が矢継ぎ早に届くようになる。」",
+      "effects": [ { "target": "player", "type": "draw_if_hp_le", "value": 1, "bonus": 3, "threshold": 0.25 } ]
+    },
   ];
 
   function normalize(raw) {

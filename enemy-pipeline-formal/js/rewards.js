@@ -208,18 +208,49 @@
     effects: Object.freeze(card.effects.map((effect) => Object.freeze({ ...effect }))),
   })));
 
+  // VESSEL 00 "REACTOR" 専用プール（DESIGN-POOL-EXPANSION2-DRAFT.md §6 の18種、機体実装と同時に配線）。
+  // 戦闘報酬でのみ共通プールへ混ぜる（イベント報酬は共通のみ）。レアリティは同書 §6 の推奨どおり。
+  const REACTOR_POOL = Object.freeze([
+    root.Cards.get("reactor_heat_claw"),
+    root.Cards.get("reactor_slag_armor"),
+    root.Cards.get("reactor_vent_blast"),
+    root.Cards.get("reactor_coolant_flush"),
+    root.Cards.get("reactor_chain_reaction"),
+    root.Cards.get("reactor_meltdown_rush"),
+    root.Cards.get("reactor_ember_regen"),
+    root.Cards.get("reactor_pressure_valve"),
+    root.Cards.get("reactor_overheat_strike"),
+    root.Cards.get("reactor_core_surge"),
+    root.Cards.get("reactor_radiant_nova"),
+    root.Cards.get("reactor_ash_guard"),
+    root.Cards.get("reactor_heat_sink"),
+    root.Cards.get("reactor_burn_out"),
+    root.Cards.get("reactor_quick_melt"),
+    root.Cards.get("reactor_second_heart"),
+    root.Cards.get("reactor_grave_heat"),
+    root.Cards.get("reactor_last_light"),
+  ].filter(Boolean).map((card) => Object.freeze({
+    ...card,
+    rarity: ["reactor_radiant_nova", "reactor_heat_sink", "reactor_burn_out", "reactor_second_heart"].includes(card.id) ? "rare"
+      : (["reactor_vent_blast", "reactor_coolant_flush", "reactor_ember_regen",
+        "reactor_core_surge", "reactor_grave_heat", "reactor_last_light"].includes(card.id) ? "uncommon" : "common"),
+    requirements: Object.freeze((card.requirements || []).slice()),
+    effects: Object.freeze(card.effects.map((effect) => Object.freeze({ ...effect }))),
+  })));
+
   const byId = new Map();
   for (const card of POOL) byId.set(card.id, card);
   for (const card of GOLIATH_POOL) byId.set(card.id, card);
   for (const card of GHOST_TAPE_POOL) byId.set(card.id, card);
   for (const card of WEAVER_POOL) byId.set(card.id, card);
   for (const card of VESSEL07_POOL) byId.set(card.id, card);
+  for (const card of REACTOR_POOL) byId.set(card.id, card);
 
   function card(id) {
     return byId.get(id) || null;
   }
 
-  // 第3引数はキャラID（"vessel07" / "vessel04" / "vessel09" / "vessel13"）。
+  // 第3引数はキャラID（"vessel07" / "vessel04" / "vessel09" / "vessel13" / "vessel00"）。
   // 旧来の真偽値（true = GOLIATH）も互換で受ける。
   function offer(count, rng, character) {
     const random = typeof rng === "function" ? rng : Math.random;
@@ -230,6 +261,7 @@
     if (characterId === "vessel04") copy = copy.concat(GOLIATH_POOL);
     if (characterId === "vessel09") copy = copy.concat(GHOST_TAPE_POOL);
     if (characterId === "vessel13") copy = copy.concat(WEAVER_POOL);
+    if (characterId === "vessel00") copy = copy.concat(REACTOR_POOL);
     for (let i = copy.length - 1; i > 0; i -= 1) {
       const j = Math.floor(random() * (i + 1));
       const swap = copy[i];
@@ -251,6 +283,7 @@
     GHOST_TAPE_POOL,
     WEAVER_POOL,
     VESSEL07_POOL,
+    REACTOR_POOL,
     OFFER_COUNT,
     card,
     offer,
