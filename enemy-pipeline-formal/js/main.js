@@ -1625,34 +1625,72 @@ function renderEnemyIntent() {
     ui.intent.dataset.action = "";
     ui.intent.dataset.alert = "";
     imprint(ui.intent, "INTENT  —");
+    hideIntentBanner();
     if (ui.intentBanner) {
-      ui.intentBanner.hidden = true;
       ui.intentBanner.dataset.action = "";
       ui.intentBanner.dataset.alert = "";
       ui.intentBanner.textContent = "INTENT  —";
     }
+    intentAnnouncedLabel = null;
     return;
   }
   const view = Battle.intentView(battle);
   ui.intent.dataset.action = view.action || "";
   // v15.0: 警戒段階では追加行動の予告をインテントに明示する
   ui.intent.dataset.alert = view.extra ? view.extra.kind : "";
-  // DISPLAY-FIX: 上部バッジは基本ラベル＋警報までとし、〈追加行動：…〉は中央バナーだけに載せる。
-  // バッジが長いラベルで横に伸び、CCTV左上の TARGET 表示に重なるのを防ぐ（CARD-ART 調査 #3）
-  const badgeLabel = view.label
-    + ((battle.alertBuff || 0) > 0 ? ` 〈警報+${battle.alertBuff}〉` : "");
-  const label = badgeLabel
+  // INTENT-PORT（2026-11-17 本人決定で 2026-11-15 の戦闘中バッジ非表示を見直し）:
+  // デモ版の新仕様に揃え、常時二重表示を廃止する。上部バッジにフルラベル
+  // （〈追加行動：…〉込み）を常時表示し、中央バナーはラベルが変わったときだけ
+  // 一度告知して消える（以後はバッジのみが残る）。
+  const label = view.label
+    + ((battle.alertBuff || 0) > 0 ? ` 〈警報+${battle.alertBuff}〉` : "")
     + (view.extra ? ` 〈${view.extra.label}〉` : "");
-  imprint(ui.intent, badgeLabel);
-  // 実機報告 2026-11-15: 戦闘中はインテント表示を CCTV 中央のバナー1か所に統一する
-  // （v15.3 案A の上部バッジとの二重表示はやめる。バッジは戦闘外のフェイズ表示専用）
-  ui.intent.style.display = "none";
+  imprint(ui.intent, label);
+  announceIntent(label, view);
+}
+
+// INTENT-PORT: 中央バナー（#intent-banner）の一回告知（デモ版と同一実装）。
+// ラベル変化時のみ表示し、保持 1.4s → フェード 0.35s → 非表示（合計 約1.75s）。
+// 同じラベルの再描画では再告知しない。プレイヤーの操作はブロックしない。
+let intentAnnouncedLabel = null;
+let intentBannerHoldTimer = 0;
+let intentBannerFadeTimer = 0;
+
+function hideIntentBanner() {
+  window.clearTimeout(intentBannerHoldTimer);
+  window.clearTimeout(intentBannerFadeTimer);
+  intentBannerHoldTimer = 0;
+  intentBannerFadeTimer = 0;
   if (ui.intentBanner) {
-    ui.intentBanner.hidden = false;
-    ui.intentBanner.dataset.action = view.action || "";
-    ui.intentBanner.dataset.alert = view.extra ? view.extra.kind : "";
-    ui.intentBanner.textContent = `INTENT  ${label}`;
+    ui.intentBanner.classList.remove("is-fading");
+    ui.intentBanner.hidden = true;
   }
+}
+
+function announceIntent(label, view) {
+  if (!ui.intentBanner) return;
+  if (label === intentAnnouncedLabel) return;
+  intentAnnouncedLabel = label;
+  window.clearTimeout(intentBannerHoldTimer);
+  window.clearTimeout(intentBannerFadeTimer);
+  ui.intentBanner.dataset.action = view.action || "";
+  ui.intentBanner.dataset.alert = view.extra ? view.extra.kind : "";
+  ui.intentBanner.textContent = `INTENT  ${label}`;
+  ui.intentBanner.classList.remove("is-fading");
+  ui.intentBanner.hidden = false;
+  intentBannerHoldTimer = window.setTimeout(() => {
+    intentBannerHoldTimer = 0;
+    if (reducedMotion()) {
+      ui.intentBanner.hidden = true;
+      return;
+    }
+    ui.intentBanner.classList.add("is-fading");
+    intentBannerFadeTimer = window.setTimeout(() => {
+      intentBannerFadeTimer = 0;
+      ui.intentBanner.classList.remove("is-fading");
+      ui.intentBanner.hidden = true;
+    }, 400);
+  }, 1400);
 }
 
 function renderPiles() {
