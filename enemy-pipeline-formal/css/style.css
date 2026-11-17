@@ -4343,26 +4343,75 @@ body.is-dead .comms {
 .vessel-figure.is-left,
 .vessel-figure.is-right { cursor: pointer; }
 
-/* 回転を示す動き: 回転方向からフィギュアが滑り込む。
-   中央フィギュアの transform（translateX(-50%)）を壊さないよう、
-   独立プロパティ translate でアニメーションする */
-@keyframes vessel-in-r {
-  from { translate: 34px 0; opacity: 0.15; }
-  to { translate: 0 0; opacity: 1; }
+/* 回転台の演出（2026-11-17 強化）: フィギュアの移動とヨー回転は main.js が
+   Web Animations で駆動する（FLIP）。ここでは受け皿だけ用意する:
+   - .vessel-figure の perspective が visual の rotateY に奥行きを与える
+   - 退場ゴースト（.is-exit）はクリックを奪わない
+   - 足元の SVG リングが「台が回っている」手がかりになる
+   - CRTパネルは .is-swap で受け直しのフリッカを出す */
+.vessel-figure { perspective: 720px; }
+
+.vessel-figure.is-exit { pointer-events: none; }
+
+/* 回転リング: 中央ディスク（中心 x44.5%／前面 y≒60%）に重ねる破線リング。
+   破線の流れ（stroke-dashoffset）で回転を表す。座標はフィギュアと同じ
+   フレーム（画面）基準。窓型（幅760px以下）ではステージ基準に切り替える */
+.vessel-ring {
+  position: absolute;
+  left: 44.5%;
+  top: 53.4%;
+  width: 39%;
+  height: 11.5%;
+  transform: translateX(-50%);
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.7;
+  transition: opacity 300ms ease;
 }
 
-@keyframes vessel-in-l {
-  from { translate: -34px 0; opacity: 0.15; }
-  to { translate: 0 0; opacity: 1; }
+.vessel-ring svg { display: block; width: 100%; height: 100%; }
+
+.vessel-ring__track {
+  fill: none;
+  stroke: rgba(140, 255, 180, 0.38);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 7;
+  animation: vessel-ring-drift 18s linear infinite;
 }
 
-.vessel-stage.spin-r .vessel-figure { animation: vessel-in-r 380ms ease; }
-.vessel-stage.spin-l .vessel-figure { animation: vessel-in-l 380ms ease; }
+.vessel-ring__arc {
+  fill: none;
+  stroke: rgba(205, 255, 222, 0.85);
+  stroke-width: 2.6;
+  stroke-dasharray: 30 380;
+  filter: drop-shadow(0 0 4px rgba(120, 255, 170, 0.8));
+  animation: vessel-ring-arc 6.5s linear infinite;
+}
+
+@keyframes vessel-ring-drift { to { stroke-dashoffset: -240; } }
+@keyframes vessel-ring-arc { to { stroke-dashoffset: -410; } }
+
+.vessel-ring.is-spinning { opacity: 1; }
+.vessel-ring.is-spinning .vessel-ring__track { animation-duration: 1.1s; }
+.vessel-ring.is-spinning .vessel-ring__arc { animation-duration: 0.9s; }
+.vessel-ring.is-rev .vessel-ring__track,
+.vessel-ring.is-rev .vessel-ring__arc { animation-direction: reverse; }
+
+/* CRTパネルの受け直し: 軽いスライド＋明滅（グリッチ気味） */
+.vessel-info.is-swap { animation: vessel-info-swap 340ms ease; }
+
+@keyframes vessel-info-swap {
+  0% { opacity: 0.2; translate: 16px 0; filter: brightness(1.9) saturate(1.4); }
+  35% { opacity: 0.85; translate: -3px 0; filter: brightness(1.25); }
+  60% { translate: 2px 0; }
+  100% { opacity: 1; translate: 0 0; filter: none; }
+}
 
 @media (prefers-reduced-motion: reduce) {
-  .vessel-stage.spin-r .vessel-figure,
-  .vessel-stage.spin-l .vessel-figure { animation: none; }
   .vessel-figure { transition: none; }
+  .vessel-ring__track,
+  .vessel-ring__arc { animation: none; }
+  .vessel-info.is-swap { animation: none; }
 }
 
 /* 操作プレート: 画の手前デスクに置かれた実機コンソールのような金属盤 */
@@ -4613,6 +4662,8 @@ body.is-dead .comms {
       radial-gradient(ellipse 15% 5.5% at 11% 54.5%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0) 70%),
       radial-gradient(ellipse 15% 5.5% at 89% 54.5%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0) 70%);
   }
+  /* 窓型ではリングもステージ基準のディスク位置（::before の接地シャドウ）へ */
+  .vessel-ring { left: 50%; top: 59%; width: 59%; height: 14%; }
   .vessel-figure { bottom: 40%; width: 24%; }
   .vessel-figure.is-left { left: 0.5%; }
   .vessel-figure.is-right { right: 0.5%; }

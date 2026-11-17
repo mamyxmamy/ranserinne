@@ -2636,22 +2636,146 @@ function vesselFigureEl(entry, pos) {
   return fig;
 }
 
+/* ==== 選択画面カルーセル演出（2026-11-17 強化）====
+   「回転台が回る」感触を作る: 切り替え時は FLIP でフィギュアを台座間を
+   実際に移動させ、.vessel-figure__visual に rotateY を掛けて台の回転を表現する。
+   退場する素体はゴーストを残して奥へ消え、入場する素体は外側から回り込む。
+   足元の SVG リング（.vessel-ring）は常時ゆっくり流れ、回転中は加速する。
+   連打時は「現在表示されている位置」から FLIP し直すため、最終状態は必ず
+   vesselCursor と一致する。 */
+const VESSEL_SPIN_MS = 680;
+let vesselRingEl = null;
+let vesselRingTimer = 0;
+let vesselIntroPending = false;
+
+function vesselReducedMotion() {
+  return typeof window !== "undefined" && !!window.matchMedia
+    && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function vesselRingBuild() {
+  if (vesselRingEl) return vesselRingEl;
+  const ring = document.createElement("div");
+  ring.className = "vessel-ring";
+  ring.setAttribute("aria-hidden", "true");
+  ring.innerHTML = '<svg viewBox="0 0 200 60" preserveAspectRatio="none" focusable="false">'
+    + '<ellipse class="vessel-ring__track" cx="100" cy="30" rx="95" ry="25"></ellipse>'
+    + '<ellipse class="vessel-ring__arc" cx="100" cy="30" rx="95" ry="25"></ellipse>'
+    + "</svg>";
+  vesselRingEl = ring;
+  return ring;
+}
+
+function vesselRingSpin(dir) {
+  const ring = vesselRingEl;
+  if (!ring) return;
+  ring.classList.add("is-spinning");
+  ring.classList.toggle("is-rev", dir < 0);
+  window.clearTimeout(vesselRingTimer);
+  vesselRingTimer = window.setTimeout(
+    () => ring.classList.remove("is-spinning", "is-rev"), VESSEL_SPIN_MS + 80);
+}
+
 function renderVesselSelect(spinDir) {
   const stage = ui.vesselStage;
   if (!stage) return;
   const order = vesselOrder();
   const n = order.length;
   const at = (off) => order[(vesselCursor + off + n) % n];
-  stage.replaceChildren(
-    vesselFigureEl(at(-1), "left"),
-    vesselFigureEl(at(0), "center"),
-    vesselFigureEl(at(1), "right"),
-  );
-  // 回転を示す動き: 回転方向へフィギュアが滑り込むアニメーションを付ける
-  stage.classList.remove("spin-l", "spin-r");
-  if (spinDir) {
-    void stage.offsetWidth;
-    stage.classList.add(spinDir < 0 ? "spin-l" : "spin-r");
+  const reduced = vesselReducedMotion();
+  const intro = vesselIntroPending;
+  vesselIntroPending = false;
+
+  // FLIP の計測: 切り替え前に表示されている位置（中心x・足元y）を素体ごとに控える。
+  // 前回の退場ゴーストは計測対象から外すため先に除去する。
+  stage.querySelectorAll(".vessel-figure.is-exit").forEach((g) => g.remove());
+  const prevPos = new Map();
+  let exitFig = null;
+  if (spinDir && !reduced) {
+    const keep = new Set([at(-1), at(0), at(1)]);
+    stage.querySelectorAll(".vessel-figure").forEach((f) => {
+      const r = f.getBoundingClientRect();
+      prevPos.set(f.dataset.vessel, { cx: r.left + r.width / 2, bottom: r.bottom });
+      if (!keep.has(f.dataset.vessel) && !exitFig) exitFig = f;
+    });
+  }
+
+  const ring = vesselRingBuild();
+  const figL = vesselFigureEl(at(-1), "left");
+  const figC = vesselFigureEl(at(0), "center");
+  const figR = vesselFigureEl(at(1), "right");
+  stage.replaceChildren(ring, figL, figC, figR);
+
+  if (!reduced && spinDir) {
+    const ease = "cubic-bezier(.25,.85,.3,1)";
+    const ry = spinDir > 0 ? -42 : 42;
+    // 退場ゴースト: その場から奥へ回り込みながら消える
+    if (exitFig) {
+      const ghost = exitFig.cloneNode(true);
+      ghost.classList.add("is-exit");
+      stage.append(ghost);
+      ghost.animate([
+        { translate: "0px 0px" },
+        { translate: `${spinDir > 0 ? -84 : 84}px -6px`, opacity: 0, scale: 0.72 },
+      ], { duration: VESSEL_SPIN_MS, easing: "cubic-bezier(.3,.7,.3,1)", fill: "forwards" });
+      window.setTimeout(() => ghost.remove(), VESSEL_SPIN_MS + 90);
+    }
+    for (const fig of [figL, figC, figR]) {
+      const vis = fig.querySelector(".vessel-figure__visual");
+      const p = prevPos.get(fig.dataset.vessel);
+      if (p) {
+        // 台座間を移動: 現在位置から定位置へ滑らせつつ、visual をヨー回転させる
+        const r = fig.getBoundingClientRect();
+        const dx = p.cx - (r.left + r.width / 2);
+        const dy = p.bottom - r.bottom;
+        fig.animate([
+          { translate: `${dx}px ${dy}px` },
+          { translate: "0px 0px" },
+        ], { duration: VESSEL_SPIN_MS, easing: ease });
+        if (vis) vis.animate([
+          { transform: "rotateY(0deg)" },
+          { transform: `rotateY(${ry}deg)`, offset: 0.45 },
+          { transform: "rotateY(0deg)" },
+        ], { duration: VESSEL_SPIN_MS, easing: "ease-in-out" });
+      } else {
+        // 入場: 外側の奥から回り込んで定位置に収まる
+        fig.animate([
+          { translate: `${spinDir > 0 ? 110 : -110}px 10px`, opacity: 0, scale: 0.8 },
+          { translate: "0px 0px", opacity: 0.55, scale: 1 },
+        ], { duration: VESSEL_SPIN_MS, easing: ease });
+        if (vis) vis.animate([
+          { transform: `rotateY(${ry * 1.4}deg)` },
+          { transform: "rotateY(0deg)" },
+        ], { duration: VESSEL_SPIN_MS, easing: "ease-out" });
+      }
+    }
+    vesselRingSpin(spinDir);
+  } else if (!reduced && intro) {
+    // 初回登場: 中央の素体が回転しながら台に収まり、脇は遅れて灯る
+    const vis = figC.querySelector(".vessel-figure__visual");
+    figC.animate([
+      { translate: "0px 14px", opacity: 0 },
+      { translate: "0px 0px", opacity: 1 },
+    ], { duration: 760, easing: "cubic-bezier(.2,.8,.3,1)" });
+    if (vis) vis.animate([
+      { transform: "rotateY(-68deg)" },
+      { transform: "rotateY(0deg)" },
+    ], { duration: 760, easing: "cubic-bezier(.2,.8,.3,1)" });
+    [figL, figR].forEach((fig, i) => {
+      fig.animate([
+        { opacity: 0 },
+        { opacity: 0.55 },
+      ], { duration: 620, delay: 130 + i * 90, easing: "ease-out", fill: "backwards" });
+    });
+    vesselRingSpin(1);
+  }
+
+  // CRTパネルも切り替えに合わせて受け直す（スライド＋一瞬のフリッカ）
+  const panel = ui.vesselInfoName ? ui.vesselInfoName.closest(".vessel-info") : null;
+  if (panel && !reduced) {
+    panel.classList.remove("is-swap");
+    void panel.offsetWidth;
+    panel.classList.add("is-swap");
   }
   const cur = at(0);
   if (ui.vesselLaunch) ui.vesselLaunch.dataset.vessel = cur;
@@ -2694,6 +2818,7 @@ function rotateVessel(dir) {
 function openVesselSelect() {
   const idx = vesselOrder().indexOf(selectedVessel);
   vesselCursor = idx >= 0 ? idx : 0;
+  vesselIntroPending = true;
   renderVesselSelect(0);
   ui.hopper.replaceChildren();
   ui.slotLabel.textContent = "VESSEL SELECT";
