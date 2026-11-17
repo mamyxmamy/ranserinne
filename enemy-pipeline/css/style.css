@@ -1481,7 +1481,11 @@ button { color: inherit; }
 .intent-badge {
   position: absolute;
   top: 8px;
-  left: 50%;
+  /* INTENT-REDESIGN: フルラベル（〈追加行動：…〉込み）を常時出すため、中央寄せのままでは
+     長いラベルで CCTV 左上の TARGET 表示（ガラス幅の約37%まで）に箱が重なる。
+     空き帯（TARGET右端〜CAM左端）の中央（62%）へ寄せ、幅もその帯に収め、
+     入りきらない分は折り返す（重なり面積0を実測で確認済み） */
+  left: 62%;
   z-index: 2;
   margin: 0;
   transform: translateX(-50%);
@@ -1492,10 +1496,10 @@ button { color: inherit; }
   font-family: var(--font-mono);
   font-size: 13px;
   letter-spacing: 0.12em;
-  white-space: nowrap;
-  max-width: calc(100% - 12px);
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+  text-align: center;
+  white-space: normal;
+  max-width: 47%;
 }
 
 .intent-badge[data-action="buff"],
@@ -3479,7 +3483,9 @@ body.is-dead .comms {
 }
 .enemy-action[hidden] { display: none !important; }
 
-/* インテント予告の常時表示（CCTV中央下・大きめ）。上部バッジ #intent と同内容 */
+/* INTENT-REDESIGN: インテント予告の一回告知（CCTV中央下・大きめ）。
+   ラベルが変わったときだけ main.js が表示し、保持後に .is-fading で消える。
+   常時表示は上部バッジ #intent（フルラベル）が担う */
 .intent-banner {
   position: absolute;
   left: 50%;
@@ -3488,6 +3494,7 @@ body.is-dead .comms {
   margin: 0;
   box-sizing: border-box;
   transform: translateX(-50%);
+  transition: opacity 0.35s ease;
   padding: 4px 12px;
   border: 1px solid rgba(255, 210, 122, 0.7);
   background: rgba(4, 16, 8, 0.85);
@@ -3496,10 +3503,12 @@ body.is-dead .comms {
   font-size: clamp(13px, 4.4cqw, 19px);
   font-weight: 700;
   letter-spacing: 0.12em;
-  white-space: nowrap;
+  /* INTENT-REDESIGN: 告知はフルラベルが読めることが前提。最長ラベル
+     （〈警報+N〉＋〈追加行動：…〉付き）では nowrap＋省略記号で末尾が切れるため、
+     折り返しを許可する（2行に伸びるのは最長ラベルの告知時だけ） */
+  white-space: normal;
+  text-align: center;
   max-width: calc(100% - 10px);
-  overflow: hidden;
-  text-overflow: ellipsis;
   text-shadow: 0 0 8px rgba(255, 200, 90, 0.4);
 }
 .intent-banner[data-action="buff"],
@@ -3525,6 +3534,7 @@ body.is-dead .comms {
   text-shadow: 0 0 8px rgba(255, 120, 60, 0.55);
 }
 .intent-banner[hidden] { display: none !important; }
+.intent-banner.is-fading { opacity: 0; }
 
 /* ログの敵行動の色分け（「何をされたか」を後から追えるようにする） */
 .term-line.is-enemy,
@@ -3578,7 +3588,16 @@ body.is-dead .comms {
   .intent-badge { font-size: 11px; padding: 2px 6px; }
 }
 
+/* INTENT-REDESIGN: 667x320 級の極低丈では TARGET 表示がガラス幅の約57%を占め、
+   上部タグ帯にバッジの置き場所が無い（実測）。この帯だけバッジをタグ帯の直下
+   （モニタ内・上部中央）へ逃がし、TARGET／REC／CAM／TIME のいずれとも
+   重ならないことを実測で確認する */
+@media (max-height: 340px) {
+  .intent-badge { top: 46px; left: 50%; max-width: 44%; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .enemy-action.is-in { animation: none; }
   .boss-pulse:not([hidden]) { animation: none; opacity: 0.45; }
+  .intent-banner { transition: none; }
 }
