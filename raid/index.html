@@ -386,7 +386,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 54.0</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 54.1</span></div>
             </div>
 
             <div class="hidden">
@@ -450,6 +450,9 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="grid grid-cols-3 gap-2 w-full">
                     <button type="button" onclick="window.openHeirloomStorage(event)" class="action-button-main bg-black/55 text-[#E8C268] border-yellow-800/60 hover:text-white border py-2.5 text-[11px] font-bold tracking-widest rounded-sm transition-all shadow-md">
                         家宝蔵
+                    </button>
+                    <button type="button" onclick="window.openSynthFromTitle(event)" class="action-button-main bg-black/55 text-orange-300 border-orange-900/60 hover:text-white border py-2.5 text-[11px] font-bold tracking-widest rounded-sm transition-all shadow-md">
+                        家宝合成
                     </button>
                     <button type="button" onclick="window.openRanking(event)" class="action-button-main bg-black/55 text-yellow-500 border-yellow-700/60 hover:text-white border py-2.5 text-[11px] font-bold tracking-widest rounded-sm transition-all shadow-md">
                         天下の番付
@@ -839,7 +842,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 家宝の合成（v54新要素）</h3>
                     <ul class="list-disc pl-4 space-y-1">
                         <li>既に所持している家宝が被ると、自動で冥銭にはならず、<span class="font-bold">素材</span>として家宝蔵に納められます。素材は家宝蔵でいつでも、格に応じた冥銭に還元できます。</li>
-                        <li>素材を組み合わせると、通常では決して手に入らない<span class="text-gold font-bold">合成家宝</span>が生まれます。合成には素材のほかに<span class="text-purple-400 font-bold">冥銭</span>（500／900）が必要です。レシピは家宝蔵の「家宝の合成」区画で全て見られます。</li>
+                        <li>素材を組み合わせると、通常では決して手に入らない<span class="text-gold font-bold">合成家宝</span>が生まれます。合成には素材のほかに<span class="text-purple-400 font-bold">冥銭</span>（500／900）が必要です。レシピは家宝蔵の「家宝の合成」区画で全て見られます。タイトル画面の「家宝合成」ボタンからも直接開けます。</li>
                         <li>合成家宝は2種の初期ボーナスを併せ持つ<span class="font-bold">複合効果</span>が特徴です。装備の枠は通常の家宝と共通で、非業の死で失う点も同じです（素材が再び揃えば作り直せます）。合成家宝は強化できません。</li>
                     </ul>
                 </section>
@@ -1344,9 +1347,11 @@ body.pc-on #ranking-screen { font-size: 15px; }
         window.__renderSynthSection = function(listEl) {
             if (!listEl) return;
             const wrap = document.createElement('div');
+            wrap.id = 'synth-section';
             wrap.className = 'mt-6';
             let html = '<div class="mb-2"><span class="text-gold font-black tracking-[0.3em] text-xs">― 家宝の合成 ―</span><span class="text-[9px] text-gray-500 ml-2">全' + SYNTH_HEIRLOOMS_DB.length + '種</span></div>';
             html += '<div class="text-[10px] text-gray-400 mb-3">被った家宝は素材として納められます。素材と冥銭が揃えば、通常では決して手に入らない合成家宝が生まれます。</div>';
+            html += '<button type=\"button\" onclick=\"window.openSynthTutorial(event)\" class=\"mb-3 text-[10px] font-bold px-2.5 py-1.5 rounded-sm border bg-[#241C10] text-[#E8C268] border-yellow-800/60\">？ 合成のしかた</button>';
             SYNTH_HEIRLOOMS_DB.forEach(def => {
                 const owned = (window.unlockedHeirlooms || []).some(h => h.id === def.id);
                 const needs = {};
@@ -3691,6 +3696,10 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
         };
 
         window.closeHeirloomStorage = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } document.getElementById('heirloom-screen').classList.add('hidden'); if (window.__renderPrep) window.__renderPrep(); };
+        // v54.1: タイトル画面の「家宝合成」ボタン。家宝蔵を開いて合成区画へスクロールし、初回だけチュートリアルを表示する
+        window.openSynthTutorial = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } const m = document.getElementById('synth-tutorial-screen'); if (m) m.classList.remove('hidden'); };
+        window.closeSynthTutorial = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } const m = document.getElementById('synth-tutorial-screen'); if (m) m.classList.add('hidden'); try { localStorage.setItem('sengoku_synth_tutorial_seen', '1'); } catch (err) {} };
+        window.openSynthFromTitle = function(e) { window.openHeirloomStorage(e); setTimeout(() => { const sec = document.getElementById('synth-section'); if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); let seen = null; try { seen = localStorage.getItem('sengoku_synth_tutorial_seen'); } catch (err) {} if (seen !== '1') window.openSynthTutorial(); }, 80); };
 
         window.openShop = function(e) {
             if(e){ e.preventDefault(); e.stopPropagation(); }
@@ -5601,7 +5610,7 @@ cv.toBlob((b) => resolve(b), 'image/png');
             if (e) { e.preventDefault(); e.stopPropagation(); }
             if (confirm("これまでの輪廻の記録と獲得した家宝蔵をすべて完全に消去します。\nよろしいですか？")) {
                 localStorage.removeItem('sengoku_rinne_count'); localStorage.removeItem('sengoku_heirloom'); localStorage.removeItem('sengoku_equipped_heirlooms'); localStorage.removeItem('sengoku_unlocked_heirlooms'); localStorage.removeItem('sengoku_unlocked_deaths'); localStorage.removeItem('sengoku_unlocked_titles'); localStorage.removeItem('sengoku_unlocked_kiwami'); localStorage.removeItem('sengoku_past_lives'); localStorage.removeItem('sengoku_current_run'); localStorage.removeItem('sengoku_meisen'); localStorage.removeItem('sengoku_inventory'); localStorage.removeItem('sengoku_active_consumable');
-                localStorage.removeItem('sengoku_great_death_count'); localStorage.removeItem('sengoku_heirloom_history'); localStorage.removeItem('sengoku_heirloom_materials');
+                localStorage.removeItem('sengoku_great_death_count'); localStorage.removeItem('sengoku_heirloom_history'); localStorage.removeItem('sengoku_heirloom_materials'); localStorage.removeItem('sengoku_synth_tutorial_seen');
                 
                 window.currentReincarnationCount = 0; window.greatDeathCount = 0; window.unlockedHeirlooms = []; window.heirloomHistory = []; window.activeHeirlooms = []; window.unlockedDeaths = []; window.unlockedTitles = []; window.unlockedKiwami = []; window.heirloomMaterials = {}; window.meisen = 0; window.inventory = {}; window.activeConsumable = null;
                 window.updateStartScreenUI(); alert("すべての記録を初期化しました。");
@@ -6844,6 +6853,18 @@ if (target) target.classList.remove('hidden');
 <div class="px-4 py-2.5 bg-black/60 border-b border-[#3A322A] text-center shrink-0"><span id="raid-rank-boss" class="text-xs font-bold text-amber-100/90 tracking-widest">―</span></div>
 <div id="raid-rank-list" class="flex-1 overflow-y-auto px-4 py-2"></div>
 <p class="px-4 py-2 text-[9px] text-gray-500 text-center tracking-widest shrink-0">挑んだ回数だけ、名は刻まれる。死の直後、転生の合間に番人へ挑めます。</p>
+</div>
+
+<div id="synth-tutorial-screen" class="hidden fixed inset-0 z-[190] bg-black/85 flex items-center justify-center p-4">
+  <div class="bg-[#14110F] border border-yellow-800/60 rounded-sm max-w-sm w-full p-5 shadow-2xl">
+    <h3 class="text-gold text-lg font-black tracking-[0.3em] mb-3 text-center">家宝合成のしかた</h3>
+    <div class="space-y-3 text-[12px] text-gray-200 leading-relaxed">
+      <p><span class="text-gold font-bold">一、素材を集める</span><br>既に持っている家宝が被ると、冥銭にはならず「素材」として家宝蔵に納められます。宝籤で被った時も同じです。素材は、死んでも失われません。</p>
+      <p><span class="text-gold font-bold">二、合成する</span><br>素材と冥銭（500／900）が揃うと、レシピの「合成する」ボタンが押せます。生まれるのは、通常では決して手に入らない、効果が二つ合わさった合成家宝です。</p>
+      <p><span class="text-gold font-bold">三、失っても大丈夫</span><br>合成家宝も非業の死では失いますが、素材が再び揃えば何度でも合成し直せます。余った素材は、1個ずつ冥銭への還元もできます。</p>
+    </div>
+    <button type="button" onclick="window.closeSynthTutorial(event)" class="action-button-main mt-5 w-full bg-yellow-800 hover:bg-yellow-700 text-white border border-yellow-500 py-2.5 text-xs font-bold tracking-widest rounded-sm">わかった</button>
+  </div>
 </div>
 
 <div id="kawara-screen" class="hidden fixed inset-0 z-[190] bg-black/85 flex items-center justify-center p-4">
