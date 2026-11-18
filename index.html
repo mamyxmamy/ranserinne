@@ -386,7 +386,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 53.4</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 54.0</span></div>
             </div>
 
             <div class="hidden">
@@ -821,7 +821,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 冥銭・家宝・宝籤</h3>
                     <ul class="list-disc pl-4 space-y-1">
                         <li><span class="text-purple-400 font-bold">冥銭</span>: 死後に得る通貨。冥府の商人で持込道具（1人生に1つ）と交換できます。</li>
-                        <li><span class="text-gold font-bold">家宝</span>: 条件を満たすと得る永続強化品。装備できる数は輪廻回数で増えます（10回で2つ、30回で3つ）。<span class="text-red-400 font-bold">非業の死（大往生以外）で失い</span>、被ると格に応じた冥銭に還元されます。</li>
+                        <li><span class="text-gold font-bold">家宝</span>: 条件を満たすと得る永続強化品。装備できる数は輪廻回数で増えます（10回で2つ、30回で3つ）。<span class="text-red-400 font-bold">非業の死（大往生以外）で失い</span>、被ると素材として家宝蔵に納められます（蔵で冥銭への還元か、合成に使えます）。</li>
                         <li><span class="text-purple-400 font-bold">冥府の宝籤（ガチャ）</span>: 輪廻30回で解放、1回300冥銭で家宝を1つ授かります。新しい家宝が出ない日が続いても、5回目で必ず未所持が出ます（天井）。</li>
                     </ul>
                 </section>
@@ -832,6 +832,15 @@ body.pc-on #ranking-screen { font-size: 15px; }
                         <li>家宝蔵で、所持している家宝を<span class="text-purple-400 font-bold">冥銭</span>で強化できます。強化は最大<span class="font-bold">5段階</span>まで、1段階ごとに効果が元の値の<span class="font-bold">+20%</span>ずつ伸びます（例：初期武功+35 → +42 → +49 …、最大で2倍）。</li>
                         <li>価格は段階ごとに 150／300／450／600／900 冥銭。強化した家宝は、名前の後ろに「+1」のように段階が付きます。</li>
                         <li><span class="text-red-400 font-bold">非業の死で家宝を失うと、強化も一緒に消えます</span>。再び手に入れた時は段階0からです。古びた木の棍棒は己の伝説で育つ品のため、強化はできません。</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 家宝の合成（v54新要素）</h3>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li>既に所持している家宝が被ると、自動で冥銭にはならず、<span class="font-bold">素材</span>として家宝蔵に納められます。素材は家宝蔵でいつでも、格に応じた冥銭に還元できます。</li>
+                        <li>素材を組み合わせると、通常では決して手に入らない<span class="text-gold font-bold">合成家宝</span>が生まれます。合成には素材のほかに<span class="text-purple-400 font-bold">冥銭</span>（500／900）が必要です。レシピは家宝蔵の「家宝の合成」区画で全て見られます。</li>
+                        <li>合成家宝は2種の初期ボーナスを併せ持つ<span class="font-bold">複合効果</span>が特徴です。装備の枠は通常の家宝と共通で、非業の死で失う点も同じです（素材が再び揃えば作り直せます）。合成家宝は強化できません。</li>
                     </ul>
                 </section>
 
@@ -997,6 +1006,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
         window.greatDeathCount = 0;
         window.unlockedHeirlooms = [];
         window.heirloomHistory = []; // v22: 過去に取得した家宝の永続記録（id一覧。ロストしても消えない）
+        window.heirloomMaterials = {}; // v54: 家宝合成の素材ストック（{家宝ID: 個数}）
         window.activeHeirlooms = [];
         window.unlockedDeaths = [];
         window.unlockedTitles = []; // 追加：称号の保存用
@@ -1026,6 +1036,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 localStorage.setItem('sengoku_great_death_count', window.greatDeathCount);
                 localStorage.setItem('sengoku_unlocked_heirlooms', JSON.stringify(window.unlockedHeirlooms));
                 localStorage.setItem('sengoku_heirloom_history', JSON.stringify(window.heirloomHistory || [])); // v22
+                localStorage.setItem('sengoku_heirloom_materials', JSON.stringify(window.heirloomMaterials || {})); // v54: 素材ストック
                 localStorage.setItem('sengoku_equipped_heirlooms', JSON.stringify(window.activeHeirlooms));
                 localStorage.setItem('sengoku_unlocked_deaths', JSON.stringify(window.unlockedDeaths));
                 localStorage.setItem('sengoku_unlocked_titles', JSON.stringify(window.unlockedTitles)); // 追加：称号セーブ
@@ -1048,6 +1059,9 @@ body.pc-on #ranking-screen { font-size: 15px; }
             const savedHlHistory = localStorage.getItem('sengoku_heirloom_history');
             if (savedHlHistory) { try { window.heirloomHistory = JSON.parse(savedHlHistory); } catch(e) {} }
             if (!Array.isArray(window.heirloomHistory)) window.heirloomHistory = [];
+            // v54: 素材ストックのロード（旧セーブではキー自体が無い＝空で開始。壊れた値でも空に倒す）
+            try { const savedMaterials = localStorage.getItem('sengoku_heirloom_materials'); if (savedMaterials) { const mp = JSON.parse(savedMaterials); if (mp && typeof mp === 'object' && !Array.isArray(mp)) window.heirloomMaterials = mp; } } catch(e) {}
+            if (!window.heirloomMaterials || typeof window.heirloomMaterials !== 'object' || Array.isArray(window.heirloomMaterials)) window.heirloomMaterials = {};
             (window.unlockedHeirlooms || []).forEach(h => { if (h && h.id && !window.heirloomHistory.includes(h.id)) window.heirloomHistory.push(h.id); });
             const savedEquipped = localStorage.getItem('sengoku_equipped_heirlooms');
             if (savedEquipped) window.activeHeirlooms = JSON.parse(savedEquipped);
@@ -1236,6 +1250,147 @@ body.pc-on #ranking-screen { font-size: 15px; }
             { id: 'hl_club', name: "古びた木の棍棒", hint: "素寒貧の縛りを背負い、大往生を遂げた猛者が遺す伝説の武器", type: "luck", value: 50, effect: "初期運 +50（伝説の素寒貧の証）", flavor: "名も持たぬ素寒貧が生涯握り続けた、ただの木の棍棒。金も身分も家宝の加護も捨てた者が唯一頼った武器であり、その生き様そのものが伝説となった。持たざる者の意地の結晶である。" }
         ];
 
+        // v54: 家宝合成システム。被った家宝は自動還元されず「素材」として家宝蔵にストックされる（sengoku_heirloom_materials）。
+        // 素材と冥銭で、通常ドロップでは決して得られない複合効果（type＋type2）の合成家宝を作れる。合成家宝は強化対象外。
+        const SYNTH_HEIRLOOMS_DB = [
+            { id: 'syn_shigure', name: "妖刀・時雨", type: "valor", value: 30, type2: "karma", value2: 30, recipe: ['hl_murasame', 'hl_muramasa'], cost: 500, hint: "家宝蔵の合成でのみ生まれる", flavor: "斬った血を雨に洗うと伝わる村雨と、徳川家に祟りをなしたと恐れられた村正。二振りの妖刀の伝説を一振りに束ねたのが、この時雨である。時雨とは、晩秋にさっと降っては止む雨のこと。振るえば血の雨を呼び、収めれば何事もなかったように晴れるという。" },
+            { id: 'syn_tsukioni', name: "霊剣・月鬼", type: "valor", value: 60, type2: "luck", value2: 20, recipe: ['hl_mikazuki', 'hl_dojigiri'], cost: 500, hint: "家宝蔵の合成でのみ生まれる", flavor: "刃に三日月の映る宗近と、大江山の鬼・酒呑童子を斬った童子切。天下五剣の双璧を束ねた霊剣は、月と鬼の名を併せ持つ。月明かりの下で抜けば刃紋の月が冴え、鬼すら退く霊威を放つと伝わる。" },
+            { id: 'syn_tenkacha', name: "名物・天下茶一式", type: "virtue", value: 30, type2: "money", value2: 600, recipe: ['hl_ranjyatai', 'hl_chaki', 'hl_hatsuhana'], cost: 900, hint: "家宝蔵の合成でのみ生まれる", flavor: "正倉院の幻の香・蘭奢待、秀吉の黄金の茶器、井伊家に伝わる初花肩衝。天下の権力者たちが求めた名物を一式に揃えた、茶の湯の極みである。香を焚き、黄金の器で茶を点てる一席は、もはや国ひとつを動かす儀式に等しいとされた。" },
+            { id: 'syn_kaguramen', name: "神楽面・狐翁", type: "luck", value: 35, type2: "karma", value2: 30, recipe: ['hl_kitsune', 'hl_okina'], cost: 500, hint: "家宝蔵の合成でのみ生まれる", flavor: "稲荷の使いとされる白狐の毛皮と、長く人の念を吸って魂を宿した翁面。神楽の夜、二つが重なるとき、面は狐の笑みを浮かべるという。祝いの翁と人を化かす狐――相反する霊を束ねたこの面は、吉凶いずれの顔を見せるか、誰にも分からない。" },
+            { id: 'syn_tonbo_matsukaze', name: "名槍・松風蜻蛉", type: "valor", value: 40, type2: "health", value2: 25, recipe: ['hl_tonbogiri', 'hl_matsukaze'], cost: 500, hint: "家宝蔵の合成でのみ生まれる", flavor: "本多忠勝が57度の合戦を無傷で駆け抜けた名槍・蜻蛉切と、前田慶次にのみ懐いた巨馬・松風。最強の槍と最速の馬が揃ったとき、戦場に敵はなかったという。槍の穂先に止まる蜻蛉と、松を吹き抜ける風のような疾走が、一騎の伝説を今に伝える。" },
+            { id: 'syn_sansho', name: "軍学極意・三書", type: "strategy", value: 55, type2: "valor", value2: 20, recipe: ['hl_rikutou', 'hl_sonshi', 'hl_koyogunkan'], cost: 900, hint: "家宝蔵の合成でのみ生まれる", flavor: "太公望の教えと伝わる六韜三略、兵法の原点『孫子』、武田信玄の軍学を伝える甲陽軍鑑。古今の兵法書の極意を一巻に束ねた軍学の結晶である。戦わずして勝つ道も、戦って勝つ道も、この三書の中にあるとされ、名将は枕辺に置いて眠ったという。" },
+            { id: 'syn_hoshi', name: "南蛮天啓・星の紋", type: "luck", value: 45, type2: "virtue", value2: 25, recipe: ['hl_aoi', 'hl_tenkyugi', 'hl_cross'], cost: 900, hint: "家宝蔵の合成でのみ生まれる", flavor: "本来存在しない四葉の葵紋、南蛮の学問を示す天球儀、キリシタン大名の信仰の証たる黄金の十字架。異国の天啓と和国の吉兆が交わる場所に生まれた紋である。星の運行を読み、あり得ない幸運を掴む――天の啓示をその身に受けた者の印とされた。" },
+            { id: 'syn_souheki', name: "鉄壁具足・双壁", type: "health", value: 70, type2: "valor", value2: 20, recipe: ['hl_nanbandou', 'hl_kindami'], cost: 500, hint: "家宝蔵の合成でのみ生まれる", flavor: "鉄砲の弾丸を弾き返した南蛮胴と、打ち出しの美で知られる金陀美。実戦の堅牢と大将の威容、二つの極致を重ねた鉄壁の具足である。その厚みは矢も槍も通さず、戦場に立つ姿だけで敵の戦意を挫いたと伝わる。" },
+            { id: 'syn_niten', name: "霊刀・二天圧切", type: "valor", value: 55, type2: "luck", value2: 15, recipe: ['hl_hasebe', 'hl_gorin'], cost: 500, hint: "家宝蔵の合成でのみ生まれる", flavor: "信長が膳棚ごと押し切ったへし切長谷部と、二刀流の開祖・宮本武蔵が著した五輪書。圧し切る力と勝負の極意を説く書が束なった霊刀である。五輪の理を体現した太刀筋は、構えただけで相手の心を圧し折るという。" },
+            { id: 'syn_hiragumo_nasu', name: "名物・平蜘蛛茄子", type: "karma", value: 30, type2: "money", value2: 800, recipe: ['hl_hiragumo', 'hl_tsukumo'], cost: 900, hint: "家宝蔵の合成でのみ生まれる", flavor: "松永久秀が居城と運命を共にした平蜘蛛の釜と、秀吉が愛蔵し本能寺の変で失われたとも伝わる九十九髪茄子。爆散と消失、二つの数奇な運命を背負った茶器が束なった名物である。その姿は、栄華と滅びを同時に映す鏡のようだという。" },
+            { id: 'syn_hoshiido', name: "天目茶碗・星降る井戸", type: "luck", value: 40, type2: "virtue", value2: 25, recipe: ['hl_yohen', 'hl_ido'], cost: 500, hint: "家宝蔵の合成でのみ生まれる", flavor: "星空のような斑文を持つ曜変天目と、朝鮮の日常の器から国宝級へ見立てられた大井戸茶碗。偶然の窯変と素朴の極み――対極の美が一椀に宿った茶碗である。茶を点てれば、星降る夜の井戸を覗くような景色が広がるという。" },
+            { id: 'syn_bansen', name: "秘薬・万川の雫", type: "strategy", value: 30, type2: "health", value2: 35, recipe: ['hl_bansenshukai', 'hl_furo'], cost: 500, hint: "家宝蔵の合成でのみ生まれる", flavor: "伊賀・甲賀の忍術を集大成した万川集海の秘伝と、南蛮渡来の不老薬。忍びの里に伝わる調合で生まれた雫は、傷と疲れを癒し、闇を駆ける力を与えるという。その製法は聖典の奥に秘され、知る者は代々、口外を禁じられた。" },
+            { id: 'syn_hannya_ageha', name: "名刀・大般若揚羽", type: "money", value: 450, type2: "virtue", value2: 30, recipe: ['hl_hannya', 'hl_ageha'], cost: 500, hint: "家宝蔵の合成でのみ生まれる", flavor: "大般若経600巻にちなむ破格の値で知られた長光の太刀と、池田家の揚羽蝶を染め抜いた陣羽織。名刀と威風、二つの格を束ねた戦装束である。蝶の紋を背にこの太刀を佩く姿は、戦陣において黄金にも等しい威光を放ったという。" }
+        ];
+        function synthHeirloomDef(id) { return SYNTH_HEIRLOOMS_DB.find(x => x.id === id) || null; }
+        function isSynthHeirloomId(id) { return typeof id === 'string' && id.indexOf('syn_') === 0; }
+        // 複合効果文（「初期武功 +30／初期悪逆 +30」形式。銭系は「初期所持金 +600文」）
+        function synthEffectText(def) {
+            if (!def) return '';
+            const a = heirloomEffectText(def.type, def.value);
+            const b = def.type2 ? heirloomEffectText(def.type2, def.value2) : null;
+            if (a && b) return a + '／' + b;
+            return a || b || '';
+        }
+        function synthHeirloomInstance(id) {
+            const c = synthHeirloomDef(id);
+            if (!c) return null;
+            const inst = { id: c.id, name: c.name, type: c.type, value: c.value, desc: synthEffectText(c), enh: 0, baseValue: c.value };
+            if (c.type2) { inst.type2 = c.type2; inst.value2 = c.value2; }
+            return inst;
+        }
+        // 素材ストックの読み書きヘルパー（旧セーブでキーや変数が無くても壊れない）
+        window.__hlMaterials = function() {
+            if (!window.heirloomMaterials || typeof window.heirloomMaterials !== 'object' || Array.isArray(window.heirloomMaterials)) window.heirloomMaterials = {};
+            return window.heirloomMaterials;
+        };
+        window.__hlMaterialCount = function(id) {
+            const n = window.__hlMaterials()[id];
+            return (typeof n === 'number' && isFinite(n) && n > 0) ? Math.floor(n) : 0;
+        };
+        window.__hlAddMaterial = function(id) {
+            if (!id || isSynthHeirloomId(id) || id === 'hl_club') return;
+            const m = window.__hlMaterials();
+            m[id] = window.__hlMaterialCount(id) + 1;
+            saveMetaProgress();
+        };
+        // 素材1個の還元レート（現行 heirloomConvertMeisen を DB 定義に適用した額と同一）
+        window.__hlConvertRate = function(id) {
+            const c = HEIRLOOMS_DB.find(x => x.id === id);
+            if (!c) return 0;
+            return heirloomConvertMeisen({ type: c.type, value: c.value, baseValue: c.value });
+        };
+        window.convertHeirloomMaterial = function(id, e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (window.__hlMaterialCount(id) <= 0) return;
+            const rate = window.__hlConvertRate(id);
+            if (rate <= 0) return;
+            const m = window.__hlMaterials();
+            m[id] = window.__hlMaterialCount(id) - 1;
+            if (m[id] <= 0) delete m[id];
+            window.meisen = (window.meisen || 0) + rate;
+            saveMetaProgress();
+            if (window.updateStartScreenUI) window.updateStartScreenUI();
+            window.openHeirloomStorage();
+        };
+        window.synthesizeHeirloom = function(id, e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            const def = synthHeirloomDef(id);
+            if (!def) return;
+            if (!window.unlockedHeirlooms) window.unlockedHeirlooms = [];
+            if (window.unlockedHeirlooms.some(h => h.id === id)) return; // 所持中は再合成できない
+            const needs = {};
+            (def.recipe || []).forEach(mid => { needs[mid] = (needs[mid] || 0) + 1; });
+            for (const mid in needs) { if (window.__hlMaterialCount(mid) < needs[mid]) return; }
+            if ((window.meisen || 0) < def.cost) return;
+            const inst = synthHeirloomInstance(id);
+            if (!inst) return;
+            const m = window.__hlMaterials();
+            for (const mid in needs) { m[mid] = window.__hlMaterialCount(mid) - needs[mid]; if (m[mid] <= 0) delete m[mid]; }
+            window.meisen -= def.cost;
+            window.unlockedHeirlooms.push(inst);
+            if (!window.heirloomHistory) window.heirloomHistory = [];
+            if (!window.heirloomHistory.includes(id)) window.heirloomHistory.push(id);
+            saveMetaProgress();
+            if (window.updateStartScreenUI) window.updateStartScreenUI();
+            window.openHeirloomStorage();
+        };
+        // 家宝蔵の「合成」区画（レシピ一覧＋素材一覧）。openHeirloomStorage から毎回呼ばれる
+        window.__renderSynthSection = function(listEl) {
+            if (!listEl) return;
+            const wrap = document.createElement('div');
+            wrap.className = 'mt-6';
+            let html = '<div class="mb-2"><span class="text-gold font-black tracking-[0.3em] text-xs">― 家宝の合成 ―</span><span class="text-[9px] text-gray-500 ml-2">全' + SYNTH_HEIRLOOMS_DB.length + '種</span></div>';
+            html += '<div class="text-[10px] text-gray-400 mb-3">被った家宝は素材として納められます。素材と冥銭が揃えば、通常では決して手に入らない合成家宝が生まれます。</div>';
+            SYNTH_HEIRLOOMS_DB.forEach(def => {
+                const owned = (window.unlockedHeirlooms || []).some(h => h.id === def.id);
+                const needs = {};
+                (def.recipe || []).forEach(mid => { needs[mid] = (needs[mid] || 0) + 1; });
+                let canMake = !owned;
+                const matTexts = [];
+                Object.keys(needs).forEach(mid => {
+                    const have = window.__hlMaterialCount(mid);
+                    if (have < needs[mid]) canMake = false;
+                    const mc = HEIRLOOMS_DB.find(x => x.id === mid);
+                    matTexts.push((mc ? mc.name : mid) + '（' + have + '/' + needs[mid] + '）');
+                });
+                if ((window.meisen || 0) < def.cost) canMake = false;
+                html += '<div class="border p-3 rounded-sm mb-3 ' + (owned ? 'bg-yellow-900/30 border-gold' : 'bg-[#181513] border-[#3A322A]') + '">'
+                    + '<div class="flex justify-between items-center mb-1 gap-2">'
+                    + '<div class="font-bold ' + (owned ? 'text-gold' : 'text-gray-200') + ' text-sm">' + def.name + '</div>'
+                    + (owned
+                        ? '<span class="text-[9px] bg-gold text-black px-1.5 py-0.5 font-bold rounded shrink-0">所持中</span>'
+                        : '<button type="button" data-synth-id="' + def.id + '" class="shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-sm border ' + (canMake ? 'bg-yellow-800 hover:bg-yellow-700 text-white border-yellow-500' : 'bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed') + '"' + (canMake ? '' : ' disabled') + '>合成する（' + def.cost + ' 冥銭）</button>')
+                    + '</div>'
+                    + '<div class="text-xs text-gray-400">' + synthEffectText(def) + '</div>'
+                    + '<div class="text-[10px] text-gray-500 mt-1">素材：' + matTexts.join(' ＋ ') + '</div>'
+                    + '</div>';
+            });
+            html += '<div class="mt-5 mb-2"><span class="text-purple-300 font-black tracking-[0.3em] text-xs">― 素材 ―</span></div>';
+            const matIds = Object.keys(window.__hlMaterials()).filter(id => window.__hlMaterialCount(id) > 0);
+            if (matIds.length === 0) {
+                html += '<div class="text-[11px] text-gray-500">素材はまだありません。既に所持している家宝が被ると、素材としてここに納められます。</div>';
+            } else {
+                matIds.forEach(id => {
+                    const mc = HEIRLOOMS_DB.find(x => x.id === id);
+                    const rate = window.__hlConvertRate(id);
+                    html += '<div class="border border-[#3A322A] bg-[#15120E] p-2.5 rounded-sm mb-2 flex items-center justify-between gap-2">'
+                        + '<div><span class="text-xs font-bold text-gray-200">' + (mc ? mc.name : id) + '</span><span class="text-[10px] text-gray-400 ml-2">× ' + window.__hlMaterialCount(id) + '</span><div class="text-[10px] text-gray-500">1個を冥銭 ' + rate + ' に還元できます</div></div>'
+                        + '<button type="button" data-mat-id="' + id + '" class="shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-sm border bg-purple-900 hover:bg-purple-700 text-white border-purple-500">冥銭に還元（' + rate + '）</button>'
+                        + '</div>';
+                });
+            }
+            wrap.innerHTML = html;
+            wrap.querySelectorAll('button[data-synth-id]').forEach(btn => { btn.onclick = (ev) => { window.synthesizeHeirloom(btn.getAttribute('data-synth-id'), ev); }; });
+            wrap.querySelectorAll('button[data-mat-id]').forEach(btn => { btn.onclick = (ev) => { window.convertHeirloomMaterial(btn.getAttribute('data-mat-id'), ev); }; });
+            listEl.appendChild(wrap);
+        };
+
         // v32: 家宝の数値・効果表記の正本は HEIRLOOMS_DB（type / value / effect）。実体オブジェクトはここから生成する
         function heirloomInstance(id) {
             const c = HEIRLOOMS_DB.find(h => h.id === id);
@@ -1253,7 +1408,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
         function heirloomEnhOf(h) { const e = h && h.enh; return (typeof e === 'number' && isFinite(e)) ? Math.max(0, Math.min(HEIRLOOM_ENH_MAX, Math.floor(e))) : 0; }
         function heirloomBaseValue(h) {
             if (h && typeof h.baseValue === 'number') return h.baseValue;
-            const c = h && HEIRLOOMS_DB.find(x => x.id === h.id);
+            const c = h && (HEIRLOOMS_DB.find(x => x.id === h.id) || synthHeirloomDef(h.id));
             return c ? c.value : ((h && h.value) || 0);
         }
         function heirloomEffectiveValue(h) {
@@ -1268,7 +1423,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
         }
         // enh と baseValue から value / desc を再計算する（棍棒は独自成長のため対象外）
         function heirloomApplyEnh(h) {
-            if (!h || !h.id || h.id === 'hl_club') return h;
+            if (!h || !h.id || h.id === 'hl_club' || isSynthHeirloomId(h.id)) return h;
             h.baseValue = heirloomBaseValue(h);
             h.enh = heirloomEnhOf(h);
             h.value = heirloomEffectiveValue(h);
@@ -1282,14 +1437,14 @@ body.pc-on #ranking-screen { font-size: 15px; }
             return (h.name || '') + (e > 0 ? ' +' + e : '');
         };
         window.__hlEnhCost = function(h) {
-            if (!h || h.id === 'hl_club') return null;
+            if (!h || h.id === 'hl_club' || isSynthHeirloomId(h.id)) return null;
             const e = heirloomEnhOf(h);
             return e >= HEIRLOOM_ENH_MAX ? null : HEIRLOOM_ENH_COSTS[e];
         };
         window.enhanceHeirloom = function(id, e) {
             if (e) { e.preventDefault(); e.stopPropagation(); }
             const item = (window.unlockedHeirlooms || []).find(h => h.id === id);
-            if (!item || item.id === 'hl_club') return;
+            if (!item || item.id === 'hl_club' || isSynthHeirloomId(item.id)) return;
             heirloomApplyEnh(item);
             const cost = window.__hlEnhCost(item);
             if (cost === null) return;
@@ -1309,6 +1464,15 @@ body.pc-on #ranking-screen { font-size: 15px; }
         function syncHeirloomStats() {
             const fix = (h) => {
                 if (!h || !h.id || h.id === 'hl_club') return;
+                // v54: 合成家宝は SYNTH 側 DB が正本（複合効果 type2/value2 と効果文もここで同期する。強化は対象外で enh は常に0）
+                if (isSynthHeirloomId(h.id)) {
+                    const sc = synthHeirloomDef(h.id);
+                    if (!sc) return;
+                    h.name = sc.name; h.type = sc.type; h.value = sc.value; h.baseValue = sc.value; h.enh = 0;
+                    if (sc.type2) { h.type2 = sc.type2; h.value2 = sc.value2; } else { delete h.type2; delete h.value2; }
+                    h.desc = synthEffectText(sc);
+                    return;
+                }
                 const c = HEIRLOOMS_DB.find(x => x.id === h.id);
                 if (!c) return;
                 h.type = c.type; h.baseValue = c.value;
@@ -3200,9 +3364,9 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
                 if (!window.heirloomHistory.includes(hl.id)) window.heirloomHistory.push(hl.id);
                 result = { kind: 'new', id: hl.id, name: hl.name, grade: picked.grade, desc: hl.desc };
             } else {
-                const amount = heirloomConvertMeisen(hl);
-                window.meisen += amount;
-                result = { kind: 'convert', id: hl.id, name: hl.name, grade: picked.grade, amount: amount };
+                // v54: 被りは自動還元せず、素材として家宝蔵に納める（冥銭は増やさない）
+                window.__hlAddMaterial(hl.id);
+                result = { kind: 'material', id: hl.id, name: hl.name, grade: picked.grade };
             }
             if (result.kind === 'new') pity = 0;
             else if (unownedPool.length > 0) pity = Math.min(pity + 1, GACHA_PITY_MAX - 1);
@@ -3281,12 +3445,12 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
             const mainEl = document.getElementById('gacha-result-main');
             const flavorEl = document.getElementById('gacha-result-flavor');
             const card = document.getElementById('gacha-result-card');
-            if (kindEl) kindEl.textContent = (res.kind === 'new') ? '【 家 宝 授 与 】' : '【 還 元 】';
+            if (kindEl) kindEl.textContent = (res.kind === 'new') ? '【 家 宝 授 与 】' : '【 素 材 収 納 】';
             if (gradeEl) gradeEl.textContent = '格・' + res.grade + (special ? ' ― 上位の籤' : '');
             if (nameEl) nameEl.textContent = '『' + res.name + '』';
             if (mainEl) mainEl.innerHTML = (res.kind === 'new')
                 ? `${res.desc || ''}<br><span class="text-[10px] text-gray-400">家宝蔵に収められた</span>`
-                : `既に所持していたため、冥銭 <span class="text-base font-black text-purple-300">${res.amount}</span> に還元された`;
+                : `既に所持していたため、素材として家宝蔵に納めた<br><span class="text-[10px] text-gray-400">素材は家宝蔵で合成や冥銭への還元に使える</span>`;
             const excerpt = window.__gachaFlavorExcerpt(res.id);
             if (flavorEl) {
                 flavorEl.textContent = excerpt;
@@ -3447,6 +3611,7 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
 
             if (!window.unlockedHeirlooms || window.unlockedHeirlooms.length === 0) {
                 hList.innerHTML = '<div class="text-center text-gray-500 mt-10 text-xs">蔵にはまだ何もありません。<br>偉業を成し遂げ、家宝を獲得してください。</div>';
+                window.__renderSynthSection(hList);
                 return;
             }
 
@@ -3485,7 +3650,7 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
                 card.className = `border p-3 rounded-sm cursor-pointer transition-all ${isActive ? 'bg-yellow-900/40 border-gold' : 'bg-[#181513] border-[#3A322A] hover:border-gold/50'}`;
                 // v53.1: 強化UI（棍棒は独自成長のため対象外＝ボタン自体を出さない）。次の1段でどう伸びるかも併記する
                 let enhHtml = '';
-                if (item.id !== 'hl_club') {
+                if (item.id !== 'hl_club' && !isSynthHeirloomId(item.id)) {
                     const enhNow = heirloomEnhOf(item);
                     const enhCost = window.__hlEnhCost(item);
                     if (enhCost === null) {
@@ -3521,6 +3686,8 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
                 if (enhBtn) enhBtn.onclick = (ev) => { window.enhanceHeirloom(item.id, ev); };
                 hList.appendChild(card);
             });
+            // v54: 家宝の合成区画（レシピ一覧＋素材一覧）を蔵の下部に追加
+            window.__renderSynthSection(hList);
         };
 
         window.closeHeirloomStorage = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } document.getElementById('heirloom-screen').classList.add('hidden'); if (window.__renderPrep) window.__renderPrep(); };
@@ -3560,7 +3727,7 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
                     <div class="flex justify-between items-start mb-1">
                         <div>
                             <div class="font-bold text-gold text-sm">冥府の宝籤 <span class="text-[10px] text-gray-400 ml-1">家宝ガチャ</span></div>
-                            <div class="text-xs text-gray-400 mt-1 pr-2">冥銭と引き換えに、運命の家宝を1つ授かる。既に所持している家宝が出た場合は、格に応じた冥銭へ自動で還元される。</div>
+                            <div class="text-xs text-gray-400 mt-1 pr-2">冥銭と引き換えに、運命の家宝を1つ授かる。既に所持している家宝が出た場合は、素材として家宝蔵に納められる（蔵で冥銭に還元もできる）。</div>
                             ${(() => { const p = window.__gachaPity(); return p.remain !== null ? `<div class="text-xs text-yellow-200/80 mt-1">宝籤の天井まで あと${p.remain}回（続けて新しい家宝が出なければ、天井で必ず未所持の家宝が出る）</div>` : ''; })()}
                         </div>
                         <button id="gacha-draw-btn" class="shrink-0 bg-${canDraw ? 'yellow-700 hover:bg-yellow-600' : 'gray-800 text-gray-500'} text-white border border-${canDraw ? 'yellow-500' : 'gray-700'} px-3 py-1.5 rounded text-xs font-bold transition-colors" ${!canDraw ? 'disabled' : ''}>引く・300 冥銭</button>
@@ -3671,6 +3838,21 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
                         html += `<div class="bg-[#15120E] border border-[#4A3F2E] p-3 rounded-sm flex items-start gap-3"><div class="w-10 h-10 bg-[#2A2118] border border-[#8A6D3B] flex items-center justify-center rounded text-[#C9B48A] text-sm font-bold flex-shrink-0">宝</div><div><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[#C9B48A] text-sm">${hl.name}</span><span class="text-[9px] font-bold text-black bg-[#C9B48A] px-1.5 py-0.5 rounded-sm tracking-widest">取得済</span><span class="text-[9px] text-[#8A6D3B]">輪廻の流れの中で失われた</span></div><div class="text-xs text-gray-300 mt-0.5">${dexEffectB}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${hl.flavor}</div><div class="text-[10px] text-gray-400 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
                     } else {
                         html += `<div class="bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60"><div class="w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-lg flex-shrink-0">？</div><div><div class="font-bold text-gray-500 text-sm">？？？</div><div class="text-[10px] text-gray-600 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
+                    }
+                });
+                // v54: 合成家宝の枠（別枠。未入手は名前を伏せ、入手済みは名前・効果・来歴を出す。極・二つ名と同じ作法）
+                html += '<div class="mt-5 mb-2"><span class="text-gold font-black tracking-[0.3em] text-xs">― 合成家宝 ―</span><span class="text-[9px] text-gray-500 ml-2">全' + SYNTH_HEIRLOOMS_DB.length + '種</span></div>';
+                html += '<div class="text-[10px] text-gray-400 mb-2">※被った家宝を素材に、家宝蔵の合成でのみ生まれる家宝が記録されます</div>';
+                SYNTH_HEIRLOOMS_DB.forEach(sd => {
+                    const isOwnedS = window.unlockedHeirlooms.some(u => u.id === sd.id);
+                    const isBeforeS = !isOwnedS && (window.heirloomHistory || []).includes(sd.id);
+                    if (isOwnedS) {
+                        const actualS = window.unlockedHeirlooms.find(u => u.id === sd.id) || sd;
+                        html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-start gap-3 shadow-md"><div class="w-10 h-10 bg-gold/20 border border-gold flex items-center justify-center rounded text-lg flex-shrink-0">✨</div><div><div class="font-bold text-gold text-sm">${sd.name}</div><div class="text-xs text-gray-300 mt-0.5">${actualS.desc || synthEffectText(sd)}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${sd.flavor}</div><div class="text-[10px] text-gray-500 mt-1">【合成】 家宝蔵の合成でのみ生まれる</div></div></div>`;
+                    } else if (isBeforeS) {
+                        html += `<div class="bg-[#15120E] border border-[#4A3F2E] p-3 rounded-sm flex items-start gap-3"><div class="w-10 h-10 bg-[#2A2118] border border-[#8A6D3B] flex items-center justify-center rounded text-[#C9B48A] text-sm font-bold flex-shrink-0">宝</div><div><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[#C9B48A] text-sm">${sd.name}</span><span class="text-[9px] font-bold text-black bg-[#C9B48A] px-1.5 py-0.5 rounded-sm tracking-widest">取得済</span><span class="text-[9px] text-[#8A6D3B]">輪廻の流れの中で失われた</span></div><div class="text-xs text-gray-300 mt-0.5">${synthEffectText(sd)}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${sd.flavor}</div><div class="text-[10px] text-gray-400 mt-0.5">【合成】 素材が再び揃えば作り直せる</div></div></div>`;
+                    } else {
+                        html += `<div class="bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60"><div class="w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-lg flex-shrink-0">？</div><div><div class="font-bold text-gray-500 text-sm">？？？</div><div class="text-[10px] text-gray-600 mt-0.5">【合成】 家宝蔵の合成でのみ生まれる</div></div></div>`;
                     }
                 });
                 content.innerHTML = html;
@@ -4259,7 +4441,7 @@ let picks = chosen.sort((a, b) => a.i - b.i).map(x => x.en);
 const hd = window.__lastHeirloomDraw;
 let heiTxt = '';
 if (hd && hd.kind === 'new') heiTxt = `家宝：『${hd.name}』`;
-else if (hd && hd.kind === 'convert') heiTxt = `家宝『${hd.name}』は冥銭${hd.amount}に還元`;
+else if (hd && hd.kind === 'material') heiTxt = `家宝『${hd.name}』は素材として家宝蔵に納めた`;
 
 const cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1350;
 const ctx = cv.getContext('2d');
@@ -4638,14 +4820,19 @@ cv.toBlob((b) => resolve(b), 'image/png');
             }
 
             if (window.activeHeirlooms && window.activeHeirlooms.length > 0) {
+                const applyHlBonus = (type, value) => {
+                    if (!type || !value) return;
+                    if (type === 'money') { state.money += value; state.flags.birthBonuses.money += value; }
+                    if (type === 'valor') { state.valor += value; state.flags.birthBonuses.valor += value; }
+                    if (type === 'luck') { state.luck += value; state.flags.birthBonuses.luck += value; }
+                    if (type === 'karma') { state.karma += value; state.flags.birthBonuses.karma += value; }
+                    if (type === 'strategy') { state.strategy += value; state.flags.birthBonuses.strategy += value; }
+                    if (type === 'virtue') { state.virtue += value; state.flags.birthBonuses.virtue += value; }
+                    if (type === 'health') { state.health += value; state.flags.birthBonuses.health += value; }
+                };
                 window.activeHeirlooms.forEach(hl => {
-                    if (hl.type === 'money') { state.money += hl.value; state.flags.birthBonuses.money += hl.value; }
-                    if (hl.type === 'valor') { state.valor += hl.value; state.flags.birthBonuses.valor += hl.value; }
-                    if (hl.type === 'luck') { state.luck += hl.value; state.flags.birthBonuses.luck += hl.value; }
-                    if (hl.type === 'karma') { state.karma += hl.value; state.flags.birthBonuses.karma += hl.value; }
-                    if (hl.type === 'strategy') { state.strategy += hl.value; state.flags.birthBonuses.strategy += hl.value; }
-                    if (hl.type === 'virtue') { state.virtue += hl.value; state.flags.birthBonuses.virtue += hl.value; }
-                    if (hl.type === 'health') { state.health += hl.value; state.flags.birthBonuses.health += hl.value; }
+                    applyHlBonus(hl.type, hl.value);
+                    if (hl.type2) applyHlBonus(hl.type2, hl.value2); // v54: 合成家宝の複合効果（第2効果）
                 });
             }
 
@@ -5199,7 +5386,7 @@ cv.toBlob((b) => resolve(b), 'image/png');
                 // v29: 棍棒は「この死亡で新規授与される前から所持していたか」を先に控える（新規授与直後の即時強化を防ぐ）
                 const clubBefore = (window.unlockedHeirlooms || []).find(h => h.id === 'hl_club') || null;
 
-                // v29: 家宝の被りは所持を増やさず、格に応じた冥銭へ還元する
+                // v54: 家宝の被りは所持を増やさず、素材として家宝蔵に納める（v29の自動還元から変更）
                 let heirloomDrawResult = null;
                 if (nextHeirloom) {
                     if (!window.unlockedHeirlooms) window.unlockedHeirlooms = [];
@@ -5208,9 +5395,8 @@ cv.toBlob((b) => resolve(b), 'image/png');
                         window.unlockedHeirlooms.push(nextHeirloom);
                         heirloomDrawResult = { kind: 'new', name: nextHeirloom.name };
                     } else {
-                        const convertAmount = heirloomConvertMeisen(nextHeirloom);
-                        window.meisen += convertAmount;
-                        heirloomDrawResult = { kind: 'convert', name: nextHeirloom.name, amount: convertAmount };
+                        window.__hlAddMaterial(nextHeirloom.id);
+                        heirloomDrawResult = { kind: 'material', name: nextHeirloom.name };
                     }
                 }
                 // v22: 取得履歴に記録（この後の saveMetaProgress で永続化される。家宝ロスト時も履歴は消さない）
@@ -5308,7 +5494,7 @@ cv.toBlob((b) => resolve(b), 'image/png');
             }
 
             const hlNotice = document.getElementById('new-heirloom-notice');
-            if (hlInfo && hlInfo.draw && hlInfo.draw.kind === 'convert') { hlNotice.classList.remove('hidden'); document.getElementById('new-heirloom-text').innerText = `『${hlInfo.draw.name}』は既に所持していたため、冥銭${hlInfo.draw.amount}に還元された`; }
+            if (hlInfo && hlInfo.draw && hlInfo.draw.kind === 'material') { hlNotice.classList.remove('hidden'); document.getElementById('new-heirloom-text').innerText = `『${hlInfo.draw.name}』は既に所持していたため、素材として家宝蔵に納めた`; }
             else if (nextHeirloom) { hlNotice.classList.remove('hidden'); document.getElementById('new-heirloom-text').innerText = nextHeirloom.name; } else { hlNotice.classList.add('hidden'); }
 
             // v52: 極・二つ名の獲得表示（通常の二つ名とは別枠・金枠）
@@ -5352,7 +5538,7 @@ cv.toBlob((b) => resolve(b), 'image/png');
             renderChronologyToList('premium-chronology-list');
 
             const hlNotice = document.getElementById('premium-heirloom-notice');
-            if (hlInfo && hlInfo.draw && hlInfo.draw.kind === 'convert') { hlNotice.classList.remove('hidden'); document.getElementById('premium-heirloom-text').innerText = `『${hlInfo.draw.name}』は既に所持していたため、冥銭${hlInfo.draw.amount}に還元された`; }
+            if (hlInfo && hlInfo.draw && hlInfo.draw.kind === 'material') { hlNotice.classList.remove('hidden'); document.getElementById('premium-heirloom-text').innerText = `『${hlInfo.draw.name}』は既に所持していたため、素材として家宝蔵に納めた`; }
             else if (nextHeirloom) { hlNotice.classList.remove('hidden'); document.getElementById('premium-heirloom-text').innerText = nextHeirloom.name; } else { hlNotice.classList.add('hidden'); }
 
             // v29: 棍棒強化の特別メッセージ（通常の家宝表示とは別枠で大きく出す）
@@ -5415,9 +5601,9 @@ cv.toBlob((b) => resolve(b), 'image/png');
             if (e) { e.preventDefault(); e.stopPropagation(); }
             if (confirm("これまでの輪廻の記録と獲得した家宝蔵をすべて完全に消去します。\nよろしいですか？")) {
                 localStorage.removeItem('sengoku_rinne_count'); localStorage.removeItem('sengoku_heirloom'); localStorage.removeItem('sengoku_equipped_heirlooms'); localStorage.removeItem('sengoku_unlocked_heirlooms'); localStorage.removeItem('sengoku_unlocked_deaths'); localStorage.removeItem('sengoku_unlocked_titles'); localStorage.removeItem('sengoku_unlocked_kiwami'); localStorage.removeItem('sengoku_past_lives'); localStorage.removeItem('sengoku_current_run'); localStorage.removeItem('sengoku_meisen'); localStorage.removeItem('sengoku_inventory'); localStorage.removeItem('sengoku_active_consumable');
-                localStorage.removeItem('sengoku_great_death_count'); localStorage.removeItem('sengoku_heirloom_history'); 
+                localStorage.removeItem('sengoku_great_death_count'); localStorage.removeItem('sengoku_heirloom_history'); localStorage.removeItem('sengoku_heirloom_materials');
                 
-                window.currentReincarnationCount = 0; window.greatDeathCount = 0; window.unlockedHeirlooms = []; window.heirloomHistory = []; window.activeHeirlooms = []; window.unlockedDeaths = []; window.unlockedTitles = []; window.unlockedKiwami = []; window.meisen = 0; window.inventory = {}; window.activeConsumable = null;
+                window.currentReincarnationCount = 0; window.greatDeathCount = 0; window.unlockedHeirlooms = []; window.heirloomHistory = []; window.activeHeirlooms = []; window.unlockedDeaths = []; window.unlockedTitles = []; window.unlockedKiwami = []; window.heirloomMaterials = {}; window.meisen = 0; window.inventory = {}; window.activeConsumable = null;
                 window.updateStartScreenUI(); alert("すべての記録を初期化しました。");
             }
         };
@@ -5503,6 +5689,21 @@ cv.toBlob((b) => resolve(b), 'image/png');
                         html += `<div class="bg-[#15120E] border border-[#4A3F2E] p-3 rounded-sm flex items-start gap-3"><div class="w-10 h-10 bg-[#2A2118] border border-[#8A6D3B] flex items-center justify-center rounded text-[#C9B48A] text-sm font-bold flex-shrink-0">宝</div><div><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[#C9B48A] text-sm">${hl.name}</span><span class="text-[9px] font-bold text-black bg-[#C9B48A] px-1.5 py-0.5 rounded-sm tracking-widest">取得済</span><span class="text-[9px] text-[#8A6D3B]">輪廻の流れの中で失われた</span></div><div class="text-xs text-gray-300 mt-0.5">${dexEffectB}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${hl.flavor}</div><div class="text-[10px] text-gray-400 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
                     } else {
                         html += `<div class="bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60"><div class="w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-lg flex-shrink-0">？</div><div><div class="font-bold text-gray-500 text-sm">？？？</div><div class="text-[10px] text-gray-600 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
+                    }
+                });
+                // v54: 合成家宝の枠（別枠。未入手は名前を伏せ、入手済みは名前・効果・来歴を出す。極・二つ名と同じ作法）
+                html += '<div class="mt-5 mb-2"><span class="text-gold font-black tracking-[0.3em] text-xs">― 合成家宝 ―</span><span class="text-[9px] text-gray-500 ml-2">全' + SYNTH_HEIRLOOMS_DB.length + '種</span></div>';
+                html += '<div class="text-[10px] text-gray-400 mb-2">※被った家宝を素材に、家宝蔵の合成でのみ生まれる家宝が記録されます</div>';
+                SYNTH_HEIRLOOMS_DB.forEach(sd => {
+                    const isOwnedS = window.unlockedHeirlooms.some(u => u.id === sd.id);
+                    const isBeforeS = !isOwnedS && (window.heirloomHistory || []).includes(sd.id);
+                    if (isOwnedS) {
+                        const actualS = window.unlockedHeirlooms.find(u => u.id === sd.id) || sd;
+                        html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-start gap-3 shadow-md"><div class="w-10 h-10 bg-gold/20 border border-gold flex items-center justify-center rounded text-lg flex-shrink-0">✨</div><div><div class="font-bold text-gold text-sm">${sd.name}</div><div class="text-xs text-gray-300 mt-0.5">${actualS.desc || synthEffectText(sd)}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${sd.flavor}</div><div class="text-[10px] text-gray-500 mt-1">【合成】 家宝蔵の合成でのみ生まれる</div></div></div>`;
+                    } else if (isBeforeS) {
+                        html += `<div class="bg-[#15120E] border border-[#4A3F2E] p-3 rounded-sm flex items-start gap-3"><div class="w-10 h-10 bg-[#2A2118] border border-[#8A6D3B] flex items-center justify-center rounded text-[#C9B48A] text-sm font-bold flex-shrink-0">宝</div><div><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[#C9B48A] text-sm">${sd.name}</span><span class="text-[9px] font-bold text-black bg-[#C9B48A] px-1.5 py-0.5 rounded-sm tracking-widest">取得済</span><span class="text-[9px] text-[#8A6D3B]">輪廻の流れの中で失われた</span></div><div class="text-xs text-gray-300 mt-0.5">${synthEffectText(sd)}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${sd.flavor}</div><div class="text-[10px] text-gray-400 mt-0.5">【合成】 素材が再び揃えば作り直せる</div></div></div>`;
+                    } else {
+                        html += `<div class="bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60"><div class="w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-lg flex-shrink-0">？</div><div><div class="font-bold text-gray-500 text-sm">？？？</div><div class="text-[10px] text-gray-600 mt-0.5">【合成】 家宝蔵の合成でのみ生まれる</div></div></div>`;
                     }
                 });
                 content.innerHTML = html;
