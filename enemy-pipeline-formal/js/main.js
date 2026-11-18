@@ -498,6 +498,10 @@ const ui = {
   rewardOffers: $("reward-offers"),
   rewardSecured: $("reward-secured"),
   rewardSkip: $("reward-skip"),
+  relicOffers: $("relic-offers"),
+  relicOffersList: $("relic-offers-list"),
+  relicOffersSwap: $("relic-offers-swap"),
+  relicOffersPass: $("relic-offers-pass"),
   returnTerminal: $("return-terminal"),
   enemyName: $("enemy-name"),
   enemyHpMax: $("enemy-hp-max"),
@@ -521,6 +525,7 @@ const ui = {
   relicTipName: $("relic-tip-name"),
   relicTipBody: $("relic-tip-body"),
   relicTipEffect: $("relic-tip-effect"),
+  relicTipFlavor: $("relic-tip-flavor"),
   start: $("start-run"),
   restart: $("restart-run"),
   safehouseLine: $("safehouse-line"),
@@ -628,12 +633,19 @@ function clearStatsRows(context) {
   const hpMax = context ? (context.hpMax || 0) : (run ? (run.hpMax || 0) : 0);
   const kills = context ? (context.kills || 0) : (run && run.kills ? run.kills : 0);
   const layers = context ? (context.layersCleared || context.mapIndex || 3) : (run ? (run.mapIndex || 1) : 1);
-  return [
+  const rows = [
     `使用素体 ${vesselLabel}`,
     `残HP ${hp}/${hpMax}`,
     `撃破数 ${kills}`,
     `到達 第${layers}層（全層突破）`,
   ];
+  // 第0陣 0-5 (§1.2): 第3層ボスでは3択を出さない代わりに、回収したボスレリック名を実績へ載せる。
+  // 受け口のみ（ボスプールの候補は第1陣で追加。現行では常に対象なし＝行は出ない）。
+  const bossRelics = context && Array.isArray(context.bossRelics)
+    ? context.bossRelics
+    : collectedBossRelicNames(run);
+  if (bossRelics.length) rows.push(`回収ボスレリック ${bossRelics.join("、")}`);
+  return rows;
 }
 
 function updateClearStats(context) {
@@ -2495,8 +2507,9 @@ function renderRoute() {
   });
 }
 
-// PROMPT-28: レリックパネルは総枠5（カタログ総数と一致）。空き枠は [ EMPTY ] で示唆する。
-const RELIC_SLOTS = 5;
+// PROMPT-28: レリックパネルは総枠5。空き枠は [ EMPTY ] で示唆する。
+// 第0陣 0-3: 枠数の正は Relics.SLOTS（付与側チェックと同値）。表示と入手側で同じ定数を参照する。
+const RELIC_SLOTS = (typeof Relics !== "undefined" && Relics.SLOTS) || 5;
 let openRelicTipId = null;
 
 function closeRelicTip() {
@@ -2515,6 +2528,12 @@ function toggleRelicTip(id, anchor) {
   ui.relicTipName.textContent = info.name;
   ui.relicTipBody.textContent = info.description;
   ui.relicTipEffect.textContent = info.effectsText;
+  // 第0陣 0-6 (R-19): 二層化表示。効果文（description）＋効果サマリ＋フレーバー（flavor）を分離して出す。
+  // flavor が空のレリックではフレーバー行自体を出さない。
+  if (ui.relicTipFlavor) {
+    ui.relicTipFlavor.textContent = info.flavor || "";
+    ui.relicTipFlavor.hidden = !info.flavor;
+  }
   ui.relicTip.hidden = false;
   if (anchor) {
     anchor.classList.add("is-open");
@@ -2561,9 +2580,19 @@ function renderRelics() {
 
 function applyMapRelics() {
   Relics.eachEffect(run.relics, "on_map_generation", (relic, effect) => {
-    if (effect.type !== "add_scan_uses") return;
-    PipelineMap.grantScans(route, effect.value);
-    pushLog(`PART ${relic.name}  SCAN +${effect.value}`);
+    if (effect.type === "add_scan_uses") {
+      PipelineMap.grantScans(route, effect.value);
+      pushLog(`PART ${relic.name}  SCAN +${effect.value}`);
+      return;
+    }
+    // 第2陣 2A (N-7): マップ生成時の回復。対象は run.hp（上限 hpMax）。
+    // U-3 確定解釈により、イベント入手時の即時発火はしない（ここ＝マップ生成でのみ発火する。
+    // 盗聴装置のスキャン分の即時発火は applyEventChoice 側の現行例外として残る）。
+    if (effect.type === "heal") {
+      const before = run.hp;
+      run.hp = Math.min(run.hpMax, run.hp + (effect.value || 0));
+      if (run.hp > before) pushLog(`PART ${relic.name}  HP +${run.hp - before}`);
+    }
   });
 }
 
@@ -2939,6 +2968,8 @@ function startRun() {
     hp: seed.player.hp,
     hpMax: seed.player.hpMax,
     relics: Relics.issued(),
+    relicsLost: [], // 第0陣 0-4: 入れ替えで外したレリックの喪失リスト（R-16。そのランの提示・抽選に戻らない）
+    relicUsed: {}, // 第2陣 2E (RB-6): 致死回避レリックの使用済み記録 { レリックID: true }。戦闘へは参照を共有して渡す
     deck: Battle.deckIdsFor(selectedVessel),
     noise: 0, // v15.0: ノイズはラン全体で持ち越す（開始時は0）
     kills: 0, // v15.3: 撃破数（クリア画面のX投稿サマリ用）
@@ -3013,6 +3044,8 @@ function saveGame(pending) {
       kills: run.kills || 0, // v15.3: 撃破数も保存する
       mapIndex: run.mapIndex >= 1 && run.mapIndex <= 3 ? run.mapIndex : 1, // JOB 3M-1 (C-1/C-10)
       relics: (run.relics || []).slice(),
+      relicsLost: (run.relicsLost || []).slice(), // 第0陣 0-4: v:2 のまま任意フィールド追加（欠落時は空として読む）
+      relicUsed: { ...(run.relicUsed || {}) }, // 第2陣 2E (RB-6): v:2 のまま任意フィールド追加（欠落時は未使用として読む）
       deck: (run.deck || []).slice(),
       route: {
         nodes: route.nodes,
@@ -3107,6 +3140,8 @@ function restoreRun() {
     noise: typeof data.noise === "number" ? Math.max(0, Math.min(Battle.NOISE_MAX, data.noise)) : 0, // v15.0: 持ち越しノイズを復元
     kills: typeof data.kills === "number" ? data.kills : 0, // v15.3: 撃破数を復元
     relics: Array.isArray(data.relics) ? data.relics.slice() : [],
+    relicsLost: Array.isArray(data.relicsLost) ? data.relicsLost.slice() : [], // 第0陣 0-4: 旧 v:2 セーブ（フィールド欠落）は空扱い
+    relicUsed: (data.relicUsed && typeof data.relicUsed === "object" && !Array.isArray(data.relicUsed)) ? { ...data.relicUsed } : {}, // 第2陣 2E (RB-6): 旧 v:2 セーブ（フィールド欠落）は未使用扱い
     deck: data.deck.slice(),
     // 復元したランではチュートリアルの脚本は再生しない（新規ラン開始時に改めて行われる）
     tutorialPending: false,
@@ -3671,7 +3706,7 @@ async function beginCombat(encounter) {
   pinchHeard = false;
   pinchQueued = false;
   saveGame(encounter); // PROMPT-24: バトル突入時に保存（復元時はこの戦闘の開始時から）
-  battle = Battle.createState(undefined, { relics: run.relics, deck: run.deck, character: run.character });
+  battle = Battle.createState(undefined, { relics: run.relics, relicUsed: run.relicUsed, deck: run.deck, character: run.character });
   myPlayer().hp = Math.max(0, run.hp);
   myPlayer().hpMax = run.hpMax;
   // v15.0: 持ち越しノイズを戦闘の初期値にする（機体別範囲でクランプ。ラン側は常に0以上）
@@ -3960,6 +3995,21 @@ function fillEventChoices(event) {
     const effect = document.createElement("small");
     effect.textContent = choice.effect_text;
     button.append(title, flavor, effect);
+    /* 第0陣 0-7 (R-15): レリックが絡む選択肢は、選ぶ前に結果が分かるよう事前判定を反映する。
+       プール枯渇なら支払い自体が発生しないよう選択肢を無効化し、満杯なら入れ替えが
+       必要である旨を効果文へ足す（入れ替え操作は pickEvent 側で挟む。U-2）。 */
+    if (run && window.Events && Events.choiceHasRelic(choice)) {
+      const deal = Events.relicDeal(run);
+      if (deal.candidates <= 0) {
+        button.disabled = true;
+        effect.textContent = "渡せる部品がない。取引は成立しない。";
+      } else if (deal.full && deal.removable <= 0) {
+        button.disabled = true;
+        effect.textContent = "接続枠に空きがなく、受け取れない。";
+      } else if (deal.full) {
+        effect.textContent = `${choice.effect_text} 接続枠は満杯のため、受け取るには入れ替えが必要。`;
+      }
+    }
     ui.eventChoices.append(button);
   });
 }
@@ -4028,12 +4078,70 @@ function pickEvent(index) {
   if (eventChosen || eventLeft || session.phase !== "event" || !run || !fieldEvent) return;
   if (!Number.isInteger(index) || index < 0 || index >= fieldEvent.choices.length) return;
   const choice = fieldEvent.choices[index];
+  /* 第0陣 0-7 (U-2): レリック受け取りで枠が満杯なら、支払いの前に受け取る1つを引き、
+     入れ替え先を選ぶ画面を挟む。プール枯渇時は fillEventChoices で選択肢が無効化済み。 */
+  if (window.Events && Events.choiceHasRelic(choice)) {
+    const deal = Events.relicDeal(run);
+    if (deal.candidates > 0 && deal.full && deal.removable > 0) {
+      const drawn = Relics.draw("normal", {
+        owned: run.relics, lost: run.relicsLost, character: run.character, rng: Math.random,
+      });
+      if (drawn) { openJunkExchange(choice, index, drawn); return; }
+    }
+  }
+  applyEventChoice(choice, index, null);
+}
+
+/* 第0陣 0-7 (U-2): ジャンク屋の入れ替え選択。外す候補（初期OSは canRemove で除外）と
+   「取引をやめる」をイベント選択肢エリアへ出す。選んだ場合は支払い込みで選択肢を適用し、
+   受け取りだけ opts.relicExchange 経由で入れ替えにする。やめた場合は選択肢表示へ戻る。 */
+function openJunkExchange(choice, index, drawn) {
+  const box = ui.eventChoices;
+  box.replaceChildren();
+  box.hidden = false;
+  box.classList.add("is-in");
+  const note = document.createElement("p");
+  note.className = "event-swap-note";
+  note.textContent = `接続枠が満杯だ。${drawn.name} を受け取るには、接続中の部品を1つ外して入れ替える必要がある。外した部品は、このランでは失われる。`;
+  box.append(note);
+  for (const relic of Relics.resolve(run.relics)) {
+    if (!Relics.canRemove(run.relics, relic.id)) continue;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "safehouse__act";
+    const title = document.createElement("b");
+    title.textContent = `${relic.name} を外す`;
+    const detail = Relics.detail(relic.id);
+    const effect = document.createElement("small");
+    effect.textContent = detail ? detail.effectsText : "";
+    button.append(title, effect);
+    button.addEventListener("click", () => {
+      if (eventChosen || session.phase !== "event" || !fieldEvent) return;
+      applyEventChoice(choice, index, { relicExchange: { outId: relic.id, relicId: drawn.id } });
+    });
+    box.append(button);
+  }
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "safehouse__act";
+  const cancelTitle = document.createElement("b");
+  cancelTitle.textContent = "取引をやめる";
+  cancel.append(cancelTitle);
+  cancel.addEventListener("click", () => {
+    if (eventChosen || session.phase !== "event" || !fieldEvent) return;
+    fillEventChoices(fieldEvent);
+    revealEventChoices();
+  });
+  box.append(cancel);
+}
+
+function applyEventChoice(choice, index, applyOpts) {
   eventChosen = true;
   ui.eventChoices.querySelectorAll("button").forEach((button) => {
     button.disabled = true;
     if (Number(button.dataset.index) === index) button.classList.add("is-chosen");
   });
-  eventOutcome = Events.apply(run, choice, Math.random);
+  eventOutcome = Events.apply(run, choice, Math.random, applyOpts || undefined);
   for (const id of eventOutcome.grantedRelics) {
     Relics.eachEffect([id], "on_map_generation", (relic, effect) => {
       if (effect.type !== "add_scan_uses" || !route) return;
@@ -4155,12 +4263,218 @@ function onScan() {
   renderRoute();
 }
 
+// ============================================================
+// 第0陣 0-5: レリックドロップ基盤（FINAL §1.2／§1.6／§3 0-5）
+// ------------------------------------------------------------
+// 二段構え提示の基盤。第一段＝SALVAGE カード3択（従来）、第二段＝レリック3択（本節）。
+// カード報酬の完了後に pendingRelicDrop が立っていれば提示を挟み、pendingMapAdvance
+// （第1・2層ボスの次マップ遷移）の発火はレリック選択の完了後へ後ろ倒しする。
+// 判定（relicDropForNode）と提示（presentRelicOffer）は本節で実装する。
+// openReward から pendingRelicDrop を立てる実配線と候補レリックの組み込みは第1陣で完了した。
+// 検証と外部からの接続は window.RelicDropStage 経由。
+let pendingRelicDrop = null; // { pool: "normal" | "boss" } | null
+let relicOfferState = null; // 提示中の { pool, candidates, selected, resolve }
+
+// §1.6 チュートリアルガード込みのドロップ判定。
+// ELITE → 通常プール／BOSS → ボスプール。ただし第3層ボスは提示せず null
+// （クリア画面の実績表示へ回す。§1.2）。opts.tutorial は検証用の強制指定で、
+// 実呼び出しでは内部のチュートリアル状態を見る。
+function relicDropForNode(node, runState, opts) {
+  if (!node || !runState) return null;
+  const inTutorial = opts && typeof opts.tutorial === "boolean"
+    ? opts.tutorial
+    : (tutorialBattle || tutorialStep !== "off");
+  if (inTutorial) return null;
+  if (node.hiddenType === "ELITE") return "normal";
+  if (node.hiddenType === "BOSS") return (runState.mapIndex || 1) >= 3 ? null : "boss";
+  return null;
+}
+
+// 提示候補をプールから重複なく最大 count 件引く（ウェイト付き抽選。
+// 所持・喪失・キャラ別除外は Relics.draw → candidates() の規則に従う）
+function drawRelicOfferCandidates(poolName, count) {
+  const picked = [];
+  const baseOwned = (run && run.relics) || [];
+  for (let i = 0; i < count; i += 1) {
+    const relic = Relics.draw(poolName, {
+      owned: [...baseOwned, ...picked.map((r) => r.id)],
+      lost: (run && run.relicsLost) || [],
+      character: run && run.character,
+      rng: Math.random,
+    });
+    if (!relic) break;
+    picked.push(relic);
+  }
+  return picked;
+}
+
+// 第二段（レリック3択）の提示。候補が0件なら画面を出さず null で解決する。
+// 戻り値は付与したレリックID（入れ替え含む）または null（見送り／候補なし）。
+function presentRelicOffer(poolName) {
+  return new Promise((resolve) => {
+    if (!run || !ui.relicOffers || relicOfferState) { resolve(null); return; }
+    const candidates = drawRelicOfferCandidates(poolName, 3);
+    if (!candidates.length) { resolve(null); return; }
+    relicOfferState = { pool: poolName, candidates, selected: null, resolve };
+    renderRelicOfferCandidates();
+  });
+}
+
+function renderRelicOfferCandidates() {
+  const st = relicOfferState;
+  if (!st || !ui.relicOffers) return;
+  // 第一段（カード提示）を畳み、同じ報酬画面のまま提示エリアを第二段へ差し替える（§1.2）
+  if (ui.rewardOffers) ui.rewardOffers.replaceChildren();
+  if (ui.rewardSecured) ui.rewardSecured.hidden = true;
+  if (ui.rewardSkip) ui.rewardSkip.hidden = true;
+  ui.relicOffers.hidden = false;
+  if (ui.relicOffersSwap) { ui.relicOffersSwap.hidden = true; ui.relicOffersSwap.replaceChildren(); }
+  ui.note.textContent = "残骸から回収した部品だ。接続するものを1つ選べ。";
+  pushLog("RELIC SALVAGE  1つを回収せよ");
+  ui.relicOffersList.replaceChildren();
+  for (const relic of st.candidates) {
+    const info = Relics.detail(relic.id);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "relic-offer";
+    button.dataset.relicId = relic.id;
+    const name = document.createElement("b");
+    name.textContent = relic.name;
+    const body = document.createElement("span");
+    body.textContent = info ? info.description : "";
+    const effect = document.createElement("small");
+    effect.textContent = info ? info.effectsText : "";
+    button.append(name, body, effect);
+    if (info && info.flavor) {
+      const flavor = document.createElement("small");
+      flavor.className = "relic-offer__flavor";
+      flavor.textContent = info.flavor;
+      button.append(flavor);
+    }
+    button.addEventListener("click", () => pickRelicCandidate(relic.id));
+    ui.relicOffersList.append(button);
+  }
+  renderRelics();
+}
+
+function pickRelicCandidate(id) {
+  const st = relicOfferState;
+  if (!st || !run) return;
+  const relic = st.candidates.find((r) => r.id === id);
+  if (!relic) return;
+  if (Relics.hasRoom(run.relics)) {
+    if (!Relics.grant(run.relics, id)) return;
+    pushLog(`RELIC +1  ${relic.name} を接続した`);
+    saveGame();
+    closeRelicOffer(id);
+    return;
+  }
+  // 満杯時は入れ替え先の選択へ（初期OSは canRemove により候補へ出ない。§1.3／R-3）
+  st.selected = id;
+  renderRelicOfferSwap();
+}
+
+function renderRelicOfferSwap() {
+  const st = relicOfferState;
+  if (!st || !ui.relicOffersSwap) return;
+  const target = st.candidates.find((r) => r.id === st.selected);
+  ui.relicOffersSwap.replaceChildren();
+  ui.relicOffersSwap.hidden = false;
+  const note = document.createElement("p");
+  note.className = "event-swap-note";
+  note.textContent = `接続枠が満杯だ。${target ? target.name : ""} を接続するには、1つ外して入れ替える必要がある。外した部品は、このランでは失われる。`;
+  ui.relicOffersSwap.append(note);
+  for (const ownedRelic of Relics.resolve(run.relics)) {
+    if (!Relics.canRemove(run.relics, ownedRelic.id)) continue;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "safehouse__act";
+    button.dataset.relicId = ownedRelic.id;
+    const title = document.createElement("b");
+    title.textContent = `${ownedRelic.name} を外す`;
+    const detail = Relics.detail(ownedRelic.id);
+    const effect = document.createElement("small");
+    effect.textContent = detail ? detail.effectsText : "";
+    button.append(title, effect);
+    button.addEventListener("click", () => {
+      if (!relicOfferState || relicOfferState !== st) return;
+      if (!Relics.exchange(run.relics, run.relicsLost, ownedRelic.id, st.selected)) return;
+      pushLog(`RELIC -1  ${ownedRelic.name} を切り離した`);
+      pushLog(`RELIC +1  ${target ? target.name : st.selected} を接続した`);
+      saveGame();
+      closeRelicOffer(st.selected);
+    });
+    ui.relicOffersSwap.append(button);
+  }
+  const back = document.createElement("button");
+  back.type = "button";
+  back.className = "safehouse__act";
+  const backTitle = document.createElement("b");
+  backTitle.textContent = "候補へ戻る";
+  back.append(backTitle);
+  back.addEventListener("click", () => {
+    if (!relicOfferState) return;
+    relicOfferState.selected = null;
+    if (ui.relicOffersSwap) { ui.relicOffersSwap.hidden = true; ui.relicOffersSwap.replaceChildren(); }
+  });
+  ui.relicOffersSwap.append(back);
+}
+
+function closeRelicOffer(grantedId) {
+  const st = relicOfferState;
+  relicOfferState = null;
+  if (ui.relicOffers) ui.relicOffers.hidden = true;
+  if (ui.relicOffersList) ui.relicOffersList.replaceChildren();
+  if (ui.relicOffersSwap) { ui.relicOffersSwap.hidden = true; ui.relicOffersSwap.replaceChildren(); }
+  if (ui.rewardSkip) ui.rewardSkip.hidden = false;
+  renderRelics();
+  if (st && st.resolve) st.resolve(grantedId || null);
+}
+
+// カード報酬（第一段）の完了点。レリック提示（第二段）が積まれていれば先に挟み、
+// その完了後に pendingMapAdvance の遷移／通常の戦闘終了へ進む（発火点の後ろ倒し）。
+async function completeRewardFlow() {
+  if (session.phase !== "reward") return;
+  if (pendingRelicDrop) {
+    const drop = pendingRelicDrop;
+    pendingRelicDrop = null;
+    await presentRelicOffer(drop.pool);
+    if (session.phase !== "reward") return;
+  }
+  if (pendingMapAdvance) { await advanceToNextMap(); return; }
+  finishCombat();
+}
+
+// クリア画面の実績表示（§1.2）：そのランで回収したボスレリック名。
+// 第1陣でボスプールに RB-3 が入ったため、回収していれば実績行が出る（無ければ行自体を出さない）。
+function collectedBossRelicNames(runState) {
+  const ids = (runState && runState.relics) || [];
+  return Relics.resolve(ids).filter((relic) => relic.pool === "boss").map((relic) => relic.name);
+}
+
+window.RelicDropStage = {
+  judge: relicDropForNode,
+  present: presentRelicOffer,
+  setPending(pool) { pendingRelicDrop = pool ? { pool } : null; },
+  getPending() { return pendingRelicDrop; },
+  completeFlow: completeRewardFlow,
+  bossRelicNames: collectedBossRelicNames,
+};
+
 async function openReward() {
   if (session.phase !== "combat" || !battle || battle.player.hp <= 0 || !battle.enemy.dead) return;
   setBossAlert(false); // v15.3: 敵を撃破したら心拍層は即座に止める（ボス撃破含む）
   // v15.3: 撃破数カウント（クリア画面のX投稿サマリ用）。openReward は勝利確定後の単一入口
   // （チュートリアル完了戦闘も victoryRadio 経由でここに合流する）で、戦闘ごとに1回だけ数える
   if (run && !battle.killCounted) { battle.killCounted = true; run.kills = (run.kills || 0) + 1; }
+  // 第2陣 2A (N-4): 戦闘勝利時レリック（on_combat_victory）。回復は戦闘側 HP へ入れ、
+  // この後の各分岐にある既存の同期（run.hp = battle.player.hp）へ乗せる。第3層ボスでも
+  // 発火するがラン終了のため実効はない（FINAL §2.1 の仕様どおり特別扱いしない）。
+  // 二重発火防止に killCounted と同じ流儀の1回フラグを使う。
+  if (run && battle && !battle.victoryRelicsApplied) {
+    battle.victoryRelicsApplied = true;
+    for (const line of Relics.applyVictory(battle)) pushLog(line);
+  }
   const here = route && route.nodes ? route.nodes[route.currentId] : null;
   const isBoss = !!(here && here.hiddenType === "BOSS");
   // JOB 3M-2 (C-5): ボス分岐を分離する。第3層（最終層）のボス撃破だけが従来どおり
@@ -4173,6 +4487,16 @@ async function openReward() {
     return;
   }
   if (isBoss) pendingMapAdvance = true;
+  // 第1陣: レリックドロップの実配線（FINAL §1.1／§1.2）。ELITE→通常プール3択／第1・2層ボス→
+  // ボスプール3択を pendingRelicDrop へ積み、completeRewardFlow がカード報酬の完了後に
+  // 第二段として提示する。第3層ボスは上の分岐で bossClearSequence へ直行済みで、ここには
+  // 来ない（判定 relicDropForNode も null を返す）。チュートリアル中は判定側のガード（§1.6）で
+  // null になる。Rewards が無い経路（下の分岐）では提示画面へ進まないため、ここでは積まない。
+  pendingRelicDrop = null;
+  if (window.Rewards) {
+    const dropPool = relicDropForNode(here, run);
+    if (dropPool) pendingRelicDrop = { pool: dropPool };
+  }
   if (!window.Rewards) {
     if (pendingMapAdvance) { pendingMapAdvance = false; await advanceToNextMap(); }
     else finishCombat();
@@ -4290,6 +4614,7 @@ async function bossClearSequence() {
     kills: run && run.kills ? run.kills : 0,
     mapIndex: run ? (run.mapIndex || 3) : 3,
     layersCleared: run ? (run.mapIndex || 3) : 3,
+    bossRelics: collectedBossRelicNames(run), // 第0陣 0-5: 実績表示用（回収ボスレリック名）
     depth: null, // 深度は別軸・未実装（フック接続時に実値を渡す）
   };
   window.lastRunClearContext = runClearContext;
@@ -4378,18 +4703,18 @@ function claimReward(id) {
       await presentRadio(GRAY_EXHAUST_LINES, { phase: "reward" });
       if (session.phase !== "reward") return;
     }
-    // JOB 3M-2 (C-5/C-6): 第1・2層ボスの報酬完了後は同一マップへ戻らず次マップへ遷移する
-    if (pendingMapAdvance) { await advanceToNextMap(); return; }
-    finishCombat();
+    // JOB 3M-2 (C-5/C-6)＋第0陣 0-5: 報酬完了後の分岐は completeRewardFlow へ集約する。
+    // レリック提示（第二段）が積まれている場合はその完了後に次マップ遷移／戦闘終了へ進む。
+    await completeRewardFlow();
   }, 950);
 }
 
 function skipReward() {
   if (session.phase !== "reward") return;
   pushLog("SALVAGE  見送った");
-  // JOB 3M-2 (C-5/C-6): 報酬を見送った場合も第1・2層ボスなら次マップへ遷移する
-  if (pendingMapAdvance) { void advanceToNextMap(); return; }
-  finishCombat();
+  // JOB 3M-2 (C-5/C-6)＋第0陣 0-5: 見送り時も completeRewardFlow へ集約
+  // （レリック提示が積まれていれば挟み、第1・2層ボスなら次マップへ遷移する）
+  void completeRewardFlow();
 }
 
 function finishCombat() {
@@ -5704,6 +6029,10 @@ ui.routeReturn.addEventListener("click", () => {
 });
 ui.rewardSkip.addEventListener("click", () => {
   skipReward();
+});
+if (ui.relicOffersPass) ui.relicOffersPass.addEventListener("click", () => {
+  // 第0陣 0-5: レリック提示の見送り（§1.2「回収しない」）
+  if (relicOfferState) { pushLog("RELIC SALVAGE  見送った"); closeRelicOffer(null); }
 });
 function returnToTerminal() {
   if (audio) audio.unlock();

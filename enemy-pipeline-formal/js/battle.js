@@ -71,18 +71,53 @@
     return { id: "calm", name: "静穏", atk: 0, extras: 0 };
   }
 
+  // 第2陣 2D (RB-5 帯域緩衝スプリング): 帯域「判定」に使う NOISE は実値から band_shift 分
+  // だけ低いものとして扱う（下限 0）。実値そのもの・表示・変換系の計算基準・騒音力学の
+  // 倍率は一切変えない。適用する消費者は FINAL §2.2 の消費者表どおり次の2系統だけ:
+  //   #1 syncAlertBuff（敵攻撃への上乗せ atk の算出）
+  //   #2 追加行動の回数（extras）の決定（enemyTurn／intentView の帯域参照）
+  // 適用しない: #4 警報の予告判定（alertExtraKind は生値 ≥3 を直接見る。変更しない）、
+  // #5 完全露呈リセット（生値の上限機構。変更しない）、#3 排除優先度（priorityPlayer。
+  // ソロでは対象外・段階(4) で再判断のため変更しない）。
+  function relicBandShift(state) {
+    return root.Relics && root.Relics.bandShift ? root.Relics.bandShift(state) : 0;
+  }
+
+  function judgedBand(state, rawNoise) {
+    const shift = relicBandShift(state);
+    if (!(shift > 0)) return noiseBand(rawNoise);
+    return noiseBand(Math.max(0, (rawNoise || 0) - shift));
+  }
+
   // 警報バフは「現在の帯域」から導出する（旧仕様の BREACH ごとの累積 +3 は廃止）
   // 単位2-2（J2）: alert 系は PlayerState 側へ移設した。syncAlertBuff は対象プレイヤー
   // （第2引数／スコープ／既定 players[0]）の noise からその素体の alertBuff を算出する。
   // players を持たない旧形 state では従来どおり state 自身へ書く。
+  // 第2陣 2D: 算出には判定帯域（judgedBand）を使う（消費者 #1）。
   function syncAlertBuff(state, ref) {
     const player = resolvePlayer(state, ref);
     if (player) {
-      player.alertBuff = noiseBand(player.noise).atk;
+      player.alertBuff = judgedBand(state, player.noise).atk;
       return player.alertBuff;
     }
-    state.alertBuff = noiseBand(state.noise).atk;
+    state.alertBuff = judgedBand(state, state.noise).atk;
     return state.alertBuff;
+  }
+
+  /* 第2陣 2E (RB-6 予備心臓ポンプ／R-12＋R-17): 致死時の判定介入。
+     対象プレイヤーの HP が 0 以下で、致死回避レリックが未使用なら消費して HP を 1 に
+     戻し、true を返す。使用済みの記録は state.relicUsed（ラン側の任意フィールドと
+     共有されるオブジェクト）へ残るため、戦闘をまたいでもラン中 1 回限りになる。
+     介入箇所は致死経路4系統: strikeVolley（敵攻撃）／playCard の炉心溶融の支払い／
+     applyPlayerEndProcessing の臨界排熱スリップ／applyEffect のカード自傷。 */
+  function trySparePump(view, log) {
+    if (!view || !view.player || (view.player.hp || 0) > 0) return false;
+    if (!root.Relics || !root.Relics.consumeLethalGuard) return false;
+    const relic = root.Relics.consumeLethalGuard(view);
+    if (!relic) return false;
+    view.player.hp = 1;
+    if (log) log.push(`PART ${relic.name}  HP 1 で耐えた`);
+    return true;
   }
 
   // 騒音力学（GOLIATH専用パッシブ）: 与ダメージと獲得BLKへの倍率。
@@ -207,6 +242,11 @@
 
   function relicStunBonus(state) {
     return root.Relics ? root.Relics.stunBonus(state) : 0;
+  }
+
+  // 第2陣 2C (RB-2): レリックの常時補正（ダメージ基礎値 +n）。relicStunBonus と同じ引き方。
+  function relicDamageBaseBonus(state) {
+    return root.Relics && root.Relics.damageBaseBonus ? root.Relics.damageBaseBonus(state) : 0;
   }
 
   function applyRelics(state, trigger) {
@@ -466,7 +506,7 @@
     if (target === root.players[0]) return root;
     const view = { __scopedPlayer: target, __rootState: root };
     const defs = {};
-    for (const key of ["players", "enemy", "relics", "turn", "targetPlayerId", "partySize", "scaling"]) {
+    for (const key of ["players", "enemy", "relics", "relicUsed", "turn", "targetPlayerId", "partySize", "scaling"]) {
       defs[key] = {
         enumerable: true, configurable: true,
         get() { return root[key]; },
@@ -571,6 +611,10 @@
       : null;
     const state = {
       relics,
+      // 第2陣 2E (RB-6): 致死回避の使用済み記録 { レリックID: true }。ラン側（main.js の
+      // run.relicUsed）が渡したオブジェクトは参照を共有し、戦闘中の消費がそのままランへ
+      // 残る。未指定なら戦闘ローカルの空オブジェクト（欠落＝未使用として読む）。
+      relicUsed: options && options.relicUsed && typeof options.relicUsed === "object" ? options.relicUsed : {},
       players,
       enemy,
       // 単位2-2: alert 系は PlayerState 側へ移設済み（state.alertBuff 等は互換アクセサが
@@ -667,6 +711,7 @@
       version: 1,
       kind: "enemy-pipeline-battle-state",
       relics: (state.relics || []).slice(),
+      relicUsed: plainClone(state.relicUsed || {}),
       turn: state.turn || 1,
       alertBuff: state.alertBuff || 0,
       alertAim: state.alertAim || 0,
@@ -759,6 +804,8 @@
     const players = playerDataList.map((entry, index) => hydratePlayer(entry, index));
     const state = {
       relics: Array.isArray(data.relics) ? data.relics.slice() : [],
+      // 第2陣 2E (RB-6): 使用済み記録も往復で保持する。欠落（旧スナップショット）は未使用。
+      relicUsed: data.relicUsed && typeof data.relicUsed === "object" ? plainClone(data.relicUsed) : {},
       players,
       enemy: data.enemy ? plainClone(data.enemy) : fallbackSentry(),
       targetPlayerId: data.targetPlayerId || null,
@@ -1154,6 +1201,8 @@
       const frac = Math.floor((state.player.hp || 0) / (effect.denom || 2));
       if (frac > 0) {
         state.player.hp = Math.max(0, state.player.hp - frac);
+        // 第2陣 2E (RB-6／R-17): 現在HP割合の自傷も致死回避の対象。
+        trySparePump(state, log);
         log.push(`燃え尽き 自傷 ${frac}`);
         log.push(`HP ${state.player.hp}`);
         if (state.player.hp === 0) log.push("VESSEL DOWN");
@@ -1169,6 +1218,12 @@
       return;
     }
     let amount = effect.value;
+    // 第2陣 2C (RB-2 大口径穿孔ヘッド): ダメージ基礎値の常時補正は、倍率（騒音力学）より
+    // 前に基礎値へ加算する（倍率は +1 の後に乗る。R-10）。変換系（noScale＝固定レート）は
+    // 対象外。自傷（player 対象）にも乗せない。罠ダメージへの適用は trapFireDamage 側。
+    if (!noScale && effect.target === "enemy" && effect.type === "damage") {
+      amount += relicDamageBaseBonus(state);
+    }
     // 騒音力学の倍率（GOLIATHのみ）: 敵へのダメージと自BLK獲得に適用。自傷・回復等には適用しない
     if (!noScale && state.characterId === "vessel04"
       && ((effect.target === "enemy" && effect.type === "damage")
@@ -1225,6 +1280,8 @@
     }
     if (effect.target === "player" && effect.type === "damage") {
       state.player.hp = Math.max(0, state.player.hp - amount);
+      // 第2陣 2E (RB-6／R-17): カードの自傷効果も致死回避の対象。
+      trySparePump(state, log);
       log.push(`SELF ${amount}`);
       log.push(`HP ${state.player.hp}`);
       if (state.player.hp === 0) log.push("VESSEL DOWN");
@@ -1314,6 +1371,8 @@
     // A-2: 機体別範囲で頭打ち（07／GOLIATH は 0〜10、GHOST-TAPE は −3〜5＝逆位相残量）
     state.noise = clampNoise(state, state.noise + effNoise);
     const log = [];
+    // 第2陣 2E (RB-6／R-12): 炉心溶融の支払いによる自滅でも予備心臓ポンプは発動する。
+    if (meltdownHp > 0) trySparePump(state, log);
     if (meltdownHp > 0) {
       log.push(`炉心溶融: PWR不足 ${meltdownDeficit} を HP ${meltdownHp} で支払い`);
       log.push(`HP ${state.player.hp}`);
@@ -1355,7 +1414,9 @@
     if (ctx.noiseBefore < 5 && state.noise >= 5) {
       breach = true;
       log.push("!! SECURITY BREACH - ENEMY ALERTED !!");
-      log.push(`警報帯域: ${noiseBand(state.noise).name} (敵攻撃 +${state.alertBuff})`);
+      // 第2陣 2D (RB-5): 同じ行に並ぶ敵攻撃の上乗せ（alertBuff）は判定帯域の値のため、
+      // 帯域名も判定帯域で揃える（RB-5 未所持時は従来と同一）。
+      log.push(`警報帯域: ${judgedBand(state, state.noise).name} (敵攻撃 +${state.alertBuff})`);
     }
     return { ok: true, reason: "", log, breach, oversized };
   }
@@ -1575,7 +1636,10 @@
   }
 
   function trapFireDamage(state, trap) {
-    return (trap.damage || 0) + trapDamageBonus(state);
+    // 第2陣 2C (RB-2／R-10): 罠ダメージにも基礎値補正を適用する。圧力鍋
+    // （turn_start_noise_damage）は変換系のため、ここを通らない経路のまま対象外にする
+    // （applyTrapDamage へ直接渡される。上の trapDamageBonus と同じ置き場の原則）。
+    return (trap.damage || 0) + trapDamageBonus(state) + relicDamageBaseBonus(state);
   }
 
   // 罠ダメージは通常攻撃と同じ経路（敵BLKで相殺、貫通なし、騒音力学の倍率なし）で適用する
@@ -1784,7 +1848,24 @@
     // レリックのターン開始時効果より前に消すので、レリックで付いた防護はそのターン中有効。
     const expiredBlock = state.player.block || 0;
     state.player.block = 0;
+    // 第2陣 2D (N-5／精査 J-9): レリック発火で NOISE が下がった場合は帯域（alertBuff）を
+    // 必ず再同期する。カードを使わずにターンを終えても、敵フェイズの攻撃上乗せが
+    // 旧帯域のまま残らないようにするため（スナップショット turnStartNoise は冒頭で
+    // 確定済みのため、再同期しても変換系の計算基準は動かない）。
+    const noiseBeforeRelics = state.noise || 0;
     const notes = applyRelics(state, "start_of_turn");
+    if ((state.noise || 0) !== noiseBeforeRelics) syncAlertBuff(state);
+    // 第2陣 2B (RB-1): レリック経路のターン開始時ドロー。実処理は drawCards() 側にしか
+    // ないため、ここでモジュール境界を越えて接続する。発火は本ドロー（この後の drawCards）
+    // より前であり、通常ドローと合わせて手札が 1 枚多くなる（FINAL §2.2 RB-1）。
+    if (root.Relics && root.Relics.startOfTurnDraws) {
+      for (const draw of root.Relics.startOfTurnDraws(state)) {
+        if (!(draw.value > 0)) continue;
+        const res = drawCards(state, draw.value);
+        notes.push(`PART ${draw.name} DRAW +${draw.value}`);
+        for (const line of res.log) notes.push(line);
+      }
+    }
     if (expiredBlock > 0) notes.unshift(`BLOCK EXPIRED ${expiredBlock}`);
     // プール大拡充バッチB: 持続パワーの追加種別（ターン開始時。プリミティブ #16〜#18）。
     // vent_per_turn（予備ギア／静寂領域）: NOISE −value（機体別クランプ適用）。
@@ -1950,9 +2031,21 @@
       value = Math.floor(value / 2);
       log.push(`AIM JAM: 攻撃半減 → ${value}dmg`);
     }
+    // 第2陣 2C (RB-4／R-14): 固定軽減列（COVER／重圧歩行／騒音力学／RB-4）の合算上限。
+    // 1ヒットごとの固定軽減の合計は SYSTEM_CAPS.fixedReductionTotal を上限とし、各軽減は
+    // 残り予算の範囲で引く。乗算系（下の半減）より後に引く従来順序と、軽減後が 0 未満に
+    // ならない下限は維持する。コスト系 HP（自傷・スリップ等）は strikeVolley を通らない
+    // ため、この上限・軽減の対象にもならない。
+    const reductionCap = root.Relics && root.Relics.SYSTEM_CAPS
+      && typeof root.Relics.SYSTEM_CAPS.fixedReductionTotal === "number"
+      ? root.Relics.SYSTEM_CAPS.fixedReductionTotal : Number.POSITIVE_INFINITY;
+    const relicReduction = root.Relics && root.Relics.fixedReduction ? root.Relics.fixedReduction(state) : 0;
     let dealt = 0;
     let soakedTotal = 0;
     let evaded = false;
+    // 第2陣 2E (RB-6): この行動（ボレー）の途中で予備心臓ポンプが発動したら、その行動の
+    // 残りヒットも全て HP 1 で受け切る（FINAL §2.2 RB-6 の発動範囲表 (1)）。
+    let volleyPumpGuard = false;
     for (let i = 0; i < hits; i += 1) {
       if (state.player.hp <= 0) break;
       let dmg = value;
@@ -1961,14 +2054,18 @@
         dmg = Math.floor(dmg / 2);
         log.push(`DECOY HALVED ${dmg}`);
       }
+      let reductionBudget = reductionCap;
       if (state.player.stance === "COVER") {
-        dmg = Math.max(0, dmg - 2);
+        const cut = Math.min(dmg, 2, reductionBudget);
+        dmg -= cut;
+        reductionBudget -= cut;
         if (dmg === 0) evaded = true;
       }
       // 正式版フェーズ1: 重圧歩行（GOLIATH）の固定値軽減。COVER軽減の後・防護相殺の前に1ヒットごとに適用
       if ((state.player.tread || 0) > 0 && dmg > 0) {
-        const cut = Math.min(dmg, state.player.tread);
+        const cut = Math.min(dmg, state.player.tread, reductionBudget);
         dmg -= cut;
+        reductionBudget -= cut;
         if (cut > 0) log.push(`TREAD -${cut}`);
       }
       // 正式版 修正第2弾: 騒音力学の拡張（GOLIATHのみ）。被攻撃ダメージを現在NOISE連動で軽減する。
@@ -1976,10 +2073,18 @@
       if (state.characterId === "vessel04" && dmg > 0) {
         const armor = noiseArmor(state);
         if (armor > 0) {
-          const cut = Math.min(dmg, armor);
+          const cut = Math.min(dmg, armor, reductionBudget);
           dmg -= cut;
+          reductionBudget -= cut;
           if (cut > 0) log.push(`騒音力学: 装甲が衝撃を呑む -${cut}`);
         }
+      }
+      // 第2陣 2C (RB-4 耐熱セラミック隔壁): 固定軽減列の最後尾に 1ヒットごと軽減する。
+      if (relicReduction > 0 && dmg > 0) {
+        const cut = Math.min(dmg, relicReduction, reductionBudget);
+        dmg -= cut;
+        reductionBudget -= cut;
+        if (cut > 0) log.push(`CERAMIC -${cut}`);
       }
       const soaked = Math.min(state.player.block || 0, dmg);
       if (soaked > 0) {
@@ -1991,6 +2096,15 @@
       const hit = Math.min(state.player.hp, dmg);
       state.player.hp -= hit;
       dealt += hit;
+      // 第2陣 2E (RB-6): 致死なら介入する。発動した行動の間は残りヒットでも HP 1 未満に
+      // ならない（受け切った分は実損が無いため dealt から差し引く）。
+      if (state.player.hp <= 0) {
+        if (trySparePump(state, log)) volleyPumpGuard = true;
+        else if (volleyPumpGuard) {
+          state.player.hp = 1;
+          dealt -= hit;
+        }
+      }
     }
     if (soakedTotal > 0) log.push(`BLOCKED ${soakedTotal}  BLK ${state.player.block}`);
     log.push(`HP ${state.player.hp}`);
@@ -2129,7 +2243,9 @@
     // 正式版フェーズ1（A-2）＋単位2-2（J2）: 帯域の追加行動は排除優先度の素体へ向ける。
     // 回数はその素体の帯域で決まり、攻撃上乗せ・照準の消費もその素体自身の値を使う。
     // ノイズが3未満へ下がっていれば取消（予告を持っていた素体について判定する）。
-    const band = pri ? noiseBand(pri.noise) : noiseBand(0);
+    // 第2陣 2D (RB-5): 回数の決定には判定帯域（judgedBand）を使う（消費者 #2）。
+    // 対象の選択（priorityPlayer＝消費者 #3）と予告の有無（alertExtraKind＝消費者 #4）は生値のまま。
+    const band = pri ? judgedBand(root, pri.noise) : noiseBand(0);
     const alert = {
       telegraphed, kind: null, cancelled: false, count: 0, band: band.id,
       targetPlayerId: main ? main.playerId : null,
@@ -2216,8 +2332,12 @@
     clearTele();
     if (pri) pri.alertTelegraphed = kind;
     else if (!hasPlayers) root.alertTelegraphed = kind;
-    const band = pri ? noiseBand(pri.noise) : noiseBand(hasPlayers ? 0 : (root.noise || 0));
-    const extra = kind
+    // 第2陣 2D (RB-5): 予告の回数は判定帯域（judgedBand）で数える（消費者 #2）。
+    // 予告そのものの有無（kind＝消費者 #4）は生値のままなので、判定で回数が 0 になる
+    // 場合は予告表示を出さず、記録した alertTelegraphed が敵フェイズで「取消」として
+    // 解決される（RB-5 未所持時は kind があれば必ず extras ≥ 1 で、従来と完全一致）。
+    const band = pri ? judgedBand(root, pri.noise) : judgedBand(root, hasPlayers ? 0 : (root.noise || 0));
+    const extra = kind && band.extras > 0
       ? { kind, count: band.extras, label: band.extras > 1 ? `${ALERT_EXTRA_LABEL[kind]} ×${band.extras}` : ALERT_EXTRA_LABEL[kind], targetPlayerId: pri ? pri.playerId : null }
       : null;
     // PROMPT-25: ラベルが STUNNED のインテント（チュートリアルの強制インテント等）も同じタグ表示にする
@@ -2256,6 +2376,8 @@
       const halved = (view.powers || []).some((power) => power.kind === "slip_halve");
       if (halved) slip = Math.ceil(slip / 2);
       view.player.hp = Math.max(0, view.player.hp - slip);
+      // 第2陣 2E (RB-6／R-17): スリップによる自滅でも予備心臓ポンプは発動する。
+      trySparePump(view, log);
       log.push(`臨界排熱 スリップ ${slip}  HP ${view.player.hp}`);
       if (view.player.hp === 0) log.push("VESSEL DOWN (焼死)");
     }
@@ -2273,6 +2395,10 @@
       view.player.block = (view.player.block || 0) + armorGain;
       log.push(`待機防護 +${armorGain}`);
     }
+    // 第2陣 2F (RB-7): レリックのターン終了時効果（end_of_turn）を、余剰電力装甲と
+    // 同じ処理内で解決する。WEAVER のランではキャラ別除外により RB-7 自体が
+    // 提示されないため、固有OS との共存・順序の問題は発生しない（FINAL §2.2 RB-7）。
+    for (const line of applyRelics(view, "end_of_turn")) log.push(line);
     // 保持割引は「保持した次のターン」限り。使われなかった分の割引はここで失効する
     view.holdDiscountUid = 0;
     const discarded = discardHand(view);
@@ -2305,8 +2431,10 @@
     let exposedReset = false;
     for (const p of root.players) {
       if ((p.noise || 0) >= NOISE_MAX) {
+        // 第2陣 2D: リセット自体は生値の上限機構（消費者 #5。判定しない）。
+        // リセット後の alertBuff 再算出だけは syncAlertBuff と同じ判定帯域で行う。
         p.noise = 5;
-        p.alertBuff = noiseBand(p.noise).atk;
+        p.alertBuff = judgedBand(root, p.noise).atk;
         exposedReset = true;
         log.push(single
           ? "完全露呈 - 警報リセット  NOISE 5 (熱が残っている)"

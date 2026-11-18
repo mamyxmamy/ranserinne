@@ -303,6 +303,14 @@
                 <div class="reward-offers" id="reward-offers"></div>
                 <p class="reward-secured" id="reward-secured" hidden>DATA SECURED</p>
                 <button type="button" class="reward-skip" id="reward-skip">SKIP (抽出放棄)</button>
+                <!-- 第0陣 0-5: レリック提示（二段構えの第二段）。main.js の presentRelicOffer() が使う。
+                     見出しは §1.5 の用語統一で「RELIC SALVAGE」。 -->
+                <div class="relic-offers" id="relic-offers" hidden>
+                  <p class="relic-offers__title">RELIC SALVAGE</p>
+                  <div class="relic-offers__list" id="relic-offers-list"></div>
+                  <div class="relic-offers__swap" id="relic-offers-swap" hidden></div>
+                  <button type="button" class="reward-skip relic-offers__pass" id="relic-offers-pass">回収しない</button>
+                </div>
               </div>
 
               <div class="scene scene--sheet" id="scene-safehouse" hidden>
@@ -433,6 +441,7 @@
     <p class="relic-tip__name" id="relic-tip-name"></p>
     <p class="relic-tip__body" id="relic-tip-body"></p>
     <p class="relic-tip__effect" id="relic-tip-effect"></p>
+    <p class="relic-tip__flavor" id="relic-tip-flavor"></p>
   </div>
   <script src="js/rewards.js"></script>
   <script src="js/events.js"></script>
