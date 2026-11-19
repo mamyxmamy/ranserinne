@@ -2187,6 +2187,7 @@
     if (intent.action === "attack_stun" && dealt > 0) {
       state.player.stagger = (state.player.stagger || 0) + 1;
       log.push("STAGGER 1");
+      log.push("体勢が崩れた (次ターンの電力 -1)");
     }
     if (dealt > 0) return { log, outcome: "hit", damage: dealt, call: `${dealt} DMG` };
     if (soakedTotal > 0) return { log, outcome: "blocked", damage: 0, call: "BLOCKED" };
@@ -2201,18 +2202,31 @@
       state.enemy.block = (state.enemy.block || 0) + value;
       const tag = action === "buff" ? "GUARD" : "STEALTH";
       log.push(`${tag} +${value}  BLK ${state.enemy.block}`);
+      // 敵行動の説明（読ませる設計）: 記号行の直後に、何が変わったかを日本語で1行足す
+      const nm = intent.name || tag;
+      log.push(action === "buff"
+        ? `${nm}: 敵が守りを固めた (防護 +${value} → ${state.enemy.block})`
+        : `${nm}: 気配を消し、守りを固めた (防護 +${value} → ${state.enemy.block})`);
       return { log, outcome: action, damage: 0, call: `+${value} BLK` };
     }
     if (action === "debuff") {
+      const beforeBlock = state.player.block || 0;
       state.player.stance = "EXPOSE";
       state.player.block = 0;
       log.push("SCAN");
       log.push("EXPOSE");
+      log.push(beforeBlock > 0
+        ? `${intent.name || "サーマルスキャン"}: こちらの防護が剥がされ (防護 ${beforeBlock} → 0)、態勢が EXPOSE になった`
+        : `${intent.name || "サーマルスキャン"}: 防護は既に無く、態勢が EXPOSE になった`);
       return { log, outcome: "debuff", damage: 0, call: "EXPOSE" };
     }
     if (action === "wait") {
+      const beforeBlock = state.enemy.block || 0;
       state.enemy.block = 0;
       log.push("VENT");
+      log.push(beforeBlock > 0
+        ? `${intent.name || "排熱処理"}: 敵が防護を捨てて熱を逃がした (敵の防護 ${beforeBlock} → 0)`
+        : `${intent.name || "排熱処理"}: 敵が熱を逃がした (敵の防護は 0 のまま)`);
       return { log, outcome: "wait", damage: 0, call: "VENT" };
     }
     if (action === "hack") {
@@ -2220,7 +2234,11 @@
       if (curse) {
         state.discard.push(curse);
         log.push(`JAM  ${curse.name}`);
-      } else log.push("JAM");
+        log.push(`${intent.name || "ジャミング"}: 呪装「${curse.name}」が捨て札に 1 枚紛れ込んだ`);
+      } else {
+        log.push("JAM");
+        log.push(`${intent.name || "ジャミング"}: 信号が攪乱された`);
+      }
       return { log, outcome: "hack", damage: 0, call: "JAMMED" };
     }
     return strikeVolley(state, intent, log);
@@ -2262,6 +2280,7 @@
       advancePattern(root.enemy);
       if (hasPlayers) root.targetPlayerId = null;
       log.push("INTENT CANCELLED");
+      log.push("敵の行動が打ち消された");
       return { log, outcome: "cancelled", damage: 0, call: "CANCELLED", action: { label: "CANCELLED", kind: "cancelled" }, targetPlayerId: alertBase.targetPlayerId, alert: { ...alertBase, cancelled: !!telegraphed } };
     }
     // 検収修正 2026-11-10 (PROMPT-19): スタン最大で敵の行動をショート（設計欠落の補完）
@@ -2274,6 +2293,7 @@
       advancePattern(root.enemy);
       if (hasPlayers) root.targetPlayerId = null;
       log.push("STUNNED - 行動ショート");
+      log.push("敵はスタンで動けない");
       return { log, outcome: "stunned", damage: 0, call: "STUNNED", action: { label: "STUNNED", kind: "stunned" }, targetPlayerId: alertBase.targetPlayerId, alert: { ...alertBase, cancelled: !!telegraphed } };
     }
     // 主行動の対象（生存素体から。予告済みならそれを引き継ぐ）
@@ -2296,6 +2316,7 @@
         advancePattern(root.enemy);
         if (hasPlayers) root.targetPlayerId = null;
         log.push("INTENT CANCELLED (TRAP)");
+        log.push("罠が敵の行動を打ち消した");
         return { log, outcome: "cancelled", damage: 0, call: "CANCELLED", action: { label: "CANCELLED", kind: "cancelled" }, targetPlayerId: main ? main.playerId : null, alert: { ...alertBase, targetPlayerId: main ? main.playerId : null, cancelled: !!telegraphed } };
       }
       // 迎撃鉄線系の攻撃軽減は、解決に渡すインテントの複製へ先に適用する（表示用 shownIntent にも反映される）

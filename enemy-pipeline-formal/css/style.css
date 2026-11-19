@@ -158,9 +158,17 @@ button { color: inherit; }
 
 .attract__menu [hidden] { display: none !important; }
 
+/* UX修正4（2026-11-19）: タイトルメニューのボタンは全てこの基本形に統一する。
+   従来は .archive-btn／.coop-btn に専用ルールが無く、UA 既定のボタン描画（灰色）
+   になって幅・質感が浮いていた。幅は固定値で揃え、色の差だけを各修飾クラスで付ける。 */
 .menu-btn {
-  min-width: min(80vw, 350px);
+  width: min(84vw, 380px);
+  box-sizing: border-box;
+  border: 1px solid rgba(140, 255, 180, 0.55);
+  background: rgba(3, 17, 8, 0.88);
+  color: #c8ffd4;
   font-family: var(--font-mono);
+  font-size: clamp(12px, 1.5vw, 15px);
   letter-spacing: 0.12em;
   padding: 10px 22px;
   text-align: center;
@@ -168,8 +176,11 @@ button { color: inherit; }
   white-space: nowrap;
 }
 
+.menu-btn:hover,
+.menu-btn:focus-visible { border-color: var(--phosphor-hot); box-shadow: 0 0 12px rgba(0, 255, 80, 0.3); }
+
 .menu-btn--new {
-  border: 1px solid rgba(140, 255, 180, 0.8);
+  border-color: rgba(140, 255, 180, 0.8);
   background: #06210f;
   color: var(--phosphor-hot);
   font-size: clamp(13px, 1.7vw, 17px);
@@ -257,31 +268,29 @@ button { color: inherit; }
 
 /* PROMPT-24: セーブデータがある時だけタイトルに出る再開ボタン（v14.7: メニュー内へ移設） */
 .continue-btn {
-  border: 1px solid rgba(255, 210, 122, 0.75);
+  border-color: rgba(255, 210, 122, 0.75);
   background: #241a04;
   color: var(--amber);
-  font-size: clamp(13px, 1.6vw, 16px);
 }
 
 .continue-btn:hover,
 .continue-btn:focus-visible { border-color: var(--amber); box-shadow: 0 0 14px rgba(255, 210, 122, 0.35); }
 
 .tutorial-btn {
-  border: 1px solid rgba(143, 227, 174, 0.45);
-  background: rgba(3, 17, 8, 0.85);
+  border-color: rgba(143, 227, 174, 0.45);
   color: #8fe3ae;
-  font-size: clamp(11px, 1.3vw, 13px);
-  padding: 7px 16px;
 }
 
 .tutorial-btn:hover,
 .tutorial-btn:focus-visible { border-color: #8fe3ae; box-shadow: 0 0 12px rgba(143, 227, 174, 0.3); }
 
+/* RECOVERED RECORDS（.archive-btn）／CO-OP（.coop-btn）は .menu-btn の基本形を
+   そのまま使う（UX修正4）。専用の色付けはせず、NEW GAME 以外の通常項目として揃える。 */
+
 @media (max-height: 400px) {
   .attract__center { gap: 8px; padding: 6px 10px; }
   .attract__menu { gap: 6px; }
   .menu-btn { padding: 6px 14px; }
-  .tutorial-btn { padding: 5px 12px; font-size: 11px; }
   .attract__sub { margin-top: 8px; }
   .install-cta__note { display: none; } /* 低い画面ではメニューと干渉させない */
 }
@@ -1226,6 +1235,22 @@ button { color: inherit; }
   gap: 4px;
 }
 
+/* UX修正3: 切断ピッカーの「戻る」（サービス未使用で選択肢へ戻る） */
+.deck-modal__back {
+  margin-top: 10px;
+  border: 1px solid rgba(180, 255, 200, 0.4);
+  background: rgba(0, 0, 0, 0.28);
+  color: var(--phosphor);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  padding: 6px 18px;
+  cursor: pointer;
+}
+
+.deck-modal__back:hover,
+.deck-modal__back:focus-visible { border-color: var(--phosphor-hot); }
+
 .deck-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -2162,6 +2187,10 @@ button { color: inherit; }
 
 .punchcard.is-rise { animation: boot-rise 0.72s cubic-bezier(0.16, 1, 0.3, 1) both; }
 
+/* ドロー演出: 手札へ新規に入ったカードだけが、山札側から1枚ずつ滑り込む。
+   delay／duration は spawn() が ANIM 速度に合わせて inline で段階付けする */
+.punchcard.draw-in { animation: draw-in 0.26s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
 .punchcard.is-dragging {
   cursor: grabbing;
   z-index: 20;
@@ -2503,6 +2532,12 @@ button { color: inherit; }
 @keyframes boot-rise {
   from { transform: translateY(140px); opacity: 0; }
   to { transform: none; opacity: 1; }
+}
+
+@keyframes draw-in {
+  0% { transform: translate(34px, 14px); opacity: 0; filter: brightness(2.1) saturate(0.5); }
+  55% { opacity: 1; }
+  100% { transform: none; opacity: 1; filter: none; }
 }
 
 @keyframes curse-flash {

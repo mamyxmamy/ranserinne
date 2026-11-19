@@ -52,7 +52,8 @@
   }
 
   function disguise(hiddenType, rng) {
-    const pool = TYPES.filter((type) => type !== hiddenType);
+    // 2026-11-19 本人決定: 偽装の見た目候補から BOSS を外す（本物の層ボスは最深部のみ、という紛らわしさ対策）
+    const pool = TYPES.filter((type) => type !== hiddenType && type !== "BOSS");
     return pick(pool, rng);
   }
 

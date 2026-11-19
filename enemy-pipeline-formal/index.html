@@ -214,7 +214,7 @@
               <h2 id="vessel-name">VESSEL 07</h2>
               <p class="stat"><span>耐久 HP</span><b id="hp-value">60</b></p>
               <div class="bar" aria-hidden="true"><span id="hp-bar-ghost"></span><span id="hp-bar"></span></div>
-              <p class="stat" id="energy-row"><span>電力 PWR</span><b id="energy-value">3</b><span class="dim">/ 3</span></p>
+              <p class="stat" id="energy-row"><span>電力 PWR</span><b id="energy-value">3</b><span class="dim" id="energy-max">/ 3</span></p>
               <div class="pips" id="energy-pips" aria-hidden="true"><i></i><i></i><i></i></div>
               <div class="buffs" aria-label="バフとデバフ">
                 <p class="stat stat--icon stat--block"><span>防護 BLK</span><b id="block-value">0</b></p>
@@ -354,6 +354,7 @@
                     <h3 class="deck-modal__title" id="deck-modal-title">思考を1枚、切断する</h3>
                     <p class="deck-modal__hint">呪装も残さず切れる。同じ名前が複数あっても、選んだ1枚だけが消える。</p>
                     <ul class="deck-modal__list" id="deck-modal-list"></ul>
+                    <button type="button" class="deck-modal__back" id="deck-modal-back">戻る</button>
                   </div>
                 </div>
               </div>

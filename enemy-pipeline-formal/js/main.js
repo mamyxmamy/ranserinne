@@ -507,6 +507,7 @@ const ui = {
   hpGhost: $("hp-bar-ghost"),
   dmgVin: $("dmg-vignette"),
   energy: $("energy-value"),
+  energyMax: $("energy-max"),
   energyPips: $("energy-pips"),
   block: $("block-value"),
   enemyHp: $("enemy-hp-value"),
@@ -610,6 +611,7 @@ const ui = {
   safehouseSever: $("safehouse-sever"),
   deckModal: $("deck-modal"),
   deckList: $("deck-modal-list"),
+  deckModalBack: $("deck-modal-back"),
   eventTitle: $("event-title"),
   eventLine: $("event-line"),
   eventBody: $("event-body"),
@@ -1180,21 +1182,97 @@ function makeCard(spec) {
 
   card.append(head, stripe, holes, name, exhaustTag, trapTag, holdTag, rules, text, foot);
   card.addEventListener("animationend", () => {
-    card.classList.remove("is-new", "is-rise");
+    card.classList.remove("is-new", "is-rise", "draw-in");
   }, { once: true });
   return card;
 }
 
-function spawn(list) {
+// ==== ドロー演出: 手札へ新規に入ったカードだけを1枚ずつ順番に見せる ====
+// 前回描画時点で手札にあったカードのキー集合を保持し、spawn のたびに現在手札と
+// 突き合わせて「新規到着」カードだけへ draw-in（段階 delay つき）を付ける。
+// キーは表示層だけの識別子で、同名カードは手札内の出現順で区別する
+// （手札カードは通常 __uid を持たず、定義オブジェクト共有のため実体同一性は使えない）。
+// ロジック（battle.js）には一切触れない。
+let handSeenKeys = new Set();
+const DRAW_IN_STEP_MS = 170; // 新規カード同士の出現間隔（ANIM ×2 では半分）
+const DRAW_IN_MS = 260; // 出現アニメーション自体の長さ（同上）
+
+function handKeyList(hand) {
+  const counts = Object.create(null);
+  return (hand || []).map((card) => {
+    const n = counts[card.id] || 0;
+    counts[card.id] = n + 1;
+    return `${card.id}#${n}`;
+  });
+}
+
+function resetHandSeen() {
+  handSeenKeys = new Set();
+}
+
+// spawn(list, opts):
+// - 既定（手札描画）: list は現在手札（全量）とみなし、新規到着カードだけ draw-in。
+//   保持札（spec.held）は復帰を分かりやすくするため常に到着扱いにする。
+// - opts.keys: list が手札の一部（効果ドローの追加分）のとき、呼び出し側が
+//   手札キー列との対応を渡す。
+// - opts.untracked: 手札以外の表示（選択フェイズの候補など）。従来どおり全枚 rise。
+function spawn(list, opts) {
+  const untracked = !!(opts && opts.untracked);
+  const me = (!untracked && battle) ? myPlayer() : null;
+  let keys = null;
+  if (me) {
+    if (opts && opts.keys && opts.keys.length === list.length) keys = opts.keys;
+    else if ((me.hand || []).length === list.length) keys = handKeyList(me.hand);
+  }
+  const speed = (window.AnimPres && AnimPres.getSpeed) ? Math.max(0.05, AnimPres.getSpeed()) : 1;
+  let arrival = 0;
   list.forEach((spec, index) => {
     const card = makeCard(spec);
-    card.style.animationDelay = `${index * 80}ms`;
     if (spec.id === "boot") {
       card.classList.remove("is-new");
       card.classList.add("is-rise");
+      card.style.animationDelay = "0ms";
+    } else if (!keys) {
+      // 手札キーと対応付けできない経路は従来の一括出現に落とす
+      card.style.animationDelay = `${index * 80}ms`;
+    } else {
+      const isArrival = !handSeenKeys.has(keys[index]) || !!spec.held;
+      if (isArrival && !reducedMotion()) {
+        card.classList.remove("is-new");
+        card.classList.add("draw-in");
+        card.style.animationDelay = `${Math.round((arrival * DRAW_IN_STEP_MS) / speed)}ms`;
+        card.style.animationDuration = `${Math.round(DRAW_IN_MS / speed)}ms`;
+        arrival += 1;
+      } else {
+        // 既に手札にあったカードは再描画でアニメーションさせない
+        card.classList.remove("is-new");
+        card.style.animationDelay = "0ms";
+      }
     }
     ui.hopper.append(card);
   });
+  if (keys && me) handSeenKeys = new Set(handKeyList(me.hand));
+}
+
+// カード効果で手札へ新規に入ったカード（即時ドロー／リサイクル回収など）を、
+// DOM 未表示の分だけ手札順に spawn する。手札への追加は battle.js 側で常に末尾へ
+// push されるため、表示済み要素数より後ろの手札が新規到着分になる。
+// settlePlay（使用後処理の合流点）から呼ぶ。表示の同期のみで、入力はブロックしない。
+function syncHandArrivals() {
+  if (!battle || session.phase !== "combat" || holdPick || pickPick) return;
+  const hand = myPlayer().hand || [];
+  const shown = ui.hopper.querySelectorAll(".punchcard:not(.punchcard--ghost)").length;
+  if (hand.length <= shown) {
+    handSeenKeys = new Set(handKeyList(hand));
+    return;
+  }
+  const keys = handKeyList(hand);
+  const specs = hand.slice(shown).map((card, i) => {
+    const spec = face(card);
+    spec.hkey = keys[shown + i];
+    return spec;
+  });
+  spawn(specs, { keys: specs.map((spec) => spec.hkey) });
 }
 
 // 戦闘演出強化 段階1（JOB 1-2）: キャラ別 CCTV 待機画の解決。
@@ -1787,6 +1865,42 @@ function renderCombat() {
   if (window.MPSync) MPSync.renderAllyBar();
 }
 
+// ==== UX修正1（2026-11-19）: 非戦闘シーンでの左パネル再描画 ====
+// renderCombat は戦闘中しか走らないため、マップ／セーフハウス／イベント／復元直後では
+// 左パネル（素体名・HP・PWR・BLK・態勢）が前戦闘の値や初期表示のまま残っていた。
+// 非戦闘シーンでは run の実データから描き直す。戦闘中は renderCombat／AnimPres が正、
+// MP 中はスナップショット描画が正なので、どちらの場合も触らない。
+function renderRunVitals() {
+  if (!run || mpSession.active) return;
+  if (session.phase === "combat") return;
+  const def = (window.Battle && Battle.CHARACTERS && Battle.CHARACTERS[run.character]) || {};
+  if (ui.vesselName) ui.vesselName.textContent = def.name || "VESSEL 07";
+  const hpMax = Math.max(1, run.hpMax || def.hp || 1);
+  const hp = Math.max(0, Math.min(hpMax, run.hp || 0));
+  ui.hp.textContent = String(hp);
+  const hpPct = (hp / hpMax) * 100;
+  ui.hpBar.style.width = `${hpPct}%`;
+  if (ui.hpGhost) {
+    ui.hpGhost.style.transition = "none";
+    ui.hpGhost.style.width = `${hpPct}%`;
+  }
+  lastHpShown = hp; // 次の戦闘で HP ゴーストが古い値から残像を引かないように同期する
+  // PWR は戦闘開始時に機体の回復量（energyPerTurn）まで満ちるため、その値を満タン表示にする
+  const pwrMax = Math.max(1, def.energyPerTurn || 3);
+  ui.energy.textContent = String(pwrMax);
+  if (ui.energyMax) ui.energyMax.textContent = `/ ${pwrMax}`;
+  while (ui.energyPips.children.length < pwrMax) ui.energyPips.append(document.createElement("i"));
+  while (ui.energyPips.children.length > pwrMax) ui.energyPips.lastElementChild.remove();
+  [...ui.energyPips.children].forEach((pip) => pip.classList.remove("is-off"));
+  ui.block.textContent = "0"; // 防護は戦闘内だけの値で、戦闘外には保持されない
+  // 態勢は戦闘開始時の初期値（EXPOSE）に合わせる
+  if (ui.stance) {
+    ui.stance.textContent = "EXPOSE";
+    ui.stance.dataset.mode = "EXPOSE";
+  }
+  if (ui.stanceHint) ui.stanceHint.textContent = "露呈中：バフなし";
+}
+
 // 『アナログ・トラップ機構』: 設置中トラップのチップ列（左パネル・RELICS の流儀）。
 // 戦闘中かつ設置がある時だけ出し、発動・再配置のたびに renderCombat 経由で最新化される
 function renderTraps() {
@@ -2128,6 +2242,9 @@ function onRead(data) {
 }
 
 async function settlePlay(cardId, beforeHp, breached, animSelfFx) {
+  // ドロー演出: カード効果で手札へ入ったカード（ドロー／リサイクル回収）を
+  // 1枚ずつ順番に表示へ反映する（表示層の同期のみ）
+  syncHandArrivals();
   // v15.0: 自傷などで自HPが減っていれば被弾演出を出す
   // （演出タイムラインで再生済みの場合は二重に出さない。JOB 0-1）
   if (!animSelfFx && myPlayer().hp < beforeHp) fxPlayerDamage();
@@ -2280,7 +2397,7 @@ function openPickSelect() {
   }
   pickPick = { kind: myPlayer().pendingPick.kind, candidates, index: -1 };
   ui.hopper.replaceChildren();
-  spawn(candidates.map(face));
+  spawn(candidates.map(face), { untracked: true });
   // 候補要素へ出現順のインデックスを刻み、通常手札用のロック表示は外す（選択フェイズ専用の見た目にする）
   ui.hopper.querySelectorAll(".punchcard:not(.punchcard--ghost)").forEach((el, i) => {
     el.dataset.pickIndex = String(i);
@@ -2422,6 +2539,7 @@ async function runEnemyPhase() {
   const beforeTrapCount = (myPlayer().traps || []).length; // JOB 1-3: F-5 の表示側保持用
   const result = Battle.endTurn(battle, undefined, myPlayer());
   ui.hopper.replaceChildren();
+  resetHandSeen(); // ターン境界: 手札は全て捨てられ、次のドローは全枚が新規到着
   const downAt = result.log.indexOf("VESSEL DOWN");
   const lines = myPlayer().hp <= 0 && downAt >= 0 ? result.log.slice(0, downAt + 1) : result.log;
   // v15.3 案A: 敵ターン開始の中央バナー＋敵行動ログの色分け。
@@ -3299,6 +3417,7 @@ function enterMap(options = {}) {
   ui.note.textContent = typeof options.note === "function" ? options.note() : (options.note || "光っているノードが次の区画。");
   renderRelics();
   renderRoute();
+  renderRunVitals(); // UX修正1: マップ表示時は左パネルを run の実データで描き直す
   syncEndButton();
   if (options.tutorial && run.tutorialPending) void maybeMapTutorial();
 }
@@ -3542,6 +3661,7 @@ function rigHand(ids) {
   }
   myPlayer().hand = pulled;
   ui.hopper.replaceChildren();
+  resetHandSeen(); // チュートリアルの脚本手札は差し替えとして全枚見せる
   spawn(myPlayer().hand.map(face));
   renderPiles();
   refreshHand();
@@ -3772,6 +3892,7 @@ function rigTutorialDraw(state) {
 function dealOpeningHand() {
   const started = Battle.beginPlayerTurn(battle, undefined, myPlayer());
   for (const line of started.log) pushLog(line);
+  resetHandSeen(); // 戦闘開始: 初期手札は全枚が新規到着
   spawn(started.drawn.map(face));
   renderCombat();
   renderPiles();
@@ -4054,6 +4175,7 @@ async function beginCombat(encounter) {
   ui.slotLabel.textContent = "READER LIVE";
   ui.note.textContent = "条件を満たさないカードは、スリットが拒否する。";
   ui.hopper.replaceChildren();
+  resetHandSeen(); // 戦闘開始: 初期手札は全枚が新規到着
   ui.log.replaceChildren();
   const here = route && route.nodes[route.currentId];
   if (here && here.isFake) pushLog("WARNING: AMBUSH");
@@ -4215,6 +4337,7 @@ function openSafehouse() {
   changeScene("SAFEHOUSE");
   slotIdleLabel();
   renderRelics();
+  renderRunVitals(); // UX修正1: セーフハウス入場時も左パネルを実データへ揃える
   syncEndButton();
   clickZippo(token);
   const live = () => token === safehouseToken && session.phase === "safehouse";
@@ -4243,6 +4366,8 @@ function leaveSafehouse(note) {
   slotIdleLabel();
   renderRelics();
   renderRoute();
+  renderRunVitals(); // UX修正1: 排熱の回復などを左パネルへ即反映する
+  saveGame(); // UX修正2: 排熱・切断の結果をその場で保存する（復元時の巻き戻し防止）
   syncEndButton();
 }
 
@@ -4317,6 +4442,23 @@ function severCard(index) {
   const name = card ? card.name : id;
   pushLog(`SEVER  -1  ${name}`);
   leaveSafehouse(`思考を切断した。${name} をデッキから消した。デッキは${run.deck.length}枚。`);
+}
+
+// UX修正3（2026-11-19）: 切断ピッカーの「戻る」。サービス未使用のまま閉じて、
+// セーフハウスの選択肢（排熱／切断）へ戻れるようにする。
+// MP では開いただけでは何も確定していない（ホスト＝選択未登録／ゲスト＝ロック未設定）
+// ため、モーダルを閉じるだけでよい。ソロは openSever で立てた選択済み状態を解除する。
+function closeSeverPicker() {
+  if (!ui.deckModal || ui.deckModal.hidden) return;
+  ui.deckModal.hidden = true;
+  if (mpSession.active) return;
+  if (session.phase !== "safehouse" || safehouseLeft || !run) return;
+  safehouseChosen = false;
+  ui.safehouseVent.disabled = false;
+  ui.safehouseSever.disabled = false;
+  ui.safehouseVent.classList.remove("is-chosen");
+  ui.safehouseSever.classList.remove("is-chosen");
+  revealSafehouseChoices();
 }
 
 function clearEventChrome() {
@@ -4512,6 +4654,11 @@ function applyEventChoice(choice, index, applyOpts) {
     });
   }
   for (const line of eventOutcome.logs) pushLog(line);
+  renderRunVitals(); // UX修正1: イベントで変わった HP 等を左パネルへ即反映する
+  // UX修正2: イベント結果（HP・デッキ・レリックの変化）をその場で保存する。
+  // 戦死時は closeEvent → fieldDown がセーブを消去するため、ここでは保存しない。
+  // MP 中は saveGame 側のガードで無効化される。
+  if (!eventOutcome.dead) saveGame();
   ui.eventChoices.hidden = true;
   ui.eventAftermath.hidden = false;
   ui.eventResult.hidden = false;
@@ -4594,6 +4741,7 @@ function closeEvent() {
   slotIdleLabel();
   renderRelics();
   renderRoute();
+  renderRunVitals(); // UX修正1: マップ復帰時に左パネルを実データへ揃える
   syncEndButton();
 }
 
@@ -5261,10 +5409,52 @@ function presentTitle() {
   syncEndButton();
 }
 
+// ==== UX修正5（2026-11-19）: ラン終了後のタイトル着地 ====
+// 従来の showTitle はデスクの TITLE シート＋BOOTカード待ち（await-boot）に着地し、
+// ロゴ＋メニューのタイトル画面へ戻る経路がなかった（DEATH-FLOW-CHECK-REPORT）。
+// 着地は初回ロード時（beginAttract）と同じ attract メニューとし、プレイヤーの選択
+// （NEW GAME／CONTINUE／TUTORIAL／RECOVERED RECORDS／CO-OP）を待つ状態にする。
+// BOOT カードの arm は、NEW GAME 等が選ばれた後の起動フロー
+// （attractBoot → プロローグ → opening → armBootCard）に任せ、着地時点では行わない。
+// クレジットカードとスプラッシュは初回ロード専用なので、ここでは挟まない。
+function presentAttractMenu() {
+  const token = ++attractToken;
+  attractSession = token;
+  attractStage = "idle";
+  attractReady = false;
+  session.phase = "attract";
+  session.advance = false;
+  session.busy = false;
+  session.linked = false;
+  currentScene = "TITLE";
+  window.currentScene = "TITLE";
+  ui.broadcast.hidden = true;
+  ui.broadcast.classList.remove("is-deepfake", "is-black", "is-speech");
+  if (ui.introVideo) ui.introVideo.hidden = true;
+  if (ui.diveBtn) ui.diveBtn.hidden = true;
+  ui.desk.hidden = true;
+  if (ui.attract) {
+    ui.attract.hidden = false;
+    ui.attract.classList.remove("is-logo", "is-live", "is-flash");
+    if (ui.attractLogo) ui.attractLogo.hidden = false;
+    if (ui.attractTerm) ui.attractTerm.replaceChildren();
+    if (ui.attractPrompt) ui.attractPrompt.hidden = false;
+    ui.attract.classList.add("is-live");
+    ui.attract.classList.add("is-logo");
+  }
+  if (ui.installHow) ui.installHow.hidden = true;
+  refreshInstallCta();
+  refreshContinueBtn(); // セーブが残っていれば CONTINUE も出す（死亡時は消去済み）
+  refreshTutorialBtn();
+  refreshNewGameBtn();
+  refreshArchiveBtn();
+  refreshCoopBtn();
+  if (audio) audio.playBgm("title");
+}
+
 function showTitle() {
   ui.broadcast.classList.remove("is-deepfake", "is-black", "is-speech");
   ui.broadcast.hidden = true;
-  ui.desk.hidden = false;
   // 正式版フェーズ1: タイトルへ戻るたび、次のラン開始ではキャラ選択を挟み直す。
   // TUTORIALボタン経由（vesselSelectSuppress）だけは従来どおり 07 前提で選択を抑止する。
   vesselSelectArmed = !vesselSelectSuppress;
@@ -5276,11 +5466,8 @@ function showTitle() {
   ui.mission.textContent = "";
   ui.mission.classList.remove("is-speaking");
   ui.start.hidden = true;
-  slotIdleLabel();
-  changeScene("TITLE");
-  syncEndButton();
-  window.requestAnimationFrame(() => ui.screen.classList.add("is-on"));
-  armBootCard();
+  session.dead = false; // UX修正5: 死亡状態をタイトルへ持ち越さない
+  presentAttractMenu();
 }
 
 function resetToCinema() {
@@ -7334,6 +7521,7 @@ async function beginCombatMP(encounter) {
   ui.slotLabel.textContent = "READER LIVE";
   ui.note.textContent = "条件を満たさないカードは、スリットが拒否する。";
   ui.hopper.replaceChildren();
+  resetHandSeen(); // MP戦闘開始: 初期手札は全枚が新規到着
   ui.log.replaceChildren();
   const here = route && route.nodes[route.currentId];
   if (here && here.isFake) pushLog("WARNING: AMBUSH");
@@ -7463,6 +7651,7 @@ async function mpAfterEnemyPhase(result) {
   // 次ターン開始後の自素体の手札を描き直す（ドロー分は perPlayer に入っている）
   const mine = myPlayer();
   ui.hopper.replaceChildren();
+  resetHandSeen(); // MPターン境界: 次ターンのドローは全枚が新規到着
   if (mine) spawn(mine.hand.map(face));
   mpSession.handSig = mine ? mine.hand.map((c) => (c.__uid || 0) + ":" + c.id).join(",") : "";
   renderCombat();
@@ -8065,8 +8254,9 @@ function returnToTerminal() {
   if (session.phase !== "clear") return;
   // クリア画面を抜けたらボスBGMは役目を終える（ゆっくりフェードアウト）
   // JOB 3M-3: 専用クリア画面の「タイトルへ戻る」導線（全面オーバーレイ #clear-return と
-  // デスク内シート #return-terminal の共通先）。showTitle() → changeScene("TITLE") で
-  // BGM はタイトル曲へ戻り、BOOT カードが再配置されて新規ランを開始できる状態になる。
+  // デスク内シート #return-terminal の共通先）。showTitle() で BGM はタイトル曲へ戻り、
+  // UX修正5 以降は死亡時と同じく attract のタイトルメニューへ着地する
+  // （BOOT カードの arm は NEW GAME 等が選ばれた後の起動フローに任せる）。
   bossBgm = false;
   if (audio) audio.fadeSeconds = 1.6;
   showTitle(); // changeScene("TITLE") 経由で全面黒レイヤーも消える
@@ -8143,6 +8333,7 @@ ui.deckList.addEventListener("click", (event) => {
   if (!button || button.disabled) return;
   severCard(Number(button.dataset.index));
 });
+if (ui.deckModalBack) ui.deckModalBack.addEventListener("click", () => { closeSeverPicker(); });
 ui.scan.addEventListener("click", onScan);
 ui.routeFloors.addEventListener("click", (event) => {
   const button = event.target.closest(".node");
