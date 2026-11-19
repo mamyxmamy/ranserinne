@@ -96,9 +96,32 @@
     return String(Math.floor(100000 + Math.random() * 900000));
   }
 
-  function playerDoc(me, asHost, order) {
+  // MP-GUEST-FIX 課題2: 表示名は参加時にランダムなコールサインを付与する。
+  // 正典上パンドラは操者ひとりだけなので、参加者名に PANDORA は使わない。
+  // コールサイン = 無線風の単語 + 2桁数字（例: MORSE-42）。同室の既存名と
+  // 重複しないよう、taken（既存名の一覧）を見て引き直す。
+  const CALLSIGN_WORDS = [
+    "NEEDLE", "COPPER", "RELAY", "STATIC", "EMBER", "COIL", "ANVIL", "SPOOL",
+    "SIGNAL", "MORSE", "CARBON", "BRASS", "FLINT", "DIAL", "CRANK", "WICK",
+    "FILAMENT", "LEVER", "TAPER", "IRON",
+  ];
+  function genCallsign(taken) {
+    const used = new Set(taken || []);
+    for (let i = 0; i < 24; i += 1) {
+      const word = CALLSIGN_WORDS[Math.floor(Math.random() * CALLSIGN_WORDS.length)];
+      const num = 10 + Math.floor(Math.random() * 90);
+      const name = word + "-" + num;
+      if (!used.has(name)) return name;
+    }
+    let k = 2;
+    let name = "RELAY-" + k;
+    while (used.has(name)) { k += 1; name = "RELAY-" + k; }
+    return name;
+  }
+
+  function playerDoc(me, asHost, takenNames) {
     return {
-      name: "PANDORA-" + order, // 表示名は自動付与（入力 UI は今夜は作らない）
+      name: genCallsign(takenNames), // 表示名は自動付与（入力 UI は作らない）
       characterId: "vessel07",
       isHost: !!asHost,
       ready: false,
@@ -149,7 +172,7 @@
         if (e && e.code === "collision") continue;
         throw e;
       }
-      await ref.collection("players").doc(me).set(playerDoc(me, true, 1));
+      await ref.collection("players").doc(me).set(playerDoc(me, true, []));
       setRoomContext(code, true);
       return { code, depth };
     }
@@ -183,7 +206,9 @@
     if (all.size >= MAX_PLAYERS) {
       throw netError("full", "そのルームは定員（" + MAX_PLAYERS + "人）に達しています");
     }
-    await ref.collection("players").doc(me).set(playerDoc(me, false, all.size + 1));
+    const takenNames = [];
+    all.forEach((d) => { const n = d.data() && d.data().name; if (n) takenNames.push(n); });
+    await ref.collection("players").doc(me).set(playerDoc(me, false, takenNames));
     setRoomContext(code, false);
     return { code, room, rejoined: false };
   }
@@ -322,6 +347,7 @@
 
   window.Net = {
     MAX_PLAYERS,
+    genCallsign, // 課題2の検証用に公開（コールサイン生成）
     sdkAvailable,
     init,
     uid: currentUid,

@@ -6531,7 +6531,7 @@ function renderLobbyPlayers() {
     const vesselLabel = def ? `${def.name} "${def.code}"` : (p.characterId || "VESSEL 07");
     const name = document.createElement("span");
     name.className = "lobby-player__name";
-    name.textContent = (p.name || "PANDORA") + (p.playerId === myUid ? "（自分）" : "");
+    name.textContent = (p.name || "OPERATOR") + (p.playerId === myUid ? "（自分）" : "");
     const vessel = document.createElement("span");
     vessel.className = "lobby-player__vessel";
     vessel.textContent = vesselLabel;
@@ -6605,6 +6605,10 @@ async function mpCreateRoom() {
   mpLobby.busy = true;
   setLobbyStatus("ルームを作成しています…");
   try {
+    // MP-GUEST-FIX 課題4: selectedDepth は素体選択を開くまで初期値1のままなので、
+    // 作成直行だと本人の解禁上限（テスト解禁含む）がルーム深度へ反映されない。
+    // J-7 の初期値原則（解禁上限）に合わせて作成時に引き直す。
+    selectedDepth = depthInitialValue();
     await Net.createRoom({ depth: selectedDepth });
     mpEnterRoom();
   } catch (e) {
@@ -6760,6 +6764,7 @@ const mpSession = {
   lastCseq: {}, // ホスト: プレイヤーごとの最終処理 cseq（順序担保）
   intentChain: Promise.resolve(), // ホスト: intent の直列処理キュー
   guestLock: false, // ゲスト: intent 送信後〜次のスナップショットまでの入力ロック
+  guestPhase: "", // ゲスト: 直近に処理したスナップショットのフェイズ（入場時処理の判定用）
   battleEndHandled: false, // 戦闘終了処理（勝利／全滅）の二重発火防止
   handSig: "", // ゲスト: 手札DOMの再構築判定（ドラッグ中の要素を壊さない）
   cctvKey: "", // ゲスト: CCTV 画像の差し替え判定
@@ -6780,7 +6785,7 @@ window.MPSyncLog = mpSession.logBuffer;
 
 function mpPlayerName(playerId) {
   const doc = mpSession.players.find((p) => p.playerId === playerId);
-  return doc ? (doc.name || "PANDORA") : "PANDORA";
+  return doc ? (doc.name || "OPERATOR") : "OPERATOR";
 }
 
 // Firestore の Timestamp／Date／数値を ms へ寄せる（単位3-6 の生存判定用）
@@ -6853,6 +6858,9 @@ async function mpHostStartRun(payload) {
   // 単位3-6: ラン中も参加者ドキュメントを購読し、表示名と接続状態を最新に保つ
   Net.onPlayers((list) => { mpOnPlayersUpdate(list); });
   mpStartConnWatch();
+  // MP-GUEST-FIX 課題1: ホストもタイトルから直接 CO-OP へ入った場合は BOOT を
+  // 通らず .screen の is-on が付かない。ゲスト側と同じくラン開始時に画面ONを担保する。
+  revealDesk();
   enterMap({
     applyRelics: true,
     extraLogs: ["経路図を展開。次のノードを選べ"],
@@ -6907,6 +6915,10 @@ function mpGuestJoinRun(room) {
     if (!room && mpSession.active && !mpSession.isHost) mpGuestOnRoomGone();
   });
   mpStartConnWatch();
+  // MP-GUEST-FIX 課題1: ゲストは起動（BOOT）フローを通らないため、画面の CRT 展開
+  // （.screen の is-on）が一度も付かず、.screen__content が scale(1,0.02) のまま
+  // 全フェイズが細い線に潰れる。ラン合流時にデスク表示＋画面ONを明示する。
+  revealDesk();
   changeScene("MAP");
   ui.note.textContent = "ホストの作戦開始を待っている";
 }
@@ -7695,6 +7707,9 @@ function mpGuestPlayCard(data) {
   // 可否はホストが正として検証する。ここでは明らかな不可だけ弾く
   const check = Battle.canPlay(battle, card, me);
   if (!check.ok) { pushLog(`REJECT  ${data.name}  ${reasonText(check.reason)}`); return; }
+  // MP-GUEST-FIX 課題6: ホスト側の使用と同じ打鍵音をローカルで鳴らす。
+  // 状態の楽観表示ではなく音だけであり、確定は従来どおりスナップショットで裏付ける。
+  if (audio && audio.playPunch) audio.playPunch(Math.max(0, card.noise || 0));
   mpSession.guestLock = true;
   void mpGuestSendIntent("play-card", {
     handIndex: index,
@@ -7826,6 +7841,10 @@ function mpGuestOnSnapshot(snap) {
     mpSession.guestRewardStage = "";
   }
   if (snap.battle) bossBgm = snap.battle.encounterType === "BOSS";
+  // MP-GUEST-FIX 課題3: フェイズ入場の判定（戦闘ノートは入場時にだけ差し替える。
+  // 毎スナップショットで書くと選択フェイズ等の文言を潰してしまう）
+  const mpPhaseEntered = snap.phase !== mpSession.guestPhase;
+  mpSession.guestPhase = snap.phase;
   const sceneName = MP_PHASE_SCENE[snap.phase] || "MAP";
   if (currentScene !== sceneName) changeScene(sceneName);
   if (Array.isArray(snap.log)) mpGuestRenderLog(snap.log);
@@ -7838,6 +7857,9 @@ function mpGuestOnSnapshot(snap) {
     const hydrated = Battle.hydrateState(snap.battle);
     if (hydrated) {
       battle = hydrated;
+      // MP-GUEST-FIX 課題3: 戦闘入場時にマップ側の待機文言を戦闘用へ差し替える
+      // （ホストの beginCombatMP が出す初期ノートと同一文言）
+      if (mpPhaseEntered) ui.note.textContent = "条件を満たさないカードは、スリットが拒否する。";
       mpGuestRenderCombat();
     }
   } else if (snap.phase === "reward") {
@@ -7918,7 +7940,7 @@ function mpConnWatchTick() {
     const known = mpSession.connDown.has(doc.playerId);
     if (offline && !known) {
       mpSession.connDown.add(doc.playerId);
-      const name = doc.name || "PANDORA";
+      const name = doc.name || "OPERATOR";
       if (mpSession.isHost) {
         pushLog(`LINK LOST  ${name} の通信が途絶えた可能性`);
         mpPublish();
@@ -7927,7 +7949,7 @@ function mpConnWatchTick() {
     } else if (!offline && known) {
       mpSession.connDown.delete(doc.playerId);
       if (mpSession.isHost) {
-        pushLog(`LINK RESTORED  ${doc.name || "PANDORA"}`);
+        pushLog(`LINK RESTORED  ${doc.name || "OPERATOR"}`);
         mpPublish();
       }
     }
