@@ -386,7 +386,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 54.1</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 54.2</span></div>
             </div>
 
             <div class="hidden">
@@ -842,7 +842,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 家宝の合成（v54新要素）</h3>
                     <ul class="list-disc pl-4 space-y-1">
                         <li>既に所持している家宝が被ると、自動で冥銭にはならず、<span class="font-bold">素材</span>として家宝蔵に納められます。素材は家宝蔵でいつでも、格に応じた冥銭に還元できます。</li>
-                        <li>素材を組み合わせると、通常では決して手に入らない<span class="text-gold font-bold">合成家宝</span>が生まれます。合成には素材のほかに<span class="text-purple-400 font-bold">冥銭</span>（500／900）が必要です。レシピは家宝蔵の「家宝の合成」区画で全て見られます。タイトル画面の「家宝合成」ボタンからも直接開けます。</li>
+                        <li>素材を組み合わせると、通常では決して手に入らない<span class="text-gold font-bold">合成家宝</span>が生まれます。合成には素材のほかに<span class="text-purple-400 font-bold">冥銭</span>（500／900）が必要です。レシピは家宝蔵の「家宝の合成」区画で全て見られます。タイトル画面の「家宝合成」ボタンからも直接開けます。素材が足りない時は、所持中の家宝そのものも素材にできます（その家宝は失われます）。強化済みの家宝を素材にすると、合成家宝がその強化段階を引き継ぎます。</li>
                         <li>合成家宝は2種の初期ボーナスを併せ持つ<span class="font-bold">複合効果</span>が特徴です。装備の枠は通常の家宝と共通で、非業の死で失う点も同じです（素材が再び揃えば作り直せます）。合成家宝は強化できません。</li>
                     </ul>
                 </section>
@@ -1280,12 +1280,43 @@ body.pc-on #ranking-screen { font-size: 15px; }
             if (a && b) return a + '／' + b;
             return a || b || '';
         }
-        function synthHeirloomInstance(id) {
+        // v54.2: 合成の素材計画。ストック素材を優先し、不足分は所持中の本体1つでまかなう。本体を消費する場合、その最大の強化段階を引き継ぐ
+        function synthPlan(def) {
+            const needs = {};
+            (def.recipe || []).forEach(mid => { needs[mid] = (needs[mid] || 0) + 1; });
+            const stockUse = {}, bodyUse = [];
+            let ok = true, inhEnh = 0;
+            for (const mid in needs) {
+                const useStock = Math.min(window.__hlMaterialCount(mid), needs[mid]);
+                stockUse[mid] = useStock;
+                const deficit = needs[mid] - useStock;
+                if (deficit > 0) {
+                    const body = (window.unlockedHeirlooms || []).find(h => h.id === mid);
+                    if (!body || deficit > 1) { ok = false; }
+                    else { bodyUse.push(body); inhEnh = Math.max(inhEnh, heirloomEnhOf(body)); }
+                }
+            }
+            return { needs, stockUse, bodyUse, ok, inhEnh };
+        }
+        // v54.2: 合成家宝の実効値を「DB正本＋引き継いだ強化段階」から再計算する（通常家宝の heirloomApplyEnh に相当）
+        function synthApplyEnh(inst) {
+            const c = synthHeirloomDef(inst.id);
+            if (!c) return inst;
+            const enh = Math.max(0, Math.min(HEIRLOOM_ENH_MAX, Math.floor(inst.enh || 0)));
+            inst.enh = enh; inst.name = c.name; inst.type = c.type; inst.baseValue = c.value;
+            inst.value = c.value + heirloomEnhStep(c.value) * enh;
+            if (c.type2) { inst.type2 = c.type2; inst.baseValue2 = c.value2; inst.value2 = c.value2 + heirloomEnhStep(c.value2) * enh; }
+            else { delete inst.type2; delete inst.value2; delete inst.baseValue2; }
+            inst.desc = synthEffectText({ type: c.type, value: inst.value, type2: c.type2, value2: inst.value2 });
+            return inst;
+        }
+        function synthHeirloomInstance(id, inhEnh) {
             const c = synthHeirloomDef(id);
             if (!c) return null;
-            const inst = { id: c.id, name: c.name, type: c.type, value: c.value, desc: synthEffectText(c), enh: 0, baseValue: c.value };
-            if (c.type2) { inst.type2 = c.type2; inst.value2 = c.value2; }
-            return inst;
+            const inst = { id: c.id, name: c.name, type: c.type, value: c.value, enh: 0, baseValue: c.value };
+            if (c.type2) { inst.type2 = c.type2; inst.value2 = c.value2; inst.baseValue2 = c.value2; }
+            inst.enh = inhEnh || 0;
+            return synthApplyEnh(inst);
         }
         // 素材ストックの読み書きヘルパー（旧セーブでキーや変数が無くても壊れない）
         window.__hlMaterials = function() {
@@ -1327,14 +1358,17 @@ body.pc-on #ranking-screen { font-size: 15px; }
             if (!def) return;
             if (!window.unlockedHeirlooms) window.unlockedHeirlooms = [];
             if (window.unlockedHeirlooms.some(h => h.id === id)) return; // 所持中は再合成できない
-            const needs = {};
-            (def.recipe || []).forEach(mid => { needs[mid] = (needs[mid] || 0) + 1; });
-            for (const mid in needs) { if (window.__hlMaterialCount(mid) < needs[mid]) return; }
             if ((window.meisen || 0) < def.cost) return;
-            const inst = synthHeirloomInstance(id);
+            const plan = synthPlan(def);
+            if (!plan.ok) return;
+            const inst = synthHeirloomInstance(id, plan.inhEnh);
             if (!inst) return;
             const m = window.__hlMaterials();
-            for (const mid in needs) { m[mid] = window.__hlMaterialCount(mid) - needs[mid]; if (m[mid] <= 0) delete m[mid]; }
+            for (const mid in plan.needs) { const rest = window.__hlMaterialCount(mid) - (plan.stockUse[mid] || 0); if (rest > 0) m[mid] = rest; else delete m[mid]; }
+            plan.bodyUse.forEach(body => {
+                window.unlockedHeirlooms = window.unlockedHeirlooms.filter(h => h !== body);
+                if (window.activeHeirlooms) window.activeHeirlooms = window.activeHeirlooms.filter(h => h.id !== body.id);
+            });
             window.meisen -= def.cost;
             window.unlockedHeirlooms.push(inst);
             if (!window.heirloomHistory) window.heirloomHistory = [];
@@ -1354,26 +1388,30 @@ body.pc-on #ranking-screen { font-size: 15px; }
             html += '<button type=\"button\" onclick=\"window.openSynthTutorial(event)\" class=\"mb-3 text-[10px] font-bold px-2.5 py-1.5 rounded-sm border bg-[#241C10] text-[#E8C268] border-yellow-800/60\">？ 合成のしかた</button>';
             SYNTH_HEIRLOOMS_DB.forEach(def => {
                 const owned = (window.unlockedHeirlooms || []).some(h => h.id === def.id);
+                const ownedInst = (window.unlockedHeirlooms || []).find(h => h.id === def.id);
+                const dispName = def.name + (ownedInst && heirloomEnhOf(ownedInst) > 0 ? ' +' + heirloomEnhOf(ownedInst) : '');
                 const needs = {};
                 (def.recipe || []).forEach(mid => { needs[mid] = (needs[mid] || 0) + 1; });
-                let canMake = !owned;
+                const plan = synthPlan(def);
+                let canMake = !owned && plan.ok;
                 const matTexts = [];
                 Object.keys(needs).forEach(mid => {
                     const have = window.__hlMaterialCount(mid);
-                    if (have < needs[mid]) canMake = false;
                     const mc = HEIRLOOMS_DB.find(x => x.id === mid);
-                    matTexts.push((mc ? mc.name : mid) + '（' + have + '/' + needs[mid] + '）');
+                    const bodyMark = (have < needs[mid] && plan.bodyUse.some(b => b.id === mid)) ? '・本体' : '';
+                    matTexts.push((mc ? mc.name : mid) + '（' + have + '/' + needs[mid] + bodyMark + '）');
                 });
                 if ((window.meisen || 0) < def.cost) canMake = false;
                 html += '<div class="border p-3 rounded-sm mb-3 ' + (owned ? 'bg-yellow-900/30 border-gold' : 'bg-[#181513] border-[#3A322A]') + '">'
                     + '<div class="flex justify-between items-center mb-1 gap-2">'
-                    + '<div class="font-bold ' + (owned ? 'text-gold' : 'text-gray-200') + ' text-sm">' + def.name + '</div>'
+                    + '<div class="font-bold ' + (owned ? 'text-gold' : 'text-gray-200') + ' text-sm">' + dispName + '</div>'
                     + (owned
                         ? '<span class="text-[9px] bg-gold text-black px-1.5 py-0.5 font-bold rounded shrink-0">所持中</span>'
                         : '<button type="button" data-synth-id="' + def.id + '" class="shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-sm border ' + (canMake ? 'bg-yellow-800 hover:bg-yellow-700 text-white border-yellow-500' : 'bg-gray-800 text-gray-500 border-gray-700 cursor-not-allowed') + '"' + (canMake ? '' : ' disabled') + '>合成する（' + def.cost + ' 冥銭）</button>')
                     + '</div>'
-                    + '<div class="text-xs text-gray-400">' + synthEffectText(def) + '</div>'
+                    + '<div class="text-xs text-gray-400">' + (plan.inhEnh > 0 && !owned ? synthEffectText({ type: def.type, value: def.value + heirloomEnhStep(def.value) * plan.inhEnh, type2: def.type2, value2: def.type2 ? def.value2 + heirloomEnhStep(def.value2) * plan.inhEnh : undefined }) + '（強化引き継ぎ）' : synthEffectText(def)) + '</div>'
                     + '<div class="text-[10px] text-gray-500 mt-1">素材：' + matTexts.join(' ＋ ') + '</div>'
+                    + (plan.bodyUse.length ? '<div class=\"text-[10px] text-orange-300/90 mt-1\">※不足分は所持中の家宝を消費します' + (plan.inhEnh > 0 ? '（強化+' + plan.inhEnh + 'を引き継ぎます）' : '') + '</div>' : '')
                     + '</div>';
             });
             html += '<div class="mt-5 mb-2"><span class="text-purple-300 font-black tracking-[0.3em] text-xs">― 素材 ―</span></div>';
@@ -1473,9 +1511,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 if (isSynthHeirloomId(h.id)) {
                     const sc = synthHeirloomDef(h.id);
                     if (!sc) return;
-                    h.name = sc.name; h.type = sc.type; h.value = sc.value; h.baseValue = sc.value; h.enh = 0;
-                    if (sc.type2) { h.type2 = sc.type2; h.value2 = sc.value2; } else { delete h.type2; delete h.value2; }
-                    h.desc = synthEffectText(sc);
+                    synthApplyEnh(h); // v54.2: 引き継いだ強化段階（enh）は保持し、実効値を再計算する
                     return;
                 }
                 const c = HEIRLOOMS_DB.find(x => x.id === h.id);
@@ -6860,7 +6896,7 @@ if (target) target.classList.remove('hidden');
     <h3 class="text-gold text-lg font-black tracking-[0.3em] mb-3 text-center">家宝合成のしかた</h3>
     <div class="space-y-3 text-[12px] text-gray-200 leading-relaxed">
       <p><span class="text-gold font-bold">一、素材を集める</span><br>既に持っている家宝が被ると、冥銭にはならず「素材」として家宝蔵に納められます。宝籤で被った時も同じです。素材は、死んでも失われません。</p>
-      <p><span class="text-gold font-bold">二、合成する</span><br>素材と冥銭（500／900）が揃うと、レシピの「合成する」ボタンが押せます。生まれるのは、通常では決して手に入らない、効果が二つ合わさった合成家宝です。</p>
+      <p><span class="text-gold font-bold">二、合成する</span><br>素材と冥銭（500／900）が揃うと、レシピの「合成する」ボタンが押せます。生まれるのは、通常では決して手に入らない、効果が二つ合わさった合成家宝です。素材が足りなければ、所持中の家宝そのものも素材にできます（強化済みなら、合成家宝がその強化を引き継ぎます）。</p>
       <p><span class="text-gold font-bold">三、失っても大丈夫</span><br>合成家宝も非業の死では失いますが、素材が再び揃えば何度でも合成し直せます。余った素材は、1個ずつ冥銭への還元もできます。</p>
     </div>
     <button type="button" onclick="window.closeSynthTutorial(event)" class="action-button-main mt-5 w-full bg-yellow-800 hover:bg-yellow-700 text-white border border-yellow-500 py-2.5 text-xs font-bold tracking-widest rounded-sm">わかった</button>
