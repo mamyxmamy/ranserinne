@@ -252,7 +252,10 @@
 
   // 第3引数はキャラID（"vessel07" / "vessel04" / "vessel09" / "vessel13" / "vessel00"）。
   // 旧来の真偽値（true = GOLIATH）も互換で受ける。
-  function offer(count, rng, character) {
+  // 第4引数 rareFactor は作戦深度の報酬の質（DESIGN-DEPTH-SYSTEM-FINAL §5.6）:
+  // rarity "rare" のカードの実効ウェイトにのみ係数を掛ける重み付き抽選（重複なし）に
+  // 切り替える。未指定・1.0 の場合は従来の均一抽選と完全一致する（シャッフル経路を共用）。
+  function offer(count, rng, character, rareFactor) {
     const random = typeof rng === "function" ? rng : Math.random;
     const n = count == null ? OFFER_COUNT : Math.max(0, count | 0);
     const characterId = character === true ? "vessel04" : character;
@@ -262,13 +265,31 @@
     if (characterId === "vessel09") copy = copy.concat(GHOST_TAPE_POOL);
     if (characterId === "vessel13") copy = copy.concat(WEAVER_POOL);
     if (characterId === "vessel00") copy = copy.concat(REACTOR_POOL);
-    for (let i = copy.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(random() * (i + 1));
-      const swap = copy[i];
-      copy[i] = copy[j];
-      copy[j] = swap;
+    const take = Math.min(n, copy.length);
+    const boost = typeof rareFactor === "number" && rareFactor > 1 ? rareFactor : 1;
+    if (boost === 1) {
+      for (let i = copy.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(random() * (i + 1));
+        const swap = copy[i];
+        copy[i] = copy[j];
+        copy[j] = swap;
+      }
+      return copy.slice(0, take);
     }
-    return copy.slice(0, Math.min(n, copy.length));
+    const picked = [];
+    const rest = copy.slice();
+    while (picked.length < take && rest.length > 0) {
+      let total = 0;
+      for (const c of rest) total += c.rarity === "rare" ? boost : 1;
+      let roll = random() * total;
+      let idx = rest.length - 1;
+      for (let i = 0; i < rest.length; i += 1) {
+        roll -= rest[i].rarity === "rare" ? boost : 1;
+        if (roll < 0) { idx = i; break; }
+      }
+      picked.push(rest.splice(idx, 1)[0]);
+    }
+    return picked;
   }
 
   function grant(deck, id) {

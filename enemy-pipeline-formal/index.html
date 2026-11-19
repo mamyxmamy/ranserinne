@@ -81,6 +81,8 @@
         <button type="button" class="menu-btn menu-btn--new" id="newgame-btn" hidden>▶ NEW GAME — はじめから</button>
         <button type="button" class="menu-btn continue-btn" id="continue-btn" hidden>▶ CONTINUE — 前回の記録から再開</button>
         <button type="button" class="menu-btn tutorial-btn" id="tutorial-btn" hidden>↺ TUTORIAL — チュートリアルから開始</button>
+        <button type="button" class="menu-btn archive-btn" id="archive-btn" hidden>▶ RECOVERED RECORDS — 回収記録</button>
+        <button type="button" class="menu-btn coop-btn" id="coop-btn" hidden>▶ CO-OP — 協力作戦（オンライン）</button>
         <p class="attract__prompt" id="attract-prompt" hidden>&gt; INSERT PUNCH CARD</p>
       </nav>
     </div>
@@ -130,6 +132,20 @@
           <p class="vessel-info__stats" id="vessel-info-stats"></p>
           <p class="vessel-info__deck" id="vessel-info-deck"></p>
           <p class="vessel-info__flavor" id="vessel-info-flavor"></p>
+          <!-- 作戦深度（DESIGN-DEPTH-SYSTEM-FINAL §4.1 / 判断 J-1 (a)）: 情報カラム内蔵ステッパー。
+               構築・更新は main.js の renderDepthBlock（ステッパー操作ではカルーセルを再描画しない） -->
+          <div class="vessel-depth" id="vessel-depth">
+            <div class="vessel-depth__row">
+              <span class="vessel-depth__label">作戦深度 DEPTH</span>
+              <button type="button" class="vessel-depth__btn" id="depth-prev" aria-label="深度を下げる">◀</button>
+              <span class="vessel-depth__value" id="depth-value">01</span>
+              <button type="button" class="vessel-depth__btn" id="depth-next" aria-label="深度を上げる">▶</button>
+              <span class="vessel-depth__band" id="depth-band"></span>
+            </div>
+            <p class="vessel-depth__summary" id="depth-summary"></p>
+            <p class="vessel-depth__next" id="depth-next-info"></p>
+            <p class="vessel-depth__best" id="depth-best"></p>
+          </div>
           <button type="button" class="sheet__go vessel-launch" id="vessel-launch">この素体でダイブ</button>
         </div>
       </div>
@@ -232,6 +248,7 @@
                 <h2 class="sheet__title">ENEMY PIPELINE</h2>
                 <p class="mission" id="mission"></p>
                 <button type="button" class="sheet__go" id="start-run" hidden>初期化＆起動</button>
+                <button type="button" class="sheet__go" id="archive-btn-desk">回収記録 RECOVERED RECORDS</button>
               </div>
 
               <div class="scene" id="scene-map" hidden>
@@ -294,6 +311,8 @@
                     <p class="stat"><span>警報帯域</span><b id="noise-band">静穏</b></p>
                   </section>
                 </div>
+                <!-- マルチプレイ段階(3) 単位3-4: 味方全員の簡易ステータスバー（MP時のみ表示） -->
+                <div class="mp-ally-bar" id="mp-ally-bar" hidden aria-label="味方ステータス"></div>
               </div>
 
               <div class="scene scene--sheet" id="scene-reward" hidden>
@@ -449,7 +468,98 @@
   <script src="js/map.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/anim-pres.js"></script>
+  <!-- 深度クリア演出（DESIGN-DEPTH-CLEAR-FINAL 実装A）: VN演出オーバーレイ。
+       一枚絵は仮絵（単色＋深度番号）で動作し、実絵は depth-clear.js の ART_READY 登録で差し替わる。
+       回想（回収記録）も同じプレイヤーを共用する。 -->
+  <section class="depth-clear" id="depth-clear" hidden aria-label="深度クリア演出">
+    <div class="dc-art">
+      <img class="dc-art__img" id="dc-art-img" alt="" hidden>
+      <div class="dc-art__ph" id="dc-art-ph">
+        <p class="dc-art__ph-num" id="dc-art-ph-num">01</p>
+        <p class="dc-art__ph-cap" id="dc-art-ph-cap">DEPTH 01 — IMAGE NOT RECOVERED</p>
+      </div>
+      <div class="dc-art__grain" aria-hidden="true"></div>
+    </div>
+    <div class="dc-chip" aria-hidden="true">
+      <span class="dc-chip__main" id="dc-chip-main">DEPTH 01</span>
+      <span class="dc-chip__sub" id="dc-chip-sub">FRAGMENT 01 / 15</span>
+    </div>
+    <button type="button" class="dc-skip" id="dc-skip">SKIP</button>
+    <button type="button" class="dc-ff" id="dc-ff" hidden>FF ▶▶</button>
+    <div class="dc-window">
+      <p class="dc-speaker" id="dc-speaker" hidden>[ GRAY ]</p>
+      <p class="dc-text" id="dc-text" aria-live="polite"></p>
+      <p class="dc-next" id="dc-next" hidden>▼</p>
+      <button type="button" class="dc-report" id="dc-report" hidden>REPORT ▶</button>
+    </div>
+    <div class="dc-choices" id="dc-choices" hidden role="group" aria-label="中核への処置を選ぶ"></div>
+  </section>
+
+  <!-- 回想（アーカイブ）: 到達済み深度の演出を再読する。未到達は NO SIGNAL で伏せる -->
+  <section class="archive-screen" id="archive-screen" hidden aria-label="回収記録">
+    <div class="archive-screen__frame">
+      <header class="archive-screen__head">
+        <p class="archive-screen__kicker">RECOVERED RECORDS</p>
+        <h2 class="archive-screen__title">回収記録</h2>
+      </header>
+      <div class="archive-list" id="archive-list"></div>
+      <button type="button" class="sheet__go archive-screen__close" id="archive-close">閉じる</button>
+    </div>
+  </section>
+
+  <!-- マルチプレイ段階(3) 単位3-2: CO-OP ロビー。タイトルの CO-OP 入口から開く全面オーバーレイで、
+       面は「CO-OPメニュー（作成／コード参加）」と「ロビー本体（参加者一覧・ready・開始）」の2つ。
+       構築・更新は main.js の MPLobby、通信は js/net.js（window.Net）が担う。 -->
+  <section class="lobby-screen" id="lobby-screen" hidden aria-label="CO-OP ロビー">
+    <div class="lobby-screen__frame">
+      <header class="lobby-screen__head">
+        <p class="lobby-screen__kicker">CO-OP — COOPERATIVE OPERATION</p>
+        <h2 class="lobby-screen__title">協力作戦ロビー</h2>
+      </header>
+
+      <div class="lobby-pane" id="lobby-pane-menu">
+        <p class="lobby-note" id="lobby-offline-note" hidden>CO-OP はオンライン環境でのみ有効です（通信モジュールを読み込めませんでした）。ソロプレイは通常どおり遊べます。</p>
+        <div class="lobby-menu">
+          <button type="button" class="sheet__go lobby-menu__create" id="coop-create">ルームを作成する</button>
+          <div class="lobby-join">
+            <label class="lobby-join__label" for="coop-code">ルームコード（6桁）で参加</label>
+            <div class="lobby-join__row">
+              <input class="lobby-join__input" id="coop-code" inputmode="numeric" autocomplete="off" maxlength="6" placeholder="000000" aria-label="ルームコード">
+              <button type="button" class="sheet__go" id="coop-join">参加する</button>
+            </div>
+          </div>
+        </div>
+        <p class="lobby-status" id="lobby-menu-status" aria-live="polite"></p>
+      </div>
+
+      <div class="lobby-pane" id="lobby-pane-room" hidden>
+        <p class="lobby-code">ROOM CODE <b id="lobby-code-value">------</b> <span class="lobby-code__depth" id="lobby-depth-value"></span></p>
+        <ul class="lobby-players" id="lobby-players"></ul>
+        <p class="lobby-status" id="lobby-room-status" aria-live="polite"></p>
+        <div class="lobby-actions">
+          <button type="button" class="sheet__go" id="lobby-pick-vessel">素体を選ぶ</button>
+          <button type="button" class="sheet__go" id="lobby-ready">READY</button>
+          <button type="button" class="sheet__go" id="lobby-start" hidden disabled>作戦開始</button>
+          <button type="button" class="sheet__go" id="lobby-leave">退室する</button>
+        </div>
+        <p class="lobby-note">再入室は同じ端末・同じブラウザから、同じルームコードで。ブラウザの記録を消すと別の素体として入り直しになります。ホストが退室するとルームは解散します。</p>
+      </div>
+
+      <button type="button" class="sheet__go lobby-screen__close" id="lobby-close">タイトルへ戻る</button>
+    </div>
+  </section>
+
+  <!-- マルチプレイ段階(3) 単位3-1: Firebase compat SDK（gstatic CDN）＋接続設定＋通信層。
+       CDN は cross-origin のため SW の CORE には入れない（CO-OP はオンライン前提）。
+       net.js は main.js より前、firebase-config.js の直後に置く。 -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/net.js"></script>
   <script src="js/main.js"></script>
+  <script src="js/ending-data.js"></script>
+  <script src="js/depth-clear.js"></script>
   <script>
     if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
       window.addEventListener("load", function () {

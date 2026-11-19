@@ -110,10 +110,22 @@ function saveAnimSpeed(x) {
   try { window.localStorage.setItem(ANIM_SPEED_STORE, String(x)); }
   catch { /* storage unavailable */ }
 }
+// テスト解禁モード（2026-11-19、今夜の友人とのマルチテスト専用）: URL に ?testunlock=1 が
+// 付いている時だけ、解禁判定の読み取り側で「全深度（上限20）＋VESSEL 04/09/13 解禁済み＋
+// 深度15の分岐記録あり（J-5 ゲート充足）」として扱う。判定はこの1か所に集約し、
+// 解禁記録の保存形式は変えない。ランタイム判定のみで localStorage へは書かない
+// （クリア時の解禁・深度記録の書き込みもテストモードでは抑止する）。
+// パラメータが無ければ従来挙動と完全一致する。REACTOR（VESSEL 00）は対象外で通常どおりロック。
+const TEST_UNLOCK_ENABLED = (() => {
+  try { return new URLSearchParams(window.location.search).get("testunlock") === "1"; }
+  catch { return false; }
+})();
+function testUnlockEnabled() { return TEST_UNLOCK_ENABLED; }
 // 解禁キャラ2 VESSEL 09 "GHOST-TAPE" の解禁フラグ（既存の初回のみストアと同じ localStorage 方式）。
 // 解禁条件（2026-11-16 決定）: VESSEL 04 "GOLIATH" を使ってランをクリアした時点。
 const GHOST_TAPE_UNLOCK_STORE = "enemy-pipeline-formal-ghosttape-unlock-v1";
 function ghostTapeUnlocked() {
+  if (testUnlockEnabled()) return true; // テスト解禁モード（読み取り側のみ）
   try { return window.localStorage.getItem(GHOST_TAPE_UNLOCK_STORE) === "1"; }
   catch { return false; }
 }
@@ -127,6 +139,7 @@ function markGhostTapeUnlocked() {
 // GOLIATH を遡ってロックしないよう解禁扱いにする。
 const GOLIATH_UNLOCK_STORE = "enemy-pipeline-formal-goliath-unlock-v1";
 function goliathUnlocked() {
+  if (testUnlockEnabled()) return true; // テスト解禁モード（読み取り側のみ）
   if (ghostTapeUnlocked()) return true;
   try { return window.localStorage.getItem(GOLIATH_UNLOCK_STORE) === "1"; }
   catch { return false; }
@@ -139,6 +152,7 @@ function markGoliathUnlocked() {
 // 解禁条件: VESSEL 09 "GHOST-TAPE" を使ってランをクリアした時点。解禁連鎖は 07 → GOLIATH → GHOST-TAPE → WEAVER。
 const WEAVER_UNLOCK_STORE = "enemy-pipeline-formal-weaver-unlock-v1";
 function weaverUnlocked() {
+  if (testUnlockEnabled()) return true; // テスト解禁モード（読み取り側のみ）
   try { return window.localStorage.getItem(WEAVER_UNLOCK_STORE) === "1"; }
   catch { return false; }
 }
@@ -157,6 +171,60 @@ function markReactorUnlocked() {
   try { window.localStorage.setItem(REACTOR_UNLOCK_STORE, "1"); }
   catch { /* storage unavailable */ }
 }
+// 作戦深度（DEPTH）の解禁記録（DESIGN-DEPTH-SYSTEM-FINAL §2）。解禁判定の唯一の正は
+// unlockedMax。キャラ解禁キー群とは独立（D-5: 深度はキャラ解禁の条件にならず、逆もない）。
+// 既読・分岐の記録（ending-seen-v1／ending-branch-v1）は演出専用で、解禁には使わない。
+const DEPTH_UNLOCK_STORE = "enemy-pipeline-formal-depth-unlock-v1";
+function loadDepthProgress() {
+  const empty = { unlockedMax: 1, clears: {}, bestByCharacter: {} };
+  let raw = null;
+  try { raw = window.localStorage.getItem(DEPTH_UNLOCK_STORE); }
+  catch { return empty; }
+  if (!raw) return empty;
+  let o = null;
+  try { o = JSON.parse(raw); } catch { return empty; }
+  if (!o || typeof o !== "object") return empty;
+  // フィールド単位の正規化（§2.1 軽微3）: 壊れた値を増幅して保存し直さない
+  const out = { unlockedMax: 1, clears: {}, bestByCharacter: {} };
+  const um = Number(o.unlockedMax);
+  if (Number.isFinite(um)) out.unlockedMax = Math.max(1, Math.min(20, Math.floor(um)));
+  if (o.clears && typeof o.clears === "object") {
+    for (const [k, v] of Object.entries(o.clears)) {
+      const d = Number(k);
+      const n = Number(v);
+      if (Number.isInteger(d) && d >= 1 && d <= 20 && Number.isFinite(n) && n > 0) {
+        out.clears[String(d)] = Math.floor(n);
+      }
+    }
+  }
+  if (o.bestByCharacter && typeof o.bestByCharacter === "object") {
+    for (const [k, v] of Object.entries(o.bestByCharacter)) {
+      const n = Number(v);
+      if (typeof k === "string" && k && Number.isFinite(n) && n >= 1 && n <= 20) {
+        out.bestByCharacter[k] = Math.floor(n);
+      }
+    }
+  }
+  return out;
+}
+function depthUnlockedMax() {
+  if (testUnlockEnabled()) return 20; // テスト解禁モード（読み取り側のみ）
+  return loadDepthProgress().unlockedMax;
+}
+// クリア確定（§6.1）: bossClearSequence のキャラ解禁ブロック直後・clearSave の前でのみ呼ぶ。
+function markDepthCleared(depth, characterId) {
+  const d = Math.floor(Number(depth));
+  if (!Number.isInteger(d) || d < 1 || d > 20) return;
+  const p = loadDepthProgress();
+  const k = String(d);
+  p.clears[k] = (p.clears[k] || 0) + 1;
+  p.unlockedMax = Math.max(p.unlockedMax, Math.min(20, d + 1));
+  if (characterId) {
+    p.bestByCharacter[characterId] = Math.max(p.bestByCharacter[characterId] || 0, d);
+  }
+  try { window.localStorage.setItem(DEPTH_UNLOCK_STORE, JSON.stringify(p)); }
+  catch { /* storage unavailable */ }
+}
 async function maybeAlertIntro() {
   if (alertIntroSeen() || !battle || session.phase !== "combat") return;
   if (myPlayer().hp <= 0 || battle.enemy.dead) return;
@@ -167,7 +235,8 @@ async function maybeAlertIntro() {
 const GRAY_PINCH = "パンドラ、応答しろ！ ……おい、死ぬんじゃないぞ。作戦よりお前の命が最優先だ！";
 const GRAY_WIN = "見事だ。……昔のようには動かんと言ったが、杞憂だったな。先へ進もう。";
 const GRAY_BOSS = "気をつけろパンドラ。パイプラインの最深部……防壁AIの直属防衛ユニットだ。これまでの雑魚とは火力が違うぞ。";
-const GRAY_CLEAR = "……やったか。見事だパンドラ。第一防壁の突破を確認した。これで本丸に近づける。……ひとまずは帰還しろ、酒を奢ってやる。";
+// 旧 GRAY_CLEAR（固定文）は深度クリア演出の実装Aで廃止。各深度の Gray ページ
+// （js/ending-data.js の E-01〜E-15／後日談）へ役割を移管した（DESIGN-DEPTH-CLEAR-FINAL §2.2 前提作業①）。
 // JOB 3M-2 (C-6): マップクリア遷移時の Gray 通信。仮文言・3M-Tで差し替え（正式文言は文章フロー 3M-T で確定する）。
 const GRAY_MAP_CLEAR_L1 = "……抜けたか。次の層へ降りろ、パンドラ。通信は維持する。"; // 仮文言・3M-Tで差し替え
 const GRAY_MAP_CLEAR_L2 = "……第二層も突破したな。さらに深く降りろ、パンドラ。油断するな。"; // 仮文言・3M-Tで差し替え
@@ -459,6 +528,13 @@ const ui = {
   vesselInfoDeck: $("vessel-info-deck"),
   vesselInfoFlavor: $("vessel-info-flavor"),
   vesselLaunch: $("vessel-launch"),
+  depthPrev: $("depth-prev"),
+  depthNext: $("depth-next"),
+  depthValue: $("depth-value"),
+  depthBand: $("depth-band"),
+  depthSummary: $("depth-summary"),
+  depthNextInfo: $("depth-next-info"),
+  depthBest: $("depth-best"),
   breach: $("breach"),
   contact: $("contact-name"),
   intent: $("intent"),
@@ -554,6 +630,9 @@ const ui = {
   continueBtn: $("continue-btn"),
   tutorialBtn: $("tutorial-btn"),
   newgameBtn: $("newgame-btn"),
+  archiveBtn: $("archive-btn"),
+  archiveBtnDesk: $("archive-btn-desk"),
+  coopBtn: $("coop-btn"),
   clearScreen: $("clear-screen"),
   clearReturn: $("clear-return"),
   clearShare: $("clear-share"),
@@ -570,6 +649,26 @@ const ui = {
   prologue: $("prologue"),
   prologueTerm: $("prologue-term"),
   prologuePrompt: $("prologue-prompt"),
+  // マルチプレイ段階(3) 単位3-2: CO-OP ロビー
+  lobbyScreen: $("lobby-screen"),
+  lobbyPaneMenu: $("lobby-pane-menu"),
+  lobbyPaneRoom: $("lobby-pane-room"),
+  lobbyOfflineNote: $("lobby-offline-note"),
+  lobbyMenuStatus: $("lobby-menu-status"),
+  lobbyRoomStatus: $("lobby-room-status"),
+  coopCreate: $("coop-create"),
+  coopCode: $("coop-code"),
+  coopJoin: $("coop-join"),
+  lobbyCodeValue: $("lobby-code-value"),
+  lobbyDepthValue: $("lobby-depth-value"),
+  lobbyPlayers: $("lobby-players"),
+  lobbyPickVessel: $("lobby-pick-vessel"),
+  lobbyReady: $("lobby-ready"),
+  lobbyStart: $("lobby-start"),
+  lobbyLeave: $("lobby-leave"),
+  lobbyClose: $("lobby-close"),
+  // マルチプレイ段階(3) 単位3-4: 戦闘画面の味方簡易バー
+  mpAllyBar: $("mp-ally-bar"),
 };
 
 const session = {
@@ -639,6 +738,9 @@ function clearStatsRows(context) {
     `撃破数 ${kills}`,
     `到達 第${layers}層（全層突破）`,
   ];
+  // 作戦深度の併記（§6.2）: context.depth が実値のときだけ行を足す
+  const clearDepth = context ? context.depth : (run ? run.depth : null);
+  if (clearDepth) rows.push(`作戦深度 DEPTH ${String(clearDepth).padStart(2, "0")}`);
   // 第0陣 0-5 (§1.2): 第3層ボスでは3択を出さない代わりに、回収したボスレリック名を実績へ載せる。
   // 受け口のみ（ボスプールの候補は第1陣で追加。現行では常に対象なし＝行は出ない）。
   const bossRelics = context && Array.isArray(context.bossRelics)
@@ -730,6 +832,8 @@ function changeScene(sceneName) {
   if (name !== "BATTLE") lowHpBgmActive = false; // 戦闘シーンを離れたら低耐久状態は持ち越さない
   updateBossAlert(); // v15.3: 戦闘シーンを離れたらボス低耐久の警告層も確実に止める
   if (name !== "BATTLE") hideEnemyAction();
+  // マルチプレイ段階(3) 単位3-4: ホストはシーン遷移のたびにスナップショットを配る
+  if (window.MPSync) MPSync.onSceneChanged();
   if (audio) {
     // ボス戦BGM: ボス戦とクリア画面では提供曲を流し続ける（同じ曲名なので再開始しない）
     let track = bossBgm && (name === "BATTLE" || name === "CLEAR") ? "boss" : (SCENE_BGM[name] || null);
@@ -962,6 +1066,11 @@ function pushLog(text, kind) {
   while (ui.log.children.length > cap) ui.log.firstElementChild.remove();
   imprint(line, `> ${text}`);
   ui.log.scrollTop = ui.log.scrollHeight;
+  // マルチプレイ段階(3) 単位3-4: スナップショットの log（直近30件）へも流す
+  if (window.MPSyncLog) {
+    window.MPSyncLog.push(String(text));
+    if (window.MPSyncLog.length > 30) window.MPSyncLog.splice(0, window.MPSyncLog.length - 30);
+  }
 }
 
 function pattern(seed) {
@@ -1674,6 +1783,8 @@ function renderCombat() {
   updateBossAlert();
   // 戦闘演出（JOB 0-1）: 表示分離中は表示用数値を優先する
   if (window.AnimPres) AnimPres.applyDisplay();
+  // マルチプレイ段階(3) 単位3-4: 味方簡易バーを最新化する（MP時のみ表示）
+  if (window.MPSync) MPSync.renderAllyBar();
 }
 
 // 『アナログ・トラップ機構』: 設置中トラップのチップ列（左パネル・RELICS の流儀）。
@@ -1946,6 +2057,8 @@ function onRead(data) {
   if (session.phase !== "combat" || radioOpen || session.busy || (window.AnimPres && AnimPres.isPlaying())) return;
   if (holdPick) return; // 『磁気ホールド』選択中はカード使用を受け付けない
   if (pickPick) return; // 探索／選別の選択中もカード使用を受け付けない
+  // マルチプレイ段階(3) 単位3-4: ゲストのカード使用は intent 化する（楽観表示なし・J4）
+  if (mpSession.active && !mpSession.isHost) { mpGuestPlayCard(data); return; }
   if (tutorialLock(data.id)) return;
   const beforeHp = myPlayer().hp;
   const beforeEnemyHp = battle.enemy.hp;
@@ -1956,6 +2069,9 @@ function onRead(data) {
     pushLog(`REJECT  ${data.name}  ${reasonText(result.reason)}`);
     return;
   }
+  // マルチプレイ段階(3) 単位3-4: ホスト自身の使用は適用直後にスナップショットを配る
+  // （演出はホスト端末だけのもので、ゲストは確定状態だけを受け取る）
+  if (mpSession.active && mpSession.isHost) mpPublish();
   pushLog(`READ  ${data.name}  COST ${data.cost}`);
   const played = Battle.card(data.id);
   if (audio && audio.playPunch) {
@@ -2016,6 +2132,8 @@ async function settlePlay(cardId, beforeHp, breached, animSelfFx) {
   // （演出タイムラインで再生済みの場合は二重に出さない。JOB 0-1）
   if (!animSelfFx && myPlayer().hp < beforeHp) fxPlayerDamage();
   if (myPlayer().hp <= 0) {
+    // マルチプレイ段階(3) 単位3-4: MPでは自素体のダウンは全滅ではない
+    if (mpSession.active) { mpOnPlayerDown(myPlayer()); return; }
     openGameOver();
     return;
   }
@@ -2048,8 +2166,12 @@ async function settlePlay(cardId, beforeHp, breached, animSelfFx) {
     }
   }
   if (battle.enemy.dead) {
-    if (!(await maybeVictory())) openReward();
+    // マルチプレイ段階(3) 単位3-4: MPの勝利処理は同期層側で行う
+    if (mpSession.active) await mpBattleVictory();
+    else if (!(await maybeVictory())) openReward();
   }
+  // マルチプレイ段階(3) 単位3-4: ホストの使用後処理が済んだら確定状態を配る
+  if (mpSession.active && mpSession.isHost) mpPublish();
   // 共通プール拡張: 残響サーチ／箔の選別が選択保留（pendingPick）を残していたら選択フェイズを開く。
   // 敵を倒した場合は上の報酬遷移が優先され、保留は戦闘終了とともに消散する
   if (battle && myPlayer().pendingPick && session.phase === "combat" && myPlayer().hp > 0 && !battle.enemy.dead) {
@@ -2104,6 +2226,27 @@ function toggleHoldPick(el) {
 
 async function finishHoldSelect(withHold) {
   if (!holdPick) return;
+  // マルチプレイ段階(3) 単位3-4: MPでは保持を確定してからターン終了宣言へ合流する
+  if (mpSession.active) {
+    const mpUid = withHold ? holdPick.uid : 0;
+    closeHoldSelect();
+    if (mpSession.isHost) {
+      if (mpUid) {
+        const heldCard = myPlayer().hand.find((c) => c.__uid === mpUid);
+        if (Battle.setRetained(battle, mpUid, myPlayer()) && heldCard) pushLog(`HOLD ${heldCard.name}（次ターン PWR −1）`);
+      }
+      session.busy = true;
+      await mpDeclareEndTurn(myPlayer());
+      session.busy = false;
+      renderCombat();
+      syncEndButton();
+    } else {
+      // ゲスト: 保持は pick intent、ターン終了は end-turn intent（cseq で順序を担保）
+      if (mpUid) await mpGuestSendIntent("pick", { kind: "hold", uid: mpUid });
+      mpGuestSendEndTurn();
+    }
+    return;
+  }
   const uid = withHold ? holdPick.uid : 0;
   closeHoldSelect();
   if (uid) {
@@ -2121,6 +2264,12 @@ function openPickSelect() {
   if (!battle || !myPlayer().pendingPick) return;
   const candidates = Battle.pickCandidates(battle, myPlayer());
   if (candidates.length === 0) {
+    // マルチプレイ段階(3) 単位3-4: ゲストはローカルで解決せず、自動解決を intent で委ねる
+    if (mpSession.active && !mpSession.isHost) {
+      mpSession.guestLock = true;
+      Net.sendIntent("pick", { index: -1 }).catch(() => { mpSession.guestLock = false; });
+      return;
+    }
     const res = Battle.resolvePick(battle, null, myPlayer());
     for (const line of res.log) pushLog(line);
     renderCombat();
@@ -2203,6 +2352,18 @@ function togglePickPick(el) {
 
 function finishPickSelect() {
   if (!pickPick || pickPick.index < 0) return;
+  // マルチプレイ段階(3) 単位3-4: ゲストの選択は pick intent で送り、確定はホストが行う
+  if (mpSession.active && !mpSession.isHost) {
+    const index = pickPick.index;
+    closePickSelect();
+    ui.hopper.replaceChildren();
+    const me = myPlayer();
+    if (me) spawn(me.hand.map(face));
+    refreshHand();
+    mpSession.guestLock = true;
+    Net.sendIntent("pick", { index }).catch(() => { mpSession.guestLock = false; });
+    return;
+  }
   const chosen = pickPick.candidates[pickPick.index];
   closePickSelect();
   const res = Battle.resolvePick(battle, chosen ? chosen.id : null, myPlayer());
@@ -2217,6 +2378,12 @@ function finishPickSelect() {
 }
 
 async function onEndTurn() {
+  // マルチプレイ段階(3) 単位3-4: MPのターン終了は全員の宣言が揃って初めて解決する
+  if (mpSession.active) {
+    if (mpSession.isHost) await mpHostEndTurn();
+    else mpGuestEndTurn();
+    return;
+  }
   if (session.phase !== "combat" || session.busy || drag || radioOpen) return;
   if (window.AnimPres && AnimPres.isPlaying()) return; // JOB 0-2: 演出再生中は受け付けない（キューなし）
   if (holdPick) return;
@@ -2605,6 +2772,10 @@ function applyMapRelics() {
 let selectedVessel = "vessel07";
 let vesselSelectArmed = true;
 let vesselSelectSuppress = false;
+// 作戦深度の選択値（DESIGN-DEPTH-SYSTEM-FINAL §4.1）。初期化は openVesselSelect の冒頭のみ
+// （J-7 (a): 開くたび解禁上限へリセット）。renderVesselSelect 内では変更しない（軽微4）。
+let selectedDepth = 1;
+let depthGateBusy = false;
 
 // 表示順（回転台の並び）。"locked" は未解禁枠: シルエット＋LOCKED表示のみで詳細は出さない。
 // GHOST-TAPE 解禁後は vessel09 が入り、将来の解禁キャラ用に locked 枠を1つ残す。
@@ -2788,6 +2959,116 @@ function vesselRingSpin(dir) {
     () => ring.classList.remove("is-spinning", "is-rev"), VESSEL_SPIN_MS + 80);
 }
 
+// ==== 作戦深度の選択（DESIGN-DEPTH-SYSTEM-FINAL §4.1／判断 J-1 (a)・J-2 (a)・J-5 (b)・J-7 (a)） ====
+// 深度15の分岐記録の有無（所有者は depth-clear.js。公開手段 getBranch 経由でのみ参照する）
+function depthBranchRecorded() {
+  if (testUnlockEnabled()) return true; // テスト解禁モード: J-5 ゲートを充足扱い（読み取り側のみ）
+  return !!(window.DepthClear && typeof window.DepthClear.getBranch === "function"
+    && window.DepthClear.getBranch());
+}
+
+// VESSEL 画面を開くたびの初期値（J-7 (a): 解禁上限）。ただし J-5 (b) のゲートにより、
+// 分岐未記録の間は 16〜20 を初期値にもできないため、その場合は 15 が上限になる。
+function depthInitialValue() {
+  const max = depthUnlockedMax();
+  return depthBranchRecorded() ? max : Math.min(max, 15);
+}
+
+// ラン開始時の深度の確定（§4.1 軽微4）: VESSEL 画面を経由しない開始経路に備え、
+// 未設定・範囲外なら解禁上限を既定として採用し、ゲート（J-5 (b)）も担保してクランプする。
+function resolveRunDepth() {
+  const max = depthUnlockedMax();
+  let d = Math.floor(Number(selectedDepth));
+  if (!Number.isInteger(d) || d < 1 || d > max) d = depthInitialValue();
+  if (d >= 16 && !depthBranchRecorded()) d = 15;
+  return Math.max(1, Math.min(20, d));
+}
+
+// 修正サマリ（§4.1）: その深度で有効な変更だけを数行で要約する。出撃前に必ず見える。
+function depthSummaryText(profile) {
+  const parts = [];
+  if (profile.hpMul > 1) parts.push(`敵HP ×${profile.hpMul.toFixed(2)}`);
+  if (profile.startNoise > 0) parts.push(`開始NOISE ${profile.startNoise}`);
+  if (profile.healRate < 0.4) parts.push(`回復率 ${Math.round(profile.healRate * 100)}%`);
+  if (profile.stunStage >= 1) parts.push("スタン減衰あり");
+  if (profile.stunStage >= 2) parts.push("ボススタン耐性+");
+  if (profile.stunStage >= 3) parts.push("連続スタン不可");
+  if (profile.rewardFactor > 1) parts.push(`報酬の質 ×${profile.rewardFactor}`);
+  return parts.length ? parts.join(" ／ ") : "修正なし — 標準プロトコル";
+}
+
+// 深度ブロック専用の更新（§4.1 軽微4）: 帯名・修正サマリ・到達表示だけを書き換え、
+// カルーセルの全体再構築（renderVesselSelect）は呼ばない。selectedDepth の変更もしない。
+function renderDepthBlock(characterId) {
+  if (!ui.depthValue) return;
+  const max = depthUnlockedMax();
+  const d = Math.max(1, Math.min(max, Math.floor(Number(selectedDepth)) || 1));
+  const profile = Battle.depthProfileFor(d);
+  ui.depthValue.textContent = String(d).padStart(2, "0");
+  if (ui.depthBand) ui.depthBand.textContent = profile.bandName;
+  if (ui.depthSummary) ui.depthSummary.textContent = depthSummaryText(profile);
+  if (ui.depthPrev) ui.depthPrev.disabled = d <= 1;
+  if (ui.depthNext) ui.depthNext.disabled = d >= max;
+  if (ui.depthNextInfo) {
+    if (max >= 16 && !depthBranchRecorded()) {
+      // J-5 (b): 16〜20 は分岐記録が前提。未記録の間はその旨だけを示す（先の見せ方は J-2 の原則どおり伏せる）
+      ui.depthNextInfo.textContent = "DEPTH 16 — 深度15の記録の選択が未完了";
+    } else if (max < 20) {
+      // J-2 (a): 次の1深度だけ番号＋NO SIGNAL。それより先は総数（全20）のみ示す
+      ui.depthNextInfo.textContent = `DEPTH ${String(max + 1).padStart(2, "0")} — NO SIGNAL ／ 全20深度`;
+    } else {
+      ui.depthNextInfo.textContent = "全深度解禁済み";
+    }
+  }
+  if (ui.depthBest) {
+    // 到達表示は選択中の素体の bestByCharacter（§4.1 軽微5）
+    const best = characterId ? loadDepthProgress().bestByCharacter[characterId] : null;
+    ui.depthBest.textContent = best
+      ? `到達深度 DEPTH ${String(best).padStart(2, "0")}（この素体）`
+      : "到達深度 ―（この素体）";
+  }
+}
+
+function stepDepth(dir) {
+  if (depthGateBusy) return;
+  const max = depthUnlockedMax();
+  let target = (Math.floor(Number(selectedDepth)) || 1) + dir;
+  if (target < 1) target = 1;
+  if (target > max) target = max;
+  if (target >= 16 && !depthBranchRecorded()) {
+    // J-5 (b)＋補足: ゲート。案内を出して深度15の選択UIへ直行する
+    void gateDepthBranch();
+    return;
+  }
+  if (target !== selectedDepth) {
+    selectedDepth = target;
+    cueSE("switch");
+  }
+  renderDepthBlock(vesselOrder()[vesselCursor]);
+}
+
+// J-5 (b)＋補足の直行フロー: 案内 → 深度15の選択UI（導入を飛ばして選択から開始）→
+// 選択が記録されれば、その場で DEPTH 16 を選択状態にして解禁する。再クリアは必須としない。
+async function gateDepthBranch() {
+  if (depthGateBusy) return;
+  depthGateBusy = true;
+  try {
+    pushLog("DEPTH 16 — 深度15の記録の選択が未完了");
+    ui.note.textContent = "深度16以降へ進むには、深度15で回収した中核記録の選択が必要だ。選択へ接続する。";
+    if (window.DepthClear && typeof window.DepthClear.playPresentation === "function") {
+      await window.DepthClear.playPresentation(15, "clear", { skipIntro: true });
+    }
+    if (depthBranchRecorded()) {
+      selectedDepth = 16;
+      cueSE("switch");
+      pushLog("記録の選択を完了 — DEPTH 16 解禁");
+      ui.note.textContent = "記録の選択が完了した。DEPTH 16 以降が選択可能になった。";
+    }
+  } catch { /* 演出側の例外で選択画面を止めない */ }
+  depthGateBusy = false;
+  renderDepthBlock(vesselOrder()[vesselCursor]);
+}
+
 function renderVesselSelect(spinDir) {
   const stage = ui.vesselStage;
   if (!stage) return;
@@ -2904,6 +3185,7 @@ function renderVesselSelect(spinDir) {
       ui.vesselLaunch.disabled = true;
       ui.vesselLaunch.textContent = "LOCKED — 選択不可";
     }
+    renderDepthBlock(cur);
     return;
   }
   const def = Battle.CHARACTERS[cur];
@@ -2918,6 +3200,7 @@ function renderVesselSelect(spinDir) {
     ui.vesselLaunch.disabled = false;
     ui.vesselLaunch.textContent = "この素体でダイブ";
   }
+  renderDepthBlock(cur);
 }
 
 function rotateVessel(dir) {
@@ -2928,6 +3211,7 @@ function rotateVessel(dir) {
 }
 
 function openVesselSelect() {
+  selectedDepth = depthInitialValue(); // J-7 (a): 開くたび解禁上限へリセット（初期化はここだけ・軽微4）
   const idx = vesselOrder().indexOf(selectedVessel);
   vesselCursor = idx >= 0 ? idx : 0;
   vesselIntroPending = true;
@@ -2963,15 +3247,19 @@ function startRun() {
   session.offer = [];
   routeToken += 1;
   const seed = Battle.createState(undefined, { character: selectedVessel });
+  // 作戦深度（§5.1）: ラン開始時に確定し、ラン中は不変。戦闘・回復・報酬は run.depth から引く。
+  const runDepth = resolveRunDepth();
+  const runProfile = Battle.depthProfileFor(runDepth);
   run = {
     character: selectedVessel,
+    depth: runDepth,
     hp: seed.player.hp,
     hpMax: seed.player.hpMax,
     relics: Relics.issued(),
     relicsLost: [], // 第0陣 0-4: 入れ替えで外したレリックの喪失リスト（R-16。そのランの提示・抽選に戻らない）
     relicUsed: {}, // 第2陣 2E (RB-6): 致死回避レリックの使用済み記録 { レリックID: true }。戦闘へは参照を共有して渡す
     deck: Battle.deckIdsFor(selectedVessel),
-    noise: 0, // v15.0: ノイズはラン全体で持ち越す（開始時は0）
+    noise: runProfile.startNoise, // v15.0: ノイズはラン全体で持ち越す。開始値は深度の開始NOISE（§5.4。深度1＝0で現行一致）
     kills: 0, // v15.3: 撃破数（クリア画面のX投稿サマリ用）
     mapIndex: 1, // JOB 3M-1 (C-1): 層（1〜3）の正は run 側に置く。route は現在のマップだけを持つ
   };
@@ -3033,6 +3321,8 @@ function markTutorialDone() {
 const SAVE_KEY = "enemy_pipeline_formal_save";
 
 function saveGame(pending) {
+  // マルチプレイ段階(3) 単位3-3: MP中は単独オートセーブを書かない（誤復元防止）
+  if (mpSession.active) return;
   try {
     if (!run || !route) return;
     const data = {
@@ -3043,6 +3333,7 @@ function saveGame(pending) {
       noise: Math.max(0, Math.min(Battle.NOISE_MAX, run.noise || 0)), // v15.0: 持ち越しノイズも保存する
       kills: run.kills || 0, // v15.3: 撃破数も保存する
       mapIndex: run.mapIndex >= 1 && run.mapIndex <= 3 ? run.mapIndex : 1, // JOB 3M-1 (C-1/C-10)
+      depth: run.depth >= 1 && run.depth <= 20 ? run.depth : 1, // 作戦深度（§7）: v:2 のまま任意フィールド追加（欠落時は深度1として読む）
       relics: (run.relics || []).slice(),
       relicsLost: (run.relicsLost || []).slice(), // 第0陣 0-4: v:2 のまま任意フィールド追加（欠落時は空として読む）
       relicUsed: { ...(run.relicUsed || {}) }, // 第2陣 2E (RB-6): v:2 のまま任意フィールド追加（欠落時は未使用として読む）
@@ -3102,6 +3393,15 @@ function refreshNewGameBtn() {
   ui.newgameBtn.hidden = session.phase !== "attract";
 }
 
+function refreshCoopBtn() {
+  if (!ui.coopBtn) return;
+  ui.coopBtn.hidden = session.phase !== "attract";
+}
+function refreshArchiveBtn() {
+  if (!ui.archiveBtn) return;
+  ui.archiveBtn.hidden = session.phase !== "attract";
+}
+
 function refreshContinueBtn() {
   if (!ui.continueBtn) return;
   const hasSave = session.phase === "attract" && !!loadGame();
@@ -3137,6 +3437,7 @@ function restoreRun() {
     hp: data.hp,
     hpMax: data.hpMax,
     mapIndex: restoredMapIndex,
+    depth: Number.isInteger(data.depth) && data.depth >= 1 && data.depth <= 20 ? data.depth : 1, // 作戦深度（§7）: 旧 v:2 セーブ（フィールド欠落）は深度1として復元＝現行挙動で完走できる
     noise: typeof data.noise === "number" ? Math.max(0, Math.min(Battle.NOISE_MAX, data.noise)) : 0, // v15.0: 持ち越しノイズを復元
     kills: typeof data.kills === "number" ? data.kills : 0, // v15.3: 撃破数を復元
     relics: Array.isArray(data.relics) ? data.relics.slice() : [],
@@ -3701,12 +4002,19 @@ function updateBossAlert() {
 }
 
 async function beginCombat(encounter) {
+  // マルチプレイ段階(3) 単位3-3: MPホストの戦闘開始は party＋PARTY_SCALING で組む
+  if (mpSession.active && mpSession.isHost) { await beginCombatMP(encounter); return; }
   session.busy = true;
   session.advance = false;
   pinchHeard = false;
   pinchQueued = false;
   saveGame(encounter); // PROMPT-24: バトル突入時に保存（復元時はこの戦闘の開始時から）
-  battle = Battle.createState(undefined, { relics: run.relics, relicUsed: run.relicUsed, deck: run.deck, character: run.character });
+  battle = Battle.createState(undefined, {
+    relics: run.relics, relicUsed: run.relicUsed, deck: run.deck, character: run.character,
+    // 作戦深度（§5.1）: プロファイルと encounter の種別を state へ渡す（種別はスタン減衰の判定根拠・§5.3-2）
+    depthProfile: Battle.depthProfileFor(run.depth || 1),
+    encounterType: encounter && encounter.type ? encounter.type : null,
+  });
   myPlayer().hp = Math.max(0, run.hp);
   myPlayer().hpMax = run.hpMax;
   // v15.0: 持ち越しノイズを戦闘の初期値にする（機体別範囲でクランプ。ラン側は常に0以上）
@@ -3726,6 +4034,12 @@ async function beginCombat(encounter) {
   setTutorialStep(teach ? "t1" : "off");
   // ボス戦では提供曲をゆっくりフェードインさせる（クリア画面まで継続）
   bossBgm = encounter.type === "BOSS";
+  // 深度クリア演出（J-12）: 第3層ボス戦の開始時に、そのランの深度の一枚絵を preload する。
+  // 深度の実値は run.depth から供給する（深度システム本体の接続。強制指定がある場合は
+  // depth-clear.js 側の優先順位で context.depth が優先される）。
+  if (bossBgm && run && (run.mapIndex || 1) >= 3 && window.DepthClear) {
+    window.DepthClear.preloadForContext({ depth: run.depth || null });
+  }
   // 低耐久のまま次の戦闘へ入る場合は、開始時点のHPで低耐久状態を初期化する
   lowHpBgmActive = !bossBgm && myPlayer().hp > 0 && myPlayer().hp * 10 <= (myPlayer().hpMax || 1) * 3;
   if (audio && bossBgm) audio.fadeSeconds = 2.2;
@@ -3799,9 +4113,13 @@ function beginField(encounter) {
   openFieldEvent(encounter);
 }
 
-function safehouseHeal(hp, hpMax) {
+// 回復率は作戦深度の healRate から引く（§5.5／判断 J-3 論点1 (a)）。rate 未指定時は
+// 現行の 0.4。深度1の healRate も 0.4 のため、深度1では現行と完全一致する。
+// マルチの復帰HPも同じ healRate に完全連動する（J-3 論点2 (i)。接続点は DEPTH_TABLE 側）。
+function safehouseHeal(hp, hpMax, rate) {
   const max = Math.max(0, hpMax | 0);
-  const amount = Math.floor(max * 0.4);
+  const r = typeof rate === "number" && rate >= 0 ? rate : 0.4;
+  const amount = Math.floor(max * r);
   return Math.min(max, Math.max(0, hp) + amount);
 }
 
@@ -3870,6 +4188,8 @@ function clickZippo(token) {
 }
 
 function openSafehouse() {
+  // マルチプレイ段階(3) 単位3-5: MP のセーフハウスは全員分の処置を扱う専用フローへ
+  if (mpSession.active && mpSession.isHost) { mpEnterSafehouse(); return; }
   if (!run) return;
   run.noise = 0; // v15.0: セーフハウス（鉛壁）に入ると持ち越しノイズは0になる
   const token = ++safehouseToken;
@@ -3927,11 +4247,24 @@ function leaveSafehouse(note) {
 }
 
 function ventHeat() {
+  // マルチプレイ段階(3) 単位3-5: MP では自分の素体への排熱として同期層へ渡す
+  if (mpSession.active) {
+    if (session.phase !== "safehouse") return;
+    if (mpSession.isHost) {
+      mpSafehouseApplyChoice(Net.uid(), "vent");
+      if (mpSession.safehouse) lockSafehouseChoices(ui.safehouseVent);
+    } else if (!mpSession.guestLock) {
+      mpSession.guestLock = true;
+      lockSafehouseChoices(null);
+      void mpGuestSendIntent("safehouse-choice", { choice: "vent" });
+    }
+    return;
+  }
   if (safehouseChosen || safehouseLeft || session.phase !== "safehouse" || !run) return;
   safehouseChosen = true;
   lockSafehouseChoices(ui.safehouseVent);
   const before = run.hp;
-  run.hp = safehouseHeal(before, run.hpMax);
+  run.hp = safehouseHeal(before, run.hpMax, Battle.depthProfileFor(run.depth || 1).healRate);
   const gained = run.hp - before;
   pushLog(gained > 0 ? `VENT  HP ${before} > ${run.hp}` : "VENT  HP FULL");
   leaveSafehouse(gained > 0
@@ -3940,6 +4273,13 @@ function ventHeat() {
 }
 
 function openSever() {
+  // マルチプレイ段階(3) 単位3-5: MP の切断は自分のデッキ一覧から選ぶ
+  if (mpSession.active) {
+    if (session.phase !== "safehouse") return;
+    if (mpSession.isHost) mpSafehouseOpenSeverDeck();
+    else mpGuestOpenSeverDeck();
+    return;
+  }
   if (safehouseChosen || safehouseLeft || session.phase !== "safehouse" || !run) return;
   safehouseChosen = true;
   lockSafehouseChoices(ui.safehouseSever);
@@ -3953,6 +4293,18 @@ function openSever() {
 }
 
 function severCard(index) {
+  // マルチプレイ段階(3) 単位3-5: MP の切断確定（ホスト＝即時適用／ゲスト＝intent）
+  if (mpSession.active) {
+    if (session.phase !== "safehouse") return;
+    if (mpSession.isHost) {
+      mpSafehouseApplyChoice(Net.uid(), "sever", index);
+    } else if (!mpSession.guestLock) {
+      mpSession.guestLock = true;
+      void mpGuestSendIntent("safehouse-choice", { choice: "sever", index });
+    }
+    ui.deckModal.hidden = true;
+    return;
+  }
   if (safehouseLeft || session.phase !== "safehouse" || !run) return;
   if (!Number.isInteger(index) || index < 0 || index >= run.deck.length) return;
   const id = run.deck[index];
@@ -4043,6 +4395,10 @@ function openFieldEvent(encounter) {
   eventLeft = false;
   eventOutcome = null;
   fieldEvent = event;
+  // マルチプレイ段階(3) 単位3-5: ゲスト表示用にイベントの提示内容を控える（選択はホストのみ）
+  if (mpSession.active && mpSession.isHost) {
+    mpSession.eventView = { title: event.title, text: event.text, chosenIndex: null, resultText: null };
+  }
   session.busy = true;
   session.advance = false;
   ui.ambush.hidden = true;
@@ -4137,6 +4493,12 @@ function openJunkExchange(choice, index, drawn) {
 
 function applyEventChoice(choice, index, applyOpts) {
   eventChosen = true;
+  // マルチプレイ段階(3) 単位3-5: ホストの選択と結果文をゲスト表示用へ控えて配る
+  if (mpSession.active && mpSession.isHost && mpSession.eventView) {
+    mpSession.eventView.chosenIndex = index;
+    mpSession.eventView.resultText = choice.result_text;
+    mpPublish();
+  }
   ui.eventChoices.querySelectorAll("button").forEach((button) => {
     button.disabled = true;
     if (Number(button.dataset.index) === index) button.classList.add("is-chosen");
@@ -4197,6 +4559,29 @@ function closeEvent() {
   const outcome = eventOutcome;
   const dead = !!(outcome && outcome.dead);
   clearEventChrome();
+  // マルチプレイ段階(3) 単位3-5: イベント結果はホストの run（＝ホスト素体＋共有レリック）へ
+  // 適用済みなので、ホストのラン記録へ書き戻す。戦死はホスト素体のダウンとして扱い、
+  // 全員が倒れている場合だけランの敗北にする（fieldDown の全画面遷移は使わない）
+  if (mpSession.active && mpSession.isHost) {
+    mpWriteBackFromRun();
+    mpSession.eventView = null;
+    if (dead) {
+      pushLog("通信途絶 — ホストの素体は失われた");
+      // 全員の素体が倒れている場合だけランの敗北として確定させる
+      if (mpSession.records.every((r) => !r.alive || r.hp <= 0)) { void mpRunDefeat(); return; }
+    }
+    pushLog("EVENT  経路へ復帰");
+    changeScene("MAP");
+    session.busy = false;
+    ui.ambush.hidden = true;
+    ui.note.textContent = dead ? "通信途絶。素体は失われた。" : ((outcome && outcome.note) || "通信は切れた。");
+    slotIdleLabel();
+    renderRelics();
+    renderRoute();
+    syncEndButton();
+    mpPublish();
+    return;
+  }
   if (dead) {
     fieldDown();
     return;
@@ -4213,6 +4598,8 @@ function closeEvent() {
 }
 
 async function chooseNode(id) {
+  // マルチプレイ段階(3): ノード選択はホストが決定する（ゲストのマップは閲覧のみ）
+  if (mpSession.active && !mpSession.isHost) return;
   if (session.phase !== "map" || session.busy || !route) return;
   if (radioOpen) return;
   if (tutorialStep === "map" && tutMapNodeId) {
@@ -4230,6 +4617,14 @@ async function chooseNode(id) {
     if (result.encounter && result.encounter.kind === "rest") run.noise = 0;
     if (run.noise < before) pushLog(`NOISE COOLED  ${before} > ${run.noise}`);
   }
+  // マルチプレイ段階(3) 単位3-5: ノイズの冷まし（移動で -1／休憩区画で 0）は全員の
+  // ラン記録へも同じ規則で鏡写しする（run.noise はホスト分の表示・保存用）
+  if (mpSession.active && mpSession.isHost) {
+    for (const rec of mpSession.records) {
+      rec.noise = Math.max(0, (rec.noise || 0) - 1);
+      if (result.encounter && result.encounter.kind === "rest") rec.noise = 0;
+    }
+  }
   saveGame(result.encounter); // PROMPT-24: ノード選択時に保存（復元時はこの区画の開始から）
   session.busy = true;
   renderRoute();
@@ -4246,6 +4641,8 @@ async function chooseNode(id) {
 }
 
 function onScan() {
+  // マルチプレイ段階(3): スキャンもホスト側の操作（ゲストは閲覧のみ）
+  if (mpSession.active && !mpSession.isHost) return;
   if (session.phase !== "map" || session.busy || !route) return;
   const result = PipelineMap.scan(route);
   if (!result.ok) {
@@ -4301,6 +4698,9 @@ function drawRelicOfferCandidates(poolName, count) {
       lost: (run && run.relicsLost) || [],
       character: run && run.character,
       rng: Math.random,
+      // 作戦深度の報酬の質（§5.6）: rareBoost を渡すのは戦闘報酬のこの提示経路だけ
+      // （イベント・ジャンク屋の抽選には渡さない。精査・軽微8）
+      rareBoost: Battle.depthProfileFor(run && run.depth ? run.depth : 1).rewardFactor,
     });
     if (!relic) break;
     picked.push(relic);
@@ -4514,8 +4914,11 @@ async function openReward() {
     return;
   }
   run.hp = battle.player.hp;
-  // 正式版: 専用プールのあるキャラのランでは共通プール＋専用プールから提示する
-  session.offer = Rewards.offer(Rewards.OFFER_COUNT, undefined, run && run.character);
+  // 正式版: 専用プールのあるキャラのランでは共通プール＋専用プールから提示する。
+  // 作戦深度の報酬の質（§5.6）: 第4引数に rewardFactor を渡す（深度1＝×1.0 で従来一致）。
+  // 適用は戦闘報酬のみ（イベントの add_card は Rewards.offer を経由しないため対象外）。
+  session.offer = Rewards.offer(Rewards.OFFER_COUNT, undefined, run && run.character,
+    Battle.depthProfileFor(run && run.depth ? run.depth : 1).rewardFactor);
   ui.piles.hidden = true;
   ui.hopper.replaceChildren();
   ui.shotCall.hidden = true;
@@ -4548,9 +4951,15 @@ async function openReward() {
 // （bossClearSequence は window.onRunClear 経由で呼ぶ）。
 // context は将来のエンディング分岐が要る最小限:
 //   { characterId, hp, hpMax, kills, mapIndex, layersCleared, depth }
-//   ※ depth は層とは別軸で現行未実装のため null（深度実装時にここへ実値を渡す）。
-function onRunClear(context) {
-  // 現時点のフック先は従来動作のみ: 実績を流し込んで専用クリア画面を表示する。
+//   ※ depth は層とは別軸の作戦深度。bossClearSequence が run.depth の実値を渡す
+//   （DESIGN-DEPTH-SYSTEM-FINAL §6.1。深度記録がない旧経路では null）。
+async function onRunClear(context) {
+  // 実装A 前提作業②: フックを Promise 化。深度クリア演出（js/depth-clear.js）が
+  // 完了するまで解決せず、その間フェード解除と busy 解除は bossClearSequence 側で保持される。
+  // context.depth が null（深度未実装・強制指定なし）の場合は演出を出さず従来動作のみ。
+  if (window.DepthClear && typeof window.DepthClear.playForContext === "function") {
+    await window.DepthClear.playForContext(context);
+  }
   updateClearStats(context);
   changeScene("CLEAR");
 }
@@ -4569,7 +4978,8 @@ async function bossClearSequence() {
     session.busy = false;
     return;
   }
-  await presentRadio([GRAY_CLEAR]);
+  // 実装A 前提作業①: GRAY_CLEAR の presentRadio 呼び出しは撤去（深度別 Gray ページへ移管）。
+  // 直後の戦闘継続チェックは呼び出しとは独立に残す（現行の安全弁）。
   if (session.phase !== "combat" || !battle) {
     session.busy = false;
     return;
@@ -4597,10 +5007,14 @@ async function bossClearSequence() {
     pushLog("NEW VESSEL SIGNAL — VESSEL 13 \"WEAVER\" 解禁");
   }
   // 解禁キャラ4・最終機体（2026-11-17 本人決定）: WEAVER を使ってランをクリアした時点で VESSEL 00 を解禁する
-  if (run && run.character === "vessel13" && !reactorUnlocked()) {
+  // テスト解禁モードでは抑止する（テストプレイのクリアで REACTOR を恒常解禁しない）
+  if (run && run.character === "vessel13" && !reactorUnlocked() && !testUnlockEnabled()) {
     markReactorUnlocked();
     pushLog("NEW VESSEL SIGNAL — VESSEL 00 \"REACTOR\" 解禁");
   }
+  // 作戦深度の解禁確定（§6.1）: キャラ解禁ブロックの直後・clearSave の前に置く
+  // （演出中にアプリが落ちても解禁が失われない。DEPTH-CLEAR-FINAL §2.2 前提作業③と一致）
+  if (run && run.depth && !testUnlockEnabled()) markDepthCleared(run.depth, run.character);
   session.offer = [];
   ui.hopper.replaceChildren();
   ui.piles.hidden = true;
@@ -4615,11 +5029,12 @@ async function bossClearSequence() {
     mapIndex: run ? (run.mapIndex || 3) : 3,
     layersCleared: run ? (run.mapIndex || 3) : 3,
     bossRelics: collectedBossRelicNames(run), // 第0陣 0-5: 実績表示用（回収ボスレリック名）
-    depth: null, // 深度は別軸・未実装（フック接続時に実値を渡す）
+    depth: run ? (run.depth || null) : null, // 作戦深度（§6.1）: run.depth の実値を供給し、深度クリア演出を実値で動かす
   };
   window.lastRunClearContext = runClearContext;
   const runClearHook = (typeof window.onRunClear === "function") ? window.onRunClear : onRunClear;
-  runClearHook(runClearContext);
+  // 実装A 前提作業②: フックの完了を await する。フェード解除と busy 解除はこの後にのみ走る。
+  await runClearHook(runClearContext);
   if (ui.fadeMask) {
     ui.fadeMask.classList.remove("is-on");
     window.setTimeout(() => { ui.fadeMask.hidden = true; }, 950);
@@ -4656,6 +5071,10 @@ async function advanceToNextMap() {
   }
   await delay(950);
   run.mapIndex = Math.min(3, clearedLayer + 1);
+  // 作戦深度の開始NOISEフロア（§5.4 軽微6）: マップ開始時は開始NOISEまで引き上げる
+  // （持ち越しがそれ以上なら下げない）。mapIndex 更新と同時・新マップ生成／enterMap／
+  // 末尾の saveGame のいずれよりも前に行う（遷移直後の表示とセーブへ反映させるため）
+  run.noise = Math.max(run.noise || 0, Battle.depthProfileFor(run.depth || 1).startNoise);
   route = PipelineMap.generate(undefined, { mapIndex: run.mapIndex, widths: MAP_WIDTHS_3M });
   routeToken += 1;
   enterMap({
@@ -4685,6 +5104,14 @@ function renderRewardOffers() {
 }
 
 function claimReward(id) {
+  // マルチプレイ段階(3) 単位3-5: MP の報酬選択は同期層側で処理する
+  // （ホスト＝自分の記録へ即時適用／ゲスト＝reward-pick intent。ソロ経路とは分離）
+  if (mpSession.active) {
+    if (session.phase !== "reward") return;
+    if (mpSession.isHost) mpHostRewardPick(id);
+    else mpGuestRewardPick(id);
+    return;
+  }
   if (session.phase !== "reward" || !run) return;
   const card = (session.offer || []).find((item) => item.id === id);
   if (!card || !Rewards.grant(run.deck, card.id)) return;
@@ -4710,6 +5137,13 @@ function claimReward(id) {
 }
 
 function skipReward() {
+  // マルチプレイ段階(3) 単位3-5: MP の見送りも選択として同期層へ渡す
+  if (mpSession.active) {
+    if (session.phase !== "reward") return;
+    if (mpSession.isHost) mpHostRewardPick(null);
+    else mpGuestRewardPick(null);
+    return;
+  }
   if (session.phase !== "reward") return;
   pushLog("SALVAGE  見送った");
   // JOB 3M-2 (C-5/C-6)＋第0陣 0-5: 見送り時も completeRewardFlow へ集約
@@ -4786,6 +5220,8 @@ async function openGameOver() {
 
 function blankDesk() {
   cancelRead();
+  // マルチプレイ段階(3): タイトルへ戻ったら MP セッションを畳む（ソロの保存等を通常へ戻す）
+  if (window.MPSync) MPSync.reset();
   session.linked = false;
   session.busy = false;
   session.offer = [];
@@ -5244,6 +5680,8 @@ async function beginAttract() {
   refreshContinueBtn(); // PROMPT-24: セーブがあれば CONTINUE を出す
   refreshTutorialBtn();
   refreshNewGameBtn();
+  refreshArchiveBtn();
+  refreshCoopBtn();
   dismissBootSplash(); // v15.2: タイトル表示の準備が整ったのでスプラッシュを引き継ぐ
   void showCreditCard(); // v15.3: スプラッシュの次にクレジットカードを挟む
 }
@@ -5836,6 +6274,1564 @@ window.addEventListener("keydown", (event) => {
   if (event.key === "Escape") skip();
 });
 
+// ============================================================
+// マルチプレイ段階(3) 単位3-2: CO-OP ロビー（MP-STAGE3-IMPL-PLAN §3 単位3-2）
+// ------------------------------------------------------------
+// ・タイトルの CO-OP 入口 → ロビー（全面オーバーレイ #lobby-screen）。
+//   ルーム作成／6桁コード参加、参加者一覧、素体選択（既存の VESSEL 選択画面を
+//   「自分の分だけ」流用）、ready、ホストのみ開始ボタン（全員 ready＋2人以上）。
+// ・通信は js/net.js（window.Net）。ここは表示と自分の players ドキュメントの
+//   書き込みだけを担い、ランの開始処理そのものは単位3-3 が担う（開始ボタンは
+//   window.MPOnLobbyStart フックへ委譲する。未接続時はその旨を表示する）。
+// ・SDK が読めない環境では作成／参加を無効化し、「オンライン環境でのみ有効」と
+//   表示する（ソロは妨げない。単位3-1 の完了条件）。
+// ============================================================
+let mpPickingVessel = false; // ロビーから VESSEL 選択を開いている間だけ true
+const mpLobby = {
+  active: false, // ロビーオーバーレイ表示中
+  inRoom: false, // ルーム参加中（メニュー面でない）
+  busy: false,
+  leaving: false, // 自分の退室操作中は「解散」通知を出さない
+  room: null, // ルーム本体の最新スナップショット
+  players: [], // 参加者一覧の最新スナップショット
+};
+
+function mpNetAvailable() {
+  return !!(window.Net && typeof Net.sdkAvailable === "function" && Net.sdkAvailable());
+}
+function mpMyPlayerDoc() {
+  if (!window.Net || !Net.uid()) return null;
+  return mpLobby.players.find((p) => p.playerId === Net.uid()) || null;
+}
+function setLobbyStatus(text) {
+  const el = mpLobby.inRoom ? ui.lobbyRoomStatus : ui.lobbyMenuStatus;
+  if (el) el.textContent = text || "";
+}
+function showLobbyPane(room) {
+  mpLobby.inRoom = !!room;
+  if (ui.lobbyPaneMenu) ui.lobbyPaneMenu.hidden = !!room;
+  if (ui.lobbyPaneRoom) ui.lobbyPaneRoom.hidden = !room;
+}
+function openLobby() {
+  if (!ui.lobbyScreen) return;
+  mpLobby.active = true;
+  showLobbyPane(false);
+  const available = mpNetAvailable();
+  if (ui.lobbyOfflineNote) ui.lobbyOfflineNote.hidden = available;
+  if (ui.coopCreate) ui.coopCreate.disabled = !available;
+  if (ui.coopJoin) ui.coopJoin.disabled = !available;
+  if (ui.coopCode) ui.coopCode.disabled = !available;
+  setLobbyStatus(available ? "" : "");
+  ui.lobbyScreen.hidden = false;
+  void ui.lobbyScreen.offsetWidth;
+  ui.lobbyScreen.classList.add("is-on");
+}
+function closeLobby() {
+  mpLobby.active = false;
+  if (!ui.lobbyScreen) return;
+  ui.lobbyScreen.classList.remove("is-on");
+  ui.lobbyScreen.hidden = true;
+}
+function renderLobbyPlayers() {
+  const list = ui.lobbyPlayers;
+  if (!list) return;
+  list.replaceChildren();
+  const myUid = window.Net && Net.uid();
+  for (const p of mpLobby.players) {
+    const li = document.createElement("li");
+    li.className = "lobby-player" + (p.playerId === myUid ? " is-me" : "");
+    const def = (window.Battle && Battle.CHARACTERS && Battle.CHARACTERS[p.characterId]) || null;
+    const vesselLabel = def ? `${def.name} "${def.code}"` : (p.characterId || "VESSEL 07");
+    const name = document.createElement("span");
+    name.className = "lobby-player__name";
+    name.textContent = (p.name || "PANDORA") + (p.playerId === myUid ? "（自分）" : "");
+    const vessel = document.createElement("span");
+    vessel.className = "lobby-player__vessel";
+    vessel.textContent = vesselLabel;
+    const flags = document.createElement("span");
+    flags.className = "lobby-player__flags";
+    const parts = [];
+    if (p.isHost) parts.push("HOST");
+    parts.push(p.ready ? "READY" : "未READY");
+    if (p.conn && p.conn !== "online") parts.push("OFFLINE");
+    flags.textContent = parts.join(" ／ ");
+    li.append(name, vessel, flags);
+    list.append(li);
+  }
+  if (!mpLobby.players.length) {
+    const li = document.createElement("li");
+    li.className = "lobby-player lobby-player--empty";
+    li.textContent = "参加者を待っています…";
+    list.append(li);
+  }
+  // 自分の ready 状態に合わせてボタンの文言を切り替える
+  const mine = mpMyPlayerDoc();
+  if (ui.lobbyReady) ui.lobbyReady.textContent = mine && mine.ready ? "READYを解除" : "READY";
+  refreshLobbyStart();
+}
+function refreshLobbyStart() {
+  if (!ui.lobbyStart) return;
+  const host = !!(window.Net && Net.isHost());
+  ui.lobbyStart.hidden = !host;
+  const allReady = mpLobby.players.length > 0 && mpLobby.players.every((p) => p.ready);
+  ui.lobbyStart.disabled = !(host && mpLobby.players.length >= 2 && allReady);
+}
+function renderLobbyRoom() {
+  if (ui.lobbyCodeValue) ui.lobbyCodeValue.textContent = (window.Net && Net.roomCode()) || "------";
+  const depth = mpLobby.room && mpLobby.room.depth;
+  if (ui.lobbyDepthValue) {
+    ui.lobbyDepthValue.textContent = depth ? `作戦深度 DEPTH ${String(depth).padStart(2, "0")}（ホスト選択）` : "";
+  }
+  renderLobbyPlayers();
+}
+function mpEnterRoom() {
+  showLobbyPane(true);
+  setLobbyStatus("");
+  mpStartHeartbeat(); // 単位3-6: ルーム参加中は lastSeen を15秒間隔で更新する
+  Net.onRoom((room) => {
+    if (!mpLobby.active && !mpPickingVessel) return;
+    if (!room) {
+      // ルームが消えた（ホスト解散）。自分の退室操作中は静かに戻る
+      if (!mpLobby.leaving && mpLobby.inRoom) {
+        showLobbyPane(false);
+        setLobbyStatus("ルームが解散されました");
+      }
+      mpLobby.room = null;
+      mpLobby.inRoom = false;
+      return;
+    }
+    mpLobby.room = room;
+    renderLobbyRoom();
+    // マルチプレイ段階(3) 単位3-3: ホストが開始したらゲストはランへ合流する
+    if (room.status === "in-run" && window.Net && !Net.isHost() && window.MPSync) {
+      MPSync.guestJoinRun(room);
+    }
+  });
+  Net.onPlayers((players) => {
+    mpLobby.players = Array.isArray(players) ? players : [];
+    if (mpLobby.inRoom) renderLobbyPlayers();
+  });
+  renderLobbyRoom();
+}
+async function mpCreateRoom() {
+  if (mpLobby.busy || !mpNetAvailable()) return;
+  mpLobby.busy = true;
+  setLobbyStatus("ルームを作成しています…");
+  try {
+    await Net.createRoom({ depth: selectedDepth });
+    mpEnterRoom();
+  } catch (e) {
+    setLobbyStatus((e && e.message) || "ルームを作成できませんでした");
+  } finally {
+    mpLobby.busy = false;
+  }
+}
+async function mpJoinRoom() {
+  if (mpLobby.busy || !mpNetAvailable()) return;
+  const code = ui.coopCode ? ui.coopCode.value : "";
+  mpLobby.busy = true;
+  setLobbyStatus("ルームへ参加しています…");
+  try {
+    await Net.joinRoom(code);
+    mpEnterRoom();
+  } catch (e) {
+    setLobbyStatus((e && e.message) || "ルームへ参加できませんでした");
+  } finally {
+    mpLobby.busy = false;
+  }
+}
+async function mpLeaveRoom() {
+  if (mpLobby.busy) return;
+  mpLobby.busy = true;
+  mpLobby.leaving = true;
+  mpStopHeartbeat(); // 単位3-6
+  try { await Net.leaveRoom(); } catch (e) { /* noop */ }
+  mpLobby.room = null;
+  mpLobby.players = [];
+  mpLobby.leaving = false;
+  mpLobby.busy = false;
+  showLobbyPane(false);
+  setLobbyStatus("");
+}
+async function mpToggleReady() {
+  const mine = mpMyPlayerDoc();
+  if (!mine || mpLobby.busy) return;
+  mpLobby.busy = true;
+  try {
+    await Net.updateMyPlayer({ ready: !mine.ready });
+  } catch (e) {
+    setLobbyStatus("READYを送信できませんでした");
+  } finally {
+    mpLobby.busy = false;
+  }
+}
+function mpPickVessel() {
+  const mine = mpMyPlayerDoc();
+  if (mine && Battle.CHARACTERS[mine.characterId]) selectedVessel = mine.characterId;
+  mpPickingVessel = true;
+  closeLobby();
+  openVesselSelect();
+}
+// VESSEL 選択の決定（ロビー経由）: ランは始めず、自分の players へ書いてロビーへ戻る。
+// ホストの場合は選択深度もルームへ追随させる（ルームの depth が開始時の正になる）。
+async function mpConfirmVesselPick(id) {
+  selectedVessel = Battle.CHARACTERS[id] ? id : "vessel07";
+  cueSE("switch");
+  try {
+    await Net.updateMyPlayer({ characterId: selectedVessel });
+    if (Net.isHost()) {
+      try { await Net.updateRoom({ depth: selectedDepth }); } catch (e) { /* noop */ }
+    }
+  } catch (e) {
+    setLobbyStatus("素体の選択を送信できませんでした");
+  }
+  mpPickingVessel = false;
+  showTitle(); // 背景をデスクのタイトルへ戻してからロビーを再表示する
+  openLobby();
+  showLobbyPane(true);
+  renderLobbyRoom();
+}
+function mpStartRequested() {
+  if (ui.lobbyStart && ui.lobbyStart.disabled) return;
+  cueSE("switch");
+  // 開始処理（status を in-run へ進め、パーティでランを開始する）は単位3-3 が担う。
+  if (typeof window.MPOnLobbyStart === "function") {
+    window.MPOnLobbyStart({
+      code: Net.roomCode(),
+      players: mpLobby.players.slice(),
+      depth: mpLobby.room ? mpLobby.room.depth : selectedDepth,
+    });
+    return;
+  }
+  setLobbyStatus("開始処理は次の工程（単位3-3）で接続されます");
+}
+window.MPLobby = {
+  state: mpLobby,
+  open: openLobby,
+  close: closeLobby,
+  isPickingVessel: () => mpPickingVessel,
+};
+if (ui.coopBtn) {
+  ui.coopBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (audio) audio.unlock();
+    if (session.phase !== "attract") return;
+    cueSE("switch");
+    openLobby();
+  });
+}
+if (ui.coopCreate) ui.coopCreate.addEventListener("click", () => { cueSE("switch"); void mpCreateRoom(); });
+if (ui.coopJoin) ui.coopJoin.addEventListener("click", () => { cueSE("switch"); void mpJoinRoom(); });
+if (ui.coopCode) ui.coopCode.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") { event.preventDefault(); void mpJoinRoom(); }
+});
+if (ui.lobbyReady) ui.lobbyReady.addEventListener("click", () => { cueSE("switch"); void mpToggleReady(); });
+if (ui.lobbyPickVessel) ui.lobbyPickVessel.addEventListener("click", () => { cueSE("switch"); mpPickVessel(); });
+if (ui.lobbyStart) ui.lobbyStart.addEventListener("click", () => { mpStartRequested(); });
+if (ui.lobbyLeave) ui.lobbyLeave.addEventListener("click", () => { cueSE("switch"); void mpLeaveRoom(); });
+if (ui.lobbyClose) ui.lobbyClose.addEventListener("click", async () => {
+  cueSE("switch");
+  if (window.Net && Net.roomCode()) await mpLeaveRoom();
+  closeLobby();
+});
+
+// ============================================================
+// マルチプレイ段階(3) 単位3-3〜3-6: 同期層（MP-STAGE3-IMPL-PLAN §1／§3 単位3-3〜3-6）
+// ------------------------------------------------------------
+// ・ホスト権威方式。正はホストのメモリ上のエンジン状態（battle ＋ per-player ラン記録）で、
+//   Firestore は伝達媒体。乱数はホストだけが振る（ゲストは createState を呼ばない）。
+// ・単位3-3: ロビーの開始で参加者全員の素体を party に入れてランを開始する。
+//   PARTY_SCALING の適用（options.scaling=true）は MP 経路のみ。深度はルームの depth を
+//   run.depth に使う接続点まで（ゲスト側の解禁記録は書かない）。MP中は saveGame を
+//   無効化し、開始時に既存の単独オートセーブを破棄する。チュートリアルは立てない。
+// ・単位3-4: ホストは状態が変わるたびに state/current へ全量スナップショットを書き、
+//   ゲストは seq の進んだスナップショットだけを hydrate して描画する（J4: 楽観表示なし）。
+//   ゲストの入力は intents（play-card／pick／end-turn）で送り、ホストが cseq 順に
+//   直列処理して検証（Battle.canPlay／playFromHand）し、NG は黙って捨てる。
+//   END TURN は全員の宣言が揃った時点でホストが敵フェイズを一括解決する（J5）。
+// ・戦闘終了時は battle state から各 player の hp／noise をラン記録へ書き戻す。
+// ・単位3-5: 戦闘外フェイズもホスト権威で同期する。マップ進路はホスト決定（投票は
+//   段階(4)）で、スナップショットの route／runView でゲストが追随する。報酬はカードが
+//   各自の3択（reward-pick intent）、レリック（共有プール）はホストが代表選択する。
+//   イベントはホストが選択し、結果（ホスト素体＋共有レリックへの適用）を全員へ配る。
+//   セーフハウスは各自が自分の素体へ safehouse-choice で処置し、破壊された素体は
+//   入室時に healRate 連動の HP で自動復帰する。ラン終了（クリア／全滅）はホストが
+//   確定し、ルームを finished にして締める。
+// ・単位3-6: ハートビート（players の lastSeen を15秒間隔で更新、pagehide で
+//   conn:"offline"）と、切断の表示だけを行う（自動防衛・ホスト移行は作らない）。
+//   再入室は最新スナップショットの再描画のみで成立する。ホストのルーム解散を
+//   ゲストが検知したら「ホストが切断されました」と表示してロビーへ戻す。
+// ============================================================
+const mpSession = {
+  active: false, // MPラン中（ホスト／ゲスト共通）
+  isHost: false,
+  started: false, // ラン開始済み
+  seq: 0, // ホスト: 発行済み最新 seq ／ ゲスト: 受信済み最新 seq
+  players: [], // 参加者ドキュメントの控え（表示名・素体の参照用）
+  records: [], // ホスト: per-player ラン記録 { playerId, characterId, hp, hpMax, noise, deck, alive }
+  processedIntents: new Set(), // ホスト: 処理済み intent id
+  lastCseq: {}, // ホスト: プレイヤーごとの最終処理 cseq（順序担保）
+  intentChain: Promise.resolve(), // ホスト: intent の直列処理キュー
+  guestLock: false, // ゲスト: intent 送信後〜次のスナップショットまでの入力ロック
+  battleEndHandled: false, // 戦闘終了処理（勝利／全滅）の二重発火防止
+  handSig: "", // ゲスト: 手札DOMの再構築判定（ドラッグ中の要素を壊さない）
+  cctvKey: "", // ゲスト: CCTV 画像の差し替え判定
+  logBuffer: [], // 直近ログ（スナップショットの log 用。pushLog が追記する）
+  // ---- 単位3-5: 戦闘外フェイズの同期状態 ----
+  reward: null, // ホスト: 報酬フェイズの状態 { stage, cardOffers, picks, relicPool, mapAdvance }
+  safehouse: null, // ホスト: セーフハウスの状態 { choices: {playerId: 処置|null}, revived: [playerId] }
+  eventView: null, // ホスト: ゲスト表示用のイベント提示 { title, text, chosenIndex, resultText }
+  rewardSig: "", // ゲスト: 報酬画面の再描画判定
+  guestRewardStage: "", // ゲスト: 直近スナップショットの報酬ステージ（入力ガード用）
+  guestDeck: [], // ゲスト: セーフハウスの切断モーダル用に控えた自分のデッキ
+  // ---- 単位3-6: 接続維持 ----
+  connDown: new Set(), // 途絶を通知済みの playerId（復帰で外す）
+  stateUpdatedAtMs: 0, // ゲスト: 直近スナップショットの updatedAt（ms）
+  hostStaleWarned: false, // ゲスト: ホスト途絶の表示中フラグ
+};
+window.MPSyncLog = mpSession.logBuffer;
+
+function mpPlayerName(playerId) {
+  const doc = mpSession.players.find((p) => p.playerId === playerId);
+  return doc ? (doc.name || "PANDORA") : "PANDORA";
+}
+
+// Firestore の Timestamp／Date／数値を ms へ寄せる（単位3-6 の生存判定用）
+function mpTsMs(value) {
+  if (!value) return 0;
+  if (typeof value === "number") return value;
+  if (typeof value.toMillis === "function") return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  if (typeof value.seconds === "number") return value.seconds * 1000;
+  return 0;
+}
+
+// ---- 単位3-3: ホスト側の開始配線 ----
+async function mpHostStartRun(payload) {
+  if (!window.Net || !Net.isHost() || mpSession.active) return;
+  const players = (payload && Array.isArray(payload.players) ? payload.players : [])
+    .filter((p) => p && p.playerId);
+  if (players.length < 2) { setLobbyStatus("参加者が2人以上必要です"); return; }
+  const depthRaw = payload && Number(payload.depth);
+  const depth = Number.isInteger(depthRaw) ? Math.min(20, Math.max(1, depthRaw)) : 1;
+  const profile = Battle.depthProfileFor(depth);
+  mpSession.active = true;
+  mpSession.isHost = true;
+  mpSession.started = true;
+  mpSession.players = players.slice();
+  // per-player ラン記録: 初期デッキは素体ごとに組み、HPは素体の素の値を種から取る
+  mpSession.records = players.map((p) => {
+    const characterId = Battle.CHARACTERS[p.characterId] ? p.characterId : "vessel07";
+    const seed = Battle.createState(undefined, { character: characterId });
+    return {
+      playerId: p.playerId,
+      characterId,
+      hp: seed.player.hp,
+      hpMax: seed.player.hpMax,
+      noise: profile.startNoise,
+      deck: Battle.deckIdsFor(characterId),
+      alive: true,
+    };
+  });
+  const hostRec = mpSession.records.find((r) => r.playerId === Net.uid()) || mpSession.records[0];
+  selectedVessel = hostRec.characterId;
+  myPlayerId = Net.uid();
+  clearSave(); // MP開始時に既存の単独オートセーブを削除する（以後 saveGame は無効化）
+  session.linked = true;
+  session.busy = false;
+  session.dead = false;
+  session.offer = [];
+  routeToken += 1;
+  run = {
+    character: hostRec.characterId,
+    depth,
+    hp: hostRec.hp,
+    hpMax: hostRec.hpMax,
+    relics: Relics.issued(), // レリックは共有プール（runView.relics）
+    relicsLost: [],
+    relicUsed: {},
+    deck: hostRec.deck.slice(),
+    noise: profile.startNoise,
+    kills: 0,
+    mapIndex: 1,
+    tutorialPending: false, // MPではチュートリアルを立てない
+    mp: true,
+  };
+  route = PipelineMap.generate(undefined, { mapIndex: run.mapIndex, widths: MAP_WIDTHS_3M });
+  resetTutorialState();
+  preloadVesselCctv(hostRec.characterId);
+  closeLobby();
+  try { await Net.updateRoom({ status: "in-run", seq: 0 }); } catch (e) { /* noop */ }
+  Net.onIntents((list) => { mpHostOnIntents(list); });
+  // 単位3-6: ラン中も参加者ドキュメントを購読し、表示名と接続状態を最新に保つ
+  Net.onPlayers((list) => { mpOnPlayersUpdate(list); });
+  mpStartConnWatch();
+  enterMap({
+    applyRelics: true,
+    extraLogs: ["経路図を展開。次のノードを選べ"],
+    note: () => `光っているノードが次の区画。アナログスキャンは${route.scansLeft}回。`,
+    tutorial: false,
+  });
+  mpPublish();
+}
+window.MPOnLobbyStart = mpHostStartRun;
+
+// ---- 単位3-3: ゲスト側の合流 ----
+function mpGuestJoinRun(room) {
+  if (mpSession.active || !window.Net || Net.isHost()) return;
+  const myDoc = mpLobby.players.find((p) => p.playerId === Net.uid());
+  const characterId = myDoc && Battle.CHARACTERS[myDoc.characterId] ? myDoc.characterId : "vessel07";
+  mpSession.active = true;
+  mpSession.isHost = false;
+  mpSession.started = true;
+  mpSession.players = mpLobby.players.slice();
+  mpSession.seq = 0;
+  myPlayerId = Net.uid();
+  selectedVessel = characterId;
+  session.linked = true;
+  session.busy = false;
+  session.dead = false;
+  session.offer = [];
+  routeToken += 1;
+  // ゲストの run は表示用のシェル。中身はスナップショットの runView で毎回上書きする
+  run = {
+    character: characterId,
+    depth: room && room.depth ? room.depth : 1,
+    hp: 0,
+    hpMax: 1,
+    relics: [],
+    relicsLost: [],
+    relicUsed: {},
+    deck: [],
+    noise: 0,
+    kills: 0,
+    mapIndex: 1,
+    tutorialPending: false,
+    mp: true,
+  };
+  route = null;
+  resetTutorialState();
+  closeLobby();
+  Net.onState((snap) => { mpGuestOnSnapshot(snap); });
+  // 単位3-6: 参加者ドキュメントの購読（表示名・接続状態）と、ホスト解散の検知。
+  // ロビー側の onRoom はラン開始後は不活性になるため、ここでラン用に張り替える
+  Net.onPlayers((list) => { mpOnPlayersUpdate(list); });
+  Net.onRoom((room) => {
+    if (!room && mpSession.active && !mpSession.isHost) mpGuestOnRoomGone();
+  });
+  mpStartConnWatch();
+  changeScene("MAP");
+  ui.note.textContent = "ホストの作戦開始を待っている";
+}
+
+// ---- スナップショット（ホスト→全員） ----
+function mpBuildRunView() {
+  const inCombat = session.phase === "combat" && battle;
+  const players = mpSession.records.map((rec) => {
+    const bp = inCombat ? battle.players.find((p) => p.playerId === rec.playerId) : null;
+    return {
+      playerId: rec.playerId,
+      characterId: rec.characterId,
+      hp: bp ? bp.hp : rec.hp,
+      hpMax: bp ? bp.hpMax : rec.hpMax,
+      noise: bp ? (bp.noise || 0) : rec.noise,
+      deckCount: bp
+        ? bp.drawPile.length + bp.hand.length + bp.discard.length + (bp.exhaust ? bp.exhaust.length : 0)
+        : rec.deck.length,
+      alive: bp ? bp.hp > 0 : rec.alive,
+    };
+  });
+  return {
+    depth: run ? (run.depth || 1) : 1,
+    mapIndex: run ? (run.mapIndex || 1) : 1,
+    nodeId: route ? route.currentId : null,
+    // ゲストのマップ閲覧用に route の全量も載せる（選択はホストのみ・単位3-5）
+    route: route ? {
+      nodes: route.nodes,
+      originId: route.originId,
+      currentId: route.currentId,
+      scansLeft: route.scansLeft,
+      scanMax: route.scanMax,
+      floorCount: route.floorCount,
+      mapIndex: route.mapIndex,
+    } : null,
+    players,
+    relics: run ? (run.relics || []).slice() : [],
+    kills: run ? (run.kills || 0) : 0,
+  };
+}
+
+function mpPublish() {
+  if (!mpSession.active || !mpSession.isHost || !window.Net) return;
+  mpSession.seq += 1;
+  const snapshot = {
+    seq: mpSession.seq,
+    phase: session.phase,
+    battle: session.phase === "combat" && battle ? Battle.serializeState(battle) : null,
+    runView: mpBuildRunView(),
+    // 単位3-5: 戦闘外フェイズの配布物（該当フェイズ以外は null）
+    offers: session.phase === "reward" ? mpBuildOffers() : null,
+    eventView: session.phase === "event" ? mpSession.eventView : null,
+    safehouse: session.phase === "safehouse" ? mpBuildSafehouseView() : null,
+    log: mpSession.logBuffer.slice(-30),
+  };
+  Net.writeState(snapshot).catch((e) => { console.warn("[MP] writeState failed:", e); });
+  Net.updateRoom({ seq: mpSession.seq }).catch(() => { /* noop */ });
+}
+
+// 単位3-5: イベント等の戦闘外でホストの run（＝ホスト素体の鏡＋共有レリック）へ
+// 適用された結果を、ホストのラン記録へ書き戻す（レリックは run.relics が共有プール
+// そのものなので対象外。hp／hpMax／デッキ／ノイズだけを記録側へ寄せる）
+function mpWriteBackFromRun() {
+  if (!run) return;
+  const rec = mpSession.records.find((r) => r.playerId === Net.uid());
+  if (!rec) return;
+  rec.hp = Math.max(0, run.hp || 0);
+  rec.hpMax = run.hpMax || rec.hpMax;
+  rec.noise = Math.max(0, run.noise || 0);
+  rec.deck = (run.deck || []).slice();
+  rec.alive = rec.hp > 0;
+}
+
+// 戦闘終了時: battle state から各 player の hp／noise をラン記録へ書き戻す
+function mpWriteBackFromBattle() {
+  if (!battle) return;
+  for (const rec of mpSession.records) {
+    const p = battle.players.find((x) => x.playerId === rec.playerId);
+    if (!p) continue;
+    rec.hp = Math.max(0, p.hp);
+    rec.hpMax = p.hpMax;
+    rec.noise = Math.max(0, p.noise || 0);
+    rec.alive = p.hp > 0;
+  }
+  const hostRec = mpSession.records.find((r) => r.playerId === Net.uid());
+  if (hostRec && run) {
+    run.hp = hostRec.hp;
+    run.hpMax = hostRec.hpMax;
+    run.noise = hostRec.noise;
+  }
+}
+
+// 自素体（ホスト自身／対象プレイヤー）が倒れたときの共通処理
+function mpOnPlayerDown(player) {
+  if (!player) return;
+  pushLog("VESSEL DOWN — 通信途絶");
+  ui.note.textContent = "通信途絶。素体は失われた。";
+  if (battle && Battle.isPartyDown(battle)) { void mpBattleDefeat(); return; }
+  mpPublish();
+}
+
+async function mpBattleVictory() {
+  if (!battle || mpSession.battleEndHandled) return;
+  mpSession.battleEndHandled = true;
+  setBossAlert(false);
+  if (run && !battle.killCounted) { battle.killCounted = true; run.kills = (run.kills || 0) + 1; }
+  if (run && !battle.victoryRelicsApplied) {
+    battle.victoryRelicsApplied = true;
+    for (const line of Relics.applyVictory(battle)) pushLog(line);
+  }
+  mpWriteBackFromBattle();
+  const here = route && route.nodes ? route.nodes[route.currentId] : null;
+  const isBoss = !!(here && here.hiddenType === "BOSS");
+  if (isBoss && run && (run.mapIndex || 1) >= 3) {
+    // 第3層ボス撃破＝ランクリア。深度クリア演出はホスト端末でのみ再生し、
+    // ゲストはスナップショット経由でクリア画面へ追随する（計画 §3-5）
+    await bossClearSequence();
+    try { await Net.updateRoom({ status: "finished" }); } catch (e) { /* noop */ }
+    mpPublish();
+    return;
+  }
+  // 単位3-5: 報酬フェイズを開始する（カードは各自の3択・レリックはホスト代表選択）
+  mpStartRewardPhase(isBoss, here);
+}
+
+async function mpBattleDefeat() {
+  if (mpSession.battleEndHandled) return;
+  mpSession.battleEndHandled = true;
+  mpWriteBackFromBattle();
+  await mpRunDefeat();
+}
+
+// 単位3-5: ランの敗北確定（戦闘の全滅・戦闘外での全素体喪失の共通先）。
+// ルームを finished にして締め、全員を GAMEOVER 画面へ追随させる
+async function mpRunDefeat() {
+  session.dead = true;
+  session.busy = false;
+  bossBgm = false;
+  setBossAlert(false);
+  pushLog("ALL VESSELS DOWN — 通信途絶");
+  ui.note.textContent = "通信途絶。全素体との接続が失われた。";
+  changeScene("GAMEOVER");
+  slotIdleLabel();
+  try { await Net.updateRoom({ status: "finished" }); } catch (e) { /* noop */ }
+  mpPublish();
+}
+
+// ---- 単位3-5: 報酬フェイズ（カードは各自の3択／レリックはホスト代表選択） ----
+// 戦闘勝利のたびにホストが全員分のカード3択を引き、スナップショットの offers で配る。
+// 各プレイヤーは自分の3択から1枚（または見送り）を選び、全員分がそろったら次段へ進む。
+// レリック（共有プール）の3択はソロと同じ presentRelicOffer をホスト画面で操作し、
+// 候補だけを offers.relicOffer としてゲストへ見せる（ドラフト式は段階(4)）。
+function mpStartRewardPhase(isBoss, here) {
+  const rewardFactor = Battle.depthProfileFor(run && run.depth ? run.depth : 1).rewardFactor;
+  const cardOffers = {};
+  if (window.Rewards) {
+    for (const rec of mpSession.records) {
+      const offered = Rewards.offer(Rewards.OFFER_COUNT, undefined, rec.characterId, rewardFactor);
+      cardOffers[rec.playerId] = offered.map((c) => c.id);
+    }
+  }
+  // レリック判定はソロ openReward と同じ（ELITE→通常／第1・2層ボス→ボスプール）
+  let relicPool = null;
+  if (window.Rewards) {
+    const drop = relicDropForNode(here, run);
+    if (drop) relicPool = drop;
+  }
+  mpSession.reward = {
+    stage: "cards",
+    cardOffers,
+    picks: {},
+    relicPool,
+    mapAdvance: !!isBoss, // 第1・2層ボスは報酬完了後に次マップへ（第3層はクリア分岐済み）
+  };
+  // 提示が空のプレイヤーは選ぶものがないため、見送りとして先に確定させる
+  for (const rec of mpSession.records) {
+    if (!(cardOffers[rec.playerId] || []).length) mpSession.reward.picks[rec.playerId] = null;
+  }
+  // ホスト自身の提示はソロと同じ報酬画面（session.offer 経由）へ載せる
+  const hostOffers = cardOffers[Net.uid()] || [];
+  session.offer = window.Rewards
+    ? hostOffers.map((id) => Rewards.card(id)).filter(Boolean)
+    : [];
+  session.busy = false;
+  changeScene("REWARD");
+  slotIdleLabel();
+  ui.contact.textContent = "残骸回収";
+  ui.link.textContent = "SALVAGE";
+  renderRewardOffers();
+  renderRelics();
+  ui.note.textContent = "抽出された3枚から1枚を選べ。他の隊員も回収中だ。";
+  mpPublish();
+  // 全員分の提示が空なら選択を待たずに次段へ
+  if (mpSession.records.every((r) => Object.prototype.hasOwnProperty.call(mpSession.reward.picks, r.playerId))) {
+    void mpAdvanceRewardFlow();
+  }
+}
+
+// スナップショットの offers を組む（報酬フェイズ中だけ呼ばれる）
+function mpBuildOffers() {
+  const rw = mpSession.reward;
+  const relicOffer = relicOfferState && Array.isArray(relicOfferState.candidates)
+    ? relicOfferState.candidates.map((r) => r.id)
+    : null;
+  if (!rw && !relicOffer) return null;
+  return {
+    cardOffers: rw ? rw.cardOffers : {},
+    picks: rw ? { ...rw.picks } : {},
+    relicOffer,
+    stage: rw ? rw.stage : (relicOffer ? "relic" : null),
+  };
+}
+
+function mpUpdateRewardNote() {
+  const rw = mpSession.reward;
+  if (!rw) return;
+  const total = mpSession.records.length;
+  const done = Object.keys(rw.picks).length;
+  ui.note.textContent = `回収済み ${done}/${total} — 全員の回収を待っている`;
+}
+
+// ホスト自身の選択（claimReward／skipReward からの分岐先）
+function mpHostRewardPick(id) {
+  if (!mpSession.isHost || session.phase !== "reward") return;
+  mpApplyRewardPick(Net.uid(), id != null ? id : null);
+}
+
+// ゲストの選択: reward-pick intent で送り、確定は次のスナップショットで裏付ける
+function mpGuestRewardPick(id) {
+  if (mpSession.isHost || session.phase !== "reward" || mpSession.guestLock) return;
+  if (mpSession.guestRewardStage && mpSession.guestRewardStage !== "cards") return;
+  mpSession.guestLock = true;
+  void mpGuestSendIntent("reward-pick", { cardId: id != null ? id : null });
+  if (ui.rewardOffers) ui.rewardOffers.replaceChildren();
+  if (ui.rewardSecured) ui.rewardSecured.hidden = false;
+  ui.note.textContent = "回収を送信した — ホストの確定を待っている";
+}
+
+// 報酬選択の適用（ホスト自身・ゲストの intent 共通）。提示外のカードや二重選択は捨てる
+function mpApplyRewardPick(playerId, cardId) {
+  const rw = mpSession.reward;
+  if (!rw || rw.stage !== "cards" || session.phase !== "reward") return;
+  if (Object.prototype.hasOwnProperty.call(rw.picks, playerId)) return;
+  const rec = mpSession.records.find((r) => r.playerId === playerId);
+  if (!rec) return;
+  const offers = rw.cardOffers[playerId] || [];
+  if (cardId != null && !offers.includes(cardId)) return;
+  if (cardId != null) {
+    if (!window.Rewards || !Rewards.grant(rec.deck, cardId)) return;
+    if (playerId === Net.uid() && run) Rewards.grant(run.deck, cardId);
+    const card = Rewards.card(cardId);
+    pushLog(`DECK +1  ${card ? card.name : cardId}  [${mpPlayerName(playerId)}]`);
+    rw.picks[playerId] = cardId;
+  } else {
+    pushLog(`SALVAGE  見送った  [${mpPlayerName(playerId)}]`);
+    rw.picks[playerId] = null;
+  }
+  if (playerId === Net.uid()) {
+    session.offer = [];
+    if (ui.rewardOffers) ui.rewardOffers.replaceChildren();
+    if (ui.rewardSecured) ui.rewardSecured.hidden = false;
+  }
+  mpPublish();
+  if (mpSession.records.every((r) => Object.prototype.hasOwnProperty.call(rw.picks, r.playerId))) {
+    void mpAdvanceRewardFlow();
+  } else {
+    mpUpdateRewardNote();
+  }
+}
+
+// 全員のカード選択がそろった後の進行: レリック（ホスト代表選択）→次マップ or 経路復帰
+async function mpAdvanceRewardFlow() {
+  const rw = mpSession.reward;
+  if (!rw || rw.stage !== "cards") return;
+  const relicPool = rw.relicPool;
+  const mapAdvance = rw.mapAdvance;
+  rw.stage = "done"; // 以後の reward-pick は受け付けない（再入防止）
+  if (relicPool) {
+    rw.stage = "relic";
+    ui.note.textContent = "部品の回収 — 接続するものを選んでいる";
+    mpPublish();
+    const offerPromise = presentRelicOffer(relicPool);
+    mpPublish(); // 候補（offers.relicOffer）をゲストへ配る
+    await offerPromise;
+    if (!mpSession.active || session.phase !== "reward") { mpSession.reward = null; return; }
+  }
+  mpSession.reward = null;
+  session.offer = [];
+  if (mapAdvance) {
+    // 次マップ開始時の開始NOISEフロア（ソロ advanceToNextMap の run.noise 処理）を全員分へ
+    const floor = Battle.depthProfileFor(run && run.depth ? run.depth : 1).startNoise;
+    for (const rec of mpSession.records) rec.noise = Math.max(rec.noise || 0, floor);
+    await advanceToNextMap();
+    mpPublish();
+  } else {
+    mpReturnToMapFromReward();
+  }
+}
+
+// 報酬完了後の経路復帰（ソロ finishCombat の MP 版。戦闘状態には触れない）
+function mpReturnToMapFromReward() {
+  session.offer = [];
+  session.busy = false;
+  ui.ambush.hidden = true;
+  ui.shotCall.hidden = true;
+  ui.hopper.replaceChildren();
+  ui.piles.hidden = true;
+  changeScene("MAP");
+  slotIdleLabel();
+  pushLog("経路へ復帰");
+  const hostRec = mpSession.records.find((r) => r.playerId === Net.uid());
+  ui.note.textContent = `光っているノードが、次に進める区画だ。デッキは${hostRec ? hostRec.deck.length : 0}枚。`;
+  renderRelics();
+  renderRoute();
+  syncEndButton();
+  mpPublish();
+}
+
+// ゲストの報酬画面: 自分の3択だけを操作可能に描く（他人の分は状態表示のみ）
+function mpGuestRenderReward(snap) {
+  const offers = snap.offers;
+  if (!offers) { ui.note.textContent = "残骸回収 — ホストが報酬を処理している"; return; }
+  const myUid = Net.uid();
+  mpSession.guestRewardStage = offers.stage || "";
+  const picked = !!(offers.picks && Object.prototype.hasOwnProperty.call(offers.picks, myUid));
+  const sig = JSON.stringify([
+    offers.cardOffers && offers.cardOffers[myUid], picked, offers.relicOffer, offers.stage,
+  ]);
+  if (sig === mpSession.rewardSig) return;
+  mpSession.rewardSig = sig;
+  if (offers.relicOffer) {
+    if (ui.rewardOffers) ui.rewardOffers.replaceChildren();
+    if (ui.rewardSecured) ui.rewardSecured.hidden = true;
+    ui.note.textContent = "ホストが部品（レリック）を選んでいる";
+    return;
+  }
+  if (picked) {
+    if (ui.rewardOffers) ui.rewardOffers.replaceChildren();
+    if (ui.rewardSecured) ui.rewardSecured.hidden = false;
+    const total = offers.picks ? Object.keys(offers.cardOffers || {}).length : 0;
+    const done = offers.picks ? Object.keys(offers.picks).length : 0;
+    ui.note.textContent = `回収済み — 他の隊員の回収を待っている（${done}/${total}）`;
+    return;
+  }
+  const mine = (offers.cardOffers && offers.cardOffers[myUid]) || [];
+  session.offer = mine
+    .map((id) => (window.Rewards && Rewards.card(id)) || Battle.card(id))
+    .filter(Boolean);
+  renderRewardOffers();
+  if (ui.rewardSkip) ui.rewardSkip.hidden = false;
+  ui.note.textContent = "抽出された3枚から1枚を選べ。ダブルクリック、またはリーダへドラッグでデッキに加わる。見送りは SKIP。";
+}
+
+// ---- 単位3-5: セーフハウス（各自が自分の素体へ処置／破壊素体は自動復帰） ----
+// 入室時に全員のノイズを 0 にし、破壊された素体は healRate 連動の HP で自動復帰させる。
+// 処置（排熱＝自分の素体を healRate で回復／切断＝自分のデッキから1枚削除）は各自が
+// 1回だけ行い、全員分がそろったら経路へ戻る。
+function mpEnterSafehouse() {
+  if (!run) return;
+  safehouseToken += 1;
+  window.clearTimeout(zippoTimer);
+  safehouseChosen = false;
+  safehouseLeft = false;
+  session.busy = true;
+  session.advance = false;
+  const healRate = Battle.depthProfileFor(run.depth || 1).healRate;
+  const revived = [];
+  for (const rec of mpSession.records) {
+    rec.noise = 0;
+    if (!rec.alive || rec.hp <= 0) {
+      rec.hp = safehouseHeal(0, rec.hpMax, healRate);
+      rec.alive = rec.hp > 0;
+      revived.push(rec.playerId);
+      pushLog(`REBOOT  ${mpPlayerName(rec.playerId)}  HP ${rec.hp} で復帰`);
+    }
+  }
+  run.noise = 0;
+  const hostRec = mpSession.records.find((r) => r.playerId === Net.uid());
+  if (hostRec) {
+    run.hp = hostRec.hp;
+    run.hpMax = hostRec.hpMax;
+    run.deck = hostRec.deck.slice();
+  }
+  mpSession.safehouse = {
+    choices: Object.fromEntries(mpSession.records.map((r) => [r.playerId, null])),
+    revived,
+  };
+  // 画面初期化（ソロ openSafehouse の見た目に合わせる）
+  ui.ambush.hidden = true;
+  ui.hopper.replaceChildren();
+  ui.piles.hidden = true;
+  ui.shotCall.hidden = true;
+  ui.deckModal.hidden = true;
+  ui.deckList.replaceChildren();
+  ui.safehouseChoices.hidden = true;
+  ui.safehouseChoices.classList.remove("is-in");
+  ui.safehouseVent.disabled = false;
+  ui.safehouseSever.disabled = false;
+  ui.safehouseVent.classList.remove("is-chosen");
+  ui.safehouseSever.classList.remove("is-chosen");
+  ui.safehouseLine.textContent = "";
+  ui.safehouseLine.classList.remove("is-speaking");
+  ui.link.textContent = "SAFEHOUSE";
+  changeScene("SAFEHOUSE");
+  slotIdleLabel();
+  renderRelics();
+  syncEndButton();
+  const token = safehouseToken;
+  const live = () => token === safehouseToken && session.phase === "safehouse";
+  typeText(ui.safehouseLine, SAFEHOUSE_LINE, live, { gap: 28, caret: true, printer: true }).then((ok) => {
+    if (!ok || !live()) return;
+    revealSafehouseChoices();
+  });
+  mpPublish();
+}
+
+// スナップショットの safehouse を組む（切断モーダル用に各自のデッキも載せる）
+function mpBuildSafehouseView() {
+  const st = mpSession.safehouse;
+  if (!st) return null;
+  const decks = {};
+  for (const rec of mpSession.records) decks[rec.playerId] = rec.deck.slice();
+  return { choices: { ...st.choices }, decks, revived: st.revived.slice() };
+}
+
+// 処置の適用（ホスト自身・ゲストの intent 共通）。選択済みの変更と範囲外の切断は捨てる
+function mpSafehouseApplyChoice(playerId, choice, severIndex) {
+  if (!mpSession.isHost || session.phase !== "safehouse" || !mpSession.safehouse) return;
+  const st = mpSession.safehouse;
+  if (st.choices[playerId]) return;
+  const rec = mpSession.records.find((r) => r.playerId === playerId);
+  if (!rec) return;
+  if (choice === "vent") {
+    const healRate = Battle.depthProfileFor(run && run.depth ? run.depth : 1).healRate;
+    const before = rec.hp;
+    rec.hp = safehouseHeal(before, rec.hpMax, healRate);
+    pushLog(`VENT  ${mpPlayerName(playerId)}  HP ${before} > ${rec.hp}`);
+    st.choices[playerId] = "vent";
+  } else if (choice === "sever") {
+    if (!Number.isInteger(severIndex) || severIndex < 0 || severIndex >= rec.deck.length) return;
+    const id = rec.deck[severIndex];
+    const card = Battle.card(id);
+    rec.deck.splice(severIndex, 1);
+    pushLog(`SEVER  ${mpPlayerName(playerId)}  -1  ${card ? card.name : id}`);
+    st.choices[playerId] = "sever";
+  } else {
+    return;
+  }
+  if (playerId === Net.uid() && run) {
+    run.hp = rec.hp;
+    run.deck = rec.deck.slice();
+  }
+  mpPublish();
+  if (Object.values(st.choices).every(Boolean)) {
+    mpLeaveSafehouseAll();
+  } else if (playerId === Net.uid()) {
+    ui.note.textContent = "処置済み — 他の隊員の選択を待っている";
+  }
+}
+
+// 全員の処置がそろったら経路へ戻る
+function mpLeaveSafehouseAll() {
+  mpSession.safehouse = null;
+  clearSafehouseChrome();
+  cueSE("machine_insert");
+  pushLog("SAFEHOUSE  経路へ復帰");
+  changeScene("MAP");
+  session.busy = false;
+  ui.note.textContent = "鉛壁を離れた。";
+  ui.ambush.hidden = true;
+  slotIdleLabel();
+  renderRelics();
+  renderRoute();
+  syncEndButton();
+  mpPublish();
+}
+
+// ホストの切断モーダル: 自分のラン記録のデッキを run.deck へ鏡写ししてから一覧を出す
+function mpSafehouseOpenSeverDeck() {
+  const hostRec = mpSession.records.find((r) => r.playerId === Net.uid());
+  if (!hostRec || !mpSession.safehouse || mpSession.safehouse.choices[Net.uid()]) return;
+  if (hostRec.deck.length === 0) {
+    ui.note.textContent = "切る思考が残っていない。";
+    return;
+  }
+  if (run) run.deck = hostRec.deck.slice();
+  fillDeckModal();
+  ui.deckModal.hidden = false;
+}
+
+// ゲストの切断モーダル: スナップショットで受け取った自分のデッキから一覧を出す
+function mpGuestOpenSeverDeck() {
+  if (mpSession.guestLock) return;
+  const ids = mpSession.guestDeck || [];
+  if (!ids.length) {
+    ui.note.textContent = "切る思考が残っていない。";
+    return;
+  }
+  if (ui.deckList) {
+    ui.deckList.replaceChildren();
+    ids.forEach((id, index) => {
+      const item = document.createElement("li");
+      item.append(safehouseRow(id, index));
+      ui.deckList.append(item);
+    });
+  }
+  ui.deckModal.hidden = false;
+}
+
+// ゲストのセーフハウス画面: 自分の処置だけを操作可能にし、進捗をノートへ出す
+function mpGuestRenderSafehouse(snap) {
+  const sh = snap.safehouse;
+  if (ui.safehouseLine) ui.safehouseLine.textContent = SAFEHOUSE_LINE;
+  ui.link.textContent = "SAFEHOUSE";
+  const myUid = Net.uid();
+  mpSession.guestDeck = (sh && sh.decks && sh.decks[myUid]) || [];
+  const myChoice = sh && sh.choices ? sh.choices[myUid] : null;
+  const total = sh && sh.choices ? Object.keys(sh.choices).length : 0;
+  const done = sh && sh.choices ? Object.values(sh.choices).filter(Boolean).length : 0;
+  if (!myChoice) {
+    if (ui.safehouseChoices) {
+      ui.safehouseChoices.hidden = false;
+      ui.safehouseChoices.classList.add("is-in");
+    }
+    if (ui.safehouseVent) ui.safehouseVent.disabled = !!mpSession.guestLock;
+    if (ui.safehouseSever) ui.safehouseSever.disabled = !!mpSession.guestLock;
+    ui.note.textContent = "セーフハウス — 自分の素体への処置を選べ（排熱／切断）";
+  } else {
+    if (ui.safehouseChoices) ui.safehouseChoices.hidden = true;
+    if (ui.deckModal) ui.deckModal.hidden = true;
+    ui.note.textContent = `処置済み — 他の隊員の選択を待っている（${done}/${total}）`;
+  }
+}
+
+// ゲストのイベント画面: ホストの選択と結果を追随表示する（選択肢は出さない）
+function mpGuestRenderEvent(snap) {
+  const ev = snap.eventView;
+  if (!ev) { ui.note.textContent = "通信を受信している"; return; }
+  if (ui.eventTitle) ui.eventTitle.textContent = ev.title || "";
+  if (ui.eventLine) ui.eventLine.textContent = ev.text || "";
+  if (ui.eventChoices) { ui.eventChoices.hidden = true; ui.eventChoices.replaceChildren(); }
+  if (ui.eventReturn) ui.eventReturn.hidden = true;
+  ui.link.textContent = "CARRIER";
+  if (ev.resultText) {
+    if (ui.eventAftermath) ui.eventAftermath.hidden = false;
+    if (ui.eventResult) { ui.eventResult.hidden = false; ui.eventResult.textContent = ev.resultText; }
+    ui.note.textContent = "結果は全員に適用された — ホストが経路へ戻るのを待っている";
+  } else {
+    if (ui.eventAftermath) ui.eventAftermath.hidden = true;
+    if (ui.eventResult) ui.eventResult.hidden = true;
+    ui.note.textContent = "ホストが応答を選択している";
+  }
+}
+
+// ---- 単位3-3: MPホストの戦闘開始（party＋PARTY_SCALING） ----
+async function beginCombatMP(encounter) {
+  session.busy = true;
+  session.advance = false;
+  mpSession.battleEndHandled = false;
+  const party = mpSession.records.map((rec) => ({
+    playerId: rec.playerId,
+    characterId: rec.characterId,
+    deck: rec.deck.slice(),
+    hp: rec.hp,
+    hpMax: rec.hpMax,
+    noise: rec.noise,
+  }));
+  battle = Battle.createState(undefined, {
+    party,
+    scaling: true, // PARTY_SCALING の適用は MP 経路のみ ON（ソロ経路は未指定＝無効のまま）
+    relics: run.relics,
+    relicUsed: run.relicUsed,
+    depthProfile: Battle.depthProfileFor(run.depth || 1),
+    encounterType: encounter && encounter.type ? encounter.type : null,
+  });
+  for (const p of battle.players) Battle.syncAlertBuff(battle, p);
+  if (!(encounter.enemyId && Battle.applyEnemy(battle, encounter.enemyId))) {
+    battle.enemy.name = encounter.name;
+    battle.enemy.hp = encounter.hp;
+    battle.enemy.hpMax = encounter.hp;
+    // BUG-1 修正（MP-STAGE3-VERIFY-REPORT）: enemyId の無い encounter（BATTLE ノード等）では
+    // createState で倍率適用済みの敵 HP を素の値で上書きしてしまうため、applyEnemy と同じ
+    // 順序（人数倍率 → 深度倍率）・同じ取得方法で HP にだけ倍率を再適用する。攻撃パターンの
+    // 倍率とスタン段階は createState 時点の敵オブジェクト側に残っているため、ここでは
+    // 触らない（触ると二重適用になる）。
+    const scaling = battle.scaling;
+    if (scaling) {
+      const partyHpMul = Battle.isBossEnemy(battle.enemy) ? scaling.bossHp : scaling.hp;
+      battle.enemy.hpMax = Math.max(1, Math.round((battle.enemy.hpMax || 0) * partyHpMul));
+      battle.enemy.hp = battle.enemy.hpMax;
+    }
+    const depthProfile = battle.depthProfile;
+    if (depthProfile) {
+      battle.enemy.hpMax = Math.max(1, Math.round((battle.enemy.hpMax || 0) * (depthProfile.hpMul || 1)));
+      battle.enemy.hp = battle.enemy.hpMax;
+    }
+  }
+  const opened = Battle.startCombat(battle);
+  bossBgm = encounter.type === "BOSS";
+  // 深度クリア演出（J-12）: 第3層ボス戦の開始時にその深度の一枚絵を preload（ホスト端末のみ）
+  if (bossBgm && run && (run.mapIndex || 1) >= 3 && window.DepthClear) {
+    window.DepthClear.preloadForContext({ depth: run.depth || null });
+  }
+  lowHpBgmActive = false;
+  changeScene("BATTLE");
+  ui.ambush.hidden = true;
+  ui.link.textContent = "CARRIER LOCK";
+  ui.contact.textContent = encounter.name;
+  ui.enemyName.textContent = encounter.short || encounter.name;
+  setCctvImage((battle.enemy && battle.enemy.image) || encounter.image || "", encounter.name, encounter.type);
+  preloadEnemyCctv(battle.enemy);
+  ui.slotLabel.textContent = "READER LIVE";
+  ui.note.textContent = "条件を満たさないカードは、スリットが拒否する。";
+  ui.hopper.replaceChildren();
+  ui.log.replaceChildren();
+  const here = route && route.nodes[route.currentId];
+  if (here && here.isFake) pushLog("WARNING: AMBUSH");
+  pushLog(`ENGAGE  ${encounter.name}`);
+  for (const line of opened.log) pushLog(line);
+  renderRelics();
+  // 全員分のターン開始（ドロー）を解決し、自分の分だけ手札UIへ載せる
+  let myDrawn = [];
+  for (const p of battle.players) {
+    const started = Battle.beginPlayerTurn(battle, undefined, p);
+    for (const line of started.log) pushLog(line);
+    if (p.playerId === myPlayerId) myDrawn = started.drawn || [];
+  }
+  spawn(myDrawn.map(face));
+  lastNoiseShown = myPlayer().noise;
+  renderCombat();
+  renderPiles();
+  refreshHand();
+  session.busy = false;
+  syncEndButton();
+  mpPublish();
+}
+
+// ---- 単位3-4: ホストの intent 処理（購読→直列処理→適用→配布→削除） ----
+function mpHostOnIntents(list) {
+  if (!mpSession.active || !mpSession.isHost || !Array.isArray(list)) return;
+  for (const intent of list) {
+    if (!intent || !intent.id || !intent.playerId) continue;
+    if (mpSession.processedIntents.has(intent.id)) continue;
+    // 順序担保: そのプレイヤーの cseq が連続している intent だけを処理する。
+    // 先行分が未着なら今回は見送り、次の購読で改めて処理する。
+    const last = mpSession.lastCseq[intent.playerId] || 0;
+    if (typeof intent.cseq === "number" && intent.cseq !== last + 1) continue;
+    mpSession.processedIntents.add(intent.id);
+    if (typeof intent.cseq === "number") mpSession.lastCseq[intent.playerId] = intent.cseq;
+    mpSession.intentChain = mpSession.intentChain
+      .then(() => mpApplyIntent(intent))
+      .catch((e) => { console.warn("[MP] intent chain error:", e); });
+  }
+}
+
+async function mpApplyIntent(intent) {
+  try {
+    const payload = intent.payload || {};
+    // 単位3-5: 戦闘外フェイズの intent（報酬の選択・セーフハウスの処置）
+    if (session.phase === "reward" && intent.type === "reward-pick") {
+      mpApplyRewardPick(intent.playerId, payload.cardId != null ? payload.cardId : null);
+    } else if (session.phase === "safehouse" && intent.type === "safehouse-choice") {
+      mpSafehouseApplyChoice(intent.playerId, payload.choice, payload.index);
+    } else if (battle && session.phase === "combat" && !mpSession.battleEndHandled) {
+      const player = battle.players.find((p) => p.playerId === intent.playerId);
+      if (player) {
+        if (intent.type === "play-card") await mpApplyPlayCard(player, payload);
+        else if (intent.type === "pick") await mpApplyPick(player, payload);
+        else if (intent.type === "end-turn") {
+          if (player.hp > 0 && !battle.enemy.dead) await mpDeclareEndTurn(player);
+        }
+        // 未知の type・フェイズ違いの intent は黙って捨てる
+      }
+    }
+  } catch (e) {
+    console.warn("[MP] intent apply failed:", e);
+  } finally {
+    try { await Net.deleteIntent(intent.id); } catch (e) { /* noop */ }
+    mpPublish();
+  }
+}
+
+async function mpApplyPlayCard(player, payload) {
+  if (player.hp <= 0 || !battle || battle.enemy.dead) return;
+  // 対象選択: 敵は単体のみ。targetId が現在の敵と一致しない intent は古い入力として捨てる
+  if (payload.targetId && battle.enemy.id && payload.targetId !== battle.enemy.id) return;
+  let card = (typeof payload.handIndex === "number") ? player.hand[payload.handIndex] : null;
+  if (!card || (payload.cardId && card.id !== payload.cardId)) {
+    card = player.hand.find((c) => c.id === payload.cardId && (!payload.uid || c.__uid === payload.uid))
+      || player.hand.find((c) => c.id === payload.cardId)
+      || null;
+  }
+  if (!card) return;
+  const check = Battle.canPlay(battle, card, player);
+  if (!check.ok) return; // 検証 NG は黙って捨てる
+  const result = Battle.playFromHand(battle, card.id, card.__uid || 0, player);
+  if (!result.ok) return;
+  pushLog(`READ  ${card.name}  [${mpPlayerName(player.playerId)}]`);
+  for (const line of result.log) pushLog(line);
+  if (battle.enemy.dead) { await mpBattleVictory(); return; }
+  if (player.hp <= 0) pushLog("VESSEL DOWN — 通信途絶");
+  if (Battle.isPartyDown(battle)) { await mpBattleDefeat(); return; }
+  renderCombat();
+  renderPiles();
+}
+
+async function mpApplyPick(player, payload) {
+  if (!battle) return;
+  // 『磁気ホールド』の保持選択（end-turn の直前に送られる）
+  if (payload && payload.kind === "hold") {
+    if (payload.uid) {
+      const heldCard = player.hand.find((c) => c.__uid === payload.uid);
+      if (heldCard && Battle.setRetained(battle, payload.uid, player)) {
+        pushLog(`HOLD ${heldCard.name}（次ターン PWR −1）`);
+      }
+    }
+    return;
+  }
+  if (!player.pendingPick) return;
+  const candidates = Battle.pickCandidates(battle, player);
+  const index = payload && typeof payload.index === "number" ? payload.index : -1;
+  const chosen = index >= 0 && index < candidates.length ? candidates[index] : null;
+  const res = Battle.resolvePick(battle, chosen ? chosen.id : null, player);
+  for (const line of res.log) pushLog(line);
+  renderCombat();
+  renderPiles();
+}
+
+// ターン終了宣言（ホスト自身・ゲスト共通）。全員が揃ったら敵フェイズを一括解決する
+async function mpDeclareEndTurn(player) {
+  if (!battle || battle.enemy.dead || mpSession.battleEndHandled) return;
+  const result = Battle.endTurn(battle, undefined, player);
+  if (!result.allReady) { mpPublish(); return; }
+  await mpAfterEnemyPhase(result);
+}
+
+async function mpAfterEnemyPhase(result) {
+  for (const line of result.log || []) pushLog(line);
+  if (battle.enemy.dead) { await mpBattleVictory(); return; }
+  if (Battle.isPartyDown(battle) || result.partyDown) { await mpBattleDefeat(); return; }
+  // 次ターン開始後の自素体の手札を描き直す（ドロー分は perPlayer に入っている）
+  const mine = myPlayer();
+  ui.hopper.replaceChildren();
+  if (mine) spawn(mine.hand.map(face));
+  mpSession.handSig = mine ? mine.hand.map((c) => (c.__uid || 0) + ":" + c.id).join(",") : "";
+  renderCombat();
+  renderPiles();
+  refreshHand();
+  session.busy = false;
+  syncEndButton();
+  mpPublish();
+}
+
+async function mpHostEndTurn() {
+  if (session.phase !== "combat" || session.busy || drag || radioOpen) return;
+  if (window.AnimPres && AnimPres.isPlaying()) return;
+  if (holdPick || pickPick) return;
+  if (!battle || myPlayer().hp <= 0 || battle.enemy.dead) return;
+  if (myPlayer().ready) return;
+  // GHOST-TAPE は敵フェイズの前に HOLD 選択フェイズを挟む（ソロと同じ）
+  if (myCharacterId() === "vessel09" && holdCandidatesExist()) { openHoldSelect(); return; }
+  session.busy = true;
+  syncEndButton();
+  await mpDeclareEndTurn(myPlayer());
+  session.busy = false;
+  renderCombat();
+  syncEndButton();
+}
+
+// ---- 単位3-4: ゲストの入力（intent 化） ----
+async function mpGuestSendIntent(type, payload) {
+  try { await Net.sendIntent(type, payload || {}); }
+  catch (e) { mpSession.guestLock = false; }
+}
+
+function mpGuestPlayCard(data) {
+  if (mpSession.guestLock) return;
+  const me = myPlayer();
+  if (!me || me.hp <= 0 || !battle || battle.enemy.dead || me.ready) return;
+  let index = data.uid ? me.hand.findIndex((c) => c.__uid && c.__uid === Number(data.uid)) : -1;
+  if (index < 0) index = me.hand.findIndex((c) => c.id === data.id);
+  if (index < 0) return;
+  const card = me.hand[index];
+  // 可否はホストが正として検証する。ここでは明らかな不可だけ弾く
+  const check = Battle.canPlay(battle, card, me);
+  if (!check.ok) { pushLog(`REJECT  ${data.name}  ${reasonText(check.reason)}`); return; }
+  mpSession.guestLock = true;
+  void mpGuestSendIntent("play-card", {
+    handIndex: index,
+    cardId: card.id,
+    uid: card.__uid || 0,
+    targetId: battle.enemy && battle.enemy.id ? battle.enemy.id : null,
+  });
+}
+
+function mpGuestSendEndTurn() {
+  if (mpSession.guestLock) return;
+  mpSession.guestLock = true;
+  void mpGuestSendIntent("end-turn", {});
+  ui.endTurn.disabled = true;
+}
+
+function mpGuestEndTurn() {
+  if (session.phase !== "combat" || mpSession.guestLock) return;
+  if (holdPick || pickPick) return;
+  if (!battle || myPlayer().hp <= 0 || battle.enemy.dead) return;
+  if (myPlayer().ready) return;
+  if (myCharacterId() === "vessel09" && holdCandidatesExist()) { openHoldSelect(); return; }
+  mpGuestSendEndTurn();
+}
+
+// ---- 単位3-4: ゲストの描画（スナップショット追随） ----
+const MP_PHASE_SCENE = {
+  title: "TITLE", vessel: "VESSEL", map: "MAP", safehouse: "SAFEHOUSE",
+  event: "EVENT", combat: "BATTLE", reward: "REWARD", gameover: "GAMEOVER", clear: "CLEAR",
+};
+
+function mpGuestApplyRunView(rv) {
+  if (!rv || !run) return;
+  run.depth = rv.depth || run.depth;
+  run.mapIndex = rv.mapIndex || run.mapIndex;
+  run.kills = rv.kills || 0;
+  run.relics = Array.isArray(rv.relics) ? rv.relics.slice() : run.relics;
+  const mine = Array.isArray(rv.players) ? rv.players.find((p) => p.playerId === Net.uid()) : null;
+  if (mine) {
+    run.hp = mine.hp;
+    run.hpMax = mine.hpMax;
+    run.noise = mine.noise;
+  }
+  if (rv.route && rv.route.nodes) {
+    const nodes = rv.route.nodes;
+    const floors = [];
+    for (let f = 1; f <= (rv.route.floorCount || 0); f += 1) {
+      floors.push(Object.values(nodes).filter((n) => n.floor === f).sort((a, b) => a.index - b.index));
+    }
+    const links = [];
+    for (const node of Object.values(nodes)) {
+      for (const to of node.edges || []) links.push({ from: node.id, to });
+    }
+    route = {
+      floors, nodes, links,
+      originId: rv.route.originId,
+      currentId: rv.route.currentId,
+      scansLeft: rv.route.scansLeft,
+      scanMax: rv.route.scanMax,
+      floorCount: rv.route.floorCount,
+      mapIndex: rv.mapIndex || 1,
+    };
+  }
+}
+
+function mpGuestRenderLog(lines) {
+  ui.log.replaceChildren();
+  for (const text of lines.slice(-8)) {
+    const line = document.createElement("p");
+    line.className = "term-line";
+    if (String(text).startsWith("WARNING")) line.classList.add("is-alert");
+    line.textContent = `> ${text}`;
+    ui.log.append(line);
+  }
+  ui.log.scrollTop = ui.log.scrollHeight;
+}
+
+function mpGuestRenderCombat() {
+  const enemy = battle.enemy;
+  const cctvKey = (enemy.id || "") + "|" + (enemy.image || "");
+  if (cctvKey !== mpSession.cctvKey) {
+    mpSession.cctvKey = cctvKey;
+    ui.enemyName.textContent = enemy.name || "";
+    ui.contact.textContent = enemy.name || "";
+    setCctvImage(enemy.image || "", enemy.name, battle.encounterType || "BATTLE");
+    ui.slotLabel.textContent = "READER LIVE";
+  }
+  renderCombat();
+  renderPiles();
+  const me = myPlayer();
+  const sig = me ? me.hand.map((c) => (c.__uid || 0) + ":" + c.id).join(",") : "";
+  if (sig !== mpSession.handSig) {
+    mpSession.handSig = sig;
+    ui.hopper.replaceChildren();
+    if (me) spawn(me.hand.map(face));
+  }
+  refreshHand();
+  syncEndButton();
+  if (me && me.ready) {
+    ui.endTurn.disabled = true;
+    ui.endTurn.textContent = "宣言済み — 待機中";
+  } else if (mpSession.guestLock) {
+    ui.endTurn.disabled = true;
+  }
+  // 自分の選択保留が立っていたら選択フェイズを開く（確定は pick intent 経由）
+  if (me && me.pendingPick && me.hp > 0 && !enemy.dead && !pickPick && !mpSession.guestLock) {
+    openPickSelect();
+  }
+  mpRenderAllyBar();
+}
+
+function mpGuestOnSnapshot(snap) {
+  if (!mpSession.active || mpSession.isHost) return;
+  if (!snap || typeof snap.seq !== "number") return;
+  if (snap.seq <= mpSession.seq) return; // 巻き戻り・重複は捨てる
+  mpSession.seq = snap.seq;
+  mpSession.guestLock = false;
+  session.busy = false;
+  // 単位3-6: ホスト途絶の判定用にスナップショットの更新時刻を控える
+  const snapMs = mpTsMs(snap.updatedAt);
+  if (snapMs > mpSession.stateUpdatedAtMs) {
+    mpSession.stateUpdatedAtMs = snapMs;
+    mpSession.hostStaleWarned = false;
+  }
+  if (snap.runView) mpGuestApplyRunView(snap.runView);
+  // 報酬画面の再描画ガードはフェイズを跨いで持ち越さない（次の報酬で同じ提示でも描き直す）
+  if (snap.phase !== "reward") {
+    mpSession.rewardSig = "";
+    mpSession.guestRewardStage = "";
+  }
+  if (snap.battle) bossBgm = snap.battle.encounterType === "BOSS";
+  const sceneName = MP_PHASE_SCENE[snap.phase] || "MAP";
+  if (currentScene !== sceneName) changeScene(sceneName);
+  if (Array.isArray(snap.log)) mpGuestRenderLog(snap.log);
+  if (snap.phase === "map") {
+    renderRelics();
+    renderRoute();
+    syncEndButton();
+    ui.note.textContent = "ホストが経路を選択している";
+  } else if (snap.phase === "combat" && snap.battle) {
+    const hydrated = Battle.hydrateState(snap.battle);
+    if (hydrated) {
+      battle = hydrated;
+      mpGuestRenderCombat();
+    }
+  } else if (snap.phase === "reward") {
+    mpGuestRenderReward(snap);
+  } else if (snap.phase === "safehouse") {
+    mpGuestRenderSafehouse(snap);
+  } else if (snap.phase === "event") {
+    mpGuestRenderEvent(snap);
+  } else if (snap.phase === "clear") {
+    ui.note.textContent = "作戦完了 — 全層を突破した";
+  } else if (snap.phase === "gameover") {
+    ui.note.textContent = "通信途絶。全素体との接続が失われた。";
+  }
+}
+
+// ---- 単位3-6: 接続維持の最小限（ハートビート／切断の表示／再入室） ----
+// ハートビート: ルーム参加中は自分の players の lastSeen を15秒間隔で更新する
+// （Net.updateMyPlayer が lastSeen を serverTimestamp で上書きする）。タブを閉じる
+// ときは pagehide で conn:"offline" をベストエフォートで書き、相手の表示に残す。
+let mpHeartbeatTimer = 0;
+let mpConnWatchTimer = 0;
+
+function mpStartHeartbeat() {
+  if (mpHeartbeatTimer) return;
+  const beat = () => {
+    if (window.Net && Net.roomCode()) {
+      Net.updateMyPlayer({ conn: "online" }).catch(() => { /* noop */ });
+    }
+  };
+  beat();
+  mpHeartbeatTimer = window.setInterval(beat, 15000);
+}
+
+function mpStopHeartbeat() {
+  if (mpHeartbeatTimer) window.clearInterval(mpHeartbeatTimer);
+  mpHeartbeatTimer = 0;
+}
+
+window.addEventListener("pagehide", () => {
+  if (window.Net && Net.roomCode()) {
+    Net.updateMyPlayer({ conn: "offline" }).catch(() => { /* noop */ });
+  }
+});
+
+// ラン中の参加者ドキュメント更新（ロビー側の控えと同期層の控えを両方最新に保つ）
+function mpOnPlayersUpdate(list) {
+  if (!Array.isArray(list)) return;
+  mpSession.players = list.slice();
+  mpLobby.players = list.slice();
+}
+
+// ゲスト: ホストがルームを解散した（＝ホスト切断。移行なし・J10）らロビーへ戻す
+function mpGuestOnRoomGone() {
+  if (!mpSession.active || mpSession.isHost) return;
+  showTitle(); // blankDesk → MPSync.reset（ラン中だったため退室処理も走る）
+  openLobby();
+  setLobbyStatus("ホストが切断されました");
+}
+
+function mpStartConnWatch() {
+  if (mpConnWatchTimer) return;
+  mpConnWatchTimer = window.setInterval(mpConnWatchTick, 5000);
+}
+
+function mpStopConnWatch() {
+  if (mpConnWatchTimer) window.clearInterval(mpConnWatchTimer);
+  mpConnWatchTimer = 0;
+}
+
+// 切断の検知は「表示」だけに留める（自動防衛・進行の確定は作らない。計画 §3-6／§4）
+function mpConnWatchTick() {
+  if (!mpSession.active || !window.Net) return;
+  const now = Date.now();
+  for (const doc of mpSession.players) {
+    if (!doc || doc.playerId === Net.uid()) continue;
+    const seenMs = mpTsMs(doc.lastSeen);
+    const offline = doc.conn === "offline" || (seenMs > 0 && now - seenMs > 45000);
+    const known = mpSession.connDown.has(doc.playerId);
+    if (offline && !known) {
+      mpSession.connDown.add(doc.playerId);
+      const name = doc.name || "PANDORA";
+      if (mpSession.isHost) {
+        pushLog(`LINK LOST  ${name} の通信が途絶えた可能性`);
+        mpPublish();
+      }
+      ui.note.textContent = `${name} の通信が途絶えた可能性があります`;
+    } else if (!offline && known) {
+      mpSession.connDown.delete(doc.playerId);
+      if (mpSession.isHost) {
+        pushLog(`LINK RESTORED  ${doc.name || "PANDORA"}`);
+        mpPublish();
+      }
+    }
+  }
+  // ゲスト側: スナップショットの updatedAt が45秒以上止まったらホスト途絶を表示する
+  if (!mpSession.isHost && mpSession.stateUpdatedAtMs > 0) {
+    const stale = now - mpSession.stateUpdatedAtMs > 45000;
+    if (stale && !mpSession.hostStaleWarned) {
+      mpSession.hostStaleWarned = true;
+      ui.note.textContent = "ホストとの通信が途絶えた可能性があります";
+    }
+  }
+}
+
+// ---- 味方簡易バー（名前・HP・BLK・手札枚数・READY） ----
+function mpRenderAllyBar() {
+  const bar = ui.mpAllyBar;
+  if (!bar) return;
+  if (!mpSession.active || session.phase !== "combat" || !battle || !Array.isArray(battle.players)) {
+    bar.hidden = true;
+    return;
+  }
+  bar.hidden = false;
+  bar.replaceChildren();
+  for (const p of battle.players) {
+    const def = Battle.CHARACTERS[p.characterId] || {};
+    const item = document.createElement("span");
+    item.className = "mp-ally"
+      + (p.playerId === myPlayerId ? " is-me" : "")
+      + (p.hp <= 0 ? " is-down" : "");
+    const parts = [
+      mpPlayerName(p.playerId),
+      def.code ? `"${def.code}"` : (def.name || p.characterId),
+      `HP ${Math.max(0, p.hp)}/${p.hpMax}`,
+      `BLK ${p.block || 0}`,
+      `手札 ${p.hand ? p.hand.length : 0}`,
+    ];
+    if (p.hp <= 0) parts.push("DOWN");
+    else if (p.ready) parts.push("READY");
+    item.textContent = parts.join(" ");
+    bar.append(item);
+  }
+}
+
+function mpReset() {
+  // 単位3-6: ランを開始していた場合だけ退室する（ホストはルーム解散＝ラン終了）。
+  // ロビー滞在中のタイトル往復（素体選択の showTitle 等）では解散しないよう、
+  // started が立っていない間は通信文脈に触れない
+  const wasStarted = mpSession.started;
+  mpStopHeartbeat();
+  mpStopConnWatch();
+  if (wasStarted && window.Net && Net.roomCode()) {
+    Net.leaveRoom().catch(() => { /* noop */ });
+  }
+  mpSession.active = false;
+  mpSession.isHost = false;
+  mpSession.started = false;
+  mpSession.seq = 0;
+  mpSession.players = [];
+  mpSession.records = [];
+  mpSession.processedIntents.clear();
+  mpSession.lastCseq = {};
+  mpSession.intentChain = Promise.resolve();
+  mpSession.guestLock = false;
+  mpSession.battleEndHandled = false;
+  mpSession.handSig = "";
+  mpSession.cctvKey = "";
+  mpSession.logBuffer.length = 0;
+  // 単位3-5／3-6 の状態も畳む
+  mpSession.reward = null;
+  mpSession.safehouse = null;
+  mpSession.eventView = null;
+  mpSession.rewardSig = "";
+  mpSession.guestRewardStage = "";
+  mpSession.guestDeck = [];
+  mpSession.connDown.clear();
+  mpSession.stateUpdatedAtMs = 0;
+  mpSession.hostStaleWarned = false;
+  myPlayerId = null;
+  if (ui.mpAllyBar) ui.mpAllyBar.hidden = true;
+}
+
+window.MPSync = {
+  state: mpSession,
+  publish: mpPublish,
+  renderAllyBar: mpRenderAllyBar,
+  guestJoinRun: mpGuestJoinRun,
+  reset: mpReset,
+  onSceneChanged() {
+    if (mpSession.active && mpSession.isHost && mpSession.started) mpPublish();
+  },
+};
+
 ui.skip.addEventListener("click", skip);
 ui.broadcast.addEventListener("click", (event) => {
   if (event.target.closest(".skip")) return;
@@ -5919,6 +7915,23 @@ if (ui.tutorialBtn) {
     launchFromAttract();
   });
 }
+if (ui.archiveBtn) {
+  // 回想（回収記録 RECOVERED RECORDS）: タイトルから到達済み深度の演出を再読する（J-8）
+  ui.archiveBtn.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (audio) audio.unlock();
+    if (session.phase !== "attract") return;
+    if (window.DepthClear) window.DepthClear.openArchive();
+  });
+}
+if (ui.archiveBtnDesk) {
+  // 端末（デスク内タイトルシート）からの回想導線
+  ui.archiveBtnDesk.addEventListener("click", (event) => {
+    event.stopPropagation();
+    if (audio) audio.unlock();
+    if (window.DepthClear) window.DepthClear.openArchive();
+  });
+}
 if (ui.installBtn) {
   ui.installBtn.addEventListener("click", async (event) => {
     event.stopPropagation();
@@ -5980,7 +7993,20 @@ if (ui.vesselNext) ui.vesselNext.addEventListener("click", () => { if (session.p
 if (ui.vesselLaunch) ui.vesselLaunch.addEventListener("click", () => {
   if (session.phase !== "vessel") return;
   const id = ui.vesselLaunch.dataset.vessel;
-  if (id && !id.startsWith("locked")) chooseVessel(id);
+  if (!id || id.startsWith("locked")) return;
+  // マルチプレイ段階(3) 単位3-2: ロビーからの素体選択ではランを開始せず、
+  // 選択結果を自分の players ドキュメントへ書いてロビーへ戻る
+  if (mpPickingVessel) { void mpConfirmVesselPick(id); return; }
+  chooseVessel(id);
+});
+// 作戦深度ステッパー（§4.1）: 操作時は深度ブロックだけを更新し、カルーセルは再描画しない
+if (ui.depthPrev) ui.depthPrev.addEventListener("click", () => {
+  if (session.phase !== "vessel") return;
+  stepDepth(-1);
+});
+if (ui.depthNext) ui.depthNext.addEventListener("click", () => {
+  if (session.phase !== "vessel") return;
+  stepDepth(1);
 });
 ui.restart.addEventListener("click", () => {
   if (audio) audio.unlock();

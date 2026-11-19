@@ -177,11 +177,17 @@
     const pool = candidates(poolName, o);
     if (!pool.length) return null;
     const rng = typeof o.rng === "function" ? o.rng : Math.random;
-    const total = pool.reduce((sum, relic) => sum + Math.max(0, relic.weight), 0);
+    // 作戦深度の報酬の質（DESIGN-DEPTH-SYSTEM-FINAL §5.6）: opts.rareBoost は希少枠
+    // （weight 0.5）の実効ウェイトにのみ掛ける。未指定・1 の場合は従来と完全一致。
+    // 渡すのは戦闘報酬の提示経路（main.js の drawRelicOfferCandidates）だけとし、
+    // イベント・ジャンク屋の抽選には渡さない（§5.6 精査・軽微8）。
+    const boost = typeof o.rareBoost === "number" && o.rareBoost > 0 ? o.rareBoost : 1;
+    const weightOf = (relic) => Math.max(0, relic.weight) * (relic.weight === 0.5 ? boost : 1);
+    const total = pool.reduce((sum, relic) => sum + weightOf(relic), 0);
     if (!(total > 0)) return pool[0];
     let roll = rng() * total;
     for (const relic of pool) {
-      roll -= Math.max(0, relic.weight);
+      roll -= weightOf(relic);
       if (roll < 0) return relic;
     }
     return pool[pool.length - 1];

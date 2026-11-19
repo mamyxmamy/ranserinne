@@ -4702,6 +4702,78 @@ body.is-dead .comms {
   padding-left: 8px;
 }
 
+/* 作戦深度ブロック（DESIGN-DEPTH-SYSTEM-FINAL §4.1）: 情報カラム内蔵ステッパー。
+   CRTパネルの流儀（モノフォント＋燐光色）に揃え、横持ちの右カラムに収める */
+.vessel-depth {
+  border-top: 1px solid rgba(180, 255, 200, 0.22);
+  padding-top: 7px;
+  display: grid;
+  gap: 3px;
+}
+
+.vessel-depth__row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.vessel-depth__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--phosphor);
+}
+
+.vessel-depth__btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  padding: 6px 9px;
+  min-height: 30px;
+  color: var(--phosphor-hot);
+  background: rgba(20, 60, 35, 0.35);
+  border: 1px solid rgba(180, 255, 200, 0.35);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.vessel-depth__btn:disabled { opacity: 0.35; cursor: default; }
+
+.vessel-depth__value {
+  font-family: var(--font-mono);
+  font-size: 17px;
+  letter-spacing: 0.08em;
+  color: var(--amber);
+  min-width: 2ch;
+  text-align: center;
+}
+
+.vessel-depth__band {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--phosphor);
+}
+
+.vessel-depth__summary {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  line-height: 1.5;
+  letter-spacing: 0.03em;
+  color: var(--phosphor-dim);
+}
+
+.vessel-depth__next,
+.vessel-depth__best {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.45;
+  letter-spacing: 0.05em;
+  color: rgba(190, 220, 198, 0.62);
+}
+
 /* 決定ボタン（CONFIRM相当）: パネル幅いっぱいの大きなボタンに */
 .vessel-launch {
   justify-self: stretch;
@@ -4725,6 +4797,10 @@ body.is-dead .comms {
   .vessel-info__deck { font-size: 10.5px; line-height: 1.45; }
   .vessel-info__flavor { font-size: 11px; line-height: 1.5; }
   .vessel-launch { min-height: 46px; padding: 10px 14px; }
+  .vessel-depth { padding-top: 5px; gap: 2px; }
+  .vessel-depth__btn { min-height: 26px; padding: 4px 8px; }
+  .vessel-depth__value { font-size: 15px; }
+  .vessel-depth__summary { font-size: 10px; line-height: 1.4; }
 }
 
 /* 低丈（スマホ横持ち等）: 全体を詰めて1画面に収める */
@@ -4754,6 +4830,13 @@ body.is-dead .comms {
   .vessel-info__stats { font-size: 10.5px; }
   .vessel-info__deck { font-size: 10px; line-height: 1.34; }
   .vessel-info__flavor { font-size: 10px; line-height: 1.36; }
+  .vessel-depth { padding-top: 4px; gap: 1px; }
+  .vessel-depth__label { font-size: 10px; }
+  .vessel-depth__btn { min-height: 24px; padding: 3px 7px; font-size: 10px; }
+  .vessel-depth__value { font-size: 14px; }
+  .vessel-depth__band { font-size: 10px; }
+  .vessel-depth__summary { font-size: 9.5px; line-height: 1.32; }
+  .vessel-depth__next, .vessel-depth__best { font-size: 9px; line-height: 1.3; }
 }
 
 /* 幅が狭い場合は回転台の下にCRTパネルを回す（シーン内スクロールで収める） */
@@ -4808,4 +4891,536 @@ body.is-dead .comms {
 
 .card-inspect.is-oversized .card-inspect__body {
   color: #ffb4a3;
+}
+
+/* ============================================================
+   深度クリア演出（一枚絵＋文章／VN式）— DESIGN-DEPTH-CLEAR-FINAL 実装A
+   フルブリード一枚絵＋下部グラデーションウィンドウ。本文は明朝（本物の記録の温度）、
+   端末系表示（チップ／話者タグ／ボタン）は等幅（phosphor）の二書体構成（§1.2）。
+   画調の「剥がれグラデーション」（J-2）は data-band の段階フィルタで表す:
+   band1= CCTV緑単色寄り → band5= 全面フルカラー（深度15・解放のみ）。
+   ============================================================ */
+.depth-clear {
+  position: fixed;
+  inset: 0;
+  /* 回想（#archive-screen = 5000）からの再読でも前面に出るよう、それより上・
+     クリア画面（.clear-screen = 10000）より下に置く */
+  z-index: 6000;
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+  overflow: hidden;
+  font-family: var(--font-mono);
+}
+.depth-clear[hidden] { display: none; }
+.depth-clear.is-on { opacity: 1; }
+
+.dc-art { position: absolute; inset: 0; }
+.dc-art__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 35%;
+  display: block;
+}
+.dc-art__img[hidden] { display: none; }
+.depth-clear[data-band="1"] .dc-art__img { filter: grayscale(1) brightness(0.85) contrast(1.12); }
+.depth-clear[data-band="2"] .dc-art__img { filter: saturate(0.25) brightness(0.92) contrast(1.06); }
+.depth-clear[data-band="3"] .dc-art__img { filter: saturate(0.55) brightness(0.97); }
+.depth-clear[data-band="4"] .dc-art__img { filter: saturate(0.82); }
+.depth-clear[data-band="5"] .dc-art__img { filter: none; }
+
+/* 仮絵: 単色グラデーション＋深度番号。band で色味が CCTV 緑 → 温かい色へ移る */
+.dc-art__ph {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: radial-gradient(120% 90% at 50% 30%, #0d3520 0%, #04170c 55%, #010503 100%);
+}
+.dc-art__ph[hidden] { display: none; }
+.depth-clear[data-band="2"] .dc-art__ph { background: radial-gradient(120% 90% at 50% 30%, #123324 0%, #071c10 55%, #020604 100%); }
+.depth-clear[data-band="3"] .dc-art__ph { background: radial-gradient(120% 90% at 50% 30%, #1a2e26 0%, #0a1712 55%, #030705 100%); }
+.depth-clear[data-band="4"] .dc-art__ph { background: radial-gradient(120% 90% at 50% 30%, #2b2b26 0%, #141410 55%, #060605 100%); }
+.depth-clear[data-band="5"] .dc-art__ph { background: radial-gradient(120% 90% at 50% 30%, #3a2f22 0%, #1b1409 55%, #070503 100%); }
+.dc-art__ph-num {
+  margin: 0;
+  font-size: clamp(90px, 34vmin, 260px);
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: rgba(160, 255, 190, 0.16);
+  text-shadow: 0 0 34px rgba(60, 255, 130, 0.25);
+}
+.depth-clear[data-band="4"] .dc-art__ph-num,
+.depth-clear[data-band="5"] .dc-art__ph-num { color: rgba(255, 226, 178, 0.20); text-shadow: 0 0 34px rgba(255, 190, 90, 0.22); }
+.dc-art__ph-cap {
+  margin: 0;
+  font-size: clamp(10px, 2.6vmin, 14px);
+  letter-spacing: 0.28em;
+  color: rgba(190, 255, 205, 0.55);
+}
+.depth-clear[data-band="4"] .dc-art__ph-cap,
+.depth-clear[data-band="5"] .dc-art__ph-cap { color: rgba(255, 232, 196, 0.6); }
+
+/* CCTV 由来のグレイン／走査線。深い band ほど抜けていく（§3.6） */
+.dc-art__grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, rgba(24, 120, 52, 0.30), rgba(6, 40, 18, 0.30));
+  mix-blend-mode: overlay;
+  opacity: 0.9;
+}
+.depth-clear[data-band="2"] .dc-art__grain { opacity: 0.65; }
+.depth-clear[data-band="3"] .dc-art__grain { opacity: 0.42; }
+.depth-clear[data-band="4"] .dc-art__grain { opacity: 0.2; }
+.depth-clear[data-band="5"] .dc-art__grain { opacity: 0; }
+
+.dc-chip {
+  position: absolute;
+  top: max(10px, env(safe-area-inset-top));
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
+  border: 1px solid rgba(120, 255, 160, 0.45);
+  background: rgba(2, 12, 6, 0.62);
+  color: #b9ffd0;
+  letter-spacing: 0.14em;
+}
+.dc-chip__main { font-size: clamp(13px, 3.4vmin, 17px); }
+.dc-chip__sub { font-size: clamp(9px, 2.4vmin, 12px); color: #6fbf8a; }
+
+.dc-skip, .dc-ff {
+  position: absolute;
+  right: 12px;
+  font-family: var(--font-mono);
+  font-size: clamp(11px, 3vmin, 14px);
+  letter-spacing: 0.18em;
+  color: #b9ffd0;
+  background: rgba(2, 12, 6, 0.62);
+  border: 1px solid rgba(120, 255, 160, 0.45);
+  padding: 7px 14px;
+  cursor: pointer;
+}
+.dc-skip { top: max(10px, env(safe-area-inset-top)); }
+.dc-ff { top: calc(max(10px, env(safe-area-inset-top)) + 46px); }
+.dc-skip:hover, .dc-ff:hover { border-color: var(--phosphor-hot); color: var(--phosphor-hot); }
+
+.dc-window {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  min-height: 40%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 12vh 18px calc(16px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.55) 42%, rgba(0, 0, 0, 0.94) 100%);
+}
+.dc-speaker {
+  margin: 0;
+  align-self: flex-start;
+  font-size: clamp(11px, 2.8vmin, 14px);
+  letter-spacing: 0.22em;
+  color: #7dffab;
+  border: 1px solid rgba(120, 255, 160, 0.5);
+  padding: 2px 8px;
+  background: rgba(2, 12, 6, 0.7);
+}
+.dc-speaker[hidden] { display: none; }
+.dc-text {
+  margin: 0;
+  font-family: "Hiragino Mincho ProN", "Hiragino Mincho Pro", "YuMincho", "Yu Mincho", "Noto Serif CJK JP", "Noto Serif JP", serif;
+  font-size: clamp(16px, 4.4vmin, 21px);
+  line-height: 1.75;
+  color: #f4f1e6;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+  min-height: 3.5em;
+  white-space: pre-wrap;
+}
+.dc-text--title {
+  text-align: center;
+  font-size: clamp(19px, 5.4vmin, 27px);
+  letter-spacing: 0.08em;
+  min-height: 2em;
+}
+.dc-next {
+  margin: 0;
+  align-self: flex-end;
+  color: #b9ffd0;
+  font-size: 13px;
+  animation: dc-next-blink 1.1s steps(2, start) infinite;
+}
+.dc-next[hidden] { display: none; }
+@keyframes dc-next-blink { 50% { opacity: 0.25; } }
+.dc-report {
+  align-self: flex-end;
+  font-family: var(--font-mono);
+  font-size: clamp(12px, 3.2vmin, 15px);
+  letter-spacing: 0.18em;
+  color: #031108;
+  background: #4dff88;
+  border: 1px solid #4dff88;
+  padding: 9px 18px;
+  cursor: pointer;
+}
+.dc-report[hidden] { display: none; }
+
+.dc-choices {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 18px calc(22px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.88) 45%);
+}
+.dc-choices[hidden] { display: none; }
+.dc-choice {
+  font-family: "Hiragino Mincho ProN", "Hiragino Mincho Pro", "YuMincho", "Yu Mincho", "Noto Serif CJK JP", "Noto Serif JP", serif;
+  font-size: clamp(14px, 4vmin, 18px);
+  line-height: 1.6;
+  text-align: left;
+  color: #f4f1e6;
+  background: rgba(2, 14, 7, 0.85);
+  border: 1px solid rgba(120, 255, 160, 0.55);
+  padding: 13px 16px;
+  cursor: pointer;
+}
+.dc-choice:hover, .dc-choice:focus-visible { border-color: var(--phosphor-hot); background: rgba(6, 32, 15, 0.92); }
+
+/* ---------- 回収の間（DESIGN-RECOVERY-BEAT-FINAL） ----------
+   管理ノード接写（全深度共通の専用絵・仮採用）＋ DOM／CSS／SVG オーバーレイ。
+   深度差分は data-band のフィルタ（一枚絵と共通の剥がれグラデーション）で賄う。 */
+.dc-beat {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.dc-beat[hidden] { display: none; }
+.dc-beat.is-on { opacity: 1; }
+.dc-beat.is-out { opacity: 0; transition: opacity 0.7s ease; }
+.depth-clear.is-beat .dc-window { display: none; } /* ビート中は VN ウィンドウを出さない */
+.dc-beat__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 50%;
+  display: block;
+}
+.depth-clear[data-band="1"] .dc-beat__img { filter: grayscale(1) brightness(0.85) contrast(1.12); }
+.depth-clear[data-band="2"] .dc-beat__img { filter: saturate(0.25) brightness(0.92) contrast(1.06); }
+.depth-clear[data-band="3"] .dc-beat__img { filter: saturate(0.55) brightness(0.97); }
+.depth-clear[data-band="4"] .dc-beat__img { filter: saturate(0.82); }
+.depth-clear[data-band="5"] .dc-beat__img { filter: none; }
+.dc-beat__grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, rgba(24, 120, 52, 0.30), rgba(6, 40, 18, 0.30));
+  mix-blend-mode: overlay;
+  opacity: 0.9;
+}
+.depth-clear[data-band="2"] .dc-beat__grain { opacity: 0.65; }
+.depth-clear[data-band="3"] .dc-beat__grain { opacity: 0.42; }
+.depth-clear[data-band="4"] .dc-beat__grain { opacity: 0.2; }
+.depth-clear[data-band="5"] .dc-beat__grain { opacity: 0; }
+
+/* 有線接続：画面端から繰り出される極太アナログ銅線ケーブル＋バヨネット式ロック */
+.dc-beat__cable {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.dc-beat__cable-shadow { stroke: rgba(0, 0, 0, 0.55); stroke-width: 21; stroke-linecap: round; }
+.dc-beat__cable-line { stroke: #b57a3e; stroke-width: 13; stroke-linecap: round; }
+.dc-beat__port { fill: rgba(4, 10, 6, 0.35); stroke: rgba(160, 220, 180, 0.75); stroke-width: 3; }
+.dc-beat__lock { transform-box: view-box; transform-origin: 1120px 470px; }
+.dc-beat__lockring { fill: none; stroke: #9fb8a6; stroke-width: 10; stroke-dasharray: 40 22; }
+.dc-beat__plug { fill: #39423c; stroke: #c98f4e; stroke-width: 5; }
+
+.dc-beat__nodelabel {
+  position: absolute;
+  left: 12px;
+  top: calc(max(10px, env(safe-area-inset-top)) + 60px);
+  margin: 0;
+  font-size: clamp(10px, 2.6vmin, 13px);
+  letter-spacing: 0.22em;
+  color: #8fd6a4;
+  border: 1px solid rgba(120, 255, 160, 0.3);
+  background: rgba(2, 12, 6, 0.55);
+  padding: 4px 9px;
+}
+.dc-beat__hud {
+  position: absolute;
+  right: 12px;
+  top: calc(max(10px, env(safe-area-inset-top)) + 52px);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.dc-beat__counter {
+  margin: 0;
+  font-size: clamp(11px, 2.8vmin, 14px);
+  letter-spacing: 0.16em;
+  color: #b9ffd0;
+  border: 1px solid rgba(120, 255, 160, 0.45);
+  background: rgba(2, 12, 6, 0.62);
+  padding: 6px 10px;
+}
+.dc-beat__lamps { margin: 0; display: flex; gap: 7px; padding-right: 2px; }
+.dc-beat__lamp {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(140, 255, 175, 0.5);
+  background: rgba(20, 40, 26, 0.8);
+}
+.dc-beat__lamp.is-on { background: #4dff88; box-shadow: 0 0 9px rgba(77, 255, 136, 0.8); }
+
+/* 転送の3要素：カウンタ（上記HUD）／リール／死線の波形 */
+.dc-beat__reel {
+  position: absolute;
+  left: 16px;
+  bottom: 148px;
+  width: clamp(56px, 15vmin, 84px);
+  height: clamp(56px, 15vmin, 84px);
+  opacity: 0.9;
+}
+.dc-beat__reel svg { width: 100%; height: 100%; display: block; }
+.dc-beat__reel-rim { fill: rgba(6, 18, 10, 0.72); stroke: #8fd6a4; stroke-width: 3; }
+.dc-beat__reel line { stroke: #8fd6a4; stroke-width: 4; }
+.dc-beat__reel-hub { fill: #0a1f12; stroke: #8fd6a4; stroke-width: 3; }
+.dc-beat__wave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 108px;
+  width: 100%;
+  height: 44px;
+  pointer-events: none;
+}
+.dc-beat__wave-line { fill: none; stroke: rgba(125, 255, 171, 0.85); stroke-width: 2.5; }
+
+/* 回収確定表示：スタンプ的な即時出現 */
+.dc-beat__stamp {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-3.5deg);
+  text-align: center;
+  border: 2px solid rgba(125, 255, 171, 0.85);
+  background: rgba(2, 12, 6, 0.66);
+  padding: 12px 22px 10px;
+}
+.dc-beat__stamp[hidden] { display: none; }
+.dc-beat__stamp-main {
+  margin: 0;
+  font-size: clamp(17px, 4.8vmin, 25px);
+  letter-spacing: 0.2em;
+  color: #c9ffda;
+}
+.dc-beat__stamp-sub {
+  margin: 4px 0 0;
+  font-size: clamp(9px, 2.4vmin, 12px);
+  letter-spacing: 0.24em;
+  color: #6fbf8a;
+}
+
+/* Gray キュー専用キャプション（VN ウィンドウとは別要素・§6.2） */
+.dc-beat__caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 26px 18px calc(14px + env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0.88) 55%);
+}
+.dc-beat__caption[hidden] { display: none; }
+.dc-beat__speaker {
+  margin: 0;
+  align-self: flex-start;
+  font-size: clamp(11px, 2.8vmin, 14px);
+  letter-spacing: 0.22em;
+  color: #7dffab;
+  border: 1px solid rgba(120, 255, 160, 0.5);
+  padding: 2px 8px;
+  background: rgba(2, 12, 6, 0.7);
+}
+.dc-beat__captext {
+  margin: 0;
+  font-family: "Hiragino Mincho ProN", "Hiragino Mincho Pro", "YuMincho", "Yu Mincho", "Noto Serif CJK JP", "Noto Serif JP", serif;
+  font-size: clamp(15px, 4.2vmin, 20px);
+  line-height: 1.7;
+  color: #f4f1e6;
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+  min-height: 1.7em;
+  white-space: pre-wrap;
+}
+
+/* 横持ち適正化（2026-11-18）: 本ゲームは横持ちが本線。縦前提で決めた
+   .dc-window の padding-top: 12vh は、画面高の小さい横持ちでは固定費として
+   重く、Gray／最終ページでウィンドウが画面高の約半分（800x360 実測 51%）に
+   膨らんで一枚絵を圧迫した。横持ちでは上部グラデーションの助走を詰め、
+   通常ページ約34%・Gray／最終ページ約44% に収める（縦持ちの挙動は不変）。 */
+@media (orientation: landscape) {
+  .dc-window { min-height: 34%; padding-top: 5vh; }
+}
+
+/* ---------- 回想（回収記録 RECOVERED RECORDS） ---------- */
+.archive-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  background: #020604;
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  overflow-y: auto;
+}
+.archive-screen[hidden] { display: none; }
+.archive-screen.is-on { opacity: 1; }
+.archive-screen__frame {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 22px 16px calc(28px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.archive-screen__kicker { margin: 0; font-size: 11px; letter-spacing: 0.3em; color: #6fbf8a; }
+.archive-screen__title { margin: 0; font-size: clamp(20px, 5.6vmin, 28px); letter-spacing: 0.12em; color: var(--phosphor-hot); }
+.archive-list { display: flex; flex-direction: column; gap: 8px; }
+.archive-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  text-align: left;
+  font-family: var(--font-mono);
+  padding: 10px 14px;
+  background: rgba(6, 26, 13, 0.6);
+  border: 1px solid rgba(120, 255, 160, 0.35);
+  color: #c8ffd4;
+  cursor: pointer;
+}
+.archive-row:hover { border-color: var(--phosphor-hot); }
+.archive-row.is-locked { opacity: 0.38; cursor: default; border-style: dashed; }
+.archive-row__main { font-size: clamp(13px, 3.6vmin, 16px); letter-spacing: 0.14em; }
+.archive-row__sub { font-size: clamp(10px, 2.6vmin, 12px); color: #6fbf8a; letter-spacing: 0.1em; }
+.archive-screen__close { align-self: center; }
+
+/* ---------- CO-OP ロビー（マルチプレイ段階(3) 単位3-2） ---------- */
+.lobby-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  background: #020604;
+  color: var(--phosphor);
+  font-family: var(--font-mono);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  overflow-y: auto;
+}
+.lobby-screen[hidden] { display: none; }
+.lobby-screen.is-on { opacity: 1; }
+.lobby-screen__frame {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 22px 16px calc(28px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.lobby-screen__kicker { margin: 0; font-size: 11px; letter-spacing: 0.3em; color: #6fbf8a; }
+.lobby-screen__title { margin: 0; font-size: clamp(20px, 5.6vmin, 28px); letter-spacing: 0.12em; color: var(--phosphor-hot); }
+.lobby-pane { display: flex; flex-direction: column; gap: 14px; }
+.lobby-pane[hidden] { display: none; }
+.lobby-note { margin: 0; font-size: clamp(11px, 2.8vmin, 13px); line-height: 1.7; color: #9fd8ae; }
+.lobby-status { margin: 0; min-height: 1.4em; font-size: clamp(12px, 3vmin, 14px); letter-spacing: 0.08em; color: var(--phosphor-hot); }
+.lobby-menu { display: flex; flex-direction: column; gap: 18px; }
+.lobby-menu__create { align-self: flex-start; }
+.lobby-join { display: flex; flex-direction: column; gap: 8px; }
+.lobby-join__label { font-size: clamp(11px, 2.8vmin, 13px); letter-spacing: 0.14em; color: #6fbf8a; }
+.lobby-join__row { display: flex; gap: 10px; align-items: stretch; }
+.lobby-join__input {
+  width: 9em;
+  font-family: var(--font-mono);
+  font-size: clamp(16px, 4.4vmin, 20px);
+  letter-spacing: 0.3em;
+  text-align: center;
+  padding: 8px 6px;
+  background: rgba(6, 26, 13, 0.6);
+  border: 1px solid rgba(120, 255, 160, 0.35);
+  color: #c8ffd4;
+}
+.lobby-join__input:disabled { opacity: 0.4; }
+.lobby-code { margin: 0; font-size: clamp(13px, 3.4vmin, 16px); letter-spacing: 0.2em; color: #6fbf8a; }
+.lobby-code b { font-size: clamp(22px, 6vmin, 30px); letter-spacing: 0.34em; color: var(--phosphor-hot); }
+.lobby-code__depth { display: block; margin-top: 4px; font-size: clamp(11px, 2.8vmin, 13px); letter-spacing: 0.12em; }
+.lobby-players { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.lobby-player {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  align-items: baseline;
+  padding: 10px 14px;
+  background: rgba(6, 26, 13, 0.6);
+  border: 1px solid rgba(120, 255, 160, 0.35);
+  color: #c8ffd4;
+}
+.lobby-player.is-me { border-color: var(--phosphor-hot); }
+.lobby-player--empty { opacity: 0.55; border-style: dashed; }
+.lobby-player__name { font-size: clamp(13px, 3.6vmin, 16px); letter-spacing: 0.12em; }
+.lobby-player__vessel { font-size: clamp(11px, 3vmin, 13px); color: #9fd8ae; letter-spacing: 0.08em; }
+.lobby-player__flags { margin-left: auto; font-size: clamp(11px, 3vmin, 13px); letter-spacing: 0.12em; color: var(--phosphor-hot); }
+.lobby-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.lobby-actions .sheet__go[disabled] { opacity: 0.4; cursor: default; }
+.lobby-screen__close { align-self: center; }
+
+/* マルチプレイ段階(3) 単位3-4: 戦闘画面の味方簡易バー */
+.mp-ally-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin-top: 8px;
+  padding: 6px 8px;
+  border: 1px solid rgba(111, 191, 138, 0.35);
+  background: rgba(4, 12, 6, 0.55);
+}
+.mp-ally-bar[hidden] { display: none; }
+.mp-ally {
+  font-size: clamp(10px, 2.6vmin, 12px);
+  letter-spacing: 0.06em;
+  color: #9fd8ae;
+  white-space: nowrap;
+}
+.mp-ally.is-me { color: var(--phosphor-hot); }
+.mp-ally.is-down { color: #e88; opacity: 0.75; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dc-next { animation: none; }
+  .depth-clear, .archive-screen, .lobby-screen { transition: none; }
+  .dc-beat, .dc-beat * { transition: none !important; } /* 回収の間は静止画表示（RECOVERY-BEAT-FINAL §1） */
 }

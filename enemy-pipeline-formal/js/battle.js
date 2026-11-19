@@ -506,7 +506,7 @@
     if (target === root.players[0]) return root;
     const view = { __scopedPlayer: target, __rootState: root };
     const defs = {};
-    for (const key of ["players", "enemy", "relics", "relicUsed", "turn", "targetPlayerId", "partySize", "scaling"]) {
+    for (const key of ["players", "enemy", "relics", "relicUsed", "turn", "targetPlayerId", "partySize", "scaling", "depthProfile", "encounterType"]) {
       defs[key] = {
         enumerable: true, configurable: true,
         get() { return root[key]; },
@@ -554,6 +554,62 @@
   function partyScalingFor(partySize) {
     const size = Math.max(1, Math.min(4, Math.floor(partySize) || 1));
     return PARTY_SCALING[size];
+  }
+
+  // ==== 作戦深度（DEPTH）パラメータ（DESIGN-DEPTH-SYSTEM-FINAL §3） ====
+  // 帯区分は難易度ドラフト §2（静穏 1〜4／警戒 5〜8／BREACH 9〜12／追跡 13〜16／LOCKDOWN 17〜20）。
+  // 深度1は現行ビルドと完全一致（hpMul ×1.00／開始NOISE 0／healRate 0.4／stunStage 0／rewardFactor ×1.0）。
+  // healRate の帯逓減は判断 J-3 論点1 (a) の確定値（40／40／30／20／10%）。マルチ復帰HPも
+  // この healRate に完全連動する（J-3 論点2 (i)。復帰処理そのものはマルチ段階(3)/(4)）。
+  // §3.3 の叩き台継続パラメータ（attackBonus 等）は判断 J-4 (a) により値だけ持ち、
+  // 初回実装ではどこからも参照しない（無効値＝現行値で固定）。
+  const DEPTH_BANDS = Object.freeze([
+    Object.freeze({ name: "静穏帯", startNoise: 0, stunStage: 0, healRate: 0.4, rewardFactor: 1.0 }),
+    Object.freeze({ name: "警戒帯", startNoise: 0, stunStage: 0, healRate: 0.4, rewardFactor: 1.25 }),
+    Object.freeze({ name: "BREACH帯", startNoise: 1, stunStage: 1, healRate: 0.3, rewardFactor: 1.5 }),
+    Object.freeze({ name: "追跡帯", startNoise: 2, stunStage: 2, healRate: 0.2, rewardFactor: 1.75 }),
+    Object.freeze({ name: "LOCKDOWN帯", startNoise: 3, stunStage: 3, healRate: 0.1, rewardFactor: 2.0 }),
+  ]);
+  const DEPTH_TABLE = Object.freeze({ bands: DEPTH_BANDS, max: 20 });
+
+  // 深度（1〜20）から解決済みプロファイルを返す。呼び出しごとに新しいオブジェクトを返す
+  // （state が保持し serialize で複製されるため、共有オブジェクトは返さない）。
+  function depthProfileFor(depth) {
+    const d = Math.max(1, Math.min(20, Math.floor(Number(depth)) || 1));
+    const band = Math.min(4, Math.floor((d - 1) / 4));
+    const row = DEPTH_BANDS[band];
+    return {
+      depth: d,
+      band,
+      bandName: row.name,
+      hpMul: 1 + 0.10 * (d - 1), // D-3: 全深度共通式（深度1＝×1.00〜深度20＝×2.90）
+      startNoise: row.startNoise,
+      stunStage: row.stunStage,
+      healRate: row.healRate,
+      rewardFactor: row.rewardFactor,
+      // §3.3（J-4 (a): 無効値で保持のみ。有効化時は値を差し替えて参照を繋ぐ）
+      attackBonus: 0,
+      moveCooling: 1,
+      ceilingFall: 5,
+      extraBoost: 0,
+      elitePlus: 0,
+    };
+  }
+
+  // 生成直後の敵1体へ深度補正を適用する（§5.2／§5.3-1）。適用順は人数倍率 → 深度倍率で、
+  // 結果として単純乗算になる（D-7）。__depthApplied の印で二重適用を防ぐ
+  // （印は serialize の敵ディープコピーにも残るため、復元後の再適用も起きない）。
+  function applyDepthToEnemy(state, enemy) {
+    const profile = state && state.depthProfile;
+    if (!profile || !enemy || enemy.__depthApplied) return enemy;
+    enemy.hpMax = Math.max(1, Math.round((enemy.hpMax || 0) * (profile.hpMul || 1)));
+    enemy.hp = enemy.hpMax;
+    // スタン段階2〜: ボスのみ必要蓄積量 +50%（スタン免疫の敵には触らない）
+    if ((profile.stunStage || 0) >= 2 && isBossEnemy(enemy) && !enemy.immuneToStun) {
+      enemy.stunMax = Math.ceil((enemy.stunMax || STUN_MAX) * 1.5);
+    }
+    enemy.__depthApplied = true;
+    return enemy;
   }
 
   function isBossEnemy(enemy) {
@@ -623,8 +679,14 @@
       turn: 1,
       partySize,
       scaling,
+      // 作戦深度（DESIGN-DEPTH-SYSTEM-FINAL §3.1）: options.depthProfile を複製して保持し、
+      // 生成直後の敵へ適用する。未指定なら null＝深度補正なし（従来挙動と完全一致）。
+      // options.encounterType は戦闘の種別（"ELITE" 等。§5.3-2 のスタン減衰判定の根拠）。
+      depthProfile: options && options.depthProfile ? plainClone(options.depthProfile) : null,
+      encounterType: options && options.encounterType ? String(options.encounterType) : null,
     };
     if (scaling) applyScalingToEnemy(state, state.enemy);
+    if (state.depthProfile) applyDepthToEnemy(state, state.enemy);
     return attachPlayerCompat(state);
   }
 
@@ -719,6 +781,10 @@
       targetPlayerId: state.targetPlayerId || null,
       partySize: state.partySize || playersOf(state).length,
       scaling: state.scaling ? { hp: state.scaling.hp, attack: state.scaling.attack, bossHp: state.scaling.bossHp } : null,
+      // 作戦深度（§3.1）: 欠落した旧スナップショットでは null＝深度補正なし（深度1相当）。
+      // 敵は適用済みの値を持つため、復元時に再生成・再適用はしない。
+      depthProfile: state.depthProfile ? plainClone(state.depthProfile) : null,
+      encounterType: state.encounterType || null,
       enemy: plainClone(state.enemy || null),
       players: playersOf(state).map(serializePlayer),
     };
@@ -814,6 +880,9 @@
       // そのまま復元するため、ここでは再適用しない（__scaled の印もコピーに残っている）。
       partySize: typeof data.partySize === "number" ? data.partySize : players.length,
       scaling: data.scaling ? plainClone(data.scaling) : null,
+      // 作戦深度（§3.1）: プロファイルと戦闘種別も往復で保持する（再適用はしない）
+      depthProfile: data.depthProfile ? plainClone(data.depthProfile) : null,
+      encounterType: data.encounterType || null,
     };
     attachPlayerCompat(state);
     // 旧形スナップショット（alert が state 直下にのみある 2-1 形式）互換:
@@ -835,6 +904,9 @@
     // 単位2-4: スケーリング有効（state.scaling あり）のときだけ生成した敵へ倍率を適用する。
     // 無効時は従来と完全一致。
     if (state && state.scaling) applyScalingToEnemy(state, enemy);
+    // 作戦深度: 人数倍率の後に深度倍率を適用する（単純乗算・D-7）。depthProfile が
+    // 無い state では従来と完全一致。
+    if (state && state.depthProfile) applyDepthToEnemy(state, enemy);
     return true;
   }
 
@@ -951,6 +1023,9 @@
   // 検収修正 2026-11-10 (PROMPT-19): スタン加算の共通処理（CQC打撃でも使う）
   function addStun(state, amount, log, withBonus) {
     if (state.enemy.immuneToStun) { log.push("STUN IMMUNE"); return 0; }
+    // 作戦深度 段階3（§5.3-3）: ボスがスタンを消費した直後の1ターンは蓄積を受け付けない。
+    // 印（stunLockTurns）は enemyTurn のスタン消費点で立ち、次の enemyTurn 冒頭で解除される。
+    if ((state.enemy.stunLockTurns || 0) > 0) { log.push("STUN LOCKED - 蓄積無効"); return 0; }
     const before = state.enemy.stun;
     const bonus = withBonus ? relicStunBonus(state) : 0;
     const room = Math.max(0, state.enemy.stunMax - before);
@@ -2161,6 +2236,9 @@
   function enemyTurn(state, rng) {
     const root = rootOf(state);
     const log = [];
+    // 作戦深度 段階3（§5.3-3）: 連続スタン不可の印は、この enemyTurn の冒頭
+    // （スタン判定より前）で解除する。印が効くのは直前の自ターン中の addStun のみ。
+    if (root && root.enemy && (root.enemy.stunLockTurns || 0) > 0) root.enemy.stunLockTurns = 0;
     const hasPlayers = !!(root && Array.isArray(root.players) && root.players.length > 0);
     // 追加行動の予告（alertTelegraphed）は排除優先度の素体が保持する。全員分を読んでから消す
     const pri = hasPlayers ? priorityPlayer(root, true) : null;
@@ -2189,6 +2267,10 @@
     // 検収修正 2026-11-10 (PROMPT-19): スタン最大で敵の行動をショート（設計欠落の補完）
     if (!root.enemy.immuneToStun && (root.enemy.stun || 0) >= (root.enemy.stunMax || 3)) {
       root.enemy.stun = 0;
+      // 作戦深度 段階3（§5.3-3）: ボスはスタン消費直後の1ターン蓄積免疫の印を立てる
+      if (isBossEnemy(root.enemy) && root.depthProfile && (root.depthProfile.stunStage || 0) >= 3) {
+        root.enemy.stunLockTurns = 1;
+      }
       advancePattern(root.enemy);
       if (hasPlayers) root.targetPlayerId = null;
       log.push("STUNNED - 行動ショート");
@@ -2426,6 +2508,19 @@
     const enemyLogStart = log.length;
     const enemy = enemyTurn(root, rng);
     log.push(...enemy.log);
+    // 作戦深度 段階1〜（§5.3-2）: エリート戦の敵とボスは、敵フェイズ解決後に蓄積が
+    // 1減衰する（下限0）。挿入位置は完全露呈リセットより前（精査・軽微7）。
+    // 対象判定は encounter の種別（state.encounterType）とボス印のみで行い、
+    // 敵種カタログには依存しない。スタン成立中の解除条件は変えない（蓄積の自然減のみ）。
+    {
+      const profile = root.depthProfile;
+      const foe = root.enemy;
+      if (profile && (profile.stunStage || 0) >= 1 && foe && !foe.dead && !foe.immuneToStun
+        && (foe.stun || 0) > 0 && (isBossEnemy(foe) || root.encounterType === "ELITE")) {
+        foe.stun = Math.max(0, foe.stun - 1);
+        log.push(`STUN DECAY ${foe.stun + 1} > ${foe.stun}`);
+      }
+    }
     // 正式版フェーズ1（A-2）: 完全露呈の天井リセット。ノイズ10の敵フェイズは LOCKDOWN 相当で
     // 解決し（noiseBand／enemyTurn 側）、フェイズ終了時にその素体の NOISE を 5 へ落とす
     let exposedReset = false;
@@ -2553,5 +2648,9 @@
     PARTY_SCALING,
     partyScalingFor,
     isBossEnemy,
+    // 作戦深度（DESIGN-DEPTH-SYSTEM-FINAL §3）: パラメータ表とプロファイル解決
+    DEPTH_TABLE,
+    depthProfileFor,
+    applyDepthToEnemy,
   };
 })(typeof window !== "undefined" ? window : globalThis);
