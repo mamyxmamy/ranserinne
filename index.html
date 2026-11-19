@@ -386,7 +386,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 54.3</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 54.4</span></div>
             </div>
 
             <div class="hidden">
@@ -5910,6 +5910,9 @@ cv.toBlob((b) => resolve(b), 'image/png');
 
         // シーン切替フック：setSceneBGM('title' | 'main' | 'death' | 'daioujou')
         window.setSceneBGM = function(scene) {
+            // v54.4: シーンが切り替わったら、残っているファンファーレ（大往生曲の流用）は必ず止める。
+            // 止めないと大往生の直前に鳴ったファンファーレと大往生BGM本体が同じ曲で重なって聞こえる
+            if (window.__stopFanfare) window.__stopFanfare();
             bgmScene = BGM_FILES[scene] ? scene : 'title';
             if (!bgmStarted) return; // 初回タップまでは鳴らさない
             const file = BGM_FILES[bgmScene];
@@ -5925,8 +5928,16 @@ cv.toBlob((b) => resolve(b), 'image/png');
         // 大往生曲（bgm-daioujou.mp3）を流用し、シーンBGMは切り替えず別Audioで重ねて鳴らす。
         // 数秒でフェードアウトして止める。ミュート設定（bgmMuted）に従い、ミュート時は鳴らさない。
         let fanfareAudio = null;
+        // v54.4: ファンファーレを即座に止める（シーン遷移時に呼ばれる）
+        window.__stopFanfare = function() {
+            if (!fanfareAudio) return;
+            const a = fanfareAudio; fanfareAudio = null;
+            try { bgmFadeTo(a, 0, 250); setTimeout(function() { try { a.pause(); } catch (e) {} }, 300); } catch (e) {}
+        };
         window.playFanfareSE = function() {
             if (bgmMuted) return false;
+            // v54.4: シーンBGM自体が大往生曲を再生中なら、同じ曲を重ねない
+            if (bgmAudio && bgmAudio.dataset && bgmAudio.dataset.src === BGM_FILES.daioujou && !bgmAudio.paused) return false;
             try {
                 if (fanfareAudio) { try { fanfareAudio.pause(); } catch (e) {} fanfareAudio = null; }
                 const begin = function(src) {
