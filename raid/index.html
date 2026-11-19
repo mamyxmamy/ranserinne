@@ -386,7 +386,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 54.2</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 54.3</span></div>
             </div>
 
             <div class="hidden">
@@ -1365,18 +1365,39 @@ body.pc-on #ranking-screen { font-size: 15px; }
             if (!inst) return;
             const m = window.__hlMaterials();
             for (const mid in plan.needs) { const rest = window.__hlMaterialCount(mid) - (plan.stockUse[mid] || 0); if (rest > 0) m[mid] = rest; else delete m[mid]; }
+            let wasEquipped = false;
             plan.bodyUse.forEach(body => {
                 window.unlockedHeirlooms = window.unlockedHeirlooms.filter(h => h !== body);
-                if (window.activeHeirlooms) window.activeHeirlooms = window.activeHeirlooms.filter(h => h.id !== body.id);
+                if (window.activeHeirlooms && window.activeHeirlooms.some(h => h.id === body.id)) { wasEquipped = true; window.activeHeirlooms = window.activeHeirlooms.filter(h => h.id !== body.id); }
             });
             window.meisen -= def.cost;
             window.unlockedHeirlooms.push(inst);
+            // v54.3: 装備中の本体を素材にしたら、合成家宝がその装備枠を引き継ぐ
+            if (wasEquipped) { if (!window.activeHeirlooms) window.activeHeirlooms = []; window.activeHeirlooms.push(inst); }
             if (!window.heirloomHistory) window.heirloomHistory = [];
             if (!window.heirloomHistory.includes(id)) window.heirloomHistory.push(id);
             saveMetaProgress();
             if (window.updateStartScreenUI) window.updateStartScreenUI();
             window.openHeirloomStorage();
+            window.showSynthResult(def, inst, plan, wasEquipped);
         };
+        // v54.3: 合成の結果モーダル（引き継いだ強化・装備を明示して分かりやすくする）
+        window.showSynthResult = function(def, inst, plan, wasEquipped) {
+            const m = document.getElementById('synth-result-screen');
+            if (!m) return;
+            const nm = document.getElementById('synth-result-name');
+            const ds = document.getElementById('synth-result-desc');
+            const nt = document.getElementById('synth-result-notes');
+            if (nm) nm.textContent = window.__hlDisplayName(inst);
+            if (ds) ds.textContent = inst.desc;
+            const notes = [];
+            if (plan.bodyUse.length) notes.push('素材にした家宝：' + plan.bodyUse.map(b => window.__hlDisplayName(b)).join('、'));
+            if (plan.inhEnh > 0) notes.push('強化 +' + plan.inhEnh + ' を引き継ぎました');
+            if (wasEquipped) notes.push('装備も引き継ぎました');
+            if (nt) nt.innerHTML = notes.map(t => '<div>' + t + '</div>').join('');
+            m.classList.remove('hidden');
+        };
+        window.closeSynthResult = function(e) { if (e) { e.preventDefault(); e.stopPropagation(); } const m = document.getElementById('synth-result-screen'); if (m) m.classList.add('hidden'); };
         // 家宝蔵の「合成」区画（レシピ一覧＋素材一覧）。openHeirloomStorage から毎回呼ばれる
         window.__renderSynthSection = function(listEl) {
             if (!listEl) return;
@@ -6891,6 +6912,15 @@ if (target) target.classList.remove('hidden');
 <p class="px-4 py-2 text-[9px] text-gray-500 text-center tracking-widest shrink-0">挑んだ回数だけ、名は刻まれる。死の直後、転生の合間に番人へ挑めます。</p>
 </div>
 
+<div id="synth-result-screen" class="hidden fixed inset-0 z-[195] bg-black/85 flex items-center justify-center p-4">
+    <div class="bg-[#141210] border-2 border-yellow-600/80 max-w-md w-full p-5 text-center shadow-[0_0_40px_rgba(0,0,0,0.9)]">
+        <div class="text-yellow-500 font-black tracking-[0.3em] text-xs mb-2">― 合成成功 ―</div>
+        <div id="synth-result-name" class="text-xl font-black text-yellow-100 mb-1"></div>
+        <div id="synth-result-desc" class="text-sm text-gray-300 mb-3"></div>
+        <div id="synth-result-notes" class="text-[11px] text-orange-200/90 space-y-1 mb-4"></div>
+        <button onclick="window.closeSynthResult(event)" class="w-full bg-yellow-800 hover:bg-yellow-700 text-white font-bold py-2.5 rounded-sm border border-yellow-500">わかった</button>
+    </div>
+</div>
 <div id="synth-tutorial-screen" class="hidden fixed inset-0 z-[190] bg-black/85 flex items-center justify-center p-4">
   <div class="bg-[#14110F] border border-yellow-800/60 rounded-sm max-w-sm w-full p-5 shadow-2xl">
     <h3 class="text-gold text-lg font-black tracking-[0.3em] mb-3 text-center">家宝合成のしかた</h3>
