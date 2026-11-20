@@ -110,22 +110,10 @@ function saveAnimSpeed(x) {
   try { window.localStorage.setItem(ANIM_SPEED_STORE, String(x)); }
   catch { /* storage unavailable */ }
 }
-// テスト解禁モード（2026-11-19、今夜の友人とのマルチテスト専用）: URL に ?testunlock=1 が
-// 付いている時だけ、解禁判定の読み取り側で「全深度（上限20）＋VESSEL 04/09/13 解禁済み＋
-// 深度15の分岐記録あり（J-5 ゲート充足）」として扱う。判定はこの1か所に集約し、
-// 解禁記録の保存形式は変えない。ランタイム判定のみで localStorage へは書かない
-// （クリア時の解禁・深度記録の書き込みもテストモードでは抑止する）。
-// パラメータが無ければ従来挙動と完全一致する。REACTOR（VESSEL 00）は対象外で通常どおりロック。
-const TEST_UNLOCK_ENABLED = (() => {
-  try { return new URLSearchParams(window.location.search).get("testunlock") === "1"; }
-  catch { return false; }
-})();
-function testUnlockEnabled() { return TEST_UNLOCK_ENABLED; }
 // 解禁キャラ2 VESSEL 09 "GHOST-TAPE" の解禁フラグ（既存の初回のみストアと同じ localStorage 方式）。
 // 解禁条件（2026-11-16 決定）: VESSEL 04 "GOLIATH" を使ってランをクリアした時点。
 const GHOST_TAPE_UNLOCK_STORE = "enemy-pipeline-formal-ghosttape-unlock-v1";
 function ghostTapeUnlocked() {
-  if (testUnlockEnabled()) return true; // テスト解禁モード（読み取り側のみ）
   try { return window.localStorage.getItem(GHOST_TAPE_UNLOCK_STORE) === "1"; }
   catch { return false; }
 }
@@ -139,7 +127,6 @@ function markGhostTapeUnlocked() {
 // GOLIATH を遡ってロックしないよう解禁扱いにする。
 const GOLIATH_UNLOCK_STORE = "enemy-pipeline-formal-goliath-unlock-v1";
 function goliathUnlocked() {
-  if (testUnlockEnabled()) return true; // テスト解禁モード（読み取り側のみ）
   if (ghostTapeUnlocked()) return true;
   try { return window.localStorage.getItem(GOLIATH_UNLOCK_STORE) === "1"; }
   catch { return false; }
@@ -152,7 +139,6 @@ function markGoliathUnlocked() {
 // 解禁条件: VESSEL 09 "GHOST-TAPE" を使ってランをクリアした時点。解禁連鎖は 07 → GOLIATH → GHOST-TAPE → WEAVER。
 const WEAVER_UNLOCK_STORE = "enemy-pipeline-formal-weaver-unlock-v1";
 function weaverUnlocked() {
-  if (testUnlockEnabled()) return true; // テスト解禁モード（読み取り側のみ）
   try { return window.localStorage.getItem(WEAVER_UNLOCK_STORE) === "1"; }
   catch { return false; }
 }
@@ -208,7 +194,6 @@ function loadDepthProgress() {
   return out;
 }
 function depthUnlockedMax() {
-  if (testUnlockEnabled()) return 20; // テスト解禁モード（読み取り側のみ）
   return loadDepthProgress().unlockedMax;
 }
 // クリア確定（§6.1）: bossClearSequence のキャラ解禁ブロック直後・clearSave の前でのみ呼ぶ。
@@ -3080,7 +3065,6 @@ function vesselRingSpin(dir) {
 // ==== 作戦深度の選択（DESIGN-DEPTH-SYSTEM-FINAL §4.1／判断 J-1 (a)・J-2 (a)・J-5 (b)・J-7 (a)） ====
 // 深度15の分岐記録の有無（所有者は depth-clear.js。公開手段 getBranch 経由でのみ参照する）
 function depthBranchRecorded() {
-  if (testUnlockEnabled()) return true; // テスト解禁モード: J-5 ゲートを充足扱い（読み取り側のみ）
   return !!(window.DepthClear && typeof window.DepthClear.getBranch === "function"
     && window.DepthClear.getBranch());
 }
@@ -5155,14 +5139,13 @@ async function bossClearSequence() {
     pushLog("NEW VESSEL SIGNAL — VESSEL 13 \"WEAVER\" 解禁");
   }
   // 解禁キャラ4・最終機体（2026-11-17 本人決定）: WEAVER を使ってランをクリアした時点で VESSEL 00 を解禁する
-  // テスト解禁モードでは抑止する（テストプレイのクリアで REACTOR を恒常解禁しない）
-  if (run && run.character === "vessel13" && !reactorUnlocked() && !testUnlockEnabled()) {
+  if (run && run.character === "vessel13" && !reactorUnlocked()) {
     markReactorUnlocked();
     pushLog("NEW VESSEL SIGNAL — VESSEL 00 \"REACTOR\" 解禁");
   }
   // 作戦深度の解禁確定（§6.1）: キャラ解禁ブロックの直後・clearSave の前に置く
   // （演出中にアプリが落ちても解禁が失われない。DEPTH-CLEAR-FINAL §2.2 前提作業③と一致）
-  if (run && run.depth && !testUnlockEnabled()) markDepthCleared(run.depth, run.character);
+  if (run && run.depth) markDepthCleared(run.depth, run.character);
   session.offer = [];
   ui.hopper.replaceChildren();
   ui.piles.hidden = true;
@@ -6606,7 +6589,7 @@ async function mpCreateRoom() {
   setLobbyStatus("ルームを作成しています…");
   try {
     // MP-GUEST-FIX 課題4: selectedDepth は素体選択を開くまで初期値1のままなので、
-    // 作成直行だと本人の解禁上限（テスト解禁含む）がルーム深度へ反映されない。
+    // 作成直行だと本人の解禁上限がルーム深度へ反映されない。
     // J-7 の初期値原則（解禁上限）に合わせて作成時に引き直す。
     selectedDepth = depthInitialValue();
     await Net.createRoom({ depth: selectedDepth });
