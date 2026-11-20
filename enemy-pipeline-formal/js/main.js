@@ -2631,6 +2631,7 @@ async function runEnemyPhase() {
   refreshHand();
   session.busy = false;
   syncEndButton();
+  saveBattleSnapshot(); // 戦闘中セーブ: 敵の行動が終了し、次のターンが始まった静止状態を保存する
 }
 
 function setMapMode(on) {
@@ -3418,12 +3419,15 @@ function markTutorialDone() {
 }
 
 // ==== PROMPT-24: オートセーブ（localStorage にランを自動保存し、タイトルから再開可能にする） ====
-// 保存粒度は「マップ滞在中」または「戦闘の開始時」。戦闘の途中経過は保存せず、
-// 復元時はその戦闘の開始時から再開する。デッキ構成は run.deck（全カードのIDリスト）で保持し、
-// 戦闘の山札・手札・捨て札は戦闘開始時にそこから再構成される。
+// 保存粒度は「マップ滞在中」または「戦闘の開始時」。デッキ構成は run.deck（全カードのIDリスト）
+// で保持し、戦闘の山札・手札・捨て札は戦闘開始時にそこから再構成される。
+// 戦闘中セーブ（2026-11-20）: 敵の行動が終了するたび（＝プレイヤーのターン開始時点）に、
+// 戦闘状態のスナップショット（Battle.serializeState）を任意フィールド battleSnap として
+// 同じ v:2 セーブへ追加保存する。復元時はそのターン開始の静止状態から再開する。
+// battleSnap の無い v:2 セーブ（従来の保存）は従来どおり戦闘開始時からの復元になる。
 const SAVE_KEY = "enemy_pipeline_formal_save";
 
-function saveGame(pending) {
+function saveGame(pending, battleSnap) {
   // マルチプレイ段階(3) 単位3-3: MP中は単独オートセーブを書かない（誤復元防止）
   if (mpSession.active) return;
   try {
@@ -3450,6 +3454,7 @@ function saveGame(pending) {
         floorCount: route.floorCount,
       },
       pending: pending || null,
+      battleSnap: battleSnap || null, // 戦闘中セーブ: v:2 のまま任意フィールド追加（欠落時は null として読む）
       tutorialCompleted: tutorialCleared(),
     };
     window.localStorage.setItem(SAVE_KEY, JSON.stringify(data));
@@ -3472,6 +3477,25 @@ function loadGame() {
 
 function clearSave() {
   try { window.localStorage.removeItem(SAVE_KEY); } catch { /* noop */ }
+}
+
+// ==== 戦闘中セーブ（2026-11-20） ====
+// 進行中の戦闘の encounter（saveGame の pending として保持し続ける対象）。
+// beginCombat（ソロ経路）で設定し、戦闘終了（finishCombat／タイトル復帰）で解除する。
+let activeCombatEncounter = null;
+
+// 敵の行動が終了し、プレイヤーのターンが始まった静止状態で戦闘スナップショットを保存する。
+// 呼び出し点は「ターン開始の手札が配り終わり、操作可能になった直後」のみ
+// （beginCombat の第1ターン開始時／runEnemyPhase の正常終了時）。
+// 演出・アニメーションの途中状態は state に含まれないため、ここで保存する限り
+// 復元は常にターン開始の静止状態になる。
+function saveBattleSnapshot() {
+  if (mpSession.active) return; // MP中は対象外（単独セーブ無効化の既定仕様どおり）
+  if (!battle || session.phase !== "combat") return;
+  if (tutorialBattle) return; // チュートリアル戦闘は脚本進行中のため対象外（従来どおり戦闘開始時から復元）
+  if (!activeCombatEncounter) return;
+  if (battle.enemy.dead || myPlayer().hp <= 0) return; // 終了した戦闘は保存しない
+  saveGame(activeCombatEncounter, Battle.serializeState(battle));
 }
 
 function refreshSoundToggle() {
@@ -3561,6 +3585,9 @@ function restoreRun() {
   window.requestAnimationFrame(() => ui.screen.classList.add("is-on"));
   const pending = data.pending;
   if (pending && pending.kind === "combat") {
+    // 戦闘中セーブ: スナップショットがあればターン開始状態へ復元する。無ければ従来どおり
+    // その戦闘の開始時から再開する（旧 v:2 セーブ互換）。
+    if (data.battleSnap) { restoreCombat(pending, data.battleSnap); return; }
     void beginCombat(pending);
     return;
   }
@@ -3576,6 +3603,61 @@ function enterRestoredMap() {
     extraLogs: ["記録データを復元。経路図を再展開"],
     note: "光っているノードが次の区画。",
   });
+}
+
+// 戦闘中セーブからの復元: 保存済みスナップショット（Battle.serializeState 産）を
+// hydrate し、ターン開始の静止状態として戦闘画面を組み直す。beginCombat との差分は
+// 「状態を新規生成せずスナップショットから復元する」「開始時セーブを書き直さない」
+// 「ボス導入通信などの開始演出を再生しない」の3点だけ。
+function restoreCombat(encounter, snap) {
+  session.busy = true;
+  session.advance = false;
+  pinchHeard = false;
+  pinchQueued = false;
+  const hydrated = Battle.hydrateState(snap);
+  if (!hydrated) { void beginCombat(encounter); return; } // 復元不能なら従来の戦闘開始時復元へ
+  battle = hydrated;
+  // RB-6: 致死回避の使用済み記録はラン側と共有オブジェクトである前提（beginCombat と同一）。
+  // hydrate 側の複製ではなく、復元済みの run.relicUsed へ繋ぎ直す（内容は保存時点で同一）。
+  battle.relicUsed = run.relicUsed;
+  activeCombatEncounter = encounter;
+  tutorialBattle = false;
+  setTutorialStep("off");
+  Battle.syncAlertBuff(battle, myPlayer());
+  lastNoiseShown = myPlayer().noise;
+  // ボス戦では提供曲をゆっくりフェードインさせる（beginCombat と同一）
+  bossBgm = encounter.type === "BOSS";
+  // 深度クリア演出（J-12）: 第3層ボス戦ではその深度の一枚絵を preload する（beginCombat と同一）
+  if (bossBgm && run && (run.mapIndex || 1) >= 3 && window.DepthClear) {
+    window.DepthClear.preloadForContext({ depth: run.depth || null });
+  }
+  // 低耐久のまま復元した場合は、復元時点のHPで低耐久状態を初期化する
+  lowHpBgmActive = !bossBgm && myPlayer().hp > 0 && myPlayer().hp * 10 <= (myPlayer().hpMax || 1) * 3;
+  if (audio && bossBgm) audio.fadeSeconds = 2.2;
+  changeScene("BATTLE");
+  if (audio) audio.fadeSeconds = 0.7;
+  ui.ambush.hidden = true;
+  ui.link.textContent = "CARRIER LOCK";
+  ui.contact.textContent = battle.enemy.name;
+  ui.enemyName.textContent = encounter.short || battle.enemy.name;
+  setCctvImage((battle.enemy && battle.enemy.image) || encounter.image || "", encounter.name, encounter.type);
+  preloadEnemyCctv(battle.enemy);
+  ui.slotLabel.textContent = "READER LIVE";
+  ui.note.textContent = "条件を満たさないカードは、スリットが拒否する。";
+  ui.hopper.replaceChildren();
+  resetHandSeen(); // 復元した手札は全枚が表示対象（状態と DOM を一致させる）
+  ui.log.replaceChildren();
+  const here = route && route.nodes[route.currentId];
+  if (here && here.isFake) pushLog("WARNING: AMBUSH");
+  pushLog(`ENGAGE  ${encounter.name}`);
+  pushLog("戦闘記録を復元 — ターン開始時点から再開");
+  renderRelics();
+  spawn(myPlayer().hand.map(face));
+  renderCombat();
+  renderPiles();
+  refreshHand();
+  session.busy = false;
+  syncEndButton();
 }
 
 function setTutorialStep(step) {
@@ -4113,6 +4195,7 @@ async function beginCombat(encounter) {
   session.advance = false;
   pinchHeard = false;
   pinchQueued = false;
+  activeCombatEncounter = encounter; // 戦闘中セーブ: ターン開始スナップショットの pending 保持用
   saveGame(encounter); // PROMPT-24: バトル突入時に保存（復元時はこの戦闘の開始時から）
   battle = Battle.createState(undefined, {
     relics: run.relics, relicUsed: run.relicUsed, deck: run.deck, character: run.character,
@@ -4180,6 +4263,7 @@ async function beginCombat(encounter) {
     if (session.phase !== "combat") return;
     session.busy = false;
     syncEndButton();
+    saveBattleSnapshot(); // 戦闘中セーブ: 第1ターン開始時点を保存する
     return;
   }
   // PROMPT-28: 手札を配る前に、レリック（特殊装備）の説明ステップを挟む
@@ -5034,6 +5118,11 @@ async function openReward() {
     else finishCombat();
     return;
   }
+  // 戦闘中セーブ: 勝利が確定した時点で戦闘スナップショットを無効化する。
+  // 報酬画面の間に終了しても CONTINUE が終わった戦闘へ戻らないよう、ここで
+  // pending なし・battleSnap なしの通常セーブへ書き換える（claimReward／finishCombat
+  // の保存と同形。復元先は現在のノードのマップになる）。
+  if (!mpSession.active) { run.hp = battle.player.hp; saveGame(); }
   session.busy = true;
   if (ui.cctvEnemy && ui.cctvScene && !ui.cctvScene.hidden) ui.cctvEnemy.classList.add("is-glitching");
   if (ui.silenced) ui.silenced.hidden = false;
@@ -5149,6 +5238,7 @@ async function bossClearSequence() {
   session.offer = [];
   ui.hopper.replaceChildren();
   ui.piles.hidden = true;
+  activeCombatEncounter = null; // 戦闘中セーブ: ラン完走で戦闘文脈を解除する
   clearSave(); // PROMPT-24: ラン完走時はセーブを破棄する
   // JOB 3M-3: ランクリア確定点。CLEAR 遷移の直前に単一フック onRunClear を1回だけ呼ぶ。
   // context は run.hp 同期と解禁処理の完了後に確定した値で組み立てる。
@@ -5182,6 +5272,7 @@ async function bossClearSequence() {
 async function advanceToNextMap() {
   if (!run || (run.mapIndex || 1) >= 3) return;
   pendingMapAdvance = false;
+  activeCombatEncounter = null; // 戦闘中セーブ: 層ボス戦はここで戦闘終了（finishCombat を通らない経路）
   session.busy = true;
   session.offer = [];
   // HP 同期（ボス戦の残 HP を run へ。報酬経路でも同期済みだが遷移の入口で担保する）
@@ -5285,6 +5376,7 @@ function skipReward() {
 function finishCombat() {
   if (!battle || !battle.enemy.dead || battle.player.hp <= 0) return;
   if (session.phase !== "combat" && session.phase !== "reward") return;
+  activeCombatEncounter = null; // 戦闘中セーブ: 戦闘終了。以後の保存にスナップショットは載らない
   run.hp = battle.player.hp;
   session.offer = [];
   session.busy = false;
@@ -5311,6 +5403,7 @@ function finishCombat() {
 
 async function openGameOver() {
   if (!battle || battle.player.hp > 0 || session.phase === "gameover" || session.dead) return;
+  activeCombatEncounter = null; // 戦闘中セーブ: 敗北で戦闘文脈を解除する（セーブ自体も消去される）
   clearSave(); // PROMPT-24: ゲームオーバーでセーブ消去
   session.dead = true;
   trackEvent("/event/ep-gameover", "EP Game Over"); // v15.4（この関数は撃沈ごとに1回だけ通る）
@@ -5356,6 +5449,7 @@ function blankDesk() {
   session.linked = false;
   session.busy = false;
   session.offer = [];
+  activeCombatEncounter = null; // 戦闘中セーブ: タイトル復帰で戦闘文脈を解除する
   route = null;
   run = null;
   routeToken += 1;
@@ -5810,7 +5904,17 @@ function dismissCreditCard() {
     // 既存の unlock フローに接続し、タイトル曲を開始する（kick の条件が整えば即再生）
     const p = audio.unlock();
     audio.playBgm("title");
-    if (p && typeof p.then === "function") p.then(() => audio.playBgm("title")).catch(() => {});
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        // 遅延コールバックの陳腐化ガード: この再指定は「タイトル画面にいる」
+        // 前提で予約したもの。発火までに別シーンへ遷移していたら（例:
+        // CONTINUE で戦闘へ復元し changeScene が戦闘曲を wanted にした直後）、
+        // 遷移先の BGM をタイトル曲で上書きしない。
+        if (currentScene !== "TITLE") return;
+        if (audio.wanted && audio.wanted !== "title") return;
+        audio.playBgm("title");
+      }).catch(() => {});
+    }
   }
 }
 
