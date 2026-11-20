@@ -488,6 +488,7 @@ const ui = {
   stance: $("stance"),
   stanceHint: $("stance-hint"),
   hp: $("hp-value"),
+  hpMax: $("hp-max"),
   hpBar: $("hp-bar"),
   hpGhost: $("hp-bar-ghost"),
   dmgVin: $("dmg-vignette"),
@@ -860,6 +861,7 @@ let holdPick = null;
 // 共通プール拡張の選択フェイズ（残響サーチ／箔の選別）の状態（null = 非選択中）。
 // { kind, candidates, index } で候補一覧と選択中インデックスを保持する
 let pickPick = null;
+let pickOpenDelayed = false; // SEARCH-RESHUFFLE: ゲスト側でリシャッフル演出の間だけ選択UIの開放を遅らせる
 
 let battle = Battle.createState();
 let route = null;
@@ -1775,6 +1777,7 @@ function renderDisplayVitals() {
   if (!AP || !AP.display || !battle) return;
   const d = AP.display;
   ui.hp.textContent = String(d.php);
+  if (ui.hpMax) ui.hpMax.textContent = String(myPlayer().hpMax);
   const hpPct = Math.max(0, (d.php / myPlayer().hpMax) * 100);
   ui.hpBar.style.width = `${hpPct}%`;
   if (ui.hpGhost) {
@@ -1799,6 +1802,7 @@ function renderCombat() {
   // 正式版フェーズ1: 左パネルの素体名を使用キャラに合わせる
   if (ui.vesselName) ui.vesselName.textContent = (Battle.CHARACTERS[myCharacterId()] || {}).name || "VESSEL 07";
   ui.hp.textContent = String(player.hp);
+  if (ui.hpMax) ui.hpMax.textContent = String(player.hpMax);
   const hpPct = Math.max(0, (player.hp / player.hpMax) * 100);
   ui.hpBar.style.width = `${hpPct}%`;
   // v15.0: HPバーの残像（削れた分がゴーストとして残り、遅れて追いつく。回復時は即時追随）
@@ -1863,6 +1867,7 @@ function renderRunVitals() {
   const hpMax = Math.max(1, run.hpMax || def.hp || 1);
   const hp = Math.max(0, Math.min(hpMax, run.hp || 0));
   ui.hp.textContent = String(hp);
+  if (ui.hpMax) ui.hpMax.textContent = String(hpMax);
   const hpPct = (hp / hpMax) * 100;
   ui.hpBar.style.width = `${hpPct}%`;
   if (ui.hpGhost) {
@@ -1993,6 +1998,70 @@ function announceIntent(label, view) {
       ui.intentBanner.hidden = true;
     }, 400);
   }, 1400);
+}
+
+// ==== リシャッフル演出（SEARCH-RESHUFFLE）====
+// 捨て札が山札へ戻ったことを画面で示す共通演出。ドロー経路（ターン開始）と
+// サーチ経路（巻尺確認／残響サーチで山札が補充されたとき）の両方から使う。
+// CCTV ガラス中央へ glass-flash 流儀の一時表示を出し、同時にパイル行
+// （山札／捨て札カウンタ）を光らせる。保持は 900ms（ANIM ×2 では半分）で、
+// 操作はブロックしない（要素は pointer-events: none）。
+// 戻り値の Promise は保持完了で解決する（選択UIを後ろに控える呼び出し側用）。
+// 再入した場合は保持を張り直し、先行する待ち手も新しい完了でまとめて解決する。
+let reshuffleFlashEl = null;
+let reshuffleHoldTimer = 0;
+let reshuffleFadeTimer = 0;
+let reshuffleWaiters = [];
+
+function presentReshuffle() {
+  const done = new Promise((resolve) => { reshuffleWaiters.push(resolve); });
+  const settleWaiters = () => {
+    const waiters = reshuffleWaiters;
+    reshuffleWaiters = [];
+    for (const resolve of waiters) resolve();
+  };
+  const parent = ui.silenced ? ui.silenced.parentElement : null;
+  if (!parent) { settleWaiters(); return done; } // 表示先が無い環境では待たせない
+  if (!reshuffleFlashEl) {
+    reshuffleFlashEl = document.createElement("p");
+    reshuffleFlashEl.className = "reshuffle-flash";
+    reshuffleFlashEl.textContent = "RESHUFFLE — 捨て札を山札へ再編成";
+    reshuffleFlashEl.hidden = true;
+    parent.append(reshuffleFlashEl);
+  }
+  window.clearTimeout(reshuffleHoldTimer);
+  window.clearTimeout(reshuffleFadeTimer);
+  reshuffleFlashEl.classList.remove("is-fading");
+  reshuffleFlashEl.hidden = false;
+  if (ui.piles) {
+    ui.piles.classList.remove("is-reshuffling");
+    void ui.piles.offsetWidth; // フラッシュのアニメーションを張り直す
+    ui.piles.classList.add("is-reshuffling");
+  }
+  const hold = Math.round(900 / (animSpeed === 2 ? 2 : 1));
+  reshuffleHoldTimer = window.setTimeout(() => {
+    reshuffleHoldTimer = 0;
+    const finish = () => {
+      reshuffleFadeTimer = 0;
+      if (reshuffleFlashEl) {
+        reshuffleFlashEl.classList.remove("is-fading");
+        reshuffleFlashEl.hidden = true;
+      }
+      if (ui.piles) ui.piles.classList.remove("is-reshuffling");
+      settleWaiters();
+    };
+    if (reducedMotion()) { finish(); return; }
+    if (reshuffleFlashEl) reshuffleFlashEl.classList.add("is-fading");
+    reshuffleFadeTimer = window.setTimeout(finish, 320);
+  }, hold);
+  return done;
+}
+
+// ドロー解決のログ列にリシャッフルが含まれていたら共通演出を出す（発火のみ・待たない）
+function noteReshuffleFromLog(lines) {
+  if ((lines || []).some((line) => typeof line === "string" && line.startsWith("RESHUFFLE "))) {
+    presentReshuffle();
+  }
 }
 
 function renderPiles() {
@@ -2277,6 +2346,16 @@ async function settlePlay(cardId, beforeHp, breached, animSelfFx) {
   // 共通プール拡張: 残響サーチ／箔の選別が選択保留（pendingPick）を残していたら選択フェイズを開く。
   // 敵を倒した場合は上の報酬遷移が優先され、保留は戦闘終了とともに消散する
   if (battle && myPlayer().pendingPick && session.phase === "combat" && myPlayer().hp > 0 && !battle.enemy.dead) {
+    // SEARCH-RESHUFFLE: サーチで捨て札が山札へ戻っていたら、選択UIの前に演出を見せる
+    // （演出の間は busy にして後続のカード使用を受け付けない）
+    if (myPlayer().pendingPick.reshuffled) {
+      session.busy = true;
+      syncEndButton();
+      await presentReshuffle();
+      session.busy = false;
+      syncEndButton();
+      if (!battle || session.phase !== "combat") return;
+    }
     openPickSelect();
   }
 }
@@ -2628,6 +2707,8 @@ async function runEnemyPhase() {
   ui.contact.textContent = battle.enemy.name;
   ui.note.textContent = "条件を満たさないカードは、スリットが拒否する。";
   renderPiles();
+  // SEARCH-RESHUFFLE: ターン開始ドローでリシャッフルが起きていたら共通演出を出す（操作は止めない）
+  noteReshuffleFromLog(result.log);
   refreshHand();
   session.busy = false;
   syncEndButton();
@@ -2700,6 +2781,11 @@ function floorRow(nodes, tag, openIds, here) {
   return row;
 }
 
+// MAP-LINES修正: 電源投入トランジション中は .screen__content に scale(1, 0.02) が
+// かかり、getBoundingClientRect の座標が縦に潰れて線が帯状に潰れる。復元直後の
+// マップでは再描画の機会がなく線が消えたままになっていたため、潰れを検出したら
+// 座標が信用できるまで次フレームで測り直す（上限つき）。
+let paintLinksRetry = 0;
 function paintLinks() {
   const host = ui.routeFloors;
   const svg = ui.routeLinks;
@@ -2710,6 +2796,15 @@ function paintLinks() {
     return;
   }
   const base = host.getBoundingClientRect();
+  if (base.height > 0 && base.height < height * 0.99) {
+    // 祖先 transform で潰れている間は描かず、解けるまで次フレームで再試行する
+    if (paintLinksRetry < 150 && session.phase === "map") {
+      paintLinksRetry += 1;
+      window.requestAnimationFrame(() => paintLinks());
+    }
+    return;
+  }
+  paintLinksRetry = 0;
   svg.style.left = `${host.offsetLeft}px`;
   svg.style.top = `${host.offsetTop}px`;
   svg.setAttribute("width", String(width));
@@ -2732,8 +2827,8 @@ function paintLinks() {
       line.setAttribute("x2", String(b.left + b.width / 2 - base.left));
       line.setAttribute("y2", String(b.bottom - base.top));
       const alert = target.revealed && target.isFake;
-      line.setAttribute("stroke", alert ? "#ff3b30" : "rgba(150,255,180,0.5)");
-      line.setAttribute("stroke-width", "1.5");
+      line.setAttribute("stroke", alert ? "#ff3b30" : "rgba(150,255,180,0.65)");
+      line.setAttribute("stroke-width", "2");
       svg.append(line);
     }
   }
@@ -2767,6 +2862,13 @@ function renderRoute() {
   ui.routeFloors.append(floorRow([route.nodes[route.originId]], "IN", openIds, here));
   for (const floor of route.floors) {
     ui.routeFloors.append(floorRow(floor, String(floor[0].floor), openIds, here));
+  }
+  // MAP-LAYOUT: 盤の高さに収まらない短い画面では compact（ノードと間隔を一段詰めた
+  // 収納モード）に落とし、経路全体をスクロールなしで見せる。収まる画面では通常寸法。
+  if (ui.routeMap) {
+    // 判定は通常寸法で測る（compact 適用中の寸法で測ると付け外しが振動するため）
+    ui.routeFloors.classList.remove("is-compact");
+    ui.routeFloors.classList.toggle("is-compact", ui.routeFloors.offsetHeight > ui.routeMap.clientHeight + 1);
   }
   paintLinks();
   focusCurrentNode();
@@ -7755,6 +7857,8 @@ async function mpAfterEnemyPhase(result) {
   mpSession.handSig = mine ? mine.hand.map((c) => (c.__uid || 0) + ":" + c.id).join(",") : "";
   renderCombat();
   renderPiles();
+  // SEARCH-RESHUFFLE: ドローでリシャッフルが起きていたら共通演出を出す（演出はホスト端末のみ・従来どおり）
+  noteReshuffleFromLog(result.log);
   refreshHand();
   session.busy = false;
   syncEndButton();
@@ -7902,8 +8006,18 @@ function mpGuestRenderCombat() {
     ui.endTurn.disabled = true;
   }
   // 自分の選択保留が立っていたら選択フェイズを開く（確定は pick intent 経由）
-  if (me && me.pendingPick && me.hp > 0 && !enemy.dead && !pickPick && !mpSession.guestLock) {
-    openPickSelect();
+  if (me && me.pendingPick && me.hp > 0 && !enemy.dead && !pickPick && !mpSession.guestLock && !pickOpenDelayed) {
+    // SEARCH-RESHUFFLE: サーチでリシャッフルが起きていたら、選択UIの前に演出を見せる
+    if (me.pendingPick.reshuffled) {
+      pickOpenDelayed = true;
+      presentReshuffle().then(() => {
+        pickOpenDelayed = false;
+        const cur = myPlayer();
+        if (cur && cur.pendingPick && cur.hp > 0 && battle && !battle.enemy.dead && !pickPick && !mpSession.guestLock) openPickSelect();
+      });
+    } else {
+      openPickSelect();
+    }
   }
   mpRenderAllyBar();
 }

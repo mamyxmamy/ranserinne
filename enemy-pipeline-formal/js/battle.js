@@ -1160,9 +1160,12 @@
       return;
     } else if (effect.type === "search_top") {
       // 巻尺確認（プリミティブ #1）: 山札の上 value 枚から1枚選んで手札へ、残りは捨て札へ。
-      // 選択は UI に委ね、ここでは保留だけ登録する（実移動は resolvePick）
-      state.pendingPick = { kind: "search_top", n: effect.value || 3 };
-      log.push(`MEASURE 山札の上${effect.value || 3}枚から1枚選択`);
+      // 選択は UI に委ね、ここでは保留だけ登録する（実移動は resolvePick）。
+      // 山札が value 枚未満なら、ドローと同じく捨て札をリシャッフルして補充してから保留する
+      const n = effect.value || 3;
+      const reshuffled = topUpDeckForSearch(state, n, log);
+      state.pendingPick = { kind: "search_top", n, reshuffled };
+      log.push(`MEASURE 山札の上${n}枚から1枚選択`);
       return;
     } else if (effect.type === "exhaust_curse_in_hand") {
       // 呪い吸着箔（プリミティブ #13）: 手札の呪い1枚を選ばせて廃棄し、value 枚ドロー。
@@ -1183,8 +1186,10 @@
       return;
     } else if (effect.type === "search") {
       // 残響サーチ: 山札から1枚選んで手札へ。選択は UI（main.js の選択フェイズ）に委ね、
-      // ここでは保留だけ登録する。実際の移動は resolvePick が行う
-      state.pendingPick = { kind: "search" };
+      // ここでは保留だけ登録する。実際の移動は resolvePick が行う。
+      // 山札が空なら、ドローと同じく捨て札をリシャッフルしてから保留する（捨て札も無ければ不発）
+      const reshuffled = topUpDeckForSearch(state, 1, log);
+      state.pendingPick = { kind: "search", reshuffled };
       log.push("ECHO SEARCH 山札から1枚選択");
       return;
     } else if (effect.type === "discard_then_draw") {
@@ -1541,6 +1546,20 @@
   function beginTurn(state, ref) {
     state = scopeFor(state, resolvePlayer(state, ref));
     state.player.energy = state.player.energyMax;
+  }
+
+  // サーチ系（search_top／search）の山札不足時のリシャッフル（ドローの RESHUFFLE と統一）。
+  // 山札が minNeeded 未満で捨て札がある場合、捨て札をシャッフルして山札の「下」へ戻す
+  // （残っている山札の順序＝次に引く順は維持する。ドローで山札が尽きた場合の再編と同じ流儀）。
+  // 戻した枚数を返し、呼び出し側が pendingPick.reshuffled へ積んで UI 側の演出発火に使う。
+  // ログはドロー時と同じ `RESHUFFLE n`（n = 再編後の山札枚数）。
+  function topUpDeckForSearch(state, minNeeded, log) {
+    if (state.drawPile.length >= minNeeded || state.discard.length === 0) return 0;
+    const returned = state.discard.length;
+    state.drawPile = shuffle(state.discard).concat(state.drawPile);
+    state.discard = [];
+    log.push(`RESHUFFLE ${state.drawPile.length}`);
+    return returned;
   }
 
   function drawCards(state, count, rng, ref) {
@@ -1921,8 +1940,16 @@
     syncAlertBuff(state);
     // PROMPT-23: 防護は自ターン開始時に消滅する（敵フェーズで受け止めた残りは持ち越さない）。
     // レリックのターン開始時効果より前に消すので、レリックで付いた防護はそのターン中有効。
-    const expiredBlock = state.player.block || 0;
-    state.player.block = 0;
+    // 例外（RELIC-TURNSTART-INVESTIGATION §5 案A）: 戦闘の最初のプレイヤーターン（turn 1）では
+    // 失効しない。beginCombat／beginCombatMP は startCombat（戦闘開始時レリックの BLK 付与。
+    // 基礎OS +2／光学迷彩 +8／装甲箔ロール +12／二重箔送り装甲 +16）→ 初回 beginPlayerTurn の
+    // 順で呼ぶため、ここで失効させると戦闘開始 BLK が敵の初撃を受ける前に消えてしまう。
+    // turn は resolveFullTurn で加算される戦闘単位の番号で、スナップショットにも往復する。
+    // 復元（restoreCombat）は beginPlayerTurn を呼ばず静止状態から再開するため、ターン1の
+    // スナップショット復元で二重付与・再失効は起きない。第2ターン以降は従来どおり失効する。
+    const isFirstPlayerTurn = (state.turn || 1) <= 1;
+    const expiredBlock = isFirstPlayerTurn ? 0 : (state.player.block || 0);
+    if (!isFirstPlayerTurn) state.player.block = 0;
     // 第2陣 2D (N-5／精査 J-9): レリック発火で NOISE が下がった場合は帯域（alertBuff）を
     // 必ず再同期する。カードを使わずにターンを終えても、敵フェイズの攻撃上乗せが
     // 旧帯域のまま残らないようにするため（スナップショット turnStartNoise は冒頭で

@@ -1853,7 +1853,11 @@ button { color: inherit; }
   z-index: 1;
   display: flex;
   flex-direction: column-reverse;
-  gap: 8px;
+  /* MAP-LAYOUT: フロア間隔を広げて接続の追いやすさを上げる。盤に余白がある
+     画面では min-height + space-between で間隔がさらに広がる（gap は最小値）。 */
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 100%;
   width: 100%;
   margin: 0 auto;
   padding: 2px 0;
@@ -1870,9 +1874,22 @@ button { color: inherit; }
 .route__floor {
   display: grid;
   grid-template-columns: 18px repeat(var(--cols), minmax(0, 1fr));
-  gap: 6px;
+  gap: 10px;
   align-items: stretch;
 }
+
+/* MAP-LAYOUT: 短い画面向けの収納モード（renderRoute が盤に収まらない時に自動付与）。
+   ノードと間隔を一段詰め、経路全体をスクロールなしで見せるための落とし先。 */
+.route__floors.is-compact { gap: 9px; }
+
+.route__floors.is-compact .node {
+  font-size: 10px;
+  padding: 0;
+}
+
+.route__floors.is-compact .node b { font-size: 8px; }
+
+.route__floors.is-compact .node.is-deepcore b { font-size: 7.5px; }
 
 .route__tag {
   align-self: center;
@@ -1883,8 +1900,9 @@ button { color: inherit; }
 }
 
 .node {
+  position: relative;
   justify-self: center;
-  width: 74px;
+  width: 88px;
   max-width: 100%;
   min-width: 0;
   overflow: hidden;
@@ -1892,16 +1910,16 @@ button { color: inherit; }
   background: rgba(4, 20, 12, 0.85);
   color: var(--phosphor);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   letter-spacing: 0.06em;
-  line-height: 1.05;
-  padding: 2px 0 1px;
+  line-height: 1;
+  padding: 1px 0;
   cursor: default;
 }
 
 .node b {
   display: block;
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 0.12em;
   color: var(--phosphor);
 }
@@ -1928,9 +1946,15 @@ button { color: inherit; }
 }
 
 .node__here {
+  /* MAP-LAYOUT: 現在地マーカーは行の高さを増やさず、箱の右上のバッジとして重ねる */
+  position: absolute;
+  top: 0;
+  right: 1px;
+  background: rgba(4, 20, 12, 0.92);
+  padding: 0 1px;
   color: var(--amber);
-  font-size: 9px;
-  letter-spacing: 0.18em;
+  font-size: 8px;
+  letter-spacing: 0.1em;
   text-shadow: 0 0 6px rgba(255, 210, 122, 0.6);
 }
 
@@ -3468,7 +3492,13 @@ body.is-dead .comms {
   box-shadow: 0 0 12px rgba(255, 60, 40, 0.35);
 }
 
-.node.is-deepcore b { color: #ff7a6b; }
+.node.is-deepcore b {
+  color: #ff7a6b;
+  /* MAP-LAYOUT: "[ DEEP CORE ]" を1行に収め、ボス行だけ背が高くなるのを防ぐ */
+  white-space: nowrap;
+  font-size: 8.5px;
+  letter-spacing: 0.05em;
+}
 
 .sheet__kicker--clear {
   font-size: 19px;
@@ -3482,6 +3512,9 @@ body.is-dead .comms {
   .cctv-monitor__lock::after { animation: none; }
   .cctv-monitor__enemy.is-glitching { animation: none; }
   .glass-flash { animation: none; }
+  .reshuffle-flash { animation: none; }
+  .piles.is-reshuffling span:first-child,
+  .piles.is-reshuffling span:nth-child(3) { animation: none; }
 }
 
 /* 低い画面（スマホ横持ち）では左パネルをさらに詰め、スクロールなしで収める（微調整 2026-11-10） */
@@ -3632,7 +3665,7 @@ body.is-dead .comms {
 
 @media (max-height: 400px) {
   /* 経路盤の行間を詰め、内部スクロール量を減らす（盤自体のスクロールは設計として維持） */
-  .route__floors { gap: 5px; }
+  .route__floors { gap: 8px; }
   .route__bar { font-size: 12px; }
 }
 
@@ -4159,6 +4192,42 @@ body.is-dead .comms {
 }
 .intent-banner[hidden] { display: none !important; }
 .intent-banner.is-fading { opacity: 0; }
+
+/* SEARCH-RESHUFFLE: リシャッフル（捨て札→山札の再編）の一時表示。
+   要素は main.js が生成して CCTV ガラスの親へ差す（glass-flash と同じ中央表示の流儀）。
+   点滅は glass-flash-blink を共用し、保持後に .is-fading で消える。操作は受けない */
+.reshuffle-flash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 3;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  padding: 6px 14px;
+  background: rgba(0, 20, 8, 0.6);
+  font-family: var(--font-mono);
+  font-size: clamp(12px, 5.6cqw, 28px);
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  white-space: nowrap;
+  color: #8ef6ff;
+  text-shadow: 0 0 8px rgba(142, 246, 255, 0.9), 0 0 22px rgba(142, 246, 255, 0.5);
+  animation: glass-flash-blink 0.5s steps(1) infinite;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.reshuffle-flash[hidden] { display: none !important; }
+.reshuffle-flash.is-fading { opacity: 0; }
+
+/* SEARCH-RESHUFFLE: リシャッフル時にパイル行の山札／捨て札カウンタを光らせる */
+.piles.is-reshuffling span:first-child,
+.piles.is-reshuffling span:nth-child(3) {
+  animation: piles-reshuffle-flash 0.45s ease-in-out 2;
+}
+@keyframes piles-reshuffle-flash {
+  0%, 100% { background: transparent; color: #d8ffe4; }
+  50% { background: rgba(142, 246, 255, 0.28); color: #eafcff; }
+}
 
 /* ログの敵行動の色分け（「何をされたか」を後から追えるようにする） */
 .term-line.is-enemy,
