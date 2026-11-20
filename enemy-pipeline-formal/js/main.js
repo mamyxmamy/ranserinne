@@ -4008,12 +4008,14 @@ function clearCardFocus() {
   }
 }
 
-// v13.5: チュートリアル後は通信パネルを畳み、通信（ラジオ）が来たときだけ出す
-const COMMS_FOLD_SCENES = ["MAP", "BATTLE", "EVENT", "SAFEHOUSE", "REWARD"];
+// 通信パネルはレイアウト外のオーバーレイ（画面右側に被さる）で、出すのは通信中だけ。
+// 旧 v13.5 の「畳む／開くでグリッド列が増減し中央画面が伸縮する」方式は廃止
+// （実機要望 2026-11-21: パネルが出るとゲーム画面が縮まるのが悩み）。
+// 待機状態はステータスバーの #link-state が担い、大きな NO CARRIER 面は出さない。
+// 関数名と呼び出し箇所は従来のまま（意味だけ「オーバーレイ表示の同期」に変わる）。
 function refreshCommsFold() {
   if (!ui.screen) return;
-  const fold = tutorialCleared() && !radioOpen && COMMS_FOLD_SCENES.includes(currentScene);
-  ui.screen.classList.toggle("comms-folded", fold);
+  ui.screen.classList.toggle("comms-live", !!radioOpen);
 }
 
 function silenceRadio() {

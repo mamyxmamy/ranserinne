@@ -64,6 +64,12 @@
   </div>
   <div class="death-mask" id="death-mask" hidden></div>
   <div class="fade-mask" id="fade-mask" hidden></div>
+  <!-- 警報バナー（.breach は position:fixed の全面表示）。通信パネル（.comms）の表示状態に
+       依存させないため、パネルの外（body 直下）に置く -->
+  <div class="breach" id="breach" hidden role="alert" aria-live="assertive">
+    <p>[ SECURITY BREACH - ENEMY ALERTED ]</p>
+    <span>敵の攻撃力が上昇した</span>
+  </div>
   <section class="prologue" id="prologue" hidden aria-label="プロローグ">
     <div class="prologue__wrap">
       <div class="prologue__term" id="prologue-term"></div>
@@ -419,11 +425,7 @@
             </div>
             <div class="comms__well">
               <p class="comms__idle">NO CARRIER</p>
-              <div class="breach" id="breach" hidden role="alert" aria-live="assertive">
-              <p>[ SECURITY BREACH - ENEMY ALERTED ]</p>
-              <span>敵の攻撃力が上昇した</span>
-            </div>
-            <div class="radio" id="radio" hidden role="dialog" aria-label="オールド・グレイからの無線">
+              <div class="radio" id="radio" hidden role="dialog" aria-label="オールド・グレイからの無線">
                 <p class="radio__from">[INCOMING TRANSMISSION: OLD GRAY]</p>
                 <p class="radio__line" id="radio-line" aria-live="polite"></p>
                 <button type="button" class="radio__next" id="radio-next" hidden>NEXT</button>

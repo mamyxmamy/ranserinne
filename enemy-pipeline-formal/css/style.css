@@ -651,8 +651,8 @@ button { color: inherit; }
   height: 100%;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(148px, 18%) minmax(0, 1fr) minmax(168px, 22%);
-  grid-template-areas: "status view comms";
+  grid-template-columns: minmax(148px, 18%) minmax(0, 1fr);
+  grid-template-areas: "status view";
   gap: 8px;
   padding: 8px 10px;
   color: #b8ffc6;
@@ -666,13 +666,11 @@ button { color: inherit; }
   filter: brightness(2.6);
 }
 
-/* v13.5: チュートリアル後は通信パネルを畳み、通信時のみ表示する */
-.screen.comms-folded .screen__content {
-  grid-template-columns: minmax(148px, 18%) minmax(0, 1fr) 0;
-}
-
-.screen.comms-folded .comms {
-  display: none;
+/* 通信パネルはレイアウトの外（右側に被さるオーバーレイ）。出すのは通信中だけ。
+   旧 v13.5 の「畳むと列が消えて画面が広がる／通信で列が戻って画面が縮む」方式は廃止し、
+   パネルの表示・非表示で中央スクリーンの寸法は一切変わらない（実機要望 2026-11-21）。 */
+.screen.comms-live .comms {
+  display: flex;
 }
 
 .status-bay {
@@ -699,15 +697,24 @@ button { color: inherit; }
 }
 
 .comms {
-  grid-area: comms;
+  /* オーバーレイ配置: .screen__content（position:relative）の右側に被さる。
+     位置・幅は旧グリッド列（右端・minmax(168px, 22%)）の見た目を引き継ぐ */
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  bottom: 8px;
+  width: clamp(176px, 22%, 280px);
+  z-index: 6;
   min-width: 0;
   min-height: 0;
-  display: flex;
+  display: none;
   flex-direction: column;
   gap: 6px;
   padding: 6px;
-  border: 1px solid rgba(150, 255, 180, 0.16);
-  background: linear-gradient(180deg, rgba(8, 16, 12, 0.72), rgba(0, 0, 0, 0.35));
+  border: 1px solid rgba(150, 255, 180, 0.28);
+  /* 被さっても本文が読めるよう、旧列の半透明グラスより不透明度を上げる */
+  background: linear-gradient(180deg, rgba(8, 16, 12, 0.95), rgba(0, 0, 0, 0.92));
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55), inset 0 0 18px rgba(0, 0, 0, 0.4);
 }
 
 .comms__bar {
@@ -733,6 +740,9 @@ button { color: inherit; }
 }
 
 .comms__idle {
+  /* 待機表示（NO CARRIER の大きな面）は出さない。待機状態はステータスバーの
+     #link-state（NO CARRIER / CARRIER 等の小さい表示）が担う */
+  display: none;
   margin: 0;
   padding: 10px 8px;
   color: #3d6a4c;
@@ -3275,7 +3285,7 @@ button { color: inherit; }
 }
 
 body.is-dead .comms {
-  position: relative;
+  /* 死亡時の通信（GRAY_DEATH）を死のマスク越しでも最前面に保つ（オーバーレイ化後も維持） */
   z-index: 1001;
 }
 
