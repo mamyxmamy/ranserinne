@@ -1,6 +1,7 @@
 /* BGM and SE. Drop real files on these paths to replace the synthesized stand-ins:
    bgm_title.mp3 / bgm_intro.mp3 / bgm_map.mp3 / bgm_battle.mp3 /
-   bgm_battle_lowhp.mp3 / bgm_reward.mp3 / bgm_gameover.mp3 (in assets/audio/)
+   bgm_battle_l2.mp3 / bgm_battle_l3.mp3 / bgm_battle_lowhp.mp3 / bgm_reward.mp3 /
+   bgm_gameover.mp3 / bgm_ending.mp3 / bgm_boss_final.mp3 / bgm_safehouse.mp3 (in assets/audio/)
    assets/audio/se_card_hover.wav
    assets/audio/se_card_drag.wav
    assets/audio/se_machine_insert.wav
@@ -21,10 +22,15 @@ const AUDIO_FILES = {
   "bgm:intro": "assets/audio/bgm_intro.mp3",
   "bgm:map": "assets/audio/bgm_map.mp3",
   "bgm:battle": "assets/audio/bgm_battle.mp3",
+  "bgm:battle_l2": "assets/audio/bgm_battle_l2.mp3",
+  "bgm:battle_l3": "assets/audio/bgm_battle_l3.mp3",
   "bgm:battle_lowhp": "assets/audio/bgm_battle_lowhp.mp3",
   "bgm:reward": "assets/audio/bgm_reward.mp3",
   "bgm:gameover": "assets/audio/bgm_gameover.mp3",
+  "bgm:ending": "assets/audio/bgm_ending.mp3",
+  "bgm:safehouse": "assets/audio/bgm_safehouse.mp3",
   "bgm:boss": "assets/audio/heartbeat_at_the_gate.mp3",
+  "bgm:boss_final": "assets/audio/bgm_boss_final.mp3",
   "se:card_hover": "assets/audio/se_card_hover.wav",
   "se:card_drag": "assets/audio/se_card_drag.wav",
   "se:card_insert": "assets/audio/se_machine_insert.wav",
@@ -39,6 +45,14 @@ const AUDIO_FILES = {
   "se:crt_on": "assets/audio/se_crt_on.wav",
   "se:switch": "assets/audio/se_switch.wav",
   "amb:fan": "assets/audio/amb_fan.wav",
+};
+
+/* トラック別の再生レベル（crossTo のフェード到達点）。未登録は 1（従来どおり）。
+   ending は深度クリア演出専用曲で、上に Gray ボイス（depth-clear.js が素の Audio 要素を
+   音量 1.0 で直接再生する）が乗るため、BGM バス内でも一段下げて 0.6 とする。
+   実効レベルは bgmGain 0.55 × 0.6 ≒ 0.33 で、他 BGM（0.55）比で約 6 割の音量になる。 */
+const BGM_TRACK_GAIN = {
+  ending: 0.6,
 };
 
 function clampGain(value) {
@@ -350,9 +364,14 @@ class AudioManager {
       "bgm:intro": { freq: 98, dur: 2.6, noise: 0.06, gain: 0.11, attack: 600, bend: 4 },
       "bgm:map": { freq: 146, dur: 2.4, noise: 0.04, gain: 0.1, attack: 500, bend: 0 },
       "bgm:battle": { freq: 92, dur: 1.6, noise: 0.08, gain: 0.14, attack: 200, bend: 12 },
+      "bgm:battle_l2": { freq: 86, dur: 1.6, noise: 0.09, gain: 0.14, attack: 180, bend: 14 },
+      "bgm:battle_l3": { freq: 74, dur: 1.9, noise: 0.12, gain: 0.15, attack: 260, bend: 18 },
       "bgm:battle_lowhp": { freq: 82, dur: 1.5, noise: 0.14, gain: 0.15, attack: 120, bend: 22 },
       "bgm:reward": { freq: 174, dur: 2.2, noise: 0.03, gain: 0.1, attack: 500, bend: 0 },
       "bgm:gameover": { freq: 70, dur: 2.8, noise: 0.15, gain: 0.12, attack: 300, bend: -8 },
+      "bgm:ending": { freq: 130, dur: 3.2, noise: 0.03, gain: 0.08, attack: 900, bend: 2 },
+      "bgm:safehouse": { freq: 164, dur: 2.8, noise: 0.05, gain: 0.09, attack: 700, bend: 0 },
+      "bgm:boss_final": { freq: 60, dur: 3.4, noise: 0.1, gain: 0.15, attack: 500, bend: -4 },
       "se:card_hover": { freq: 1800, dur: 0.045, noise: 0.85, gain: 0.35, attack: 20, bend: 0 },
       "se:card_drag": { freq: 420, dur: 0.16, noise: 0.75, gain: 0.4, attack: 40, bend: -30 },
       "se:card_insert": { freq: 140, dur: 0.28, noise: 0.35, gain: 0.7, attack: 10, bend: -80 },
@@ -442,8 +461,9 @@ class AudioManager {
     source.buffer = buffer;
     source.loop = true;
     const gain = this.ctx.createGain();
+    const peak = typeof BGM_TRACK_GAIN[name] === "number" ? BGM_TRACK_GAIN[name] : 1;
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(1, now + fade);
+    gain.gain.linearRampToValueAtTime(peak, now + fade);
     source.connect(gain).connect(this.bgmGain);
     source.start(now);
     this.current = { source, gain, name };

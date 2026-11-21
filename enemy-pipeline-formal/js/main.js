@@ -19,8 +19,9 @@ const SCENE_BGM = {
   TITLE: "title",
   VESSEL: "title",
   MAP: "map",
-  // v14.3 配線メモ（bgm-prompts-2026-11-12）: EVENT はマップ曲を流用、SAFEHOUSE はマップ曲＋換気扇環境音
-  SAFEHOUSE: "map",
+  // v14.3 配線メモ（bgm-prompts-2026-11-12）: EVENT はマップ曲を流用。
+  // v25 配線メモ（追加5枠）: SAFEHOUSE は専用曲 bgm:safehouse ＋換気扇環境音に置き換え
+  SAFEHOUSE: "safehouse",
   EVENT: "map",
   BATTLE: "battle",
   REWARD: "reward",
@@ -824,7 +825,9 @@ function changeScene(sceneName) {
   if (window.MPSync) MPSync.onSceneChanged();
   if (audio) {
     // ボス戦BGM: ボス戦とクリア画面では提供曲を流し続ける（同じ曲名なので再開始しない）
-    let track = bossBgm && (name === "BATTLE" || name === "CLEAR") ? "boss" : (SCENE_BGM[name] || null);
+    // v25: ボス曲・通常戦闘曲は層（currentLayer）で切り替える（配線メモ追加5枠）
+    let track = bossBgm && (name === "BATTLE" || name === "CLEAR") ? bossBgmTrack() : (SCENE_BGM[name] || null);
+    if (name === "BATTLE" && !bossBgm) track = battleBgmTrack();
     // v14.5 低耐久BGM: 低耐久状態のまま戦闘へ入った場合は最初から低耐久曲
     if (name === "BATTLE" && !bossBgm && lowHpBgmActive) track = "battle_lowhp";
     audio.playBgm(track);
@@ -4234,6 +4237,26 @@ function setCctvImage(src, targetName, type) {
   ui.cctvEnemy.src = src;
 }
 
+// v25: BGM の層別切替（bgm-prompts-2026-11-12「配線メモ（追加5枠）」が正本）。
+// 層の正は run.mapIndex（1〜3）、route.mapIndex はフォールバック（層表示と同じ規約）。
+// マルチのゲスト側もスナップショットの runView で run.mapIndex が復元されるため、
+// この判定はホスト・ゲスト共通に効く。
+function currentLayer() {
+  if (run && run.mapIndex >= 1 && run.mapIndex <= 3) return run.mapIndex;
+  if (route && route.mapIndex >= 1 && route.mapIndex <= 3) return route.mapIndex;
+  return 1;
+}
+
+// 通常戦闘曲: 第1層＝battle／第2層＝battle_l2／第3層＝battle_l3
+function battleBgmTrack() {
+  return ["battle", "battle_l2", "battle_l3"][currentLayer() - 1];
+}
+
+// ボス曲: 第1・2層ボス＝boss（heartbeat_at_the_gate）／第3層ボス＝boss_final
+function bossBgmTrack() {
+  return currentLayer() >= 3 ? "boss_final" : "boss";
+}
+
 // ボス戦BGM（heartbeat_at_the_gate）が有効かどうか
 let bossBgm = false;
 
@@ -4254,7 +4277,7 @@ function updateLowHpBgm() {
     audio.playBgm("battle_lowhp");
   } else if (lowHpBgmActive && hp * 10 >= max * 4) {
     lowHpBgmActive = false;
-    audio.playBgm("battle");
+    audio.playBgm(battleBgmTrack()); // v25: 復帰先は固定の battle でなく現在の層の戦闘曲
   }
 }
 

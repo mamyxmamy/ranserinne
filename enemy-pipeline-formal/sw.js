@@ -1,5 +1,5 @@
 // Enemy Pipeline FORMAL PWA service worker（正式版専用キャッシュ。デモ版とは分離）
-const CACHE = "enemy-pipeline-formal-v24";
+const CACHE = "enemy-pipeline-formal-v25";
 const CORE = [
   "./",
   "./index.html",
@@ -42,8 +42,13 @@ const CORE = [
   "./assets/audio/amb_fan.wav",
   "./assets/audio/bgm_intro.mp3",
   "./assets/audio/bgm_battle.mp3",
+  "./assets/audio/bgm_battle_l2.mp3",
+  "./assets/audio/bgm_battle_l3.mp3",
   "./assets/audio/bgm_battle_lowhp.mp3",
+  "./assets/audio/bgm_boss_final.mp3",
   "./assets/audio/bgm_gameover.mp3",
+  "./assets/audio/bgm_ending.mp3",
+  "./assets/audio/bgm_safehouse.mp3",
   "./assets/audio/bgm_map.mp3",
   "./assets/audio/bgm_reward.mp3",
   "./assets/audio/bgm_title.mp3",
