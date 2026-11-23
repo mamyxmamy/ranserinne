@@ -45,12 +45,12 @@
   // Gray キュー3本（役割固定：接続開始／転送中／回収確定）は RECOVERY-CUE-AUDIT.md で
   // 精査済み（2026-11-19）。キュー1は精査対案で確定：探知の断定（旧「嗅ぎつけられん」）は
   // 正典（探知軸は物理的な駆動音 NOISE）と矛盾するため「有線は奴の目に映らん」に差し替えた。
-  // voiceId は全て null（ボイス収録は後日。J-11 (b) の収録対象に加えられる形だけ用意）。
+  // voiceId は 2026-11-23 に収録・配線済み（声Dクローン、assets/voice/recovery_*.mp3）。
   const RECOVERY_BEAT = {
     grayCues: {
-      start: { g: "……ノードに直結しろ。有線は奴の目に映らん。", voiceId: null },
-      transfer: { g: "抜き終わるまで回線を切るな。そのまま送れ。", voiceId: null },
-      done: { g: "……来たな。記録断片、回収を確認した。", voiceId: null },
+      start: { g: "……ノードに直結しろ。有線は奴の目に映らん。", voiceId: "recovery_start" },
+      transfer: { g: "抜き終わるまで回線を切るな。そのまま送れ。", voiceId: "recovery_transfer" },
+      done: { g: "……来たな。記録断片、回収を確認した。", voiceId: "recovery_done" },
     },
     // ノードの呼称ラベル（§4：深度帯で文言のみ変える）[上限深度, ラベル]
     nodeLabels: [[4, "記録端末"], [8, "保管系管理ノード"], [12, "編纂系管理ノード"], [14, "管制系管理ノード"], [15, "中核管理ノード"]],
@@ -671,6 +671,10 @@
     els.skip.textContent = mode === "archive" ? "CLOSE ✕" : "SKIP";
     els.report.hidden = true;
     els.choices.hidden = true;
+    // 回想（archive）経由では playForContext の BGM 切替を通らないため、ここで演出専用曲
+    // bgm:ending へ切り替え、終了時に元の wanted（タイトル等）へ戻す（v25）。
+    const archiveBgmPrev = (mode === "archive" && typeof audio !== "undefined" && audio) ? audio.wanted : undefined;
+    if (archiveBgmPrev !== undefined) { try { audio.playBgm("ending"); } catch (e) { /* noop */ } }
     openOverlay();
     try {
       if (depth >= 1 && depth <= 14) {
@@ -725,6 +729,7 @@
       await waitFinish();
     } finally {
       stopVoice();
+      if (archiveBgmPrev !== undefined) { try { audio.playBgm(archiveBgmPrev); } catch (e) { /* noop */ } }
       closeOverlay();
       if (S && S.choiceResolve) { const r = S.choiceResolve; S.choiceResolve = null; r(null); }
       S = null;
@@ -737,8 +742,10 @@
     if (!depth || !DATA) return false;
     markCleared(depth);
     if (depth >= 16 && !getBranch()) return false; // §2.3: 分岐未記録なら演出なし（現行フロー）
-    // §3.7: 演出開始時にボスBGMをフェードアウトし、演出中は無音基調とする
-    try { if (typeof audio !== "undefined" && audio) audio.playBgm(null); } catch (e) { /* noop */ }
+    // §3.7 改訂（v25）: 演出開始時にボスBGMから演出専用曲 bgm:ending へ切り替える。
+    // 音量は audio.js の BGM_TRACK_GAIN で一段下げてあり、Gray ボイスが上に乗る前提。
+    // 演出後の文脈復帰は main.js の onRunClear → changeScene("CLEAR") が担う。
+    try { if (typeof audio !== "undefined" && audio) audio.playBgm("ending"); } catch (e) { /* noop */ }
     if (depth <= 15) {
       // 回収の間（RECOVERY-BEAT-FINAL §6.1 手順5）: 深度15以下の場合のみ差し込む。
       // 深度16〜20では出さない（手順3を通過した分岐記録ありでも、ここのガードで担保）。
