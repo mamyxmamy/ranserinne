@@ -549,7 +549,7 @@
     4: Object.freeze({ hp: 3.4, attack: 2, bossHp: 3.4 }),
   });
   // 層ボスは enemies.js 側にボス印が無いため ID で判定する（map.js の LAYER_BOSS_IDS と一致させること）
-  const BOSS_ENEMY_IDS = Object.freeze(["enemy_gatekeeper", "enemy_gatekeeper_l2", "enemy_gatekeeper_l3"]);
+  const BOSS_ENEMY_IDS = Object.freeze(["enemy_gatekeeper", "enemy_archivist", "enemy_echo"]);
 
   function partyScalingFor(partySize) {
     const size = Math.max(1, Math.min(4, Math.floor(partySize) || 1));
@@ -625,9 +625,16 @@
     enemy.hpMax = Math.max(1, Math.round((enemy.hpMax || 0) * hpMul));
     enemy.hp = enemy.hpMax;
     if (scaling.attack) {
-      for (const step of enemy.pattern || []) {
-        if (step && (step.action === "attack" || step.action === "heavy_attack" || step.action === "attack_stun")) {
-          step.value = (step.value || 0) + scaling.attack;
+      // P-N5: フェイズ持ちの敵は全フェイズのパターンへ適用する（pattern は phases[0] と
+      // 同一配列のため、phases 側を回せば二重適用にならない）。
+      const patterns = Array.isArray(enemy.phases) && enemy.phases.length > 0
+        ? enemy.phases
+        : [enemy.pattern || []];
+      for (const pattern of patterns) {
+        for (const step of pattern || []) {
+          if (step && (step.action === "attack" || step.action === "heavy_attack" || step.action === "attack_stun")) {
+            step.value = (step.value || 0) + scaling.attack;
+          }
         }
       }
     }
@@ -1038,6 +1045,35 @@
   }
 
   // 呪いカードの判定（呪い吸着箔の候補抽出で使う）。定義側の unplayable／種別／負コストのいずれか
+  // ==== P-N5（phase）: ボスのフェイズ遷移（DESIGN-ENEMIES-DRAFT §1.2 S-4） ====
+  // 遷移タイミングは HP が最大の 50% 以下へ跨いだ瞬間（プレイヤーターン中の攻撃解決時、
+  // および罠ダメージの適用時）。遷移は「状態の差し替え」であり行動ではないため、
+  // スタン／罠キャンセルの対象にならない。蓄積系ステート（スタン・BLK・vulnerable・
+  // scrap／weaken・atkBuff・charge）は全て引き継ぎ、patternIndex だけ 0 へ戻す。
+  // 表示中のインテントは currentIntent が phases[phaseIndex] を引くため即時に
+  // フェイズ2の先頭行動へ差し替わり、ログで遷移を明示する（黙って変わる形にしない）。
+  const ENRAGE_CAP = 6; // P-N3（enrage）の累積上限（同ドラフト §1.2 S-6）
+
+  function maybeShiftPhase(state, log) {
+    const enemy = state && state.enemy;
+    if (!enemy || enemy.dead || !Array.isArray(enemy.phases)) return false;
+    const idx = enemy.phaseIndex || 0;
+    if (idx >= enemy.phases.length - 1) return false;
+    if (enemy.hp * 2 > (enemy.hpMax || 0)) return false;
+    enemy.phaseIndex = idx + 1;
+    enemy.pattern = enemy.phases[enemy.phaseIndex];
+    enemy.patternIndex = 0;
+    if (log) {
+      const names = Array.isArray(enemy.phaseNames) ? enemy.phaseNames : [];
+      const phaseName = names[enemy.phaseIndex] || "";
+      log.push("PHASE SHIFT");
+      log.push(phaseName
+        ? `${enemy.short || enemy.name}: 形態が変わった — フェイズ${enemy.phaseIndex + 1}「${phaseName}」へ移行し、行動パターンが切り替わった`
+        : `${enemy.short || enemy.name}: 形態が変わった — フェイズ${enemy.phaseIndex + 1}へ移行し、行動パターンが切り替わった`);
+    }
+    return true;
+  }
+
   function isCurseCard(card) {
     return !!card && (card.unplayable || card.type === "curse" || (card.cost || 0) < 0);
   }
@@ -1340,6 +1376,8 @@
         if (state.enemy.hp === 0) state.enemy.dead = true;
         log.push(`DMG ${dealt}${effect.pierce ? " PIERCE" : ""}  HP ${state.enemy.hp}`);
       }
+      // P-N5: 攻撃解決で HP 閾値を跨いだら、その場でフェイズ遷移を確定する（S-4）
+      maybeShiftPhase(state, log);
       return;
     }
     if (effect.target === "enemy" && effect.type === "stun") {
@@ -1749,6 +1787,8 @@
     state.enemy.hp = Math.max(0, state.enemy.hp - dealt);
     if (state.enemy.hp === 0) state.enemy.dead = true;
     log.push(`DMG ${dealt}  HP ${state.enemy.hp}`);
+    // P-N5: 罠ダメージで閾値を跨いだ場合も遷移を確定する（遷移自体は行動ではない）
+    maybeShiftPhase(state, log);
     return dealt;
   }
 
@@ -2062,6 +2102,13 @@
     if (!state.enemy.immuneToStun && (state.enemy.stun || 0) >= (state.enemy.stunMax || 3)) return null;
     if ((state.enemy.cancelNextIntent || 0) > 0) return null;
     if (state.player.stance === "COVER") return "jam";
+    // P-N6（alertBias）: 決定論の優先順位の上書き（乱数は入れない）。上書き対象は
+    // 攪乱が発動しない場面（非COVER時）での追撃／照準の優先順位に限る（S-5）。
+    // 照準は「次の本体インテントが heavy_attack の時」にしか選ばれないため、
+    // "aim" 寄りはその場面で照準を維持する指定として働き、"pursuit" 寄りは
+    // その場面でも追撃を優先させる。
+    const bias = state.enemy.alertBias || null;
+    if (bias === "pursuit") return "pursuit";
     const intent = currentIntent(state.enemy);
     if (intent && intent.action === "heavy_attack") return "aim";
     return "pursuit";
@@ -2115,6 +2162,9 @@
     // PROMPT-23: 被ダメージ計算順序 = 基本値（+警報バフ）→ 潜伏-2 → 防護で相殺 → HP
     const hits = intent.hits || 1;
     let value = (intent.value || 0) + (state.alertBuff || 0);
+    // P-N3（enrage）: 敵側の累積バフを同枠で加算する。警報の追撃（本関数を共有）にも
+    // 同じく反映される（S-6）。半減系はこの後段で従来どおり最後に適用される。
+    if (state.enemy && (state.enemy.atkBuff || 0) > 0) value += state.enemy.atkBuff;
     // v15.0: 照準（追加行動）の +2 は次の攻撃で消費される
     if ((state.alertAim || 0) > 0) {
       value += state.alertAim;
@@ -2268,6 +2318,34 @@
       }
       return { log, outcome: "hack", damage: 0, call: "JAMMED" };
     }
+    // P-N3（enrage）: 敵自身の攻撃への恒常バフ。累積上限 +6（S-6）。加算は
+    // strikeVolley 側で基礎値＋警報バフ＋照準と同枠に行い、半減は従来どおり最後。
+    if (action === "enrage") {
+      const before = state.enemy.atkBuff || 0;
+      const after = Math.min(ENRAGE_CAP, before + value);
+      state.enemy.atkBuff = after;
+      log.push(`ENRAGE  ATK +${after}`);
+      log.push(after > before
+        ? `${intent.name || "書庫防衛"}: 防衛機構が攻撃へ回り、敵の攻撃が累積で +${after} になった (上限 +${ENRAGE_CAP})`
+        : `${intent.name || "書庫防衛"}: 攻撃の上乗せは既に上限 (+${ENRAGE_CAP}) に達している`);
+      return { log, outcome: "enrage", damage: 0, call: `ATK +${after}` };
+    }
+    // P-N4（charge）: 次の「本行動の攻撃」への上乗せを予約する。警報の照準と同じ
+    // 仕組みの敵側版として累積し、消費は resolveIntent の攻撃解決でのみ行う
+    // （警報の追撃など strikeVolley を共有する経路では消費しない。m-6）。
+    if (action === "charge") {
+      state.enemy.chargeBonus = (state.enemy.chargeBonus || 0) + value;
+      log.push(`CHARGE  NEXT ATK +${state.enemy.chargeBonus}`);
+      log.push(`${intent.name || "照準"}: 敵が照準を絞った。次の攻撃が +${state.enemy.chargeBonus} 強化される`);
+      return { log, outcome: "charge", damage: 0, call: `CHARGE +${value}` };
+    }
+    // P-N4 の消費: 本行動の攻撃でのみ、基礎値へ加算して消費する（半減は strikeVolley 側で最後）
+    if (isAttackIntent(intent) && state.enemy && (state.enemy.chargeBonus || 0) > 0) {
+      const bonus = state.enemy.chargeBonus;
+      state.enemy.chargeBonus = 0;
+      intent = { ...intent, value: (intent.value || 0) + bonus };
+      log.push(`CHARGE +${bonus}`);
+    }
     return strikeVolley(state, intent, log);
   }
 
@@ -2330,6 +2408,14 @@
       return { log, outcome: "party_down", damage: 0, call: "", action: null, targetPlayerId: null, alert: { ...alertBase, targetPlayerId: null } };
     }
     const mView = hasPlayers ? scopeFor(root, main) : root;
+    // P-N5: 罠ダメージでフェイズ遷移が起きた場合、遷移側で patternIndex は 0 に
+    // 戻っている。このターンの予告済み行動はそのまま実行し（予告＝実施）、進行は
+    // 新フェイズの先頭を飛ばさないよう、パターンが差し替わっていたら進めない。
+    const patternAtTurnStart = root.enemy.pattern;
+    const advanceAfterAction = () => {
+      if (root.enemy.pattern !== patternAtTurnStart) root.enemy.patternIndex = 0;
+      else advancePattern(root.enemy);
+    };
     // 『アナログ・トラップ機構』: 主対象の素体の罠だけが主行動の前に発動する
     let mainIntent = currentIntent(root.enemy);
     if ((mView.traps || []).length > 0) {
@@ -2340,7 +2426,7 @@
         return { log, outcome: "down", damage: 0, call: "", action: null, targetPlayerId: main ? main.playerId : null, alert: { ...alertBase, targetPlayerId: main ? main.playerId : null } };
       }
       if (trapRes.cancelled) {
-        advancePattern(root.enemy);
+        advanceAfterAction();
         if (hasPlayers) root.targetPlayerId = null;
         log.push("INTENT CANCELLED (TRAP)");
         log.push("罠が敵の行動を打ち消した");
@@ -2356,7 +2442,9 @@
     syncAlertBuff(mView);
     // v15.3 案A: 中央バナー用の「実行された行動」ラベル。表示中のインテント予告
     // （intentView）と同じく対象素体の警報バフ＋照準を合算した実効値で組む。
-    const effBuff = ((main ? main.alertBuff : root.alertBuff) || 0) + ((main ? main.alertAim : root.alertAim) || 0);
+    // P-N3／P-N4: 敵側の累積バフと照準予約も同枠で含める（resolveIntent の消費前）。
+    const effBuff = ((main ? main.alertBuff : root.alertBuff) || 0) + ((main ? main.alertAim : root.alertAim) || 0)
+      + ((root.enemy.atkBuff || 0) + (root.enemy.chargeBonus || 0));
     // スクラップ・ノイズのチャージがある場合は半減後の実効値でバナーを組む（表示専用・消費しない）
     let shownIntent = mainIntent;
     if (isAttackIntent(mainIntent)) {
@@ -2369,7 +2457,7 @@
     const result = resolveIntent(mView, mainIntent, log);
     result.action = actionInfo;
     result.targetPlayerId = main ? main.playerId : null;
-    advancePattern(root.enemy);
+    advanceAfterAction();
     // 正式版フェーズ1（A-2）＋単位2-2（J2）: 帯域の追加行動は排除優先度の素体へ向ける。
     // 回数はその素体の帯域で決まり、攻撃上乗せ・照準の消費もその素体自身の値を使う。
     // ノイズが3未満へ下がっていれば取消（予告を持っていた素体について判定する）。
@@ -2445,7 +2533,10 @@
     // v15.0: 表示値は対象素体の警報バフ＋照準を合算。警戒中は追加行動も予告する
     // 正式版フェーズ1（A-2）: 警報バフは対象素体の現在の帯域から導出する
     syncAlertBuff(mView);
-    const buff = ((main ? main.alertBuff : root.alertBuff) || 0) + ((main ? main.alertAim : root.alertAim) || 0);
+    // P-N3／P-N4: 敵側の累積バフ（enrage）と照準予約（charge）も実効値へ同枠で含める
+    // （予告＝実施の一致。S-6）。攻撃系インテントのときだけ下の shown へ反映される。
+    const buff = ((main ? main.alertBuff : root.alertBuff) || 0) + ((main ? main.alertAim : root.alertAim) || 0)
+      + ((root.enemy.atkBuff || 0) + (root.enemy.chargeBonus || 0));
     // スクラップ・ノイズのチャージがある間は、予告も半減後の実効値で出す（表示専用・消費しない）
     let shown = intent;
     if (isAttackIntent(intent)) {

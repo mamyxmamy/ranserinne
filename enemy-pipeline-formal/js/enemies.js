@@ -39,38 +39,58 @@
     ]),
   });
 
-  /* JOB 3M-1 (C-4): 第2・3層ボスの仮プロファイル。
-     仮である旨を明記する: GATEKEEPER の数値・行動パターンの複製に別IDと仮名を付けただけであり、
-     本プロファイル（アーキビスト／エコー）は敵実装ジョブで差し替える。
-     パターンまで複製するのは、applyEnemy 失敗時に哨戒兵パターン化してしまう仕様への対策
-     （ROUTE-3MAP-IMPL-PLAN §4）。画像は GATEKEEPER の CCTV 画を流用する。 */
-  const GATEKEEPER_L2 = Object.freeze({
-    id: "enemy_gatekeeper_l2",
-    name: "第2層番人（仮）",
-    image: "assets/cctv_enemy_gatekeeper.png",
-    max_hp: 120,
+  /* 層ボス本プロファイル（DESIGN-ENEMIES-DRAFT §3.3／DECISIONS E-3・E-8）。
+     旧仮プロファイル（GATEKEEPER の複製）は本実装で差し替え済み。
+     どちらも P-N5（phase）持ち: HP が最大の 50% 以下になった時点で phases の
+     次配列へ切り替わる（遷移仕様は同ドラフト §1.2 S-4。実装は battle.js 側）。
+     開示管理（E-8）: ゲーム内表示は不透明化を維持する。行動名は「記録」「検閲」の
+     範囲に留め、「組み替え」「素材」の語は出さない。エコーの技名にも「（記録）」は
+     付けない（精査推奨 (a)）。 */
+  const ARCHIVIST = Object.freeze({
+    id: "enemy_archivist",
+    name: "記録改竄防衛『アーキビスト』",
+    image: "assets/cctv_enemy_archivist.png",
+    max_hp: 175,
     max_stun: 5,
     immune_to_stun: false,
-    intent_pattern: Object.freeze([
-      Object.freeze({ action: "buff", name: "警戒態勢", value: 12 }),
-      Object.freeze({ action: "attack", name: "制圧射撃", value: 10 }),
-      Object.freeze({ action: "heavy_attack", name: "グレネード", value: 16 }),
-      Object.freeze({ action: "attack", name: "ガトリング", value: 5, hits: 2 }),
+    // ノイズ反応: 照準寄り（P-N6 alertBias。作用範囲は battle.js の alertExtraKind 参照）
+    alert_bias: "aim",
+    phase_names: Object.freeze(["索引", "焼却"]),
+    phases: Object.freeze([
+      Object.freeze([
+        Object.freeze({ action: "debuff", name: "索引走査", value: 0 }),
+        Object.freeze({ action: "attack", name: "検閲射撃", value: 10 }),
+        Object.freeze({ action: "hack", name: "改竄", value: 0 }),
+      ]),
+      Object.freeze([
+        Object.freeze({ action: "enrage", name: "書庫防衛", value: 2 }),
+        Object.freeze({ action: "heavy_attack", name: "焼却", value: 15 }),
+        Object.freeze({ action: "attack", name: "連射検閲", value: 8, hits: 2 }),
+      ]),
     ]),
   });
 
-  const GATEKEEPER_L3 = Object.freeze({
-    id: "enemy_gatekeeper_l3",
-    name: "第3層番人（仮）",
-    image: "assets/cctv_enemy_gatekeeper.png",
-    max_hp: 120,
-    max_stun: 5,
+  const ECHO = Object.freeze({
+    id: "enemy_echo",
+    name: "深層番人『エコー』",
+    image: "assets/cctv_enemy_echo.png",
+    max_hp: 215,
+    max_stun: 6,
     immune_to_stun: false,
-    intent_pattern: Object.freeze([
-      Object.freeze({ action: "buff", name: "警戒態勢", value: 12 }),
-      Object.freeze({ action: "attack", name: "制圧射撃", value: 10 }),
-      Object.freeze({ action: "heavy_attack", name: "グレネード", value: 16 }),
-      Object.freeze({ action: "attack", name: "ガトリング", value: 5, hits: 2 }),
+    // ノイズ反応: 追撃寄り（P-N6 alertBias）
+    alert_bias: "pursuit",
+    phase_names: Object.freeze(["残響", "反響"]),
+    phases: Object.freeze([
+      Object.freeze([
+        Object.freeze({ action: "stealth", name: "潜伏", value: 10 }),
+        Object.freeze({ action: "attack_stun", name: "CQC打撃", value: 8 }),
+        Object.freeze({ action: "attack", name: "射撃", value: 11 }),
+      ]),
+      Object.freeze([
+        Object.freeze({ action: "charge", name: "照準", value: 6 }),
+        Object.freeze({ action: "heavy_attack", name: "重打撃", value: 17 }),
+        Object.freeze({ action: "attack", name: "連射", value: 6, hits: 3 }),
+      ]),
     ]),
   });
 
@@ -80,8 +100,8 @@
     enemy_rival_vessel: "ゴースト",
     enemy_sentry: "哨戒兵",
     enemy_gatekeeper: "GATEKEEPER",
-    enemy_gatekeeper_l2: "第2層番人（仮）",
-    enemy_gatekeeper_l3: "第3層番人（仮）",
+    enemy_archivist: "アーキビスト",
+    enemy_echo: "エコー",
   });
 
   // 戦闘演出強化 段階1（JOB 1-2／1-5）: ポーズ画（攻撃／被弾）。カタログ本体とは分離して持ち、
@@ -93,13 +113,12 @@
     enemy_defense_mech: Object.freeze({ attack: "assets/cctv_enemy_mech_attack.webp", hit: "assets/cctv_enemy_mech_hit.webp" }),
     enemy_rival_vessel: Object.freeze({ attack: "assets/cctv_enemy_ghost_attack.webp", hit: "assets/cctv_enemy_ghost_hit.webp" }),
     enemy_gatekeeper: Object.freeze({ attack: "assets/cctv_enemy_gatekeeper_attack.webp", hit: "assets/cctv_enemy_gatekeeper_hit.webp" }),
-    // JOB 3M-1 (C-4): 仮プロファイルは GATEKEEPER のポーズ画も流用する
-    enemy_gatekeeper_l2: Object.freeze({ attack: "assets/cctv_enemy_gatekeeper_attack.webp", hit: "assets/cctv_enemy_gatekeeper_hit.webp" }),
-    enemy_gatekeeper_l3: Object.freeze({ attack: "assets/cctv_enemy_gatekeeper_attack.webp", hit: "assets/cctv_enemy_gatekeeper_hit.webp" }),
+    // 層ボス2種（アーキビスト／エコー）はポーズ画が未用意のため未登録。
+    // make() 側で待機画へフォールバックする（既存動作）。
   });
 
   const ELITE_IDS = Object.freeze(CATALOG.map((enemy) => enemy.id));
-  const byId = new Map([SENTRY, GATEKEEPER, GATEKEEPER_L2, GATEKEEPER_L3, ...CATALOG].map((enemy) => [enemy.id, enemy]));
+  const byId = new Map([SENTRY, GATEKEEPER, ARCHIVIST, ECHO, ...CATALOG].map((enemy) => [enemy.id, enemy]));
 
   function get(id) {
     return byId.get(id) || null;
@@ -112,13 +131,30 @@
       return hits > 1 ? `${intent.name} ${intent.value}×${hits}` : `${intent.name} ${intent.value}dmg`;
     }
     if (intent.action === "buff" || intent.action === "stealth") return `${intent.name} +${intent.value}`;
+    // P-N3 enrage: 自分の攻撃への累積バフ。P-N4 charge: 次の攻撃への上乗せ予約。
+    if (intent.action === "enrage") return `${intent.name} 攻撃+${intent.value}`;
+    if (intent.action === "charge") return `${intent.name} 次の攻撃+${intent.value}`;
     return intent.name;
+  }
+
+  function copyStep(step) {
+    return {
+      action: step.action,
+      name: step.name,
+      value: step.value,
+      hits: step.hits || 1,
+    };
   }
 
   function make(id) {
     const src = get(id);
     if (!src) return null;
     const poses = POSES[src.id] || {};
+    // P-N5（phase）: phases を持つ敵は pattern を phases[0] と同一配列にし、
+    // 遷移時は battle.js が pattern を phases[phaseIndex] へ差し替える。
+    const phases = Array.isArray(src.phases)
+      ? src.phases.map((pattern) => pattern.map(copyStep))
+      : null;
     return {
       id: src.id,
       name: src.name,
@@ -137,12 +173,14 @@
       dead: false,
       block: 0,
       patternIndex: 0,
-      pattern: src.intent_pattern.map((step) => ({
-        action: step.action,
-        name: step.name,
-        value: step.value,
-        hits: step.hits || 1,
-      })),
+      pattern: phases ? phases[0] : src.intent_pattern.map(copyStep),
+      phases,
+      phaseIndex: 0,
+      phaseNames: Array.isArray(src.phase_names) ? src.phase_names.slice() : null,
+      // P-N3（enrage）の累積バフと P-N4（charge）の予約。どちらも敵個体のステート。
+      atkBuff: 0,
+      chargeBonus: 0,
+      alertBias: src.alert_bias || null,
     };
   }
 

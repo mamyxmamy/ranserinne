@@ -105,18 +105,40 @@
     return ids[hash % ids.length];
   }
 
-  /* JOB 3M-1 (C-3): 層ボスIDテーブル。encounterFor はこのテーブル経由で層ボスを解決する。
-     第1層は従来の GATEKEEPER ハードコードと等価。第2・3層は enemies.js の仮プロファイル
-     （GATEKEEPER の複製）を指し、敵実装ジョブで本プロファイルへ差し替える置き場。 */
+  /* 層ボスIDテーブル（DESIGN-ENEMIES-DECISIONS E-3）。encounterFor はこのテーブル
+     経由で層ボスを解決する。第1層は GATEKEEPER、第2層はアーキビスト、第3層はエコー。
+     E-8（出現条件）: アーキビスト／エコーは「層への初到達」では登場せず、初回は
+     第1層と同じ GATEKEEPER が番人として出る。同じ層への2回目以降の到達で本来の
+     層ボスが登場する。到達回数の正は main.js 側の永続記録にあり、ここへは
+     setLayerVisitCounts で注入される（未注入時は「初到達」として扱う＝安全側）。 */
   const LAYER_BOSS_IDS = Object.freeze({
     1: "enemy_gatekeeper",
-    2: "enemy_gatekeeper_l2",
-    3: "enemy_gatekeeper_l3",
+    2: "enemy_archivist",
+    3: "enemy_echo",
   });
+  const FIRST_VISIT_BOSS_ID = "enemy_gatekeeper";
 
-  function bossIdForLayer(mapIndex) {
+  let layerVisitCounts = null;
+
+  function setLayerVisitCounts(record) {
+    if (!record || typeof record !== "object") { layerVisitCounts = null; return; }
+    const out = {};
+    for (const layer of [1, 2, 3]) {
+      const n = Number(record[layer]);
+      if (Number.isFinite(n) && n > 0) out[layer] = Math.floor(n);
+    }
+    layerVisitCounts = out;
+  }
+
+  function bossIdForLayer(mapIndex, visitCount) {
     const idx = mapIndex >= 1 && mapIndex <= 3 ? mapIndex : 1;
-    return LAYER_BOSS_IDS[idx];
+    if (idx === 1) return LAYER_BOSS_IDS[1];
+    const visits = visitCount != null
+      ? visitCount
+      : (layerVisitCounts ? layerVisitCounts[idx] : undefined);
+    // 到達回数が 2 以上（＝今回が2回目以降の到達）でのみ本来の層ボスを出す
+    if (typeof visits === "number" && visits >= 2) return LAYER_BOSS_IDS[idx];
+    return FIRST_VISIT_BOSS_ID;
   }
 
   function encounterFor(node, mapIndex) {
@@ -306,5 +328,6 @@
     encounterFor,
     LAYER_BOSS_IDS,
     bossIdForLayer,
+    setLayerVisitCounts,
   };
 })(typeof window !== "undefined" ? window : globalThis);

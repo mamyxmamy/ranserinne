@@ -211,6 +211,44 @@ function markDepthCleared(depth, characterId) {
   try { window.localStorage.setItem(DEPTH_UNLOCK_STORE, JSON.stringify(p)); }
   catch { /* storage unavailable */ }
 }
+// 層到達回数の記録（DESIGN-ENEMIES-DECISIONS E-8）。アーキビスト／エコーは層への
+// 初到達では登場せず（初回は GATEKEEPER）、2回目以降の到達で登場する。到達の数え方は
+// 「その層のマップを生成した回数」＝ランをまたいで永続する。復元（CONTINUE）では
+// マップを再生成しないため二重に数えない。判定は map.js 側がこの記録の注入を受けて行う。
+const LAYER_VISITS_STORE = "enemy-pipeline-formal-layer-visits-v1";
+function loadLayerVisits() {
+  const empty = { 1: 0, 2: 0, 3: 0 };
+  let raw = null;
+  try { raw = window.localStorage.getItem(LAYER_VISITS_STORE); }
+  catch { return empty; }
+  if (!raw) return empty;
+  let o = null;
+  try { o = JSON.parse(raw); } catch { return empty; }
+  if (!o || typeof o !== "object") return empty;
+  const out = { 1: 0, 2: 0, 3: 0 };
+  for (const layer of [1, 2, 3]) {
+    const n = Number(o[layer]);
+    if (Number.isFinite(n) && n > 0) out[layer] = Math.floor(n);
+  }
+  return out;
+}
+function syncLayerVisitCounts() {
+  if (window.PipelineMap && PipelineMap.setLayerVisitCounts) {
+    PipelineMap.setLayerVisitCounts(loadLayerVisits());
+  }
+}
+// 層への到達を 1 回分記録する。呼び出し点は「実ランでその層のマップを生成する箇所」
+// （startRun／層遷移／MPホスト開始）のみ。生成より前に呼ぶことで、その層のボス解決に
+// 今回到達分を含めた回数が渡る（初到達=1 → GATEKEEPER、2回目以降 → 層ボス）。
+function markLayerArrived(layer) {
+  const idx = layer >= 1 && layer <= 3 ? layer : 1;
+  const visits = loadLayerVisits();
+  visits[idx] = (visits[idx] || 0) + 1;
+  try { window.localStorage.setItem(LAYER_VISITS_STORE, JSON.stringify(visits)); }
+  catch { /* storage unavailable */ }
+  syncLayerVisitCounts();
+}
+syncLayerVisitCounts();
 async function maybeAlertIntro() {
   if (alertIntroSeen() || !battle || session.phase !== "combat") return;
   if (myPlayer().hp <= 0 || battle.enemy.dead) return;
@@ -3471,6 +3509,7 @@ function startRun() {
     kills: 0, // v15.3: 撃破数（クリア画面のX投稿サマリ用）
     mapIndex: 1, // JOB 3M-1 (C-1): 層（1〜3）の正は run 側に置く。route は現在のマップだけを持つ
   };
+  markLayerArrived(run.mapIndex); // E-8: 第1層への到達を記録（ボスは不変だが回数の正を揃える）
   route = PipelineMap.generate(undefined, { mapIndex: run.mapIndex, widths: MAP_WIDTHS_3M });
   // 正式版フェーズ1: 初回戦闘の脚本チュートリアルは 07 前提（潜伏・PWR 3 の説明）なので、
   // GOLIATH のランでは行わない（通常戦闘として開始する）。
@@ -5424,6 +5463,7 @@ async function advanceToNextMap() {
   // （持ち越しがそれ以上なら下げない）。mapIndex 更新と同時・新マップ生成／enterMap／
   // 末尾の saveGame のいずれよりも前に行う（遷移直後の表示とセーブへ反映させるため）
   run.noise = Math.max(run.noise || 0, Battle.depthProfileFor(run.depth || 1).startNoise);
+  markLayerArrived(run.mapIndex); // E-8: 遷移先の層への到達を記録（この層のボス解決に含める）
   route = PipelineMap.generate(undefined, { mapIndex: run.mapIndex, widths: MAP_WIDTHS_3M });
   routeToken += 1;
   enterMap({
@@ -5626,6 +5666,10 @@ function presentAttractMenu() {
   attractSession = token;
   attractStage = "idle";
   attractReady = false;
+  // クリア復帰経路は changeScene("TITLE") を経由しないため、全面オーバーレイ
+  // （#clear-screen, z-index 10000）はここで明示的に消す。残留すると attract
+  // メニューのクリックが全て遮られる（v19 UX修正5 後の回帰）。
+  syncClearScreen(false);
   session.phase = "attract";
   session.advance = false;
   session.busy = false;
@@ -7063,6 +7107,7 @@ async function mpHostStartRun(payload) {
     tutorialPending: false, // MPではチュートリアルを立てない
     mp: true,
   };
+  markLayerArrived(run.mapIndex); // E-8: MPホスト側の記録として第1層への到達を記録
   route = PipelineMap.generate(undefined, { mapIndex: run.mapIndex, widths: MAP_WIDTHS_3M });
   resetTutorialState();
   preloadVesselCctv(hostRec.characterId);
@@ -8507,7 +8552,7 @@ function returnToTerminal() {
   // （BOOT カードの arm は NEW GAME 等が選ばれた後の起動フローに任せる）。
   bossBgm = false;
   if (audio) audio.fadeSeconds = 1.6;
-  showTitle(); // changeScene("TITLE") 経由で全面黒レイヤーも消える
+  showTitle(); // presentAttractMenu 内で全面黒レイヤー（#clear-screen）も消える
   if (audio) audio.fadeSeconds = 0.7;
 }
 ui.returnTerminal.addEventListener("click", returnToTerminal);
