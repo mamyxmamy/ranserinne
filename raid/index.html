@@ -386,7 +386,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 57.0</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 57.2</span></div>
             </div>
 
             <div class="hidden">
@@ -458,9 +458,6 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <div class="grid grid-cols-3 gap-2 w-full">
                     <button type="button" onclick="window.openHeirloomStorage(event, 'equip')" class="action-button-main bg-black/55 text-[#E8C268] border-yellow-800/60 hover:text-white border py-2.5 text-[11px] font-bold tracking-widest rounded-sm transition-all shadow-md">
                         家宝蔵
-                    </button>
-                    <button type="button" onclick="window.openSynthFromTitle(event)" class="action-button-main bg-black/55 text-orange-300 border-orange-900/60 hover:text-white border py-2.5 text-[11px] font-bold tracking-widest rounded-sm transition-all shadow-md">
-                        家宝合成
                     </button>
                     <button type="button" onclick="window.openRanking(event)" class="action-button-main bg-black/55 text-yellow-500 border-yellow-700/60 hover:text-white border py-2.5 text-[11px] font-bold tracking-widest rounded-sm transition-all shadow-md">
                         天下の番付
@@ -863,7 +860,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 家宝の合成（v54新要素）</h3>
                     <ul class="list-disc pl-4 space-y-1">
                         <li>既に所持している家宝が被ると、自動で冥銭にはならず、<span class="font-bold">素材</span>として家宝蔵に納められます。素材は家宝蔵でいつでも、格に応じた冥銭に還元できます。</li>
-                        <li>素材を組み合わせると、通常では決して手に入らない<span class="text-gold font-bold">合成家宝</span>が生まれます。合成には素材のほかに<span class="text-purple-400 font-bold">冥銭</span>（500／900）が必要です。レシピは家宝蔵の「家宝の合成」区画で全て見られます。タイトル画面の「家宝合成」ボタンからも直接開けます。素材が足りない時は、所持中の家宝そのものも素材にできます（その家宝は失われます）。強化済みの家宝を素材にすると、合成家宝がその強化段階を引き継ぎます。</li>
+                        <li>素材を組み合わせると、通常では決して手に入らない<span class="text-gold font-bold">合成家宝</span>が生まれます。合成には素材のほかに<span class="text-purple-400 font-bold">冥銭</span>（500／900）が必要です。レシピは家宝蔵の「合成・素材」タブで全て見られます（家宝蔵はタイトル画面の「家宝蔵」ボタンから開けます）。素材が足りない時は、所持中の家宝そのものも素材にできます（その家宝は失われます）。強化済みの家宝を素材にすると、合成家宝がその強化段階を引き継ぎます。</li>
                         <li>合成家宝は2種の初期ボーナスを併せ持つ<span class="font-bold">複合効果</span>が特徴です。装備の枠は通常の家宝と共通で、非業の死で失う点も同じです（素材が再び揃えば作り直せます）。合成家宝は強化できません。</li>
                     </ul>
                 </section>
@@ -3703,6 +3700,8 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
             if (dexEl) dexEl.classList.toggle('hidden', tab !== 'dex');
             if (sortEl) sortEl.classList.toggle('hidden', tab !== 'equip');
             if (tab === 'dex' && dexEl) dexEl.innerHTML = window.__heirloomDexHtml();
+            // v57.1: 初回チュートリアルは合成タブを開いた時に出す（旧タイトル「家宝合成」ボタン経由の導線を移設。既読なら出ない）
+            if (tab === 'synth') { setTimeout(() => { let seen = null; try { seen = localStorage.getItem('sengoku_synth_tutorial_seen'); } catch (err) {} if (seen !== '1' && window.openSynthTutorial) window.openSynthTutorial(); }, 80); }
             if (changed) { const p = tab === 'equip' ? listEl : (tab === 'synth' ? synthEl : dexEl); if (p) p.scrollTop = 0; }
         };
         window.openHeirloomDexTab = function(e) { window.switchHeirloomTab('dex', e); };
@@ -3847,7 +3846,7 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
         };
 
         window.closeHeirloomStorage = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } document.getElementById('heirloom-screen').classList.add('hidden'); if (window.__renderPrep) window.__renderPrep(); };
-        // v54.1: タイトル画面の「家宝合成」ボタン。v57: 家宝蔵の合成・素材タブを直接開く動作に置き換え（初回だけチュートリアルを表示）
+        // v54.1: 旧タイトル画面の「家宝合成」ボタン用。v57.1でボタンは撤去され、初回チュートリアルの発火は switchHeirloomTab（合成タブ）へ移設済み。本関数は互換のため残置（現在は参照なし）
         window.openSynthTutorial = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } const m = document.getElementById('synth-tutorial-screen'); if (m) m.classList.remove('hidden'); };
         window.closeSynthTutorial = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } const m = document.getElementById('synth-tutorial-screen'); if (m) m.classList.add('hidden'); try { localStorage.setItem('sengoku_synth_tutorial_seen', '1'); } catch (err) {} };
         window.openSynthFromTitle = function(e) { window.openHeirloomStorage(e, 'synth'); setTimeout(() => { let seen = null; try { seen = localStorage.getItem('sengoku_synth_tutorial_seen'); } catch (err) {} if (seen !== '1') window.openSynthTutorial(); }, 80); };
@@ -6358,10 +6357,11 @@ if (!window.firebase || !firebase.firestore) return neutral;
 const db = firebase.firestore();
 const logsRef = db.collection('artifacts').doc('sengoku-life-app').collection('raid_event_logs');
 const snap = await raidWithTimeout(logsRef.orderBy('timestamp', 'desc').limit(40).get(), 4000);
+const runId = window.__raidCurrentConfig().runId; // v57.2 M-5: 戦況集計は今回の共討戦（runId）のログだけで数える（旧回のログを混ぜない）
 let n = 0, sv = 0, ss = 0, sl = 0;
 snap.forEach(function(doc) {
 const d = doc.data();
-if (d && d.gen === gen && typeof d.valor === 'number') { n++; sv += d.valor; ss += (d.strategy || 0); sl += (d.luck || 0);}
+if (d && d.gen === gen && d.runId === runId && typeof d.valor === 'number') { n++; sv += d.valor; ss += (d.strategy || 0); sl += (d.luck || 0);}
 });
 if (n < 3) return neutral;
 const avgV = sv / n, avgSL = (ss + sl) / n / 2;
@@ -6765,7 +6765,8 @@ window.shareRaidResult = function(e) { if (e) { e.preventDefault(); e.stopPropag
 const reward = Math.min(300, Math.floor(res.totalDamage / 10));
 window.meisen = (window.meisen || 0) + reward;
 try { localStorage.setItem('sengoku_raid_lifebonus', '10'); } catch (e) {}
-try { localStorage.setItem('sengoku_raid_participant', '1'); } catch (e) {}
+// v57.2 M-1: 定例回（開催中）の戦闘では旧 participant フラグを立てない。立てると次回起動時に泡沫夢幻の「降臨の証 +30」変換（__raidConvertTestReward）が第1回の新規参加者にも誤発火する。変換処理自体は泡沫の未変換者のために残す。
+try { const seasonBattle = (typeof window.__raidBattleLive === 'function') ? window.__raidBattleLive() : !RAID_TEST_ENDED; if (!seasonBattle) localStorage.setItem('sengoku_raid_participant', '1'); } catch (e) {}
 let titleNew = false;
 if (!window.unlockedTitles) window.unlockedTitles = [];
 if (!window.unlockedTitles.includes(RAID_TITLE_NAME)) { window.unlockedTitles.push(RAID_TITLE_NAME); titleNew = true;}
@@ -6794,6 +6795,23 @@ window.__raidSceneKind = null; raidSetScene('boss');
 (function() { const cap = document.getElementById('raid-scene-cap'); if (cap) cap.textContent = res.victory? '― 番人の巨躯、崩れ落ちる ―': '― 魂は霧に溶け、霜の門は遠ざかる ―'; })();
 const panel = document.getElementById('raid-result'); if (panel) panel.classList.remove('hidden');
 if (window.__raidBossCache) { window.__raidBossCache = { gen: after.gen, hp: after.hp, maxHp: after.maxHp, shared: window.__raidBossCache.shared}; window.__raidCumDmg = 0; raidUpdateBars(); set('raid-my-dmg', res.totalDamage.toLocaleString()); }
+// v57.2 E-2: 結果パネルに、この回の累計ダメージと次の段階（奮戦 10,000／討伐級 50,000）までの残りを行で示す。取得できなければ行は出さない。
+(async function() {
+const el = document.getElementById('raid-res-cum');
+if (!el) return;
+el.classList.add('hidden');
+try {
+if (!window.__raidBossCache || !window.__raidBossCache.shared) return;
+const total = await window.__raidFetchMyRunDamage(window.__raidCurrentConfig().runId);
+if (!(total > 0)) return;
+let tail;
+if (total >= 50000) tail = '討伐級に到達している';
+else if (total >= 10000) tail = '討伐級まで あと ' + (50000 - total).toLocaleString();
+else tail = '奮戦まで あと ' + (10000 - total).toLocaleString();
+el.innerText = '今回の共討戦の累計ダメージは ' + total.toLocaleString() + ' ―― ' + tail;
+el.classList.remove('hidden');
+} catch (e) {}
+})();
 }
 
 window.openRaid = async function(e) {
@@ -6938,6 +6956,7 @@ if (target) target.classList.remove('hidden');
 </div>
 <div id="raid-res-title" class="hidden mt-2 border border-gold bg-yellow-950/30 p-2 text-center rounded-sm"><span class="text-white text-sm font-black">『冥府の門を叩きし者』</span><br><span class="text-[10px] text-gold font-bold">を感得！</span></div>
 <p id="raid-res-world" class="raid-res-anim mt-2 text-[11px] text-gray-400 leading-relaxed"></p>
+<p id="raid-res-cum" class="raid-res-anim hidden mt-2 text-[11px] text-amber-100/90 leading-relaxed"></p>
 <button type="button" onclick="window.shareRaidResult(event)" class="action-button-main mt-3 w-full border border-gray-500 bg-black/70 hover:bg-gray-900 text-gray-100 py-2.5 text-sm font-bold tracking-widest rounded-sm transition-all active:scale-95">📣 この戦いを投稿カードで共有</button>
 <button type="button" onclick="window.closeRaid(event)" class="action-button-main mt-2 w-full border-2 border-red-700 bg-red-950/80 hover:bg-red-900 text-white py-3 text-sm font-bold tracking-widest rounded-sm transition-all active:scale-95">結果へ戻る</button>
 </div>
