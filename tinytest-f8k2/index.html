@@ -616,7 +616,7 @@
       var soil = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.3, 1.9), soilMat);
       soil.position.set(x, 0.15, z); soil.receiveShadow = true; scene.add(soil);
       var cropGroup = new THREE.Group(); cropGroup.position.set(x, 0.3, z); scene.add(cropGroup);
-      PLOTS.push({ x: x, z: z, soilMat: soilMat, cropGroup: cropGroup, st: 0, crop: null, prog: 0, watered: false });
+      PLOTS.push({ x: x, z: z, soilMat: soilMat, cropGroup: cropGroup, st: 0, crop: null, prog: 0, watered: false, soil: { health: 80, speed: 20, lastCrop: '', sameStreak: 0 } });
     }
     for (var f = 0; f < 6; f++) {
       box(0.14, 0.9, 0.14, 0x8a6844, ox - 1.35, 0.45, oz - 1.0 + f * 1.65);
@@ -997,20 +997,62 @@
 
   // ---------- ゲーム状態 ----------
   var CROPS = {
-    potato: { name: 'ジャガイモ', seedKey: 'pseed', itemKey: 'potato', seedPrice: 20, sell: 60, days: 2, fruit: 0xd8b878 },
-    strawberry: { name: 'イチゴ', seedKey: 'sseed', itemKey: 'strawberry', seedPrice: 50, sell: 120, days: 3, fruit: 0xe84a5f }
+    potato: { name: 'ジャガイモ', seedKey: 'pseed', itemKey: 'potato', seedPrice: 20, sell: 60, days: 2, fruit: 0xd8b878, icon: '🥔', leaf: 0x4c9a3f, form: 'ground' },
+    strawberry: { name: 'イチゴ', seedKey: 'sseed', itemKey: 'strawberry', seedPrice: 50, sell: 120, days: 3, fruit: 0xe84a5f, icon: '🍓', leaf: 0x4c9a3f, form: 'top' },
+    lettuce: { name: 'レタス', seedKey: 'lseed', itemKey: 'lettuce', seedPrice: 15, sell: 45, days: 1, fruit: 0x86c95e, icon: '🥬', leaf: 0x86c95e, form: 'leaf' },
+    snappea: { name: 'スナップエンドウ', seedKey: 'eseed', itemKey: 'snappea', seedPrice: 30, sell: 85, days: 2, fruit: 0x7ec850, icon: '🫛', leaf: 0x4c9a3f, form: 'top' },
+    shiitake: { name: 'しいたけ', seedKey: 'mseed', itemKey: 'shiitake', seedPrice: 35, sell: 110, days: 3, fruit: 0x8a6844, icon: '🍄', leaf: 0xb99b6b, form: 'mushroom' },
+    nanohana: { name: '菜の花', seedKey: 'nseed', itemKey: 'nanohana', seedPrice: 25, sell: 75, days: 3, fruit: 0xf5d93c, icon: '🌼', leaf: 0x4c9a3f, form: 'top' }
   };
+  // F1：店の種の購入行の表示条件はこの述語に集約する
+  // F3：解禁チェーン本体。共有状態（quests／flags）からの純粋な導出に保ち、端末ローカルな解禁フラグは持たない
+  function seedUnlocked(id) {
+    if (id === 'potato') return true;
+    if (id === 'strawberry') return !!S.unlockStrawberry;
+    if (id === 'lettuce') return true;
+    if (id === 'snappea') return S.quests.q2 === 'done';
+    if (id === 'shiitake') return S.quests.q3 === 'done';
+    if (id === 'nanohana') return !!S.flags.nanohanaUnlocked;
+    return false;
+  }
   var QUESTS = [
     { id: 'q1', title: 'ジャガイモを届けよう', desc: '村の台所にジャガイモが3つ必要なんだって。', need: { potato: 3 }, reward: 150, rewardText: '150G ＋ お店にイチゴの種が並ぶ' },
-    { id: 'q2', title: 'イチゴの注文', desc: 'ミントがイチゴを2つ欲しがっている。', need: { strawberry: 2 }, reward: 300, rewardText: '300G' }
+    { id: 'q2', title: 'イチゴの注文', desc: 'ミントがイチゴを2つ欲しがっている。', need: { strawberry: 2 }, reward: 300, rewardText: '300G' },
+    { id: 'q3', title: 'スナップエンドウの注文', desc: '村長エルダがスナップエンドウを2つ欲しがっている。', need: { snappea: 2 }, reward: 300, rewardText: '300G ＋ お店にしいたけの種が並ぶ' }
   ];
-  var S = { day: 1, money: 500, rp: 140, rpMax: 140, hp: 100, hpMax: 100, inv: { pseed: 3, sseed: 0, potato: 0, strawberry: 0 }, selSeed: 'potato', quests: { q1: 'open', q2: 'locked' }, unlockStrawberry: false,
+  var S = { day: 1, money: 500, rp: 140, rpMax: 140, hp: 100, hpMax: 100, inv: { pseed: 3, sseed: 0, lseed: 0, eseed: 0, mseed: 0, nseed: 0, potato: 0, strawberry: 0, lettuce: 0, snappea: 0, shiitake: 0, nanohana: 0 }, selSeed: 'potato', quests: { q1: 'open', q2: 'locked', q3: 'locked' }, unlockStrawberry: false,
     // 段階3・便1で追加（解放の連鎖の状態）。キーは段階1の名残だが既存セーブを孤児にしないため据え置く
-    unlocks: { start: true, area_forest: true }, shipTotals: {}, shipCount: 0, blessings: {}, boss: {}, storySeen: {}, flags: { guardianCalmed: false, bakuDefeated: false } };
+    unlocks: { start: true, area_forest: true }, shipTotals: {}, shipCount: 0, blessings: {}, boss: {}, storySeen: {}, flags: { guardianCalmed: false, bakuDefeated: false, nanohanaUnlocked: false } };
   var SAVE_KEY = 'tfRemakeStage1';
+  // ---------- F4：土の質（FARM-EXPANSION-PREP §3／現行版 02 §3.1〜3.3 の簡易移植。しつ・資材は入れない） ----------
+  function defaultSoil() { return { health: 80, speed: 20, lastCrop: '', sameStreak: 0 }; }
+  // soil が無い／一部欠けた区画へデフォルトを補完する（旧セーブ・旧ホストのペイロード互換。F3 の q3 補完と同じ流儀）
+  function ensureSoil(p) {
+    if (!p) return defaultSoil();
+    if (!p.soil || typeof p.soil !== 'object') p.soil = defaultSoil();
+    else { var d = defaultSoil(); Object.keys(d).forEach(function (k) { if (p.soil[k] == null) p.soil[k] = d[k]; }); }
+    return p.soil;
+  }
+  function soilSnapshot(p) { var s = ensureSoil(p); return { health: s.health, speed: s.speed, lastCrop: s.lastCrop, sameStreak: s.sameStreak }; }
+  function soilEq(a, b) {
+    var sa = a && typeof a === 'object' ? a : defaultSoil(), sb = b && typeof b === 'object' ? b : defaultSoil();
+    var da = defaultSoil();
+    return (sa.health != null ? sa.health : da.health) === (sb.health != null ? sb.health : da.health)
+      && (sa.speed != null ? sa.speed : da.speed) === (sb.speed != null ? sb.speed : da.speed)
+      && (sa.lastCrop != null ? sa.lastCrop : da.lastCrop) === (sb.lastCrop != null ? sb.lastCrop : da.lastCrop)
+      && (sa.sameStreak != null ? sa.sameStreak : da.sameStreak) === (sb.sameStreak != null ? sb.sameStreak : da.sameStreak);
+  }
+  // 土の段階表示（3段階のみ。色帯などの常時表示は追加しない）
+  function soilStageText(p) { var h = ensureSoil(p).health; return h >= 60 ? '土が元気' : (h >= 30 ? '少し疲れ' : '土が疲れている'); }
+  // 収穫時の土の疲れ（現行版 src/game.html の更新規則そのまま）：同作物が lastCrop と一致すれば連作として sameStreak++ し −8 − 連作数×3、違えば lastCrop を差し替えて sameStreak=0 で −8
+  function applyHarvestSoil(p) {
+    var s = ensureSoil(p);
+    if (s.lastCrop === p.crop) { s.sameStreak++; s.health = Math.max(0, Math.min(100, s.health - 8 - s.sameStreak * 3)); }
+    else { s.lastCrop = p.crop; s.sameStreak = 0; s.health = Math.max(0, Math.min(100, s.health - 8)); }
+  }
   function save() {
     try {
-      localStorage.setItem(SAVE_KEY, JSON.stringify({ day: S.day, money: S.money, rp: S.rp, hp: S.hp, inv: S.inv, selSeed: S.selSeed, quests: S.quests, unlockStrawberry: S.unlockStrawberry, unlocks: S.unlocks, shipTotals: S.shipTotals, shipCount: S.shipCount, blessings: S.blessings, boss: S.boss, storySeen: S.storySeen, flags: S.flags, plots: PLOTS.map(function (p) { return { st: p.st, crop: p.crop, prog: p.prog, watered: p.watered }; }) }));
+      localStorage.setItem(SAVE_KEY, JSON.stringify({ day: S.day, money: S.money, rp: S.rp, hp: S.hp, inv: S.inv, selSeed: S.selSeed, quests: S.quests, unlockStrawberry: S.unlockStrawberry, unlocks: S.unlocks, shipTotals: S.shipTotals, shipCount: S.shipCount, blessings: S.blessings, boss: S.boss, storySeen: S.storySeen, flags: S.flags, plots: PLOTS.map(function (p) { return { st: p.st, crop: p.crop, prog: p.prog, watered: p.watered, soil: soilSnapshot(p) }; }) }));
     } catch (e) {}
     // 便3：S／PLOTS が変わる既存経路はほぼ全て save() を通るため、ここを共有同期のフックにする（ソロ時・同期コード未初期化時は内部で即 return）
     if (typeof syncOnSaveHook === 'function') syncOnSaveHook();
@@ -1023,8 +1065,14 @@
       S.day = d.day != null ? d.day : 1; S.money = d.money != null ? d.money : 500;
       S.rp = d.rp != null ? d.rp : S.rpMax; S.hp = d.hp != null ? d.hp : 100;
       if (d.inv) Object.keys(d.inv).forEach(function (k) { S.inv[k] = d.inv[k]; });
+      // F1：新規作物のキー（種・品目）が旧セーブに無ければデフォルト0で補完する（S.inv のデフォルトにキーが在るため通常はそのまま残る。明示補完で将来のキー追加にも耐える）
+      Object.keys(CROPS).forEach(function (id) { var cc = CROPS[id]; if (S.inv[cc.seedKey] == null) S.inv[cc.seedKey] = 0; if (S.inv[cc.itemKey] == null) S.inv[cc.itemKey] = 0; });
       S.selSeed = d.selSeed || 'potato';
       if (d.quests) Object.keys(d.quests).forEach(function (k) { S.quests[k] = d.quests[k]; });
+      // F3：旧セーブ（q3 キー無し）の補完。q2 達成済みなら q3 は出現済みとして 'open'、それ以外は 'locked'。
+      // q2 達成済みなのに q3 が 'locked' のままのセーブも出現状態へ寄せる（出現は q2 達成の導出として扱う）
+      if (S.quests.q2 === 'done' && S.quests.q3 !== 'done') S.quests.q3 = 'open';
+      else if (S.quests.q3 == null) S.quests.q3 = 'locked';
       S.unlockStrawberry = !!d.unlockStrawberry;
       // 解放状態：段階2までの到達点（start／始まりの森）は解放済みとして追認する（遡及適用しない）
       S.unlocks = { start: true, area_forest: true };
@@ -1033,9 +1081,9 @@
       S.blessings = d.blessings || {}; S.boss = d.boss || {};
       // storySeen が無い旧セーブ＝すでに遊び始めたプレイヤーなので、導入は流さない
       S.storySeen = d.storySeen || { intro: true };
-      S.flags = { guardianCalmed: false, bakuDefeated: false };
+      S.flags = { guardianCalmed: false, bakuDefeated: false, nanohanaUnlocked: false };
       if (d.flags) Object.keys(d.flags).forEach(function (k) { S.flags[k] = d.flags[k]; });
-      (d.plots || []).forEach(function (sp, i) { if (PLOTS[i]) { PLOTS[i].st = sp.st; PLOTS[i].crop = sp.crop; PLOTS[i].prog = sp.prog; PLOTS[i].watered = sp.watered; } });
+      (d.plots || []).forEach(function (sp, i) { if (PLOTS[i]) { PLOTS[i].st = sp.st; PLOTS[i].crop = sp.crop; PLOTS[i].prog = sp.prog; PLOTS[i].watered = sp.watered; PLOTS[i].soil = (sp.soil && typeof sp.soil === 'object') ? sp.soil : null; ensureSoil(PLOTS[i]); } });
     } catch (e) {}
   }
 
@@ -1053,25 +1101,60 @@
       var b = new THREE.Mesh(new THREE.IcosahedronGeometry(s, 0), new THREE.MeshLambertMaterial({ color: col, flatShading: true }));
       b.position.set(x, 0.3 + s * 0.6, z); p.cropGroup.add(b);
     }
+    // F2：葉色の作物別化。基調色 CROPS[crop].leaf への「加算オフセット」で濃淡を生成する。
+    // 従来色は基調 0x4c9a3f＝(76,154,63) に対して blob2 0x55a848＝(+9,+14,+9)、blob3 0x478f38＝(-5,-11,-7)、
+    // 芽 0x7fc95e＝(+51,+47,+31) の加算差分そのものなので、この方式で leaf=0x4c9a3f の既存2種は従来色を完全再現する。
+    function shadeCol(hex, dr, dg, db) {
+      function cl(v) { return v < 0 ? 0 : (v > 255 ? 255 : v); }
+      var r = cl((hex >> 16 & 255) + dr), g = cl((hex >> 8 & 255) + dg), b = cl((hex & 255) + db);
+      return (r << 16) | (g << 8) | b;
+    }
+    var cropDef = (p.crop && CROPS[p.crop]) ? CROPS[p.crop] : null;
+    var leafCol = cropDef ? cropDef.leaf : 0x4c9a3f;
+    var leafCols = [leafCol, shadeCol(leafCol, 9, 14, 9), shadeCol(leafCol, -5, -11, -7)];
+    var sproutCol = shadeCol(leafCol, 51, 47, 31);
     if (p.st === 2) {
-      var c1 = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.4, 5), new THREE.MeshLambertMaterial({ color: 0x7fc95e }));
-      c1.position.set(-0.4, 0.35, 0); p.cropGroup.add(c1);
-      var c2 = c1.clone(); c2.position.set(0.45, 0.35, 0.2); p.cropGroup.add(c2);
-    } else if (p.st === 3) {
-      blob(-0.45, -0.2, 0.3, 0x4c9a3f); blob(0.4, 0.25, 0.34, 0x55a848); blob(0, -0.45, 0.26, 0x478f38);
-    } else if (p.st === 4) {
-      blob(-0.45, -0.2, 0.4, 0x4c9a3f); blob(0.4, 0.25, 0.44, 0x55a848); blob(0, -0.45, 0.34, 0x478f38);
-      var fc = CROPS[p.crop].fruit;
-      if (p.crop === 'potato') {
-        [[-0.5, 0.55], [0.1, 0.62], [0.55, 0.5]].forEach(function (o) {
-          var f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.15, 0), new THREE.MeshLambertMaterial({ color: fc, flatShading: true }));
-          f.position.set(o[0], 0.12, o[1]); p.cropGroup.add(f);
-        });
+      if (cropDef && cropDef.form === 'mushroom') {
+        // F2：しいたけの発芽期は芽ではなく leaf 色の小さい塊で「菌床の盛り上がり」を表す
+        blob(-0.4, 0, 0.18, leafCols[0]); blob(0.45, 0.2, 0.15, leafCols[1]);
       } else {
-        [[-0.45, -0.2], [0.4, 0.25], [0, -0.45], [-0.2, 0.35], [0.55, -0.3]].forEach(function (o) {
-          var f2 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.11, 0), new THREE.MeshBasicMaterial({ color: fc }));
-          f2.position.set(o[0], 0.62, o[1]); p.cropGroup.add(f2);
+        var c1 = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.4, 5), new THREE.MeshLambertMaterial({ color: sproutCol }));
+        c1.position.set(-0.4, 0.35, 0); p.cropGroup.add(c1);
+        var c2 = c1.clone(); c2.position.set(0.45, 0.35, 0.2); p.cropGroup.add(c2);
+      }
+    } else if (p.st === 3) {
+      blob(-0.45, -0.2, 0.3, leafCols[0]); blob(0.4, 0.25, 0.34, leafCols[1]); blob(0, -0.45, 0.26, leafCols[2]);
+    } else if (p.st === 4) {
+      var form = cropDef ? cropDef.form : 'top';
+      if (form === 'mushroom') {
+        // F2：しいたけ専用分岐。生成りの軸×3＋茶色の傘（半球）。塊は付けない
+        var capCol = cropDef.fruit;
+        [[-0.45, -0.2], [0.4, 0.25], [0, -0.45]].forEach(function (o) {
+          var stem = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.13, 0.3, 8), new THREE.MeshLambertMaterial({ color: 0xe8dcc0 }));
+          stem.position.set(o[0], 0.29, o[1]); p.cropGroup.add(stem);
+          var cap = new THREE.Mesh(new THREE.SphereGeometry(0.24, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), new THREE.MeshLambertMaterial({ color: capCol, flatShading: true }));
+          cap.position.set(o[0], 0.44, o[1]); p.cropGroup.add(cap);
         });
+      } else if (form === 'leaf') {
+        // F2：レタスは実を付けず、塊を一回り大きく＋明色側に寄せて「結球」を表す
+        var headCols = [shadeCol(leafCol, 30, 28, 18), shadeCol(leafCol, 39, 42, 27), shadeCol(leafCol, 25, 17, 11)];
+        blob(-0.45, -0.2, 0.5, headCols[0]); blob(0.4, 0.25, 0.54, headCols[1]); blob(0, -0.45, 0.44, headCols[2]);
+      } else {
+        blob(-0.45, -0.2, 0.4, leafCols[0]); blob(0.4, 0.25, 0.44, leafCols[1]); blob(0, -0.45, 0.34, leafCols[2]);
+        var fc = cropDef.fruit;
+        if (form === 'ground') {
+          [[-0.5, 0.55], [0.1, 0.62], [0.55, 0.5]].forEach(function (o) {
+            var f = new THREE.Mesh(new THREE.IcosahedronGeometry(0.15, 0), new THREE.MeshLambertMaterial({ color: fc, flatShading: true }));
+            f.position.set(o[0], 0.12, o[1]); p.cropGroup.add(f);
+          });
+        } else {
+          [[-0.45, -0.2], [0.4, 0.25], [0, -0.45], [-0.2, 0.35], [0.55, -0.3]].forEach(function (o) {
+            var f2 = new THREE.Mesh(new THREE.IcosahedronGeometry(0.11, 0), new THREE.MeshBasicMaterial({ color: fc }));
+            // F2：スナップエンドウの実だけ縦長にして莢らしくする
+            if (p.crop === 'snappea') f2.scale.set(1, 1.6, 1);
+            f2.position.set(o[0], 0.62, o[1]); p.cropGroup.add(f2);
+          });
+        }
       }
     }
   }
@@ -1079,6 +1162,21 @@
   // ---------- HUD・パネル・トースト ----------
   var statEl = document.getElementById('stat'), rpFill = document.getElementById('rpFill'), rpText = document.getElementById('rpText');
   var seedBtns = document.querySelectorAll('.seedbtn');
+  // F1：テンプレートに無い作物の種ボタンは CROPS 駆動で動的に足す（対象は main.js のみのため DOM 生成で対応。並びは CROPS の定義順）
+  (function ensureSeedBtns() {
+    var seedsEl = document.getElementById('seeds');
+    if (!seedsEl) return;
+    var existing = {};
+    seedBtns.forEach(function (b) { existing[b.getAttribute('data-seed')] = true; });
+    Object.keys(CROPS).forEach(function (k) {
+      if (existing[k]) return;
+      var b = document.createElement('button');
+      b.className = 'seedbtn'; b.setAttribute('data-seed', k);
+      b.textContent = CROPS[k].icon + ' ' + CROPS[k].name + 'の種 ×0';
+      seedsEl.appendChild(b);
+    });
+    seedBtns = document.querySelectorAll('.seedbtn');
+  })();
   var actBtn = document.getElementById('actBtn');
   var panelEl = document.getElementById('panel'), panelTitle = document.getElementById('panelTitle'), panelBody = document.getElementById('panelBody');
   var panelOpen = false;
@@ -1093,9 +1191,11 @@
     seedBtns.forEach(function (b) {
       var k = b.getAttribute('data-seed');
       var ck = CROPS[k];
-      b.textContent = (k === 'potato' ? '🥔 ' : '🍓 ') + ck.name + 'の種 ×' + S.inv[ck.seedKey];
+      if (!ck) { b.style.display = 'none'; return; }
+      b.textContent = ck.icon + ' ' + ck.name + 'の種 ×' + S.inv[ck.seedKey];
       b.classList.toggle('on', S.selSeed === k);
-      b.style.display = (k === 'strawberry' && !S.unlockStrawberry && S.inv.sseed === 0) ? 'none' : '';
+      // F1：解禁済みは常時表示（×0でも買いに行きたいので隠さない＝従来のジャガイモと同じ）。未解禁でも種を持っていれば表示する（従来のイチゴの扱いを全種へ一般化）
+      b.style.display = (seedUnlocked(k) || (S.inv[ck.seedKey] || 0) > 0) ? '' : 'none';
     });
   }
   seedBtns.forEach(function (b) { b.addEventListener('click', function () { S.selSeed = b.getAttribute('data-seed'); updateHUD(); save(); }); });
@@ -1122,19 +1222,32 @@
     if (ms.rp < n) { toast('RPが足りない…家の前で休んで回復しよう'); return false; }
     ms.rp -= n; return true;
   }
-  function itemName(k) { return k === 'potato' ? 'ジャガイモ' : 'イチゴ'; }
+  function itemName(k) {
+    var ids = Object.keys(CROPS);
+    for (var i = 0; i < ids.length; i++) {
+      var c = CROPS[ids[i]];
+      if (c.itemKey === k) return c.name;
+      if (c.seedKey === k) return c.name + 'の種';
+    }
+    return k;
+  }
 
   // ---------- お店 ----------
   function openShop() {
-    var h = '<div class="prow"><span>🥔 ジャガイモの種（20G）　所持×' + S.inv.pseed + '</span><button class="pbtn" onclick="TF1.buySeed(\'potato\')">買う</button></div>';
-    if (S.unlockStrawberry) {
-      h += '<div class="prow"><span>🍓 イチゴの種（50G）　所持×' + S.inv.sseed + '</span><button class="pbtn" onclick="TF1.buySeed(\'strawberry\')">買う</button></div>';
-    } else {
-      h += '<div class="prow dim"><span>🍓 ？？？の種（まだ扱っていない）</span></div>';
-    }
+    var h = '';
+    Object.keys(CROPS).forEach(function (id) {
+      var c = CROPS[id];
+      if (seedUnlocked(id)) {
+        h += '<div class="prow"><span>' + c.icon + ' ' + c.name + 'の種（' + c.seedPrice + 'G）　所持×' + S.inv[c.seedKey] + '</span><button class="pbtn" onclick="TF1.buySeed(\'' + id + '\')">買う</button></div>';
+      } else {
+        h += '<div class="prow dim"><span>' + c.icon + ' ？？？の種（まだ扱っていない）</span></div>';
+      }
+    });
     h += '<hr>';
-    h += '<div class="prow"><span>🥔 ジャガイモを売る（60G）　所持×' + S.inv.potato + '</span><button class="pbtn" onclick="TF1.sell(\'potato\')">売る</button></div>';
-    h += '<div class="prow"><span>🍓 イチゴを売る（120G）　所持×' + S.inv.strawberry + '</span><button class="pbtn" onclick="TF1.sell(\'strawberry\')">売る</button></div>';
+    Object.keys(CROPS).forEach(function (id) {
+      var c = CROPS[id];
+      h += '<div class="prow"><span>' + c.icon + ' ' + c.name + 'を売る（' + c.sell + 'G）　所持×' + S.inv[c.itemKey] + '</span><button class="pbtn" onclick="TF1.sell(\'' + id + '\')">売る</button></div>';
+    });
     h += '<p class="pnote">所持金 ' + S.money + 'G</p>';
     openPanel('露天商ミントのお店', h);
   }
@@ -1183,6 +1296,7 @@
       var res = applyDeliverCore(qid);
       if (!res.ok) { toast(res.reason); return; }
       if (qid === 'q1') toast('達成！お店にイチゴの種が並んだ 🍓');
+      else if (qid === 'q3') toast('達成！お店にしいたけの種が並んだ 🍄');
       else toast('達成！報酬 ' + res.reward + 'G');
       updateHUD(); save(); openBoard();
     },
@@ -1207,6 +1321,7 @@
     Object.keys(q.need).forEach(function (k) { S.inv[k] -= q.need[k]; });
     S.money += q.reward; S.quests[qid] = 'done';
     if (qid === 'q1') { S.unlockStrawberry = true; S.quests.q2 = 'open'; }
+    if (qid === 'q2' && S.quests.q3 !== 'done') S.quests.q3 = 'open'; // F3：q2 達成で q3 がボードへ出現（q1→q2 の出現パターンの踏襲）
     afterDeliver(qid); // 解放トリガー②「依頼の達成」の接続点（段階3・便1）
     return { ok: true, reward: q.reward, title: q.title };
   }
@@ -1252,9 +1367,16 @@
     toast('🎉 解放！「' + n.name + '」が開かれた');
     return true;
   }
-  // トリガー③出荷実績の判定口。便1では C 群レシピの対象作物がリメイク未移植のため発火しない
-  // （実績の蓄積は TF1.sell 側で実施済み。対象作物が CROPS に入る便で、ここに条件判定を結ぶ）
-  function checkShipUnlocks() {}
+  // トリガー③出荷実績の判定口（実績の蓄積は TF1.sell／ホスト側 sell イベント集計で実施）
+  // F3：菜の花の解禁＝しいたけ出荷3個。この条件は解放マップの C 群ノード（出荷で開く群）と
+  // 同じトリガー系統に対応する想定で、C 群ノード側への対応付けは解放マップ便で NODE_DEFS へ結ぶ。
+  // ここでは種の解禁フラグ（S.flags.nanohanaUnlocked＝共有状態・同期ペイロードに含まれる）のみを扱う
+  function checkShipUnlocks() {
+    if (!S.flags.nanohanaUnlocked && (S.shipTotals.shiitake || 0) >= 3) {
+      S.flags.nanohanaUnlocked = true; // 解禁は1回だけ（フラグが通知の再発を防ぐ）
+      toast('🎉 解放！お店に菜の花の種が並んだ 🌼');
+    }
+  }
   // トリガー②依頼達成の接続点。物語依頼→ノードの対応は便3以降で QUEST_NODE に足す
   var QUEST_NODE = {};
   function afterDeliver(qid) { var id = QUEST_NODE[qid]; if (id) unlockNode(id); }
@@ -1334,10 +1456,19 @@
     setTimeout(function () {
       S.day++; S.rp = S.rpMax;
       PLOTS.forEach(function (p) {
-        if (p.st >= 2 && p.st < 4 && p.watered) {
-          p.prog++;
+        var soil = ensureSoil(p);
+        var growing = p.st >= 2 && p.st < 4;
+        if (growing && p.watered) {
+          // F4：成長加算は小数化し、係数はこの1式に集約する（はやさ係数 × けんこう状態係数 × 加護係数）。
+          // 加護「作物の恵み（成長+10%）」は STAGE3-DESIGN §3.2 で S.blessings.forest として表現されているため、ここへ ×1.1 で相乗りする
+          var growthMul = (1 + soil.speed / 100) * (soil.health < 30 ? 0.7 : 1) * (S.blessings && S.blessings.forest ? 1.1 : 1);
+          p.prog += growthMul;
           if (p.prog >= CROPS[p.crop].days) p.st = 4; else if (p.prog >= 1) p.st = 3;
         }
+        // F4：朝処理の health 増減（現行版 02 §3.3）。未使用区画（作物が植わっていない）は +6、生育中なのに水やりしなかった区画は乾燥で −2
+        if (!p.crop) soil.health += 6;
+        else if (growing && !p.watered) soil.health -= 2;
+        soil.health = Math.max(0, Math.min(100, soil.health));
         p.watered = false; refreshPlot(p);
       });
       if (S.hp < S.hpMax) S.hp = Math.min(S.hpMax, S.hp + 30);
@@ -1353,16 +1484,18 @@
   // ---------- インタラクト ----------
   var currentAction = null;
   function plotLabel(p) {
-    if (p.st === 0) return '🪓 耕す';
-    if (p.st === 1) return S.inv[CROPS[S.selSeed].seedKey] > 0 ? '🌱 種をまく（' + CROPS[S.selSeed].name + '）' : '種がない…';
-    if (p.st === 2 || p.st === 3) return p.watered ? null : '💧 水をやる';
-    if (p.st === 4) return '🧺 収穫する';
+    // F4：土の段階は、区画の状態が提示される既存の場所（近接時のアクションラベル）へ末尾に付けて見せる
+    var soilTxt = '｜' + soilStageText(p);
+    if (p.st === 0) return '🪓 耕す' + soilTxt;
+    if (p.st === 1) return (S.inv[CROPS[S.selSeed].seedKey] > 0 ? '🌱 種をまく（' + CROPS[S.selSeed].name + '）' : '種がない…') + soilTxt;
+    if (p.st === 2 || p.st === 3) return p.watered ? null : '💧 水をやる' + soilTxt;
+    if (p.st === 4) return '🧺 収穫する' + soilTxt;
     return null;
   }
   function plotAction(p) {
     // 便3：ゲストの畑操作は楽観表示＋ホスト確定。操作前の状態（base）を控え、成功時だけ plot イベントで送る
     var plotIdx = PLOTS.indexOf(p);
-    var plotBefore = { st: p.st, crop: p.crop, prog: p.prog, watered: p.watered };
+    var plotBefore = { st: p.st, crop: p.crop, prog: p.prog, watered: p.watered, soil: soilSnapshot(p) };
     if (p.st === 0) { if (!spendRP(3)) return; p.st = 1; if (HQ) { setAct(myChar(), { kind: 'hoe', t: 0, dur: 0.45, d8: 'down', flip: false }); if (typeof syncNotifyAct === 'function') syncNotifyAct(); } }
     else if (p.st === 1) {
       var ck = CROPS[S.selSeed];
@@ -1374,12 +1507,14 @@
     else if (p.st === 4) {
       if (!spendRP(2)) return;
       S.inv[CROPS[p.crop].itemKey]++; toast(CROPS[p.crop].name + 'を収穫した！');
+      // F4：収穫時の土の疲れはこの共通処理で適用する。ゲスト操作時は下の plot イベントで収穫後の soil がホストへ渡り、ホストはその値を適用する（ホスト側で二重に減算しない）
+      applyHarvestSoil(p);
       p.st = 1; p.crop = null; p.prog = 0; p.watered = false;
     }
     refreshPlot(p); updateHUD(); save();
     // 便3：ゲストはローカル即時反映済み。区画の新しい状態をホストへ送って確定してもらう（種消費・収穫の inv 変動は save() フックの即時書込で共有済み）
     if (plotIdx >= 0 && (typeof syncIsGuestConnected === 'function') && syncIsGuestConnected() && typeof syncSendEvent === 'function') {
-      syncSendEvent({ type: 'plot', index: plotIdx, base: plotBefore, plot: { st: p.st, crop: p.crop, prog: p.prog, watered: p.watered } });
+      syncSendEvent({ type: 'plot', index: plotIdx, base: plotBefore, plot: { st: p.st, crop: p.crop, prog: p.prog, watered: p.watered, soil: soilSnapshot(p) } });
     }
   }
   function findInteract() {
@@ -2086,7 +2221,7 @@
     // 可変オブジェクトは複製して渡す（非同期書込の途中でローカルが変わっても書込内容がずれないように）
     return {
       day: S.day,
-      plots: PLOTS.map(function (p) { return { st: p.st, crop: p.crop, prog: p.prog, watered: p.watered }; }),
+      plots: PLOTS.map(function (p) { return { st: p.st, crop: p.crop, prog: p.prog, watered: p.watered, soil: soilSnapshot(p) }; }),
       quests: syncClone(S.quests), unlockStrawberry: S.unlockStrawberry, unlocks: syncClone(S.unlocks),
       shipTotals: syncClone(S.shipTotals), shipCount: S.shipCount, blessings: syncClone(S.blessings), boss: syncClone(S.boss),
       storySeen: syncClone(S.storySeen), flags: syncClone(S.flags), money: S.money, inv: syncClone(S.inv),
@@ -2342,9 +2477,12 @@
             else if (Date.now() - pend.at < 8000) return;
             else delete TFS.pendingPlots[i];
           }
-          PLOTS[i].st = sp.st; PLOTS[i].crop = sp.crop; PLOTS[i].prog = sp.prog; PLOTS[i].watered = sp.watered; refreshPlot(PLOTS[i]);
+          PLOTS[i].st = sp.st; PLOTS[i].crop = sp.crop; PLOTS[i].prog = sp.prog; PLOTS[i].watered = sp.watered; PLOTS[i].soil = (sp.soil && typeof sp.soil === 'object') ? syncClone(sp.soil) : null; ensureSoil(PLOTS[i]); refreshPlot(PLOTS[i]);
         });
         if (d.quests && typeof d.quests === 'object') { S.quests = syncClone(d.quests); }
+        // F3：旧ホストのペイロード等で q3 キーが欠けた場合は load() と同じ規則で補完する（ボード表示の不整合防止）
+        if (S.quests.q2 === 'done' && S.quests.q3 !== 'done') S.quests.q3 = 'open';
+        else if (S.quests.q3 == null) S.quests.q3 = 'locked';
         if (d.unlockStrawberry != null) S.unlockStrawberry = !!d.unlockStrawberry;
         if (d.unlocks && typeof d.unlocks === 'object') S.unlocks = syncClone(d.unlocks);
         if (d.shipTotals && typeof d.shipTotals === 'object') S.shipTotals = syncClone(d.shipTotals);
@@ -2370,7 +2508,7 @@
   function syncSendEvent(ev) {
     if (!syncIsConnected() || !TFS.db) return Promise.resolve(false);
     if (!TFS.isHost && TFS.hostAbsent) { syncSetEventInfo('ホスト不在のため送信しませんでした（お散歩モード）'); return Promise.resolve(false); }
-    if (ev.type === 'plot' && ev.plot) TFS.pendingPlots[ev.index] = { plot: { st: ev.plot.st, crop: ev.plot.crop, prog: ev.plot.prog, watered: ev.plot.watered }, at: Date.now() };
+    if (ev.type === 'plot' && ev.plot) TFS.pendingPlots[ev.index] = { plot: { st: ev.plot.st, crop: ev.plot.crop, prog: ev.plot.prog, watered: ev.plot.watered, soil: ev.plot.soil && typeof ev.plot.soil === 'object' ? syncClone(ev.plot.soil) : null }, at: Date.now() };
     ev.from = TFS.role; ev.clientId = TFS.clientId; ev.ts = Date.now();
     return syncRoomRef().collection('events').add(ev).then(function () {
       syncSetEventInfo(ev.type + ' をホストへ送信 ' + syncTimeStr(Date.now()));
@@ -2385,7 +2523,7 @@
     if (!TFS.db) return;
     syncRoomRef().collection('notes').add({ msg: msg, forClient: ev.clientId || null, toRole: ev.from || null, ts: Date.now(), kind: kind || 'result' }).catch(function () {});
   }
-  function syncPlotStateEq(a, b) { return !!a && !!b && a.st === b.st && a.crop === b.crop && a.prog === b.prog && a.watered === b.watered; }
+  function syncPlotStateEq(a, b) { return !!a && !!b && a.st === b.st && a.crop === b.crop && a.prog === b.prog && a.watered === b.watered && soilEq(a.soil, b.soil); }
   // ホスト側のイベント処理（sell 集計／deliver 適用・棄却／sleep 日送り／plot 適用）
   function syncHandleEvent(ev) {
     if (!ev || !ev.type) return;
@@ -2417,15 +2555,15 @@
     } else if (ev.type === 'plot') {
       var p = PLOTS[ev.index];
       if (!p || !ev.plot) { syncSetEventInfo('plot 棄却：対象の区画がありません'); return; }
-      var cur = { st: p.st, crop: p.crop, prog: p.prog, watered: p.watered };
-      var newSt = { st: ev.plot.st, crop: ev.plot.crop, prog: ev.plot.prog, watered: ev.plot.watered };
+      var cur = { st: p.st, crop: p.crop, prog: p.prog, watered: p.watered, soil: soilSnapshot(p) };
+      var newSt = { st: ev.plot.st, crop: ev.plot.crop, prog: ev.plot.prog, watered: ev.plot.watered, soil: ev.plot.soil && typeof ev.plot.soil === 'object' ? syncClone(ev.plot.soil) : null };
       // ホスト側で既に状態が進んでいて base と矛盾する場合はホストの状態を正とし、ゲストは次のスナップショットで戻る
       if (ev.base && !syncPlotStateEq(cur, ev.base) && !syncPlotStateEq(cur, newSt)) {
         syncSetEventInfo('plot 棄却：区画' + (ev.index + 1) + 'はホスト側で進んでいました');
         syncNotifyGuest(ev, '↩️ 畑の操作がホスト側の状態と競合したため、ホストの状態に戻りました');
         return;
       }
-      p.st = newSt.st; p.crop = newSt.crop; p.prog = newSt.prog; p.watered = newSt.watered;
+      p.st = newSt.st; p.crop = newSt.crop; p.prog = newSt.prog; p.watered = newSt.watered; p.soil = newSt.soil; ensureSoil(p);
       refreshPlot(p); updateHUD(); save();
       syncSetEventInfo('plot 適用：区画' + (ev.index + 1));
     } else if (ev.type === 'attack') {
