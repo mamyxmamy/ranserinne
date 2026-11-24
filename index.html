@@ -386,7 +386,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 55.0</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 55.1</span></div>
             </div>
 
             <div class="hidden">
@@ -431,8 +431,8 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     <p class="text-center text-[10px] text-gray-400 tracking-widest border-t border-[#3A322A] py-1">寿命限界: <span id="ui-max-age-limit" class="text-red-400 font-bold">70</span>歳（老衰開始: <span id="ui-random-death-start">60</span>歳）</p>
                 </div>
                 <div id="raid-season-banner" onclick="window.openRaidRank(event)" class="hidden w-full border border-purple-800/80 bg-[#160D1A]/85 rounded-sm px-3 py-2 text-center shadow-[0_0_14px_rgba(88,28,135,0.35)] cursor-pointer">
-                    <p class="text-[12px] font-bold tracking-[0.2em] text-purple-200">共討戦 ― 輪廻の番人 ― <span class="text-[#F5D97E]">開催中</span></p>
-                    <p id="raid-season-banner-note" class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">冥府の門が開いている。死の直後、転生の合間に番人へ挑め。</p>
+                    <p class="text-[12px] font-bold tracking-[0.2em] text-purple-200">共討戦 ― 寒霜夢幻 ― <span class="text-[#F5D97E]">開催中</span></p>
+                    <p id="raid-season-banner-note" class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">冥府の門に霜が降り、凍てつく霧が立ち込める。死の直後、転生の合間に番人へ挑め。</p>
                     <p class="text-[10px] text-[#F5D97E]/90 tracking-[0.25em] mt-1 font-bold">― 共討戦績（与ダメージ番付）を見る ―</p>
                 </div>
                 <div id="campaign-banner" class="hidden w-full border border-[#8A6D2F]/80 bg-[#1A1408]/85 rounded-sm px-3 py-2 text-center shadow-[0_0_14px_rgba(212,175,55,0.25)]">
@@ -1619,7 +1619,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             { name: "飢餓に倒れし者", hint: "飢えに耐えきれず命を落とす" },
             { name: "病魔に蝕まれし者", hint: "疫病に倒れる" },
             { name: "名もなき草奔", hint: "戦国の世に生きる" },
-            { name: "冥府の門を叩きし者", hint: "泡沫夢幻にて、冥府の門の番人に挑む" }];
+            { name: "冥府の門を叩きし者", hint: "共討戦にて、冥府の門の番人に挑む" }];
 
         const WIFE_NAMES = ['千代', 'まつ', '寧々', 'お市', '濃姫', '小松', '妙玖', '早川殿', '甲斐姫', 'お田鶴'];
 
@@ -4456,7 +4456,7 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
             text += `称号：『${title}』\n`;
             const lr = calculateLifeRank(state);
             text += `総合ランク：${lr.rank}（${lr.score}点）\n`;
-            if (window.__raidCard) text += `共討戦「泡沫夢幻」：第${window.__raidCard.gen}世代の番人に ${window.__raidCard.dmg.toLocaleString()} ダメージ\n`;
+            if (window.__raidCard) text += `共討戦「寒霜夢幻」：第${window.__raidCard.gen}世代の番人に ${window.__raidCard.dmg.toLocaleString()} ダメージ\n`;
             const zukanCount = (window.unlockedTitles || []).length;
             const zukanTotal = (typeof TITLES_DB !== 'undefined') ? TITLES_DB.length : 50;
             text += `二つ名図鑑：${zukanCount}/${zukanTotal}種${window.__lastTitleNew ? '（新記録！）' : ''}\n\n`;
@@ -4559,7 +4559,7 @@ if (window.__raidCard) {
 ctx.fillStyle = 'rgba(38,16,54,0.92)'; ctx.fillRect(140, 1206, 800, 110);
 ctx.strokeStyle = '#7C3AED'; ctx.lineWidth = 3; ctx.strokeRect(140, 1206, 800, 110);
 ctx.fillStyle = '#C4B5FD'; ctx.font = `bold 28px ${mincho}`;
-ctx.fillText('― 共討戦 ― 泡沫夢幻 ―', 540, 1242);
+ctx.fillText('― 共討戦 ― 寒霜夢幻 ―', 540, 1242);
 ctx.fillStyle = '#FFFFFF'; ctx.font = `900 40px ${mincho}`;
 ctx.fillText(`第${window.__raidCard.gen}世代の番人に ${window.__raidCard.dmg.toLocaleString()} ダメージ`, 540, 1294);
 } else {
@@ -4641,7 +4641,7 @@ cv.toBlob((b) => resolve(b), 'image/png');
                         const zukanCount = (window.unlockedTitles || []).length;
                         const zukanTotal = (typeof TITLES_DB !== 'undefined') ? TITLES_DB.length : 50;
                         const lr2 = calculateLifeRank(state);
-                        const shareText = `【${pName}】享年${state.age}歳、二つ名は『${title}』、総合ランク${lr2.rank}（${lr2.score}点）。二つ名図鑑：${zukanCount}/${zukanTotal}種${window.__raidCard ? `\n共討戦「泡沫夢幻」：第${window.__raidCard.gen}世代の番人に ${window.__raidCard.dmg.toLocaleString()} ダメージ` : ''}\n#戦国人生絵巻 #二つ名図鑑 #ブラウザゲーム #ローグライク\nhttps://mamyxmamy.github.io/ranserinne/`;
+                        const shareText = `【${pName}】享年${state.age}歳、二つ名は『${title}』、総合ランク${lr2.rank}（${lr2.score}点）。二つ名図鑑：${zukanCount}/${zukanTotal}種${window.__raidCard ? `\n共討戦「寒霜夢幻」：第${window.__raidCard.gen}世代の番人に ${window.__raidCard.dmg.toLocaleString()} ダメージ` : ''}\n#戦国人生絵巻 #二つ名図鑑 #ブラウザゲーム #ローグライク\nhttps://mamyxmamy.github.io/ranserinne/`;
                         await navigator.share({ files: [file], text: shareText });
                         return;
                     }
@@ -6108,8 +6108,8 @@ const b = document.getElementById('raid-thanks-body');
 const badge = document.getElementById('raid-thanks-badge');
 const note = document.getElementById('raid-thanks-note');
 const fmt = function(ms) { try { return new Date(ms).toLocaleDateString('ja-JP'); } catch (e) { return ''; } };
-if (t) t.innerHTML = '共討戦、閉幕<br>戦績に応じ、礼を贈る';
-if (b) b.innerHTML = '共討戦（' + fmt(cfg.startAt) + ' 〜 ' + fmt(cfg.endAt) + '）は終わり、冥府の門は閉ざされた。<br>あなたの累計ダメージは <b>' + reward.totalDamage.toLocaleString() + '</b> ―― 段階は「' + reward.tierName + '」。';
+if (t) t.innerHTML = '共討戦 ― 寒霜夢幻 ―、閉幕<br>戦績に応じ、礼を贈る';
+if (b) b.innerHTML = '共討戦（' + fmt(cfg.startAt) + ' 〜 ' + fmt(cfg.endAt) + '）は終わり、冥府の門は閉ざされた。門に降りた霜は静かに解けて流れ、寒さだけが名残として残った。<br>あなたの累計ダメージは <b>' + reward.totalDamage.toLocaleString() + '</b> ―― 段階は「' + reward.tierName + '」。';
 if (badge) badge.innerText = '冥銭 +' + reward.meisen + (reward.age > 0 ? ' ／ 寿命限界 永続 +' + reward.age : '');
 if (note) note.innerText = reward.age > 0 ? '寿命の加護は、これからのすべての人生に適用されます' : '冥銭は冥府の商人で使えます';
 window.__showRaidThanks();
@@ -6155,7 +6155,7 @@ const active = window.__raidSeasonActive();
 el.classList.toggle('hidden', !active);
 if (active) {
 const note = document.getElementById('raid-season-banner-note');
-if (note) { const cfg = window.__raidCurrentConfig(); note.innerText = '冥府の門が開いている（〜' + new Date(cfg.endAt).toLocaleDateString('ja-JP') + '）。死の直後、転生の合間に番人へ挑め。'; }
+if (note) { const cfg = window.__raidCurrentConfig(); note.innerText = '冥府の門に霜が降り、凍てつく霧が立ち込める（〜' + new Date(cfg.endAt).toLocaleDateString('ja-JP') + '）。死の直後、転生の合間に番人へ挑め。'; }
 }
 };
 document.addEventListener('DOMContentLoaded', function() { setTimeout(async function() {
@@ -6419,8 +6419,8 @@ const lines = [];
 const name = s.playerName || '名無しの権兵衛';
 const cls = s.classInfo? s.classInfo.name: '亡魂';
 const pick = function(arr) { return arr[Math.floor(R() * arr.length)];};
-lines.push({ t: '―― ' + name + '（' + cls + '）の魂が、三途の川を渡り冥府の門へと歩を進める。', c: 'sys'});
-lines.push({ t: '門の奥、輪廻の番人が静かに佇んでいる。（第' + gen + '世代）', c: 'sys'});
+lines.push({ t: '―― ' + name + '（' + cls + '）の魂が、三途の川を渡り冥府の門へと歩を進める。川面には薄く氷が張り、渡るたびに静かに軋んだ。', c: 'sys'});
+lines.push({ t: '門の奥、輪廻の番人が静かに佇んでいる。その巨躯には白い霜が降り積もり、吐く息は霧となって凍てついていた。（第' + gen + '世代）', c: 'sys'});
 if (field && (field.valorOn || field.evadeOn)) {
 const fp = [];
 if (field.valorOn) fp.push('先達たちの武の勢いが、打ち込みを押し上げる');
@@ -6460,7 +6460,7 @@ const CLASS_ATK = {
 };
 const atkText = special? (special === '会心'? '会心の一撃': '強運の一撃'): pick(CLASS_ATK[cls] || ['渾身の一撃', '裂帛の一閃', '捨て身の突撃', '乱世を生き抜いた技']);
 lines.push({ t: flavor + atkText + (floored && !special? ' 武の冴えで押し切った！': '') + ' ― ' + dmg + ' の打撃！', c: special? 'gold': '', d: dmg, turn: turn, cut: special === '会心'? 'crit': (special === '強運の一撃'? 'lucky': undefined)});
-if (bossHp <= 0) { lines.push({ t: '番人の巨躯が、ゆっくりと崩れ落ちた ――', c: 'gold'}); break;}
+if (bossHp <= 0) { lines.push({ t: '番人の巨躯が、ゆっくりと崩れ落ちた ―― 纏っていた寒霜が、音もなく砕けて散っていく。', c: 'gold'}); break;}
 if (assistsUsed < bonds.length && R() < Math.min(0.5, (s.virtue || 0) / 200)) {
 assistsUsed++;
 const evName = (bonds[assistsUsed - 1] && bonds[assistsUsed - 1].event)? bonds[assistsUsed - 1].event: 'かつての縁';
@@ -6468,7 +6468,7 @@ if (R() < 0.5) {
 const ad = Math.max(1, Math.round(P * 0.6));
 bossHp -= ad; total += ad;
 lines.push({ t: '「' + evName + '」で縁を結んだ者が駆けつけた！ 助太刀の ' + ad + ' 打撃！', c: 'assist', d: ad});
-if (bossHp <= 0) { lines.push({ t: '番人の巨躯が、ゆっくりと崩れ落ちた ――', c: 'gold'}); break;}
+if (bossHp <= 0) { lines.push({ t: '番人の巨躯が、ゆっくりと崩れ落ちた ―― 纏っていた寒霜が、音もなく砕けて散っていく。', c: 'gold'}); break;}
 } else {
 const healed = Math.min(maxE, E + 80) - E;
 E = E + healed;
@@ -6497,17 +6497,17 @@ lines.push({ t: '番付の先達、『' + sentatsu.title + '』' + sentatsu.name
 }
 E = Math.max(1, Math.round(maxE * 0.25));
 lines.push({ t: '先達の加護で持ち直した（耐久 ' + E + '）', c: 'gold', e: E});
-if (bossHp <= 0) { lines.push({ t: '番人の巨躯が、ゆっくりと崩れ落ちた ――', c: 'gold'}); break;}
+if (bossHp <= 0) { lines.push({ t: '番人の巨躯が、ゆっくりと崩れ落ちた ―― 纏っていた寒霜が、音もなく砕けて散っていく。', c: 'gold'}); break;}
 continue;
 }
 E -= atk;
 lines.push({ t: (isSpecialAtk? '番人の必殺「冥府の裁き」': '番人の一撃') + ' ― ' + atk + ' の痛撃を受けた。（残り耐久 ' + Math.max(0, E) + '）', c: 'boss', e: Math.max(0, E)});
 if (!isSpecialAtk && turn % 4 === 3 && E > 0 && bossHp > 0) {
-lines.push({ t: '番人の巨躯に、冥府の気が渦巻いていく ―― 次に放たれる一撃は、必殺の重さを持つ。', c: 'warn', charge: true});
+lines.push({ t: '番人の巨躯に、冥府の気が渦巻いていく ―― 渦巻く気は霜を帯びて冴えわたり、次に放たれる一撃は、必殺の重さを持つ。', c: 'warn', charge: true});
 }
 }
 const victory = bossHp <= 0;
-if (!victory) lines.push({ t: name + ' の魂は力尽き、冥府の霧に溶けていった ……', c: 'sys'});
+if (!victory) lines.push({ t: name + ' の魂は力尽き、冥府の霧に溶けていった …… その霧はやがて霜となり、門の礎に白く降り積もる。', c: 'sys'});
 return { lines: lines, totalDamage: total, turns: turn, victory: victory, rescueUsed: rescueUsed, assistsUsed: assistsUsed, power: P, endurance: maxE};
 };
 
@@ -6519,12 +6519,12 @@ img.src = kind === 'sen'? (window.__RAID_SEN64 || ''): (window.__RAID_ART64 || '
 img.alt = '';
 const cap = document.createElement('div');
 cap.className = 'raid-img-cap';
-cap.textContent = kind === 'sen'? '― 先達の魂、駆けつける ―': '― 集いし魂、冥府の門に挑む ―';
+cap.textContent = kind === 'sen'? '― 先達の魂、駆けつける ―': '― 集いし魂、霜の門に挑む ―';
 wrap.appendChild(img); wrap.appendChild(cap);
 return wrap;
 }
 const RAID_SCENES = {
-art: { src: function() { return window.__RAID_ART64 || ''; }, cap: '― 集いし魂、冥府の門に挑む ―' },
+art: { src: function() { return window.__RAID_ART64 || ''; }, cap: '― 集いし魂、霜の門に挑む ―' },
 boss: { src: function() { try { const v = getComputedStyle(document.documentElement).getPropertyValue('--raidbg').trim(); const m = v.match(/url\((.*)\)/); if (m) return m[1]; } catch (e) {} return window.__RAID_BG64 || ''; }, cap: '― 輪廻の番人、迫る ―' },
 crit: { src: function() { return window.__RAID_CRIT64 || ''; }, cap: '― 一 閃 ―' },
 evade: { src: function() { return window.__RAID_EVADE64 || ''; }, cap: '― 見 切 り ―' },
@@ -6752,8 +6752,8 @@ set('raid-res-meisen', '+' + reward);
 const tEl = document.getElementById('raid-res-title'); if (tEl) tEl.classList.toggle('hidden',!titleNew);
 const wEl = document.getElementById('raid-res-world');
 if (wEl) {
-if (after.killed) wEl.innerText = '世界の番人は倒れた ―― が、輪廻の理は巡り、第' + after.gen + '世代の番人が HP ' + after.maxHp.toLocaleString() + ' で生まれ変わった。';
-else wEl.innerText = '世界の番人は残り HP ' + after.hp.toLocaleString() + ' / ' + after.maxHp.toLocaleString() + '（第' + after.gen + '世代）。次の人生で、また挑もう。';
+if (after.killed) wEl.innerText = '世界の番人は倒れた ―― が、輪廻の理は巡る。新たな番人が HP ' + after.maxHp.toLocaleString() + ' で生まれ変わり（第' + after.gen + '世代）、その身には再び寒霜が降り積もり始めている。';
+else wEl.innerText = '世界の番人は残り HP ' + after.hp.toLocaleString() + ' / ' + after.maxHp.toLocaleString() + '（第' + after.gen + '世代）。門の霜は、まだ解けていない。次の人生で、また挑もう。';
 }
 const ctr = document.getElementById('raid-controls'); if (ctr) ctr.classList.add('hidden');
 raidFx(function() {
@@ -6762,7 +6762,7 @@ if (panel0 && panel0.querySelectorAll) { const rows = panel0.querySelectorAll('.
 if (titleNew) { const t2 = document.getElementById('raid-res-title'); if (t2) t2.classList.add('raid-title-flash'); }
 });
 window.__raidSceneKind = null; raidSetScene('boss');
-(function() { const cap = document.getElementById('raid-scene-cap'); if (cap) cap.textContent = res.victory? '― 番人の巨躯、崩れ落ちる ―': '― 魂は霧に溶け、門は遠ざかる ―'; })();
+(function() { const cap = document.getElementById('raid-scene-cap'); if (cap) cap.textContent = res.victory? '― 番人の巨躯、崩れ落ちる ―': '― 魂は霧に溶け、霜の門は遠ざかる ―'; })();
 const panel = document.getElementById('raid-result'); if (panel) panel.classList.remove('hidden');
 if (window.__raidBossCache) { window.__raidBossCache = { gen: after.gen, hp: after.hp, maxHp: after.maxHp, shared: window.__raidBossCache.shared}; window.__raidCumDmg = 0; raidUpdateBars(); set('raid-my-dmg', res.totalDamage.toLocaleString()); }
 }
@@ -6872,7 +6872,7 @@ if (target) target.classList.remove('hidden');
 <div class="px-4 pt-12 pb-2 w-full max-w-md mx-auto">
 <div id="raid-boss-stage">
 <div class="flex items-start justify-between">
-<p class="text-[10px] tracking-[0.4em] text-fuchsia-200/90">期間限定 共討戦 ― 泡沫夢幻 ―</p>
+<p class="text-[10px] tracking-[0.4em] text-fuchsia-200/90">期間限定 共討戦 ― 寒霜夢幻 ―</p>
 <span id="raid-gen" class="text-[11px] text-gold font-bold tracking-widest">第1世代</span>
 </div>
 <div class="flex items-baseline justify-between mt-0.5">
@@ -6882,7 +6882,7 @@ if (target) target.classList.remove('hidden');
 <div class="mt-1.5 h-3 bg-black/75 border border-purple-300/40 rounded-sm overflow-hidden relative"><div id="raid-boss-hpghost" class="absolute inset-y-0 left-0 bg-white/45" style="width:100%"></div><div id="raid-boss-hpbar" class="relative h-full bg-gradient-to-r from-purple-900 via-purple-600 to-fuchsia-500 transition-all duration-500" style="width:100%"></div></div>
 <div class="flex justify-between text-[10px] text-gray-200 mt-1"><span>番人の残り命</span><span id="raid-boss-hptext">- / -</span></div>
 </div>
-<div id="raid-scene" class="h-56"><img id="raid-scene-img" alt=""><div id="raid-scene-cap">― 集いし魂、冥府の門に挑む ―</div></div>
+<div id="raid-scene" class="h-56"><img id="raid-scene-img" alt=""><div id="raid-scene-cap">― 集いし魂、霜の門に挑む ―</div></div>
 </div>
 <div class="flex-1 flex flex-col w-full max-w-md mx-auto px-4 min-h-0">
 <div class="text-[10px] tracking-[0.5em] text-gold/80 text-center pb-1">― 実 況 ―</div>
