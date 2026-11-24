@@ -195,7 +195,8 @@
     draw(c.getContext('2d'), size);
     var t = new THREE.CanvasTexture(c);
     t.magFilter = THREE.NearestFilter; t.minFilter = THREE.NearestFilter;
-    t.encoding = THREE.sRGBEncoding;
+    // 2026-11-24 実機バグ修正：sRGBEncoding を付けると Android Chrome (WebGL2) で
+    // 地面テクスチャが真っ黒にサンプリングされる事象があったため、他テクスチャと揃えて付けない
     if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(repeat, repeat); }
     return t;
   }
@@ -2117,7 +2118,7 @@
     ng.strokeStyle = 'rgba(255,217,77,0.9)'; ng.lineWidth = 6; ng.strokeRect(6, 6, 500, 116);
     ng.fillStyle = '#ffffff'; ng.font = 'bold 58px sans-serif'; ng.textAlign = 'center'; ng.textBaseline = 'middle';
     ng.fillText(bd.name, 256, 68);
-    var nameTex = new THREE.CanvasTexture(nc); nameTex.encoding = THREE.sRGBEncoding;
+    var nameTex = new THREE.CanvasTexture(nc); // 2026-11-24：CanvasTexture の sRGBEncoding は実機の真っ黒化対策で外す
     var namePlate = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: nameTex, transparent: true, depthWrite: false }));
     namePlate.position.set(0, 0.46, 0); bar.add(namePlate);
     var e = { kind: kind, def: def, x: x, z: z, home: { x: x, z: z }, hp: def.hp, state: 'idle', t: 0, tx: x, tz: z, face: 0, kvx: 0, kvz: 0, grp: grp, body: body, tele: tele, line: line, bar: bar, barFg: barFg, hitDone: false, dead: false, hop: Math.random() * 6, boss: true, areaId: areaId, reach: 3.6, fanR: 3.45, atkCount: 0, kbMul: 0.25, chargeHits: {}, billboard: billboard, blob: blob, eyeMats: eyeMats, talkIdx: 0 };
@@ -2642,9 +2643,12 @@
 
   // ---------- HQモード初期化（画像準拠クオリティ） ----------
   if (HQ) {
+    // 2026-11-24 実機バグ修正：地面系 CanvasTexture へのミップマップ再アップロードは
+    // Android Chrome (WebGL2) で真っ黒化する事象があったため、地面はドット版と同じ
+    // NearestFilter のまま使う（塗り調の柔らかい絵柄なので見た目の差はほぼ無い）
     [grassTex, dirtTex, rockTex, soilTex].forEach(function (t) {
-      t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearMipmapLinearFilter;
-      t.generateMipmaps = true; t.anisotropy = 4; t.needsUpdate = true;
+      t.magFilter = THREE.LinearFilter; t.minFilter = THREE.LinearFilter;
+      t.generateMipmaps = false; t.needsUpdate = true;
     });
     scene.traverse(function (o) {
       if (o.material && o.material.flatShading) { o.material.flatShading = false; o.material.needsUpdate = true; }
