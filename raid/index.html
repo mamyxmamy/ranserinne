@@ -386,7 +386,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 54.4</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 55.0</span></div>
             </div>
 
             <div class="hidden">
@@ -434,6 +434,10 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     <p class="text-[12px] font-bold tracking-[0.2em] text-purple-200">共討戦 ― 輪廻の番人 ― <span class="text-[#F5D97E]">開催中</span></p>
                     <p id="raid-season-banner-note" class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">冥府の門が開いている。死の直後、転生の合間に番人へ挑め。</p>
                     <p class="text-[10px] text-[#F5D97E]/90 tracking-[0.25em] mt-1 font-bold">― 共討戦績（与ダメージ番付）を見る ―</p>
+                </div>
+                <div id="campaign-banner" class="hidden w-full border border-[#8A6D2F]/80 bg-[#1A1408]/85 rounded-sm px-3 py-2 text-center shadow-[0_0_14px_rgba(212,175,55,0.25)]">
+                    <p class="text-[12px] font-bold tracking-[0.2em] text-[#F5D97E]">総プレイ3000回突破記念 ― 新米輪廻者キャンペーン開催中</p>
+                    <p class="text-[10px] text-[#E8D9A8]/85 tracking-widest mt-0.5">輪廻30回未満の方は、期間中に始める人生の寿命限界 +30 ／ 冥銭 +300 プレゼント</p>
                 </div>
 
                 <button id="resume-btn" type="button" onclick="window.resumeGame(event)" class="hidden action-button-main w-full bg-[#1A331A] hover:bg-[#204020] text-green-200 border border-green-800 py-3 text-sm sm:text-base font-bold active:scale-95 transition-all shadow-[0_0_15px_rgba(0,100,0,0.4)] tracking-[0.2em] rounded-sm">
@@ -3095,7 +3099,7 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
                 choices: [
                     { text: '家督を譲り、現役を退く', condition: () => true, hint: '即座に大往生クリア', effect: (s) => { 
                         s.flags.inherit50 = true; s.deathCause = 'oldage'; 
-                        const absoluteMaxAge = 70 + Math.floor((window.greatDeathCount || 0) / 10) * 5 + ((s.flags && s.flags.dailyAgeBonus) || 0);
+                        const absoluteMaxAge = 70 + Math.floor((window.greatDeathCount || 0) / 10) * 5 + ((s.flags && s.flags.dailyAgeBonus) || 0) + ((s.flags && s.flags.campaignAgeBonus) || 0);
                         s.age = absoluteMaxAge; 
                         return { hp: -999, log: 'すべてを後進に託し、戦乱の世から完全に身を引いた。縁側で茶をすする平和な余生が始まった……。' }; 
                     } },
@@ -3609,8 +3613,9 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
             const bonusAge = Math.floor((window.greatDeathCount || 0) / 10) * 5;
             const raidPendingAge = parseInt((function(){ try { return localStorage.getItem('sengoku_raid_lifebonus'); } catch (e) { return null; } })() || '0', 10) || 0;
             const dailyAge = window.__kawaraDailyAge ? window.__kawaraDailyAge() : 0;
-            const absoluteMaxAge = 70 + bonusAge + raidPendingAge + (window.__raidPermAge ? window.__raidPermAge() : 0) + dailyAge;
-            const randomDeathStart = 60 + bonusAge + raidPendingAge + (window.__raidPermAge ? window.__raidPermAge() : 0) + dailyAge;
+            const campaignAge = window.__campaignTitleAge ? window.__campaignTitleAge() : 0;
+            const absoluteMaxAge = 70 + bonusAge + raidPendingAge + (window.__raidPermAge ? window.__raidPermAge() : 0) + dailyAge + campaignAge;
+            const randomDeathStart = 60 + bonusAge + raidPendingAge + (window.__raidPermAge ? window.__raidPermAge() : 0) + dailyAge + campaignAge;
 
             const maxAgeElem = document.getElementById('ui-max-age-limit');
             if (maxAgeElem) maxAgeElem.innerText = absoluteMaxAge;
@@ -4861,6 +4866,7 @@ cv.toBlob((b) => resolve(b), 'image/png');
             if (window.__applyKarmaLink) window.__applyKarmaLink();
             try { const rb = parseInt(localStorage.getItem('sengoku_raid_lifebonus') || '0', 10) || 0; if (rb > 0) { state.flags.raidLifeBonus = rb; localStorage.removeItem('sengoku_raid_lifebonus'); recordChronology('番人の加護を受け、寿命の糸が十歳延びた'); } } catch (e) {}
             try { if (window.__kawaraClaimedToday && window.__kawaraClaimedToday() && state.classInfo.id !== 'sukanpin') { state.flags.dailyAgeBonus = 5; recordChronology('今日の瓦版の加護を受け、寿命の糸が五歳延びた'); } } catch (e) {}
+            try { const cb = window.__campaignAgeBonus ? window.__campaignAgeBonus(state.classInfo.id) : 0; if (cb > 0) { state.flags.campaignAgeBonus = cb; recordChronology('新米輪廻者への加護を受け、寿命の糸が三十歳延びた'); } } catch (e) {}
 
             if (state.classInfo.id === 'bushou') state.valor += 20;
             if (state.classInfo.id === 'monk') state.virtue += 30;
@@ -5321,7 +5327,7 @@ cv.toBlob((b) => resolve(b), 'image/png');
             const hbar = document.getElementById('ui-health-bar');
             if (hbar) { const pct = Math.max(0, Math.min(100, (state.health / maxHp) * 100)); hbar.style.width = pct + '%'; hbar.style.backgroundColor = state.health <= 30 ? '#B02A1E' : (pct < 50 ? '#B8860B' : '#6B8E23'); hbar.className = 'h-full transition-all duration-500' + (state.health <= 30 ? ' animate-pulse' : ''); }
             const ageRem = document.getElementById('ui-age-remaining');
-            if (ageRem) { const lifeLimit = 70 + Math.floor((window.greatDeathCount || 0) / 10) * 5 + ((state.flags && state.flags.raidLifeBonus) || 0) + ((state.flags && state.flags.dailyAgeBonus) || 0) + (window.__raidPermAge ? window.__raidPermAge() : 0); ageRem.innerText = state.age < 60 ? `あと${60 - state.age}年で大往生認定（限界${lifeLimit}歳）` : `大往生認定済（限界${lifeLimit}歳）`; }
+            if (ageRem) { const lifeLimit = 70 + Math.floor((window.greatDeathCount || 0) / 10) * 5 + ((state.flags && state.flags.raidLifeBonus) || 0) + ((state.flags && state.flags.dailyAgeBonus) || 0) + ((state.flags && state.flags.campaignAgeBonus) || 0) + (window.__raidPermAge ? window.__raidPermAge() : 0); ageRem.innerText = state.age < 60 ? `あと${60 - state.age}年で大往生認定（限界${lifeLimit}歳）` : `大往生認定済（限界${lifeLimit}歳）`; }
             if (uiValor) uiValor.innerText = state.valor; if (uiKarma) uiKarma.innerText = state.karma; if (uiStrategy) uiStrategy.innerText = state.strategy; if (uiVirtue) uiVirtue.innerText = state.virtue; if (uiLuck) uiLuck.innerText = state.luck;
             if (state.faction) { uiFaction.innerText = state.faction.name; uiFaction.style.backgroundColor = state.faction.color; }
             const traitEl = document.getElementById('ui-trait');
@@ -5373,8 +5379,9 @@ cv.toBlob((b) => resolve(b), 'image/png');
             const bonusAge = Math.floor((window.greatDeathCount || 0) / 10) * 5;
             const raidBonusAge = (state.flags && state.flags.raidLifeBonus) || 0;
             const dailyBonusAge = (state.flags && state.flags.dailyAgeBonus) || 0;
-            const absoluteMaxAge = 70 + bonusAge + raidBonusAge + (window.__raidPermAge ? window.__raidPermAge() : 0) + dailyBonusAge;
-            const randomDeathStart = 60 + bonusAge + raidBonusAge + (window.__raidPermAge ? window.__raidPermAge() : 0) + dailyBonusAge;
+            const campaignBonusAge = (state.flags && state.flags.campaignAgeBonus) || 0;
+            const absoluteMaxAge = 70 + bonusAge + raidBonusAge + (window.__raidPermAge ? window.__raidPermAge() : 0) + dailyBonusAge + campaignBonusAge;
+            const randomDeathStart = 60 + bonusAge + raidBonusAge + (window.__raidPermAge ? window.__raidPermAge() : 0) + dailyBonusAge + campaignBonusAge;
 
             if (state.age >= absoluteMaxAge && state.deathCause !== 'oldage') { 
                 state.health = 0; state.lastDamageEvent = '天寿'; state.deathCause = 'oldage'; 
@@ -6932,6 +6939,15 @@ if (target) target.classList.remove('hidden');
         <button onclick="window.closeSynthResult(event)" class="w-full bg-yellow-800 hover:bg-yellow-700 text-white font-bold py-2.5 rounded-sm border border-yellow-500">わかった</button>
     </div>
 </div>
+<div id="campaign-bonus-screen" class="hidden fixed inset-0 z-[196] bg-black/85 flex items-center justify-center p-4">
+    <div class="bg-[#14100A] border border-[#8A6D2F] rounded-sm max-w-sm w-full p-6 text-center shadow-[0_0_30px_rgba(212,175,55,0.3)]">
+        <p class="text-[11px] tracking-[0.3em] text-[#CEB27A] mb-2">総プレイ3000回突破記念</p>
+        <h3 class="text-xl font-black text-[#F5D97E] tracking-widest mb-3">初心者応援ボーナス</h3>
+        <p class="text-sm text-gray-200 leading-relaxed">新米輪廻者キャンペーンの応援ボーナスとして、<span class="text-[#F5D97E] font-bold">冥銭 +300</span> を受け取りました。</p>
+        <p class="text-xs text-gray-400 leading-relaxed mt-2">期間中、輪廻30回未満の方が始める人生は寿命限界 +30 になります。</p>
+        <button type="button" onclick="window.closeCampaignBonus()" class="mt-5 w-full bg-[#6B5518] hover:bg-[#8A6D2F] text-white border border-[#D4AF37] py-2.5 text-sm font-bold active:scale-95 transition-all tracking-[0.25em] rounded-sm">受け取る</button>
+    </div>
+</div>
 <div id="synth-tutorial-screen" class="hidden fixed inset-0 z-[190] bg-black/85 flex items-center justify-center p-4">
   <div class="bg-[#14110F] border border-yellow-800/60 rounded-sm max-w-sm w-full p-5 shadow-2xl">
     <h3 class="text-gold text-lg font-black tracking-[0.3em] mb-3 text-center">家宝合成のしかた</h3>
@@ -7152,6 +7168,37 @@ if (target) target.classList.remove('hidden');
         return false;
     };
     document.addEventListener('keydown', function (e) { window.__pcKey(e); });
+})();
+</script>
+<script>
+// v55: 新米輪廻者キャンペーン（総プレイ3000回突破記念）
+// 対象：総輪廻30回未満。特典：期間中に始める人生は寿命限界+30（素寒貧を除く）／冥銭+300（初回のみ）
+// 終了日は未定のため仮置き（2026-12-31）。本人が決めたらこの定数を差し替える。
+window.__campaignPeriod = { start: new Date('2026-11-24T00:00:00+09:00').getTime(), end: new Date('2026-12-31T23:59:59+09:00').getTime() };
+window.__campaignActive = function() { const n = Date.now(); return n >= window.__campaignPeriod.start && n <= window.__campaignPeriod.end; };
+window.__campaignEligible = function() { if (!window.__campaignActive()) return false; const c = parseInt(window.currentReincarnationCount || 0, 10) || 0; return c < 30; };
+window.__campaignAgeBonus = function(classId) { return (window.__campaignEligible() && classId !== 'sukanpin') ? 30 : 0; };
+window.__campaignTitleAge = function() { return window.__campaignEligible() ? 30 : 0; };
+window.__campaignRefresh = function() {
+    const b = document.getElementById('campaign-banner');
+    if (b) b.classList.toggle('hidden', !window.__campaignActive());
+    try {
+        if (window.__campaignEligible() && !localStorage.getItem('sengoku_campaign_3000_meisen')) {
+            localStorage.setItem('sengoku_campaign_3000_meisen', '1');
+            window.meisen = (parseInt(window.meisen || 0, 10) || 0) + 300;
+            try { localStorage.setItem('sengoku_meisen', window.meisen); } catch (e) {}
+            const m = document.getElementById('ui-meisen'); if (m) m.innerText = window.meisen;
+            const modal = document.getElementById('campaign-bonus-screen'); if (modal) modal.classList.remove('hidden');
+        }
+    } catch (e) {}
+};
+window.closeCampaignBonus = function() { const modal = document.getElementById('campaign-bonus-screen'); if (modal) modal.classList.add('hidden'); };
+(function() {
+    const orig = window.updateStartScreenUI;
+    if (typeof orig === 'function') {
+        window.updateStartScreenUI = function() { const r = orig.apply(this, arguments); try { window.__campaignRefresh(); } catch (e) {} return r; };
+    }
+    document.addEventListener('DOMContentLoaded', function() { setTimeout(function() { try { window.__campaignRefresh(); } catch (e) {} }, 900); });
 })();
 </script>
 </body>
