@@ -987,7 +987,7 @@
     for (var i = 0; i < btns.length; i++) btns[i].classList.toggle('on', btns[i].getAttribute('data-t') === name);
   }
   var tbtns = document.querySelectorAll('.tbtn');
-  for (var bi = 0; bi < tbtns.length; bi++) tbtns[bi].addEventListener('click', function () { setTime(this.getAttribute('data-t')); });
+  for (var bi = 0; bi < tbtns.length; bi++) tbtns[bi].addEventListener('click', function () { var tn = this.getAttribute('data-t'); setTime(tn); if (tn === 'night' && typeof queueTutorial === 'function') queueTutorial('t09'); }); // チュートリアル便：初めて夜にした時も T-09 の発火経路（家の前との先着）
   setTime('morning');
   (function () { // 初期は朝にスナップ
     cur.sun.setHex(tgt.sun); cur.bg.setHex(tgt.bg);
@@ -1233,7 +1233,8 @@
   }
   function closePanel() {
     panelEl.style.display = 'none'; panelOpen = false;
-    if (introIdx >= 0) { introIdx = -1; S.storySeen.intro = true; save(); } // 導入を×で閉じたらスキップ扱いにする
+    if (introIdx >= 0) { introIdx = -1; S.storySeen.intro = true; save(); if (typeof queueTutorial === 'function') { queueTutorial('t01', { after: openSyncPanel }); queueTutorial('t02'); } } // 導入を×で閉じたらスキップ扱いにする（チュートリアル便：T-01→接続パネル→T-02 の順）
+    if (typeof tutIdx !== 'undefined' && tutIdx >= 0) { var txid = tutId, txcb = tutAfter, txmark = tutMarkOnEnd; tutIdx = -1; tutId = null; tutAfter = null; tutMarkOnEnd = true; tutCooldownUntil = Date.now() + 900; if (txmark) tutMark(txid); if (txcb) txcb(); } // チュートリアルを×で閉じたら既読化して終了し、パネル系は本来のパネルを開き直す（チュートリアル便）
     if (typeof bossIntroIdx !== 'undefined' && bossIntroIdx >= 0) { bossIntroIdx = -1; S.storySeen.bossIntro = true; save(); if (typeof startBossFight === 'function') startBossFight(); } // ボス前会話を×で閉じたらスキップ扱いにして戦闘を開始する（森ボス便）
     if (typeof endingIdx !== 'undefined' && endingIdx >= 0) { var eph = endingPhase; endingIdx = -1; endingPhase = null; if (eph === 'act1') showEndingOverlay(); else if (eph === 'act3') endingRunning = false; } // 仮エンディング：第1幕を×で閉じても第2幕へ進み、第3幕は既読扱い（帰還時に endingMvp 済み）にする（森ボス便・工程3）
   }
@@ -1426,6 +1427,7 @@
     h += '<p>これまでの出荷実績：累計 ' + S.shipCount + ' 個</p><hr>';
     h += NODE_DEFS.map(nodeRow).join('');
     if (S.storySeen.stele) h += '<hr><div class="prow"><span>📜 村の石碑（表の歴史）</span><button class="pbtn" onclick="TF1.readStele()">読み返す</button></div>';
+    h += '<hr><div class="prow"><span>📖 あそびかた（各所の説明の読み返し）</span><button class="pbtn" onclick="TF1.openHelp()">開く</button></div>';
     h += '<hr><button class="pbtn" onclick="TF1.openBoard()">📌 依頼ボードに戻る</button>';
     openPanel('🗺 解放マップ', h);
   }
@@ -1461,8 +1463,10 @@
   function endIntro() {
     introIdx = -1; S.storySeen.intro = true; save(); closePanel();
     toast('畑を耕して、最初の作物を育ててみよう 🌱');
+    queueTutorial('t01', { after: openSyncPanel }); // チュートリアル便：接続パネルの初回表示の前に T-01（優先度が T-02 より高いため先に出る）
+    queueTutorial('t02'); // チュートリアル便：導入の終了直後に移動と基本操作（T-02）。接続パネルが閉じられるまで保留される
   }
-  TF1.openUnlockMap = function () { openUnlockMap(); };
+  TF1.openUnlockMap = function () { unlockWithTut(); };
   TF1.openBoard = function () { openBoard(); };
   TF1.readStele = function () { openStele(); };
   TF1.introNext = function () {
@@ -1471,6 +1475,171 @@
     else { introIdx++; showIntro(); }
   };
   TF1.introSkip = function () { if (introIdx >= 0) endIntro(); };
+
+  // ---------- 各所チュートリアル（TUTORIAL-DESIGN §4 文案／§5 実装仕様） ----------
+  // 既読は端末単位の専用キー tfRemakeTut に置く。S.storySeen は同期の共有ホワイトリストに入っているため絶対に使わない。
+  var TUT_KEY = 'tfRemakeTut';
+  var TUT_DEFS = {
+    t01: [
+      { sp: '', text: 'このゲームは、ふたりで同じ農場を育てるゲーム。ひとりでも遊べるけれど、まずはどう始めるか選ぼう。' },
+      { sp: '', text: 'ふたりで遊ぶなら、先に始める人が「ルームを作る」、あとから来る人が同じ合言葉で「合言葉で入る」。使うキャラクターは、接続のときに先着で決まるよ。迷ったら「1人で遊ぶ」で始めて大丈夫。あとからでも、右上の「🔗 接続」ボタンでいつでもつなぎ直せる。' }
+    ],
+    t02: [
+      { sp: '', text: '左下のパッドを倒すと、その方向へ歩くよ。右下の「⟳」ボタンでカメラの向きを90度ずつ回せる。見たい方向に合わせて使ってみて。' },
+      { sp: '', text: '畑や人や看板に近づくと、右下に「調べる」ボタンが出る。押すと、耕したり、話したり、その場でできることをしてくれる。画面下の種ボタンは、まく種の切り替えだよ。' }
+    ],
+    t03: [
+      { sp: '村長エルダ', text: '畑の作法を教えておこう。まず空き地に近づいて「🪓 耕す」。次に「🌱 種をまく」、それから「💧 水をやる」。ここまでが1日の世話じゃ。' },
+      { sp: '村長エルダ', text: '作物は、寝て朝を迎えると育つ。水をやり忘れた日は育たないから、寝る前の水やりを忘れずに。実ったら「🧺 収穫する」で籠いっぱいじゃ。' },
+      { sp: '村長エルダ', text: '畑に近づいたとき出る「土が元気」「少し疲れ」「土が疲れている」は、土の調子じゃ。同じ作物を続けて植えると土が疲れる。疲れたら、別の作物を植えるか、少し休ませておくれ。' }
+    ],
+    t04: [
+      { sp: '露天商ミント', text: 'いらっしゃい！　ここでは種を買って、育てた作物を売ることができるよ。上段が種のお買い物、下段が収穫物の買い取りね。' },
+      { sp: '露天商ミント', text: 'お金はふたりでひとつのお財布。あんたが買えば相方の分も減るし、売れば増える。まだ扱っていない種は「？？？」になってるけど、村の依頼をこなすと少しずつ仕入れが増えるからね。' }
+    ],
+    t05: [
+      { sp: '', text: '村の人たちからの頼みごとが貼ってある。作物が揃ったら「納品する」ボタンで渡せて、お礼のお金がもらえる。' },
+      { sp: '', text: '依頼をこなすと、新しい種が店に並んだり、村のことが少しずつ開けていく。畑仕事の合間に、こまめに覗いてみよう。' }
+    ],
+    t06: [
+      { sp: '', text: 'この村では、誰かの願いを叶えたり、作物を出荷したり、森の守り龍を祓ったりすると、新しい場所やものが「解放」されていく。' },
+      { sp: '', text: 'まだ開かれていないものは名前が「？？？」に伏せてあって、ヒントだけが見える。次に何を目指せばいいか迷ったら、このヒントを頼りにしよう。' }
+    ],
+    t07: [
+      { sp: '', text: '森の島には魔物がいる。近づくと向かってくるから、右下の「⚔️」ボタンで剣を振って戦おう。' },
+      { sp: '', text: '敵が攻撃する直前、足元に赤い扇の予告が出る。その範囲から出れば当たらない。もしHPがゼロになっても、家で目が覚めてHP半分で戻ってこられるから、怖がらずに挑んで大丈夫。' }
+    ],
+    t09: [
+      { sp: '', text: '家の前に近づいて「🛏️ 休む」を押すと、今日が終わって朝になる。作物は寝ている間に育ち、RPも全回復する。畑仕事や戦いで疲れたら、休むのが一番の回復だよ。' },
+      { sp: '', text: 'ふたりで遊んでいるときは、どちらかひとりが休めば日が進む。ゲストが休むと、ホストに「休みたい」と伝わって日が進む仕組みだよ。画面右上の朝・昼・夕・夜のボタンは、景色の時間帯を変えるだけだからね。' }
+    ],
+    t10host: [
+      { sp: '', text: 'つながったね！　画面右上の表示が、接続の状態をいつも教えてくれる。相方がつながっているか、お金や畑が部屋と合っているかは、まずここを見て。' },
+      { sp: '', text: 'あなたはホスト（部屋を作った人）。畑や日数、敵の動きは、あなたの端末が正になる。あなたがアプリを閉じると、相方は「お散歩モード」になって、その間の世界の変化は保存されなくなるから、遊び終わる時は声をかけ合ってね。' }
+    ],
+    t10guest: [
+      { sp: '', text: 'つながったね！　画面右上の表示が、接続の状態をいつも教えてくれる。相方がつながっているか、お金や畑が部屋と合っているかは、まずここを見て。' },
+      { sp: '', text: 'あなたはゲスト。畑やお金や日数は部屋のものが正で、あなたの端末のソロの世界とは置き換わっているよ。耕したり売ったりはそのままできて、結果はホストの端末に集まる。寝る時は、ホストに伝わって日が進む仕組みだよ。' }
+    ]
+  };
+  var TUT_TITLES = { t01: '接続の選び方', t02: '移動と基本操作', t03: '畑の基本', t04: '店', t05: '依頼ボード', t06: '解放マップ', t07: '戦闘の基本', t09: '休む・夜', t10host: '同期の役割（ホスト）', t10guest: '同期の役割（ゲスト）' };
+  // 優先度（§5.4：導入＞T-01＞T-10＞T-02＞T-07＞T-03＞T-09＞T-04＞T-05＞T-06）
+  var TUT_PRIO = { t01: 1, t10host: 2, t10guest: 2, t02: 3, t07: 4, t03: 5, t09: 6, t04: 7, t05: 8, t06: 9 };
+  var tutIdx = -1, tutId = null, tutAfter = null, tutMarkOnEnd = true;
+  var tutQueue = [], tutCooldownUntil = 0;
+  function tutSeenKey(id) { return (id === 't10host' || id === 't10guest') ? 't10' : id; }
+  function tutReadAll() { try { var d = JSON.parse(localStorage.getItem(TUT_KEY)); if (d && typeof d === 'object') return d; } catch (e) {} return {}; }
+  function tutSeen(id) { return !!tutReadAll()[tutSeenKey(id)]; }
+  function tutMark(id) { var d = tutReadAll(); d[tutSeenKey(id)] = true; try { localStorage.setItem(TUT_KEY, JSON.stringify(d)); } catch (e) {} }
+  // 経過措置（§5.2）：導入を見終わった旧セーブでは T-01／T-02 を既読扱いで初期化する（キー自体が無い初回のみ）
+  function tutLegacyInit() {
+    var has = false; try { has = localStorage.getItem(TUT_KEY) != null; } catch (e) {}
+    if (has) return;
+    if (S.storySeen && S.storySeen.intro === true) { try { localStorage.setItem(TUT_KEY, JSON.stringify({ t01: true, t02: true })); } catch (e) {} }
+  }
+  // 検証用パラメータ使用時は全チュートリアルを発火させない（§5.4-6）。?tut= 強制表示と ?panel=help は例外
+  function tutSuppressed() {
+    var s = location.search;
+    if (/[?&]tut=/.test(s) || /[?&]panel=help/.test(s)) return false;
+    return /[?&](panel|demo|demo2|act|view|unlock|boss|bossfight|ending|pos|walk|pose|pin|boywalk)=/.test(s);
+  }
+  function tutCombatActive() {
+    if (typeof enemies === 'undefined' || !enemies) return false;
+    for (var i = 0; i < enemies.length; i++) { var e = enemies[i]; if (!e.dead && (e.state === 'approach' || e.state === 'windup' || e.state === 'windupCharge' || e.state === 'charge')) return true; }
+    return false;
+  }
+  function queueTutorial(id, opts) {
+    opts = opts || {};
+    if (!TUT_DEFS[id]) return false;
+    if (!opts.force && !opts.reread && tutSeen(id)) return false;
+    if (!opts.force && tutSuppressed()) return false;
+    if (tutIdx >= 0 && tutId === id) return true;
+    for (var i = 0; i < tutQueue.length; i++) if (tutQueue[i].id === id) return true;
+    tutQueue.push({ id: id, opts: opts });
+    tutTick();
+    return true;
+  }
+  function tutTick() {
+    if (tutIdx >= 0 || !tutQueue.length) return;
+    if (Date.now() < tutCooldownUntil) return;
+    if (panelOpen) return;
+    if (introIdx >= 0) return;
+    if (typeof bossIntroIdx !== 'undefined' && bossIntroIdx >= 0) return;
+    if (typeof endingIdx !== 'undefined' && endingIdx >= 0) return;
+    var ov = document.getElementById('endingOverlay'); if (ov && ov.style.display === 'flex') return;
+    tutQueue.sort(function (a, b) { return (TUT_PRIO[a.id] || 99) - (TUT_PRIO[b.id] || 99); });
+    var item = tutQueue[0];
+    // 戦闘進行中は割り込まない。ただし T-07 だけは入島直後の戦闘開始と重なっても出せる（§5.4-4 の例外）
+    if (tutCombatActive() && item.id !== 't07') return;
+    tutQueue.shift();
+    startTutorial(item.id, item.opts);
+  }
+  function startTutorial(id, opts) {
+    opts = opts || {};
+    if (!TUT_DEFS[id]) return;
+    tutId = id; tutIdx = 0; tutAfter = opts.after || null;
+    tutMarkOnEnd = !opts.reread && !opts.force; // ヘルプ再読と検証フックは既読状態を変えない
+    showTutorial();
+  }
+  function showTutorial() {
+    var scenes = TUT_DEFS[tutId];
+    var sc = scenes[tutIdx];
+    var h = '<p>' + sc.text + '</p>' +
+      '<div class="prow"><span class="dim">' + (tutIdx + 1) + ' / ' + scenes.length + '</span><span>' +
+      '<button class="pbtn" onclick="TF1.tutSkip()">スキップ</button> ' +
+      '<button class="pbtn" onclick="TF1.tutNext()">' + (tutIdx >= scenes.length - 1 ? 'はじめる' : 'つぎへ ▶') + '</button></span></div>';
+    openPanel(sc.sp ? sc.sp : '―― 語り ――', h);
+  }
+  function endTutorial() {
+    if (tutIdx < 0) return;
+    var id = tutId, cb = tutAfter, mark = tutMarkOnEnd;
+    tutIdx = -1; tutId = null; tutAfter = null; tutMarkOnEnd = true;
+    tutCooldownUntil = Date.now() + 900; // 1件終わるごとに通常プレイへ戻す（連続表示しない。§5.4-5）
+    if (mark) tutMark(id);
+    closePanel();
+    if (cb) cb(); // パネル系は終了後に本来のパネルを開き直す
+  }
+  TF1.tutNext = function () {
+    if (tutIdx < 0) return;
+    if (tutIdx >= TUT_DEFS[tutId].length - 1) endTutorial();
+    else { tutIdx++; showTutorial(); }
+  };
+  TF1.tutSkip = function () { if (tutIdx >= 0) endTutorial(); };
+  // パネルを開く系（T-04／T-05／T-06／T-01）：初回だけチュートリアルを先に出し、終了後に本来のパネルを開く。openShop 等自体は変更しない
+  function tutBeforePanel(id, openFn) {
+    if (tutSeen(id) || tutSuppressed()) return false;
+    // パネル系トリガーはボタン押下が起点。通常パネル表示中（ボード→解放マップ等）でも
+    // パネルの中身を差し替えて即時開始する（§5.2「先にチュートリアル→後で本来のパネル」）。
+    // 会話シーン・別チュートリアル・エンディング・戦闘の進行中だけは保留キューへ回す（§5.4）。
+    var blocked = introIdx >= 0 || bossIntroIdx >= 0 || endingIdx >= 0 || tutIdx >= 0 ||
+      document.getElementById('endingOverlay').style.display === 'flex' ||
+      (typeof tutCombatActive === 'function' && tutCombatActive());
+    if (!blocked) { startTutorial(id, { after: openFn }); return true; }
+    return queueTutorial(id, { after: openFn });
+  }
+  function shopWithTut() { if (!tutBeforePanel('t04', openShop)) openShop(); }
+  function boardWithTut() { if (!tutBeforePanel('t05', openBoard)) openBoard(); }
+  function unlockWithTut() { if (!tutBeforePanel('t06', openUnlockMap)) openUnlockMap(); }
+  // ---------- ヘルプ「📖 あそびかた」（§5.3。再表示しても既読状態は変えない） ----------
+  function openHelp() {
+    var ids = ['t01', 't02', 't03', 't04', 't05', 't06', 't07', 't09', 't10host', 't10guest'];
+    var h = '<p>各所のチュートリアルを、いつでも読み返せます。</p><hr>';
+    ids.forEach(function (id) {
+      h += '<div class="prow"><span>' + TUT_TITLES[id] + '</span><button class="pbtn" onclick="TF1.tutRead(\'' + id + '\')">読む</button></div>';
+    });
+    h += '<hr><div class="prow"><span>📜 村の石碑（表の歴史）</span><button class="pbtn" onclick="TF1.readStele()">読み返す</button></div>';
+    openPanel('📖 あそびかた', h);
+  }
+  TF1.openHelp = function () { openHelp(); };
+  TF1.tutRead = function (id) { if (TUT_DEFS[id]) startTutorial(id, { reread: true, after: openHelp }); };
+  // 場所系トリガーの近接チェック（animate から毎フレーム呼ばれる。自キャラの座標だけで判定する）
+  function tutProximityCheck() {
+    if (tutIdx >= 0 || tutSuppressed()) return;
+    var mc = myChar();
+    if (!tutSeen('t03')) { for (var i = 0; i < PLOTS.length; i++) { if (Math.hypot(mc.x - PLOTS[i].x, mc.z - PLOTS[i].z) < 1.9) { queueTutorial('t03'); break; } } }
+    if (!tutSeen('t09')) { if (Math.hypot(mc.x - (-6), mc.z - (-1.5)) < 2.5) queueTutorial('t09'); }
+    if (!tutSeen('t07') && typeof FOREST !== 'undefined' && FOREST) { if (Math.hypot(mc.x - FOREST.x, mc.z - FOREST.z) < FOREST.R) queueTutorial('t07'); }
+  }
 
   // ---------- 睡眠・成長 ----------
   function doSleep() {
@@ -1549,9 +1718,9 @@
       if (d < 1.9) consider(d, plotLabel(p), function () { plotAction(p); });
     });
     var sd = Math.hypot(mc.x - (VILLAGE.x + 2.8), mc.z - (-2.4));
-    if (sd < 2.6) consider(sd, '🛒 お店', openShop);
+    if (sd < 2.6) consider(sd, '🛒 お店', shopWithTut);
     var bd = Math.hypot(mc.x - (VILLAGE.x - 3.0), mc.z - 3.6);
-    if (bd < 2.4) consider(bd, '📌 依頼ボード', openBoard);
+    if (bd < 2.4) consider(bd, '📌 依頼ボード', boardWithTut);
     var td = Math.hypot(mc.x - STELE_POS.x, mc.z - STELE_POS.z);
     if (td < 2.2) consider(td, '🗿 村の石碑', openStele);
     var hd = Math.hypot(mc.x - (-6), mc.z - (-1.5));
@@ -1592,10 +1761,11 @@
   actBtn.addEventListener('click', doAction);
 
   // ---------- 初期化 ----------
-  if (location.search.indexOf('fresh=1') >= 0) { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+  if (location.search.indexOf('fresh=1') >= 0) { try { localStorage.removeItem(SAVE_KEY); localStorage.removeItem(TUT_KEY); } catch (e) {} }
   load();
+  tutLegacyInit(); // チュートリアル便：旧セーブ経過措置（導入済みなら T-01／T-02 を既読扱いで初期化）
   // 導入（初回のみ。検証用パラメータ使用時は流さない）
-  if (!S.storySeen.intro && !/[?&](panel|demo|demo2|act|view|unlock|boss|bossfight|ending)=/.test(location.search)) {
+  if (!S.storySeen.intro && !/[?&](panel|demo|demo2|act|view|unlock|boss|bossfight|ending|tut)=/.test(location.search)) {
     setTimeout(function () { if (!panelOpen) startIntro(); }, 700);
   }
   PLOTS.forEach(refreshPlot);
@@ -1639,6 +1809,8 @@
     updateCombat(dt, t);
     updateGirl3D(dt, t);
 
+    tutProximityCheck();
+    tutTick();
     currentAction = panelOpen ? null : findInteract();
     if (currentAction) { actBtn.textContent = currentAction.label; actBtn.style.display = 'block'; }
     else actBtn.style.display = 'none';
@@ -1720,6 +1892,8 @@
     if (q.panel === 'board') setTimeout(openBoard, 500);
     if (q.panel === 'unlock') setTimeout(openUnlockMap, 500);
     if (q.panel === 'stele') setTimeout(openStele, 500);
+    if (q.panel === 'help') setTimeout(openHelp, 500);
+    if (q.tut) setTimeout(function () { var tid = q.tut === 't10' ? 't10host' : q.tut; if (TUT_DEFS[tid]) startTutorial(tid, { force: true }); }, 800); // 検収用：既読を無視して強制表示（表示後に既読化しない）
     if (q.unlock) q.unlock.split(',').forEach(function (id) { if (NODE_BY_ID[id]) S.unlocks[id] = true; }); // 検収用：任意ノードを解放済みにする
     if (q.boss) setTimeout(function () { bossDefeated(q.boss); }, 400); // 検収用：ボス決着の受け口を叩く
     if (q.ending) setTimeout(function () { if (typeof showEndingOverlay === 'function') showEndingOverlay(); }, 700); // 検収用：第1幕を経由せず THANK YOU 画面（第2幕）を直接表示する
@@ -3174,6 +3348,7 @@
     else { TFS.hostSeen = false; TFS.hostEverSeen = false; }
     syncSavePrefs(TFS.roomId, TFS.role);
     syncStartLoops(); syncDiag();
+    if (typeof queueTutorial === 'function') queueTutorial(TFS.isHost ? 't10host' : 't10guest'); // チュートリアル便：同期の役割（T-10、初回接続成功時のみ・端末ローカル）
     var mc = myChar(); camTarget.set(mc.x, 0, mc.z); girlSm.x = 0; girlSm.z = 0;
     updateHUD();
     closePanel();
@@ -3243,7 +3418,11 @@
     },
     disconnect: function () { if (TFS.state === 'connected') { syncDisconnect(); closePanel(); toast('接続を切りました'); } }
   };
+  var syncPanelShownOnce = false;
   function openSyncPanel() {
+    // チュートリアル便：接続パネルの初回表示の前に T-01 を出し、終了後にパネルを開き直す
+    if (typeof tutBeforePanel === 'function' && tutBeforePanel('t01', openSyncPanel)) return;
+    syncPanelShownOnce = true;
     var pref = syncPrefs();
     var roomVal = pref.roomId || 'yamaguchi_farm';
     var roleVal = pref.role === 'm' ? 'm' : 'f';
@@ -3260,7 +3439,8 @@
       '<button class="pbtn" onclick="TFSync.solo()">1人で遊ぶ</button>' +
       '</div>' +
       '<p class="dim">「ルームを作る」は、あなたの今のセーブの共有分を部屋の初期値にします。「合言葉で入る」は部屋が無いと入れません（自動作成しません）。参加すると、世界の状態（畑・お金・依頼・解放）は部屋のものに置き換わります。接続中は部屋が正で、この端末のセーブはキャッシュとして同じ内容を書き続けます。</p>' +
-      '<div id="syncPanelMsg"></div>';
+      '<div id="syncPanelMsg"></div>' +
+      '<hr><div class="prow"><span>📖 あそびかた（各所の説明の読み返し）</span><button class="pbtn" onclick="TF1.openHelp()">開く</button></div>';
     openPanel('🔗 2人同期・接続', h);
     if (TFS.lastError) { var m = document.getElementById('syncPanelMsg'); if (m) m.textContent = '前回のエラー: ' + TFS.lastError; }
   }
@@ -3268,11 +3448,12 @@
   if (syncBtnEl) syncBtnEl.addEventListener('click', openSyncPanel);
   syncDiag();
   // 起動直後に1回だけ接続パネルを提示する（導入パネル等が開いている間は閉じるまで待つ。検証用パラメータ時は出さない）
-  if (!/[?&](panel|demo|demo2|act|view|unlock|boss|bossfight|ending|pos|walk|pose|pin|boywalk)=/.test(location.search)) {
+  if (!/[?&](panel|demo|demo2|act|view|unlock|boss|bossfight|ending|pos|walk|pose|pin|boywalk|tut)=/.test(location.search)) {
     var syncPromptTries = 0;
     var syncPromptTimer = setInterval(function () {
       syncPromptTries++;
-      if (!panelOpen) { clearInterval(syncPromptTimer); openSyncPanel(); }
+      if (syncPanelShownOnce) clearInterval(syncPromptTimer);
+      else if (!panelOpen) { clearInterval(syncPromptTimer); openSyncPanel(); }
       else if (syncPromptTries > 40) clearInterval(syncPromptTimer); // 約40秒待っても開いていれば諦める（HUDボタンから開ける）
     }, 1000);
   }
