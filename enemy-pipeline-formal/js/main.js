@@ -2364,7 +2364,7 @@ async function settlePlay(cardId, beforeHp, breached, animSelfFx) {
     refreshHand();
     syncEndButton();
     setTutorialFocus("t1end");
-    const ok = await presentRadio([GRAY_T1_AFTER]);
+    const ok = await presentRadio([GRAY_T1_AFTER], { voices: ["tut_t1_after"] });
     if (!ok || session.phase !== "combat") return;
     refreshHand();
     syncEndButton();
@@ -3901,7 +3901,7 @@ async function setupTutTurn2() {
   syncEndButton();
   // PROMPT-25: T2の通信中は敵の耐久HPバーを光らせる
   setTutorialFocus("t2");
-  await presentRadio([GRAY_T2]);
+  await presentRadio([GRAY_T2], { voices: ["tut_t2"] });
   clearTutorialFocus();
   refreshHand();
   syncEndButton();
@@ -3916,13 +3916,13 @@ async function setupTutTurn3() {
   refreshHand();
   syncEndButton();
   setTutorialFocus("t3a");
-  let ok = await presentRadio([GRAY_T3_A]);
+  let ok = await presentRadio([GRAY_T3_A], { voices: ["tut_t3_a"] });
   if (!ok || session.phase !== "combat") { clearTutorialFocus(); return; }
   setTutorialFocus("t3cov");
-  ok = await presentRadio([GRAY_T3_B]);
+  ok = await presentRadio([GRAY_T3_B], { voices: ["tut_t3_b"] });
   if (!ok || session.phase !== "combat") { clearTutorialFocus(); return; }
   setTutorialFocus("t3b");
-  ok = await presentRadio([GRAY_T3_C]);
+  ok = await presentRadio([GRAY_T3_C], { voices: ["tut_t3_c"] });
   if (!ok || session.phase !== "combat") { clearTutorialFocus(); return; }
   clearTutorialFocus();
   refreshHand();
@@ -3939,14 +3939,14 @@ async function finishTutBattle() {
   renderCombat();
   refreshHand();
   syncEndButton();
-  await presentRadio([GRAY_TUT_END]);
+  await presentRadio([GRAY_TUT_END], { voices: ["tut_end"] });
 }
 
 // PROMPT-20 フェーズ1: BOOTカード挿入の誘導
 async function maybeBootTutorial() {
   setTutorialStep("boot");
   setTutorialFocus("boot");
-  await presentRadio([GRAY_TUT_BOOT], { phase: "await-boot" });
+  await presentRadio([GRAY_TUT_BOOT], { phase: "await-boot", voices: ["tut_boot"] });
   clearTutorialFocus();
   if (tutorialStep === "boot") setTutorialStep("off");
 }
@@ -3962,7 +3962,7 @@ async function maybeMapTutorial() {
   tutMapNodeId = target.id;
   setTutorialStep("map");
   renderRoute();
-  const ok = await presentRadio(GRAY_TUT_MAP, { phase: "map" });
+  const ok = await presentRadio(GRAY_TUT_MAP, { phase: "map", voices: ["tut_map_1", "tut_map_2"] });
   if (!ok || session.phase !== "map") { tutMapNodeId = null; return; }
   renderRoute();
 }
@@ -4062,6 +4062,7 @@ function refreshCommsFold() {
 
 function silenceRadio() {
   radioToken += 1;
+  stopRadioVoice();
   radioOpen = false;
   refreshCommsFold();
   radioReady = false;
@@ -4162,6 +4163,7 @@ function advanceRadio() {
 
 async function dismissRadio(token) {
   if (token !== radioToken) return;
+  stopRadioVoice();
   radioReady = false;
   radioAdvance = null;
   ui.radio.classList.remove("is-in");
@@ -4176,6 +4178,29 @@ async function dismissRadio(token) {
   refreshCommsFold();
   refreshHand();
   syncEndButton();
+}
+
+// 無線ボイス（VOICE-TUTORIAL-PREP-REPORT 対応表）: presentRadio の opts.voices に
+// lines と同順の voiceId 配列（無音ページは null）を渡すと、ページ表示に合わせて
+// 再生し、ページ送り・終了・強制クローズで止める。再生/停止の作法は深度クリア演出
+// （depth-clear.js の playVoice/stopVoice）に倣う。voices を渡さない既存の通信は
+// 無音のまま進み、挙動は変わらない。
+const RADIO_VOICE_BASE = "assets/voice/";
+let radioVoiceEl = null;
+function stopRadioVoice() {
+  if (radioVoiceEl) { try { radioVoiceEl.pause(); } catch (e) { /* noop */ } radioVoiceEl = null; }
+}
+function playRadioVoice(voiceId) {
+  stopRadioVoice();
+  if (!voiceId) return;
+  try {
+    if (typeof audio !== "undefined" && audio && audio.muted) return;
+    const a = new Audio(RADIO_VOICE_BASE + voiceId + ".mp3");
+    a.onerror = () => { /* 未収録なら無音のまま進む */ };
+    const p = a.play();
+    if (p && typeof p.catch === "function") p.catch(() => {});
+    radioVoiceEl = a;
+  } catch (e) { /* noop */ }
 }
 
 async function presentRadio(lines, opts = {}) {
@@ -4202,12 +4227,13 @@ async function presentRadio(lines, opts = {}) {
     radioReady = false;
     session.advance = false;
     ui.radioNext.hidden = true;
+    playRadioVoice(opts.voices ? opts.voices[i] : null);
     const typed = await typeText(ui.radioLine, lines[i], live, { gap: 22, caret: true, radio: true });
-    if (!typed || !live()) return false;
+    if (!typed || !live()) { stopRadioVoice(); return false; }
     radioReady = true;
     ui.radioNext.hidden = false;
     await armRadioAdvance(token, !!(opts.flash && i === lines.length - 1));
-    if (!live()) return false;
+    if (!live()) { stopRadioVoice(); return false; }
   }
   await dismissRadio(token);
   if (token !== radioToken) return false;
@@ -4434,7 +4460,7 @@ async function beginCombat(encounter) {
   }
   // PROMPT-28: 手札を配る前に、レリック（特殊装備）の説明ステップを挟む
   setTutorialFocus("relic");
-  const relicOk = await presentRadio(GRAY_TUT_RELIC);
+  const relicOk = await presentRadio(GRAY_TUT_RELIC, { voices: ["tut_relic_1", "tut_relic_2", "tut_relic_3"] });
   clearTutorialFocus();
   if (!relicOk || session.phase !== "combat") return;
   dealOpeningHand();
@@ -4446,14 +4472,14 @@ async function beginCombat(encounter) {
   renderCombat();
   refreshHand();
   syncEndButton();
-  const introOk = await presentRadio([GRAY_TUT_INTRO]);
+  const introOk = await presentRadio([GRAY_TUT_INTRO], { voices: ["tut_intro"] });
   if (!introOk || session.phase !== "combat") return;
   // PROMPT-25: 1行目（電力を見ろ）では電力行、2行目（防護を使え）では防護カード+スロットを光らせる
   setTutorialFocus("t1a");
-  const t1aOk = await presentRadio([GRAY_T1[0]]);
+  const t1aOk = await presentRadio([GRAY_T1[0]], { voices: ["tut_t1_1"] });
   if (!t1aOk || session.phase !== "combat") { clearTutorialFocus(); return; }
   setTutorialFocus("t1b");
-  const t1Ok = await presentRadio([GRAY_T1[1]]);
+  const t1Ok = await presentRadio([GRAY_T1[1]], { voices: ["tut_t1_2"] });
   clearTutorialFocus();
   if (!t1Ok || session.phase !== "combat") return;
   session.busy = false;
