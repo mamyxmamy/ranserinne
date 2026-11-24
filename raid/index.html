@@ -386,7 +386,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 55.2</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 56.0</span></div>
             </div>
 
             <div class="hidden">
@@ -430,6 +430,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     </div>
                     <p class="text-center text-[10px] text-gray-400 tracking-widest border-t border-[#3A322A] py-1">寿命限界: <span id="ui-max-age-limit" class="text-red-400 font-bold">70</span>歳（老衰開始: <span id="ui-random-death-start">60</span>歳）</p>
                 </div>
+                <div id="notice-frame" class="hidden w-full">
                 <div id="raid-season-banner" onclick="window.openRaidRank(event)" class="hidden w-full border border-purple-800/80 bg-[#160D1A]/85 rounded-sm px-3 py-2 text-center shadow-[0_0_14px_rgba(88,28,135,0.35)] cursor-pointer">
                     <p class="text-[12px] font-bold tracking-[0.2em] text-purple-200">共討戦 ― 寒霜夢幻 ― <span class="text-[#F5D97E]">開催中</span></p>
                     <p id="raid-season-banner-note" class="text-[10px] text-purple-300/80 tracking-widest mt-0.5">冥府の門に霜が降り、凍てつく霧が立ち込める。死の直後、転生の合間に番人へ挑め。</p>
@@ -439,6 +440,8 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     <p class="text-[10px] tracking-[0.3em] text-[#CEB27A]">総プレイ3000回突破記念</p>
                     <p class="text-[14px] font-bold tracking-[0.12em] text-[#F5D97E] mt-0.5">新米輪廻者キャンペーン開催中</p>
                     <p class="text-[10px] text-[#E8D9A8]/85 tracking-widest mt-1">輪廻30回未満の方は、期間中に始める人生の<br>寿命限界 +30 ／ 冥銭 +300 プレゼント</p>
+                </div>
+                <p id="notice-more" class="hidden text-center mt-1.5"><button type="button" onclick="window.__noticeSwap(event)" class="text-[10px] text-gray-400 tracking-widest underline decoration-dotted underline-offset-4 hover:text-gray-200">もう1件のお知らせ：<span id="notice-more-label"></span></button></p>
                 </div>
 
                 <button id="resume-btn" type="button" onclick="window.resumeGame(event)" class="hidden action-button-main w-full bg-[#1A331A] hover:bg-[#204020] text-green-200 border border-green-800 py-3 text-sm sm:text-base font-bold active:scale-95 transition-all shadow-[0_0_15px_rgba(0,100,0,0.4)] tracking-[0.2em] rounded-sm">
@@ -481,7 +484,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                         輪廻の回想
                     </button>
                 </div>
-                <p class="w-full text-center text-gray-500 text-[9px] tracking-widest pb-1">持込道具・名乗りの支度は「乱世に堕ちる」から　／　♪ BGMつき ― 音量にご注意ください</p>
+                <p class="w-full text-center text-gray-500 text-[9px] tracking-widest pb-1">道具・名乗りの支度は「乱世に堕ちる」から ／ ♪ BGMつき・音量注意</p>
             </div>
         </div>
 
@@ -779,6 +782,12 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <button type="button" onclick="window.closeHelp(event)" class="action-button-main text-gray-400 hover:text-white text-3xl px-2 leading-none">&times;</button>
             </div>
             <div class="flex-grow overflow-y-auto p-4 space-y-4 pb-8 text-gray-300 text-xs leading-relaxed">
+                <section>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 初めての指南</h3>
+                    <p class="mb-2">初めての人生で表示される案内（全五回）を、もう一度見ることができます。</p>
+                    <button type="button" onclick="window.replayGuide(event)" class="text-[11px] font-bold px-3 py-2 rounded-sm border bg-[#241C10] text-[#E8C268] border-yellow-800/60">初回ガイドをもう一度見る</button>
+                </section>
+
                 <section>
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 乱世の歩き方（基本）</h3>
                     <p>14歳で身分と領地を得て生まれ、寿命か非業の死までを生き抜くライフシミュレーション。「歳月を進める」で時間が流れ、決断の連続で人生が形作られます。死ぬと冥銭を得て、次の輪廻へ。</p>
@@ -1148,7 +1157,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             const kbtn = document.getElementById('kawara-btn');
             if (kbtn) kbtn.classList.toggle('kawara-slim', window.__kawaraClaimedToday());
             note.innerText = window.__kawaraClaimedToday()
-                ? '本日の特典は受取済み ― 瓦版は再読できます'
+                ? '受取済み'
                 : '本日の特典あり ― 読むと冥銭+5／本日始める人生は寿命限界+5';
         };
         window.openKawara = function(e) {
@@ -5675,7 +5684,7 @@ cv.toBlob((b) => resolve(b), 'image/png');
             if (e) { e.preventDefault(); e.stopPropagation(); }
             if (confirm("これまでの輪廻の記録と獲得した家宝蔵をすべて完全に消去します。\nよろしいですか？")) {
                 localStorage.removeItem('sengoku_rinne_count'); localStorage.removeItem('sengoku_heirloom'); localStorage.removeItem('sengoku_equipped_heirlooms'); localStorage.removeItem('sengoku_unlocked_heirlooms'); localStorage.removeItem('sengoku_unlocked_deaths'); localStorage.removeItem('sengoku_unlocked_titles'); localStorage.removeItem('sengoku_unlocked_kiwami'); localStorage.removeItem('sengoku_past_lives'); localStorage.removeItem('sengoku_current_run'); localStorage.removeItem('sengoku_meisen'); localStorage.removeItem('sengoku_inventory'); localStorage.removeItem('sengoku_active_consumable');
-                localStorage.removeItem('sengoku_great_death_count'); localStorage.removeItem('sengoku_heirloom_history'); localStorage.removeItem('sengoku_heirloom_materials'); localStorage.removeItem('sengoku_synth_tutorial_seen');
+                localStorage.removeItem('sengoku_great_death_count'); localStorage.removeItem('sengoku_heirloom_history'); localStorage.removeItem('sengoku_heirloom_materials'); localStorage.removeItem('sengoku_synth_tutorial_seen'); localStorage.removeItem('sengoku_guide_seen');
                 
                 window.currentReincarnationCount = 0; window.greatDeathCount = 0; window.unlockedHeirlooms = []; window.heirloomHistory = []; window.activeHeirlooms = []; window.unlockedDeaths = []; window.unlockedTitles = []; window.unlockedKiwami = []; window.heirloomMaterials = {}; window.meisen = 0; window.inventory = {}; window.activeConsumable = null;
                 window.updateStartScreenUI(); alert("すべての記録を初期化しました。");
@@ -6961,6 +6970,16 @@ if (target) target.classList.remove('hidden');
   </div>
 </div>
 
+<div id="guide-screen" class="hidden fixed inset-0 z-[190] bg-black/85 flex items-center justify-center p-4">
+  <div class="bg-[#14110F] border border-yellow-800/60 rounded-sm max-w-sm w-full p-5 shadow-2xl">
+    <p id="guide-kicker" class="text-[10px] text-gray-500 tracking-[0.3em] mb-1 text-center"></p>
+    <h3 id="guide-title" class="text-gold text-lg font-black tracking-[0.3em] mb-3 text-center"></h3>
+    <p id="guide-body" class="text-[12px] text-gray-200 leading-relaxed"></p>
+    <button type="button" onclick="window.closeGuide(event)" class="action-button-main mt-5 w-full bg-yellow-800 hover:bg-yellow-700 text-white border border-yellow-500 py-2.5 text-xs font-bold tracking-widest rounded-sm">わかった</button>
+    <div class="text-center mt-3"><button type="button" onclick="window.finishGuide(event)" class="text-[11px] text-gray-400 underline underline-offset-2">ガイドを終わる</button></div>
+  </div>
+</div>
+
 <div id="kawara-screen" class="hidden fixed inset-0 z-[190] bg-black/85 flex items-center justify-center p-4">
   <div class="w-full max-w-sm border border-[#6B5A2E] bg-[#12100C] rounded-sm shadow-2xl p-5 text-center">
     <p class="text-[10px] text-gray-500 tracking-[0.3em] mb-1">― 冥府瓦版 ―</p>
@@ -7200,6 +7219,132 @@ window.closeCampaignBonus = function() { const modal = document.getElementById('
         window.updateStartScreenUI = function() { const r = orig.apply(this, arguments); try { window.__campaignRefresh(); } catch (e) {} return r; };
     }
     document.addEventListener('DOMContentLoaded', function() { setTimeout(function() { try { window.__campaignRefresh(); } catch (e) {} }, 900); });
+})();
+</script>
+<script>
+// v56: タイトル画面のお知らせ枠（整理計画 案A 集約型／T-2・T-3）
+// 条件バナー（共討戦／キャンペーン）を1枠に統合し、優先順位 共討戦 ＞ キャンペーン で1件だけ表示する。
+// 落とした側は枠下端の小リンク（notice-more）から枠内を差し替えて表示できる。
+// 開催判定・特典付与などの既存ロジックには触らず、表示の振り分けだけを行う。両バナーのIDは温存。
+window.__noticeShown = null; // 'raid' | 'campaign' | null（null は優先順位どおり）
+window.__noticeArrange = function() {
+    var frame = document.getElementById('notice-frame');
+    var raidEl = document.getElementById('raid-season-banner');
+    var campEl = document.getElementById('campaign-banner');
+    var more = document.getElementById('notice-more');
+    var label = document.getElementById('notice-more-label');
+    if (!frame || !raidEl || !campEl || !more) return;
+    var raidOn = false, campOn = false;
+    try { raidOn = !!window.__raidSeasonActive(); } catch (e) {}
+    try { campOn = !!window.__campaignActive(); } catch (e) {}
+    if (!raidOn && !campOn) {
+        frame.classList.add('hidden');
+        raidEl.classList.add('hidden');
+        campEl.classList.add('hidden');
+        more.classList.add('hidden');
+        return;
+    }
+    frame.classList.remove('hidden');
+    var shown;
+    if (raidOn && campOn) {
+        shown = (window.__noticeShown === 'campaign') ? 'campaign' : 'raid';
+    } else {
+        shown = raidOn ? 'raid' : 'campaign';
+    }
+    raidEl.classList.toggle('hidden', shown !== 'raid');
+    campEl.classList.toggle('hidden', shown !== 'campaign');
+    if (raidOn && campOn) {
+        more.classList.remove('hidden');
+        if (label) label.innerText = (shown === 'raid') ? '新米輪廻者キャンペーン開催中' : '共討戦 ― 寒霜夢幻 ― 開催中';
+    } else {
+        more.classList.add('hidden');
+    }
+};
+window.__noticeSwap = function(e) {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    var raidEl = document.getElementById('raid-season-banner');
+    window.__noticeShown = (raidEl && !raidEl.classList.contains('hidden')) ? 'campaign' : 'raid';
+    window.__noticeArrange();
+};
+(function() {
+    var raidOrig = window.__raidRefreshBanner;
+    if (typeof raidOrig === 'function') {
+        window.__raidRefreshBanner = function() { var r = raidOrig.apply(this, arguments); try { window.__noticeArrange(); } catch (e) {} return r; };
+    }
+    var campOrig = window.__campaignRefresh;
+    if (typeof campOrig === 'function') {
+        window.__campaignRefresh = function() { var r = campOrig.apply(this, arguments); try { window.__noticeArrange(); } catch (e) {} return r; };
+    }
+    document.addEventListener('DOMContentLoaded', function() { setTimeout(function() { try { window.__noticeArrange(); } catch (e) {} }, 1200); });
+})();
+</script>
+<script>
+// v56: 初回ガイド（計画書 title-screen-reorg-plan-2026-11-24.md §4 選択肢(a)「軽い初回ガイド」）
+// 文案の正本：files/first-guide-texts-final-2026-11-24.md（確定稿どおりに実装。文面の改変禁止）
+// 発火は G1 タイトル初回／G2 出立の支度・初回／G3 最初の選択／G4 初めての結果画面／G5 タイトル帰還・初回 の5点。
+// 対象は真の初回だけ（輪廻回数0。ただし死亡で回数が1に進んだ直後の G4/G5 は、既読が残る初回チェーンとして扱う）。
+window.__GUIDE_CARDS = {
+    g1: { kicker: '初めての指南 ― 其の一', title: 'ようこそ、乱世へ', body: 'この絵巻は、14歳で生まれ、寿命の尽きるまでを生き抜く物語です。歳月はひとりでに流れ、決断の時だけ、あなたの選択を待ちます。死は終わりではありません。生まれ変わるたびに力を蓄え、少しずつ強くなっていきます。まずは「乱世に堕ちる」から、最初の人生を始めてください。' },
+    g2: { kicker: '初めての指南 ― 其の二', title: '出立の支度について', body: 'ここは、生まれる前の支度の場です。身分も、生まれる家も、運命まかせで選ぶことはできません。整えられるのは名乗りと、前の人生から受け継ぐ家宝や道具だけです。初めての人生では、何も持っていなくて当然です。そのまま「この支度で生まれる」を押してください。' },
+    g3: { kicker: '初めての指南 ― 其の三', title: '決断のしかた', body: '決断の時が来ました。選んだ行いによって、能力も、この先の運命も変わっていきます。結果は選んでみるまで分かりません。最初のうちは、直感で選ぶのがおすすめです。今は元服の儀です。伸ばしたい才を一つ選んでください。なお「素寒貧」は全てを捨てる縛りの道です。慣れるまで、選ばない方が無難です。' },
+    g4: { kicker: '初めての指南 ― 其の四', title: '死は、終わりではない', body: '一つの人生が終わりました。お疲れさまでした。けれど、得た冥銭と、二つ名や年表の記録は消えません。次の人生を支える力になります。「次なる輪廻へ」を押せば、新しい人生が14歳から始まります。' },
+    g5: { kicker: '初めての指南 ― 其の五', title: '次の人生へ', body: 'タイトルに戻ってきました。貯まった冥銭は「冥府の商人」で持込道具と換えられます。家宝は「家宝蔵」に納められ、あなたの生き様は「天下の番付」にも刻まれています。準備ができたら、もう一度「乱世に堕ちる」を押してください。二度目の人生は、きっと少し違って見えるはずです。' }
+};
+window.__guideCurrent = null;
+window.__guideReplayQueue = null;
+window.__guideGate = false;
+window.__guideKawaraDeferred = false;
+window.__guideCampaignDeferred = false;
+window.__guideSeenList = function() { try { var v = JSON.parse(localStorage.getItem('sengoku_guide_seen') || '[]'); return Object.prototype.toString.call(v) === '[object Array]' ? v : []; } catch (e) { return []; } };
+window.__guideMarkSeen = function(id) { try { var s = window.__guideSeenList(); if (s.indexOf(id) < 0) { s.push(id); localStorage.setItem('sengoku_guide_seen', JSON.stringify(s)); } } catch (e) {} };
+window.__guideRinneCount = function() { if (typeof window.currentReincarnationCount === 'number') return window.currentReincarnationCount; try { return parseInt(localStorage.getItem('sengoku_rinne_count') || '0', 10) || 0; } catch (e) { return 0; } };
+window.__guideFirstChain = function() { var c = window.__guideRinneCount(); if (c === 0) return true; if (c === 1 && window.__guideSeenList().length > 0) return true; return false; };
+window.__guideEligible = function(id) { return window.__guideFirstChain() && window.__guideSeenList().indexOf(id) < 0; };
+window.__guideShow = function(id) { var card = window.__GUIDE_CARDS[id]; if (!card) return; window.__guideCurrent = id; var k = document.getElementById('guide-kicker'); if (k) k.innerText = card.kicker; var t = document.getElementById('guide-title'); if (t) t.innerText = card.title; var b = document.getElementById('guide-body'); if (b) b.innerText = card.body; var m = document.getElementById('guide-screen'); if (m) m.classList.remove('hidden'); };
+window.__guideHide = function() { var m = document.getElementById('guide-screen'); if (m) m.classList.add('hidden'); window.__guideCurrent = null; };
+window.__guideReleaseGate = function() { if (!window.__guideGate) return; window.__guideGate = false; if (window.__guideCampaignDeferred) { window.__guideCampaignDeferred = false; try { window.__campaignRefresh(); } catch (e) {} } if (window.__guideKawaraDeferred) { window.__guideKawaraDeferred = false; setTimeout(function() { try { if (window.__kawaraClaimedToday && !window.__kawaraClaimedToday()) window.openKawara(); } catch (e) {} }, 400); } };
+window.closeGuide = function(e) { if (e) { e.preventDefault(); e.stopPropagation(); } if (window.__guideReplayQueue) { var next = window.__guideReplayQueue.shift(); if (next) { window.__guideShow(next); return; } window.__guideReplayQueue = null; window.__guideHide(); return; } var id = window.__guideCurrent; if (id) window.__guideMarkSeen(id); window.__guideHide(); if (id === 'g1') window.__guideReleaseGate(); };
+window.finishGuide = function(e) { if (e) { e.preventDefault(); e.stopPropagation(); } if (window.__guideReplayQueue) { window.__guideReplayQueue = null; window.__guideHide(); return; } var wasG1 = (window.__guideCurrent === 'g1'); try { localStorage.setItem('sengoku_guide_seen', JSON.stringify(['g1', 'g2', 'g3', 'g4', 'g5'])); } catch (err) {} window.__guideHide(); if (wasG1) window.__guideReleaseGate(); };
+window.replayGuide = function(e) { if (e) { e.preventDefault(); e.stopPropagation(); } if (typeof window.closeHelp === 'function') window.closeHelp(); window.__guideReplayQueue = ['g2', 'g3', 'g4', 'g5']; window.__guideShow('g1'); };
+window.__guideTitleCheck = function(delay) { setTimeout(function() { try { var start = document.getElementById('start-screen'); if (!start || start.classList.contains('hidden')) return; var modal = document.getElementById('guide-screen'); if (modal && !modal.classList.contains('hidden')) return; if (window.__guideSeenList().indexOf('g4') >= 0 && window.__guideEligible('g5')) { window.__guideShow('g5'); return; } if (window.__guideEligible('g1') && !document.getElementById('splash-screen')) window.__guideShow('g1'); } catch (e) {} }, delay || 0); };
+(function() {
+    // G1 最優先ゲート：初回ロードで G1 が出る間は、瓦版の自動表示とキャンペーン受領モーダルを G1 が閉じるまで遅らせる
+    if (window.__guideEligible('g1')) window.__guideGate = true;
+    var kawaraOrig = window.openKawara;
+    if (typeof kawaraOrig === 'function') { window.openKawara = function() { if (window.__guideGate) { window.__guideKawaraDeferred = true; return; } return kawaraOrig.apply(this, arguments); }; }
+    var campOrig = window.__campaignRefresh;
+    if (typeof campOrig === 'function') { window.__campaignRefresh = function() { if (window.__guideGate) { window.__guideCampaignDeferred = true; return; } return campOrig.apply(this, arguments); }; }
+    // G2：出立の支度の表示にフック
+    var prepOrig = window.__openPrep;
+    if (typeof prepOrig === 'function') { window.__openPrep = function() { var r = prepOrig.apply(this, arguments); try { if (window.__guideEligible('g2') && !window.__guideCurrent) window.__guideShow('g2'); } catch (e) {} return r; }; }
+    // G5：タイトル帰還にフック（「次なる輪廻へ」／タイトル表示更新の両経路）
+    var resetOrig = window.resetGame;
+    if (typeof resetOrig === 'function') { window.resetGame = function() { var r = resetOrig.apply(this, arguments); try { window.__guideTitleCheck(500); } catch (e) {} return r; }; }
+    var updOrig = window.updateStartScreenUI;
+    if (typeof updOrig === 'function') { window.updateStartScreenUI = function() { var r = updOrig.apply(this, arguments); try { window.__guideTitleCheck(500); } catch (e) {} return r; }; }
+    // G1：スプラッシュが消えたらタイトル上で表示する
+    if (window.__guideEligible('g1')) {
+        var tries = 0;
+        var iv = setInterval(function() {
+            tries++;
+            var splash = document.getElementById('splash-screen');
+            var start = document.getElementById('start-screen');
+            if (!splash && start && !start.classList.contains('hidden')) { clearInterval(iv); if (window.__guideEligible('g1')) window.__guideShow('g1'); else window.__guideReleaseGate(); }
+            else if (tries > 40) { clearInterval(iv); window.__guideReleaseGate(); }
+        }, 250);
+    }
+    // G3：最初の選択肢提示にフック（choices-container の表示を監視）
+    var cc = document.getElementById('choices-container');
+    if (cc && window.MutationObserver) {
+        new MutationObserver(function() { try { if (cc.classList.contains('hidden')) return; if (window.__guideCurrent) return; if (window.__guideEligible('g3')) window.__guideShow('g3'); } catch (e) {} }).observe(cc, { attributes: true, attributeFilter: ['class'] });
+    }
+    // G4：初めての結果画面にフック（結果を先に見せるため遅延表示。通常の死=1.8秒／大往生=演出が明ける3.3秒）
+    if (window.MutationObserver) {
+        var g4Pending = false;
+        var watchEnding = function(el, delay) { if (!el) return; new MutationObserver(function() { try { if (el.classList.contains('hidden')) return; if (g4Pending) return; if (!window.__guideEligible('g4')) return; g4Pending = true; setTimeout(function() { g4Pending = false; try { if (el.classList.contains('hidden')) return; if (window.__guideCurrent) return; if (window.__guideEligible('g4')) window.__guideShow('g4'); } catch (e) {} }, delay); } catch (e) {} }).observe(el, { attributes: true, attributeFilter: ['class'] }); };
+        watchEnding(document.getElementById('gameover-screen'), 1800);
+        watchEnding(document.getElementById('premium-screen'), 3300);
+    }
 })();
 </script>
 </body>
