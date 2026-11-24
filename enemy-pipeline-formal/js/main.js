@@ -261,9 +261,9 @@ const GRAY_WIN = "見事だ。……昔のようには動かんと言ったが�
 const GRAY_BOSS = "気をつけろパンドラ。パイプラインの最深部……防壁AIの直属防衛ユニットだ。これまでの雑魚とは火力が違うぞ。";
 // 旧 GRAY_CLEAR（固定文）は深度クリア演出の実装Aで廃止。各深度の Gray ページ
 // （js/ending-data.js の E-01〜E-15／後日談）へ役割を移管した（DESIGN-DEPTH-CLEAR-FINAL §2.2 前提作業①）。
-// JOB 3M-2 (C-6): マップクリア遷移時の Gray 通信。仮文言・3M-Tで差し替え（正式文言は文章フロー 3M-T で確定する）。
-const GRAY_MAP_CLEAR_L1 = "……抜けたか。次の層へ降りろ、パンドラ。通信は維持する。"; // 仮文言・3M-Tで差し替え
-const GRAY_MAP_CLEAR_L2 = "……第二層も突破したな。さらに深く降りろ、パンドラ。油断するな。"; // 仮文言・3M-Tで差し替え
+// JOB 3M-2 (C-6): マップクリア遷移時の Gray 通信（正式文言・3M-T 確定）。
+const GRAY_MAP_CLEAR_L1 = "……抜けたか、パンドラ。番人の信号は消えた。波形は安定している。そのまま下の層へ降りろ。死線はまだ生きている。";
+const GRAY_MAP_CLEAR_L2 = "……第2層も抜けたか。次が最深部だ、パンドラ。奴の中核はそこにある。……死ぬなよ。";
 // JOB 3M-2 (C-6): 3マップ本適用のマップ幅（ROUTE-3MAP-IMPL-PLAN §8 論点6 確定値）
 const MAP_WIDTHS_3M = Object.freeze([3, 4, 4, 3, 2, 1]);
 // JOB 3M-2 (C-5/C-6): 第1・2層ボス撃破後の SALVAGE 報酬完了後にマップ遷移すべきことを示すフラグ。
@@ -738,9 +738,8 @@ function buildShareUrl() {
   const hp = run ? Math.max(0, Math.floor(run.hp || 0)) : 0;
   const hpMax = run ? (run.hpMax || 0) : 0;
   const kills = run && run.kills ? run.kills : 0;
-  // JOB 3M-3: 旧文の「第一防壁を突破した」は第1層だけの意味で全層突破（ランクリア）に合わないため、
-  // 無難な仮文言へ置き換えた。正式文言は文章フロー 3M-T で差し替える（仮文言・3M-T差し替え対象）。
-  const text = `『Enemy Pipeline: Analog Espionage』正式版をクリア！ 作戦を完了した。残りHP ${hp}/${hpMax}・撃破${kills}体。\n#EnemyPipeline #個人ゲーム開発`; // 仮文言・3M-Tで差し替え
+  // JOB 3M-3／3M-T: 全層突破（ランクリア）時の共有文（正式文言）。
+  const text = `『Enemy Pipeline: Analog Espionage』全層突破——作戦完了。残りHP ${hp}/${hpMax}・撃破${kills}体。死線の向こうで、記録を取り戻した。\n#EnemyPipeline #個人開発ゲーム`;
   return `https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(GAME_PAGE_URL)}`;
 }
 
@@ -5473,7 +5472,7 @@ async function advanceToNextMap() {
   bossBgm = false;
   const clearedLayer = run.mapIndex || 1;
   const fromPhase = session.phase === "reward" ? "reward" : "combat";
-  // Gray 通信（仮文言・3M-Tで差し替え）: GRAY_MAP_CLEAR_L1 / L2 は仮置き文言
+  // Gray 通信: 層クリア時の GRAY_MAP_CLEAR_L1 / L2
   const line = clearedLayer === 1 ? GRAY_MAP_CLEAR_L1 : GRAY_MAP_CLEAR_L2;
   await presentRadio([line], { phase: fromPhase });
   if (!run) { session.busy = false; return; }
