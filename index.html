@@ -386,7 +386,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 56.0</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 57.0</span></div>
             </div>
 
             <div class="hidden">
@@ -456,7 +456,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 </button>
 
                 <div class="grid grid-cols-3 gap-2 w-full">
-                    <button type="button" onclick="window.openHeirloomStorage(event)" class="action-button-main bg-black/55 text-[#E8C268] border-yellow-800/60 hover:text-white border py-2.5 text-[11px] font-bold tracking-widest rounded-sm transition-all shadow-md">
+                    <button type="button" onclick="window.openHeirloomStorage(event, 'equip')" class="action-button-main bg-black/55 text-[#E8C268] border-yellow-800/60 hover:text-white border py-2.5 text-[11px] font-bold tracking-widest rounded-sm transition-all shadow-md">
                         家宝蔵
                     </button>
                     <button type="button" onclick="window.openSynthFromTitle(event)" class="action-button-main bg-black/55 text-orange-300 border-orange-900/60 hover:text-white border py-2.5 text-[11px] font-bold tracking-widest rounded-sm transition-all shadow-md">
@@ -711,10 +711,17 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 <span><span class="text-xs text-gray-300">装備可能な枠数:</span><span class="text-sm font-bold text-gold" id="modal-slots-count">0/1</span></span>
                 <span><span class="text-xs text-gray-300">所持冥銭:</span><span class="text-sm font-bold text-purple-300" id="modal-meisen-count">0</span></span>
             </div>
-            <div class="bg-[#14110F] px-3 py-2 border-b border-[#3A322A] flex items-center gap-1.5 flex-wrap">
+            <div class="flex border-b border-[#3A322A] bg-[#1A1613] shrink-0">
+                <button type="button" onclick="window.switchHeirloomTab('equip', event)" id="hltab-equip" class="flex-1 py-2.5 text-xs font-bold text-gold border-b-2 border-gold transition-colors">装備・強化</button>
+                <button type="button" onclick="window.switchHeirloomTab('synth', event)" id="hltab-synth" class="flex-1 py-2.5 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">合成・素材</button>
+                <button type="button" onclick="window.switchHeirloomTab('dex', event)" id="hltab-dex" class="flex-1 py-2.5 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors">お宝図鑑</button>
+            </div>
+            <div id="heirloom-sortbar" class="bg-[#14110F] px-3 py-2 border-b border-[#3A322A] flex items-center gap-1.5 flex-wrap">
                 <span class="text-[10px] text-gray-400">並び替え:</span><button type="button" data-hlsort="" onclick="window.setHeirloomSort(null, event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">標準</button><button type="button" data-hlsort="valor" onclick="window.setHeirloomSort('valor', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">武功</button><button type="button" data-hlsort="karma" onclick="window.setHeirloomSort('karma', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">悪逆</button><button type="button" data-hlsort="strategy" onclick="window.setHeirloomSort('strategy', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">知略</button><button type="button" data-hlsort="virtue" onclick="window.setHeirloomSort('virtue', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">人徳</button><button type="button" data-hlsort="luck" onclick="window.setHeirloomSort('luck', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">運</button><button type="button" data-hlsort="health" onclick="window.setHeirloomSort('health', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">体力</button><button type="button" data-hlsort="money" onclick="window.setHeirloomSort('money', event)" class="hl-sort-chip text-[10px] px-2 py-1 rounded border border-[#3A322A] text-gray-300">銭</button>
             </div>
             <div id="heirloom-list" class="flex-grow overflow-y-auto p-4 space-y-3 pb-8"></div>
+            <div id="heirloom-synth-list" class="hidden flex-grow overflow-y-auto p-4 space-y-3 pb-8"></div>
+            <div id="heirloom-dex-list" class="hidden flex-grow overflow-y-auto p-4 pb-8 space-y-3"></div>
         </div>
 
         <div id="encyclopedia-screen" class="hidden absolute inset-0 z-50 bg-[#0C0A09] flex flex-col pointer-events-auto">
@@ -1421,6 +1428,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             let html = '<div class="mb-2"><span class="text-gold font-black tracking-[0.3em] text-xs">― 家宝の合成 ―</span><span class="text-[9px] text-gray-500 ml-2">全' + SYNTH_HEIRLOOMS_DB.length + '種</span></div>';
             html += '<div class="text-[10px] text-gray-400 mb-3">被った家宝は素材として納められます。素材と冥銭が揃えば、通常では決して手に入らない合成家宝が生まれます。</div>';
             html += '<button type=\"button\" onclick=\"window.openSynthTutorial(event)\" class=\"mb-3 text-[10px] font-bold px-2.5 py-1.5 rounded-sm border bg-[#241C10] text-[#E8C268] border-yellow-800/60\">？ 合成のしかた</button>';
+            html += '<button type=\"button\" onclick=\"window.openHeirloomDexTab(event)\" class=\"mb-3 ml-2 text-[10px] font-bold px-2.5 py-1.5 rounded-sm border bg-[#181513] text-gray-300 border-[#3A322A]\">図鑑で家宝を見る</button>';
             SYNTH_HEIRLOOMS_DB.forEach(def => {
                 const owned = (window.unlockedHeirlooms || []).some(h => h.id === def.id);
                 const ownedInst = (window.unlockedHeirlooms || []).find(h => h.id === def.id);
@@ -3674,10 +3682,79 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
             saveMetaProgress();
         };
 
-        window.openHeirloomStorage = function(e) {
+        // v57: 家宝蔵のタブ化（案A ハブ集約型）。タブ切替は表示の出し分けのみで、各機能のロジックには手を入れない
+        window.__heirloomTab = 'equip';
+        window.switchHeirloomTab = function(tab, e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            if (tab !== 'equip' && tab !== 'synth' && tab !== 'dex') tab = 'equip';
+            const changed = window.__heirloomTab !== tab;
+            window.__heirloomTab = tab;
+            const onCls = 'flex-1 py-2.5 text-xs font-bold text-gold border-b-2 border-gold transition-colors';
+            const offCls = 'flex-1 py-2.5 text-xs font-bold text-gray-500 border-b-2 border-transparent transition-colors';
+            const bE = document.getElementById('hltab-equip'); if (bE) bE.className = tab === 'equip' ? onCls : offCls;
+            const bS = document.getElementById('hltab-synth'); if (bS) bS.className = tab === 'synth' ? onCls : offCls;
+            const bD = document.getElementById('hltab-dex'); if (bD) bD.className = tab === 'dex' ? onCls : offCls;
+            const listEl = document.getElementById('heirloom-list');
+            const synthEl = document.getElementById('heirloom-synth-list');
+            const dexEl = document.getElementById('heirloom-dex-list');
+            const sortEl = document.getElementById('heirloom-sortbar');
+            if (listEl) listEl.classList.toggle('hidden', tab !== 'equip');
+            if (synthEl) synthEl.classList.toggle('hidden', tab !== 'synth');
+            if (dexEl) dexEl.classList.toggle('hidden', tab !== 'dex');
+            if (sortEl) sortEl.classList.toggle('hidden', tab !== 'equip');
+            if (tab === 'dex' && dexEl) dexEl.innerHTML = window.__heirloomDexHtml();
+            if (changed) { const p = tab === 'equip' ? listEl : (tab === 'synth' ? synthEl : dexEl); if (p) p.scrollTop = 0; }
+        };
+        window.openHeirloomDexTab = function(e) { window.switchHeirloomTab('dex', e); };
+        // v57: 図鑑のお宝表示から家宝蔵へ（図鑑内なら図鑑を閉じて蔵を開き、蔵内なら装備タブへ切り替える。H-3 相互リンク）
+        window.__hlDexGoStorage = function(e) {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            const enc = document.getElementById('encyclopedia-screen');
+            if (enc && !enc.classList.contains('hidden')) { window.closeEncyclopedia(); window.openHeirloomStorage(null, 'equip'); }
+            else window.switchHeirloomTab('equip');
+        };
+        // v57: お宝図鑑の表示生成（図鑑のお宝タブと家宝蔵のお宝図鑑タブで共有。未取得は名前を伏せる図鑑の作法をそのまま使う）
+        window.__heirloomDexHtml = function() {
+                let html = '<div class="text-[10px] text-gray-400 mb-2">※未取得の家宝は名前が伏せて表示されます。過去に取得した家宝には「取得済」バッジが付きます</div>';
+                html += '<div class="mb-3"><button type="button" onclick="window.__hlDexGoStorage(event)" class="text-[10px] font-bold px-2.5 py-1.5 rounded-sm border bg-[#241C10] text-[#E8C268] border-yellow-800/60">家宝蔵で装備・合成する</button></div>';
+                HEIRLOOMS_DB.forEach(hl => {
+                    const isUnlocked = window.unlockedHeirlooms.some(u => u.id === hl.id);
+                    const isObtainedBefore = !isUnlocked && (window.heirloomHistory || []).includes(hl.id); // v22: 過去に取得したが現在は未所持
+                    if(isUnlocked) {
+                        const actual = window.unlockedHeirlooms.find(u => u.id === hl.id) || hl;
+                        const dexEffect = (actual.desc || hl.effect); // v53.1: 所持実体の desc（強化後の実効値で再生成済み）を優先する
+                        html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-start gap-3 shadow-md"><div class="w-10 h-10 bg-gold/20 border border-gold flex items-center justify-center rounded text-lg flex-shrink-0">✨</div><div><div class="font-bold text-gold text-sm">${window.__hlDisplayName(actual)}</div><div class="text-xs text-gray-300 mt-0.5">${dexEffect}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${hl.flavor}</div><div class="text-[10px] text-gray-500 mt-1">【取得条件】 ${hl.hint}</div></div></div>`;
+                    } else if(isObtainedBefore) {
+                        const dexEffectB = hl.id === 'hl_club' ? '初期運 +50' : hl.effect;
+                        html += `<div class="bg-[#15120E] border border-[#4A3F2E] p-3 rounded-sm flex items-start gap-3"><div class="w-10 h-10 bg-[#2A2118] border border-[#8A6D3B] flex items-center justify-center rounded text-[#C9B48A] text-sm font-bold flex-shrink-0">宝</div><div><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[#C9B48A] text-sm">${hl.name}</span><span class="text-[9px] font-bold text-black bg-[#C9B48A] px-1.5 py-0.5 rounded-sm tracking-widest">取得済</span><span class="text-[9px] text-[#8A6D3B]">輪廻の流れの中で失われた</span></div><div class="text-xs text-gray-300 mt-0.5">${dexEffectB}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${hl.flavor}</div><div class="text-[10px] text-gray-400 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
+                    } else {
+                        html += `<div class="bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60"><div class="w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-lg flex-shrink-0">？</div><div><div class="font-bold text-gray-500 text-sm">？？？</div><div class="text-[10px] text-gray-600 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
+                    }
+                });
+                // v54: 合成家宝の枠（別枠。未入手は名前を伏せ、入手済みは名前・効果・来歴を出す。極・二つ名と同じ作法）
+                html += '<div class="mt-5 mb-2"><span class="text-gold font-black tracking-[0.3em] text-xs">― 合成家宝 ―</span><span class="text-[9px] text-gray-500 ml-2">全' + SYNTH_HEIRLOOMS_DB.length + '種</span></div>';
+                html += '<div class="text-[10px] text-gray-400 mb-2">※被った家宝を素材に、家宝蔵の合成でのみ生まれる家宝が記録されます</div>';
+                SYNTH_HEIRLOOMS_DB.forEach(sd => {
+                    const isOwnedS = window.unlockedHeirlooms.some(u => u.id === sd.id);
+                    const isBeforeS = !isOwnedS && (window.heirloomHistory || []).includes(sd.id);
+                    if (isOwnedS) {
+                        const actualS = window.unlockedHeirlooms.find(u => u.id === sd.id) || sd;
+                        html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-start gap-3 shadow-md"><div class="w-10 h-10 bg-gold/20 border border-gold flex items-center justify-center rounded text-lg flex-shrink-0">✨</div><div><div class="font-bold text-gold text-sm">${sd.name}</div><div class="text-xs text-gray-300 mt-0.5">${actualS.desc || synthEffectText(sd)}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${sd.flavor}</div><div class="text-[10px] text-gray-500 mt-1">【合成】 家宝蔵の合成でのみ生まれる</div></div></div>`;
+                    } else if (isBeforeS) {
+                        html += `<div class="bg-[#15120E] border border-[#4A3F2E] p-3 rounded-sm flex items-start gap-3"><div class="w-10 h-10 bg-[#2A2118] border border-[#8A6D3B] flex items-center justify-center rounded text-[#C9B48A] text-sm font-bold flex-shrink-0">宝</div><div><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[#C9B48A] text-sm">${sd.name}</span><span class="text-[9px] font-bold text-black bg-[#C9B48A] px-1.5 py-0.5 rounded-sm tracking-widest">取得済</span><span class="text-[9px] text-[#8A6D3B]">輪廻の流れの中で失われた</span></div><div class="text-xs text-gray-300 mt-0.5">${synthEffectText(sd)}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${sd.flavor}</div><div class="text-[10px] text-gray-400 mt-0.5">【合成】 素材が再び揃えば作り直せる</div></div></div>`;
+                    } else {
+                        html += `<div class="bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60"><div class="w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-lg flex-shrink-0">？</div><div><div class="font-bold text-gray-500 text-sm">？？？</div><div class="text-[10px] text-gray-600 mt-0.5">【合成】 家宝蔵の合成でのみ生まれる</div></div></div>`;
+                    }
+                });
+                return html;
+        };
+
+        window.openHeirloomStorage = function(e, tab) {
             if(e){ e.preventDefault(); e.stopPropagation(); }
+            if (typeof tab === 'string') window.__heirloomTab = tab;
             const hScreen = document.getElementById('heirloom-screen');
             const hList = document.getElementById('heirloom-list');
+            const sList = document.getElementById('heirloom-synth-list');
             const maxSlots = window.getMaxHeirloomSlots();
             document.getElementById('modal-slots-count').innerText = `${window.activeHeirlooms.length}/${maxSlots}`;
             const meisenEl = document.getElementById('modal-meisen-count');
@@ -3688,7 +3765,8 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
 
             if (!window.unlockedHeirlooms || window.unlockedHeirlooms.length === 0) {
                 hList.innerHTML = '<div class="text-center text-gray-500 mt-10 text-xs">蔵にはまだ何もありません。<br>偉業を成し遂げ、家宝を獲得してください。</div>';
-                window.__renderSynthSection(hList);
+                if (sList) { sList.innerHTML = ''; window.__renderSynthSection(sList); }
+                window.switchHeirloomTab(window.__heirloomTab || 'equip');
                 return;
             }
 
@@ -3763,15 +3841,16 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
                 if (enhBtn) enhBtn.onclick = (ev) => { window.enhanceHeirloom(item.id, ev); };
                 hList.appendChild(card);
             });
-            // v54: 家宝の合成区画（レシピ一覧＋素材一覧）を蔵の下部に追加
-            window.__renderSynthSection(hList);
+            // v54: 家宝の合成区画（レシピ一覧＋素材一覧）。v57: 合成・素材タブのペインへ描画する
+            if (sList) { sList.innerHTML = ''; window.__renderSynthSection(sList); }
+            window.switchHeirloomTab(window.__heirloomTab || 'equip');
         };
 
         window.closeHeirloomStorage = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } document.getElementById('heirloom-screen').classList.add('hidden'); if (window.__renderPrep) window.__renderPrep(); };
-        // v54.1: タイトル画面の「家宝合成」ボタン。家宝蔵を開いて合成区画へスクロールし、初回だけチュートリアルを表示する
+        // v54.1: タイトル画面の「家宝合成」ボタン。v57: 家宝蔵の合成・素材タブを直接開く動作に置き換え（初回だけチュートリアルを表示）
         window.openSynthTutorial = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } const m = document.getElementById('synth-tutorial-screen'); if (m) m.classList.remove('hidden'); };
         window.closeSynthTutorial = function(e) { if(e){ e.preventDefault(); e.stopPropagation(); } const m = document.getElementById('synth-tutorial-screen'); if (m) m.classList.add('hidden'); try { localStorage.setItem('sengoku_synth_tutorial_seen', '1'); } catch (err) {} };
-        window.openSynthFromTitle = function(e) { window.openHeirloomStorage(e); setTimeout(() => { const sec = document.getElementById('synth-section'); if (sec) sec.scrollIntoView({ behavior: 'smooth', block: 'start' }); let seen = null; try { seen = localStorage.getItem('sengoku_synth_tutorial_seen'); } catch (err) {} if (seen !== '1') window.openSynthTutorial(); }, 80); };
+        window.openSynthFromTitle = function(e) { window.openHeirloomStorage(e, 'synth'); setTimeout(() => { let seen = null; try { seen = localStorage.getItem('sengoku_synth_tutorial_seen'); } catch (err) {} if (seen !== '1') window.openSynthTutorial(); }, 80); };
 
         window.openShop = function(e) {
             if(e){ e.preventDefault(); e.stopPropagation(); }
@@ -3906,37 +3985,7 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
 
             if(tabName === 'heirloom') {
                 tabH.className = "flex-1 py-3 text-xs font-bold text-gold border-b-2 border-gold transition-colors";
-                let html = '<div class="text-[10px] text-gray-400 mb-2">※未取得の家宝は名前が伏せて表示されます。過去に取得した家宝には「取得済」バッジが付きます</div>';
-                HEIRLOOMS_DB.forEach(hl => {
-                    const isUnlocked = window.unlockedHeirlooms.some(u => u.id === hl.id);
-                    const isObtainedBefore = !isUnlocked && (window.heirloomHistory || []).includes(hl.id); // v22: 過去に取得したが現在は未所持
-                    if(isUnlocked) {
-                        const actual = window.unlockedHeirlooms.find(u => u.id === hl.id) || hl;
-                        const dexEffect = (actual.desc || hl.effect); // v53.1: 所持実体の desc（強化後の実効値で再生成済み）を優先する
-                        html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-start gap-3 shadow-md"><div class="w-10 h-10 bg-gold/20 border border-gold flex items-center justify-center rounded text-lg flex-shrink-0">✨</div><div><div class="font-bold text-gold text-sm">${window.__hlDisplayName(actual)}</div><div class="text-xs text-gray-300 mt-0.5">${dexEffect}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${hl.flavor}</div><div class="text-[10px] text-gray-500 mt-1">【取得条件】 ${hl.hint}</div></div></div>`;
-                    } else if(isObtainedBefore) {
-                        const dexEffectB = hl.id === 'hl_club' ? '初期運 +50' : hl.effect;
-                        html += `<div class="bg-[#15120E] border border-[#4A3F2E] p-3 rounded-sm flex items-start gap-3"><div class="w-10 h-10 bg-[#2A2118] border border-[#8A6D3B] flex items-center justify-center rounded text-[#C9B48A] text-sm font-bold flex-shrink-0">宝</div><div><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[#C9B48A] text-sm">${hl.name}</span><span class="text-[9px] font-bold text-black bg-[#C9B48A] px-1.5 py-0.5 rounded-sm tracking-widest">取得済</span><span class="text-[9px] text-[#8A6D3B]">輪廻の流れの中で失われた</span></div><div class="text-xs text-gray-300 mt-0.5">${dexEffectB}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${hl.flavor}</div><div class="text-[10px] text-gray-400 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
-                    } else {
-                        html += `<div class="bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60"><div class="w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-lg flex-shrink-0">？</div><div><div class="font-bold text-gray-500 text-sm">？？？</div><div class="text-[10px] text-gray-600 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
-                    }
-                });
-                // v54: 合成家宝の枠（別枠。未入手は名前を伏せ、入手済みは名前・効果・来歴を出す。極・二つ名と同じ作法）
-                html += '<div class="mt-5 mb-2"><span class="text-gold font-black tracking-[0.3em] text-xs">― 合成家宝 ―</span><span class="text-[9px] text-gray-500 ml-2">全' + SYNTH_HEIRLOOMS_DB.length + '種</span></div>';
-                html += '<div class="text-[10px] text-gray-400 mb-2">※被った家宝を素材に、家宝蔵の合成でのみ生まれる家宝が記録されます</div>';
-                SYNTH_HEIRLOOMS_DB.forEach(sd => {
-                    const isOwnedS = window.unlockedHeirlooms.some(u => u.id === sd.id);
-                    const isBeforeS = !isOwnedS && (window.heirloomHistory || []).includes(sd.id);
-                    if (isOwnedS) {
-                        const actualS = window.unlockedHeirlooms.find(u => u.id === sd.id) || sd;
-                        html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-start gap-3 shadow-md"><div class="w-10 h-10 bg-gold/20 border border-gold flex items-center justify-center rounded text-lg flex-shrink-0">✨</div><div><div class="font-bold text-gold text-sm">${sd.name}</div><div class="text-xs text-gray-300 mt-0.5">${actualS.desc || synthEffectText(sd)}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${sd.flavor}</div><div class="text-[10px] text-gray-500 mt-1">【合成】 家宝蔵の合成でのみ生まれる</div></div></div>`;
-                    } else if (isBeforeS) {
-                        html += `<div class="bg-[#15120E] border border-[#4A3F2E] p-3 rounded-sm flex items-start gap-3"><div class="w-10 h-10 bg-[#2A2118] border border-[#8A6D3B] flex items-center justify-center rounded text-[#C9B48A] text-sm font-bold flex-shrink-0">宝</div><div><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[#C9B48A] text-sm">${sd.name}</span><span class="text-[9px] font-bold text-black bg-[#C9B48A] px-1.5 py-0.5 rounded-sm tracking-widest">取得済</span><span class="text-[9px] text-[#8A6D3B]">輪廻の流れの中で失われた</span></div><div class="text-xs text-gray-300 mt-0.5">${synthEffectText(sd)}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${sd.flavor}</div><div class="text-[10px] text-gray-400 mt-0.5">【合成】 素材が再び揃えば作り直せる</div></div></div>`;
-                    } else {
-                        html += `<div class="bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60"><div class="w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-lg flex-shrink-0">？</div><div><div class="font-bold text-gray-500 text-sm">？？？</div><div class="text-[10px] text-gray-600 mt-0.5">【合成】 家宝蔵の合成でのみ生まれる</div></div></div>`;
-                    }
-                });
-                content.innerHTML = html;
+                content.innerHTML = window.__heirloomDexHtml();
 
             } else if (tabName === 'title') {
                 tabT.className = "flex-1 py-3 text-xs font-bold text-blue-400 border-b-2 border-blue-400 transition-colors";
@@ -5759,37 +5808,7 @@ cv.toBlob((b) => resolve(b), 'image/png');
 
             if(tabName === 'heirloom') {
                 tabH.className = "flex-1 py-3 text-xs font-bold text-gold border-b-2 border-gold transition-colors";
-                let html = '<div class="text-[10px] text-gray-400 mb-2">※未取得の家宝は名前が伏せて表示されます。過去に取得した家宝には「取得済」バッジが付きます</div>';
-                HEIRLOOMS_DB.forEach(hl => {
-                    const isUnlocked = window.unlockedHeirlooms.some(u => u.id === hl.id);
-                    const isObtainedBefore = !isUnlocked && (window.heirloomHistory || []).includes(hl.id); // v22: 過去に取得したが現在は未所持
-                    if(isUnlocked) {
-                        const actual = window.unlockedHeirlooms.find(u => u.id === hl.id) || hl;
-                        const dexEffect = (actual.desc || hl.effect); // v53.1: 所持実体の desc（強化後の実効値で再生成済み）を優先する
-                        html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-start gap-3 shadow-md"><div class="w-10 h-10 bg-gold/20 border border-gold flex items-center justify-center rounded text-lg flex-shrink-0">✨</div><div><div class="font-bold text-gold text-sm">${window.__hlDisplayName(actual)}</div><div class="text-xs text-gray-300 mt-0.5">${dexEffect}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${hl.flavor}</div><div class="text-[10px] text-gray-500 mt-1">【取得条件】 ${hl.hint}</div></div></div>`;
-                    } else if(isObtainedBefore) {
-                        const dexEffectB = hl.id === 'hl_club' ? '初期運 +50' : hl.effect;
-                        html += `<div class="bg-[#15120E] border border-[#4A3F2E] p-3 rounded-sm flex items-start gap-3"><div class="w-10 h-10 bg-[#2A2118] border border-[#8A6D3B] flex items-center justify-center rounded text-[#C9B48A] text-sm font-bold flex-shrink-0">宝</div><div><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[#C9B48A] text-sm">${hl.name}</span><span class="text-[9px] font-bold text-black bg-[#C9B48A] px-1.5 py-0.5 rounded-sm tracking-widest">取得済</span><span class="text-[9px] text-[#8A6D3B]">輪廻の流れの中で失われた</span></div><div class="text-xs text-gray-300 mt-0.5">${dexEffectB}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${hl.flavor}</div><div class="text-[10px] text-gray-400 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
-                    } else {
-                        html += `<div class="bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60"><div class="w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-lg flex-shrink-0">？</div><div><div class="font-bold text-gray-500 text-sm">？？？</div><div class="text-[10px] text-gray-600 mt-0.5">【取得条件】 ${hl.hint}</div></div></div>`;
-                    }
-                });
-                // v54: 合成家宝の枠（別枠。未入手は名前を伏せ、入手済みは名前・効果・来歴を出す。極・二つ名と同じ作法）
-                html += '<div class="mt-5 mb-2"><span class="text-gold font-black tracking-[0.3em] text-xs">― 合成家宝 ―</span><span class="text-[9px] text-gray-500 ml-2">全' + SYNTH_HEIRLOOMS_DB.length + '種</span></div>';
-                html += '<div class="text-[10px] text-gray-400 mb-2">※被った家宝を素材に、家宝蔵の合成でのみ生まれる家宝が記録されます</div>';
-                SYNTH_HEIRLOOMS_DB.forEach(sd => {
-                    const isOwnedS = window.unlockedHeirlooms.some(u => u.id === sd.id);
-                    const isBeforeS = !isOwnedS && (window.heirloomHistory || []).includes(sd.id);
-                    if (isOwnedS) {
-                        const actualS = window.unlockedHeirlooms.find(u => u.id === sd.id) || sd;
-                        html += `<div class="bg-[#181513] border border-[#3A322A] p-3 rounded-sm flex items-start gap-3 shadow-md"><div class="w-10 h-10 bg-gold/20 border border-gold flex items-center justify-center rounded text-lg flex-shrink-0">✨</div><div><div class="font-bold text-gold text-sm">${sd.name}</div><div class="text-xs text-gray-300 mt-0.5">${actualS.desc || synthEffectText(sd)}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${sd.flavor}</div><div class="text-[10px] text-gray-500 mt-1">【合成】 家宝蔵の合成でのみ生まれる</div></div></div>`;
-                    } else if (isBeforeS) {
-                        html += `<div class="bg-[#15120E] border border-[#4A3F2E] p-3 rounded-sm flex items-start gap-3"><div class="w-10 h-10 bg-[#2A2118] border border-[#8A6D3B] flex items-center justify-center rounded text-[#C9B48A] text-sm font-bold flex-shrink-0">宝</div><div><div class="flex items-center gap-2 flex-wrap"><span class="font-bold text-[#C9B48A] text-sm">${sd.name}</span><span class="text-[9px] font-bold text-black bg-[#C9B48A] px-1.5 py-0.5 rounded-sm tracking-widest">取得済</span><span class="text-[9px] text-[#8A6D3B]">輪廻の流れの中で失われた</span></div><div class="text-xs text-gray-300 mt-0.5">${synthEffectText(sd)}</div><div class="text-[11px] leading-relaxed text-gray-400 mt-1">${sd.flavor}</div><div class="text-[10px] text-gray-400 mt-0.5">【合成】 素材が再び揃えば作り直せる</div></div></div>`;
-                    } else {
-                        html += `<div class="bg-[#12100E] border border-[#221E19] p-3 rounded-sm flex items-center gap-3 opacity-60"><div class="w-10 h-10 bg-gray-900 border border-gray-700 flex items-center justify-center rounded text-gray-600 text-lg flex-shrink-0">？</div><div><div class="font-bold text-gray-500 text-sm">？？？</div><div class="text-[10px] text-gray-600 mt-0.5">【合成】 家宝蔵の合成でのみ生まれる</div></div></div>`;
-                    }
-                });
-                content.innerHTML = html;
+                content.innerHTML = window.__heirloomDexHtml();
 
             } else if (tabName === 'title') {
                 tabT.className = "flex-1 py-3 text-xs font-bold text-blue-400 border-b-2 border-blue-400 transition-colors";
