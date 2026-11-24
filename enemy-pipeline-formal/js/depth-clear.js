@@ -27,6 +27,17 @@
   const VOICE_BASE = "assets/voice/";
   const BRANCHES = ["liberation", "destruction", "alteration"];
   const BRANCH_JP = { liberation: "解放", destruction: "破壊", alteration: "改竄" };
+  // 栄光枠（深度16〜20 後日談）の Gray ボイス対応表（VOICE-ENDINGS-PREP-REPORT 対応表B）。
+  // 破壊・改竄は深度帯で文面が共通のため収録ファイルも共用する（生成は distinct 9本）。
+  const AFTERMATH_VOICE = {
+    liberation: { 16: "ending_after_liberation_16", 17: "ending_after_liberation_17", 18: "ending_after_liberation_18", 19: "ending_after_liberation_19", 20: "ending_after_liberation_20" },
+    destruction: { 16: "ending_after_destruction_16", 17: "ending_after_destruction_16", 18: "ending_after_destruction_18", 19: "ending_after_destruction_18", 20: "ending_after_destruction_18" },
+    alteration: { 16: "ending_after_alteration_16", 17: "ending_after_alteration_16", 18: "ending_after_alteration_18", 19: "ending_after_alteration_18", 20: "ending_after_alteration_18" },
+  };
+  function aftermathVoiceId(branch, depth) {
+    const m = AFTERMATH_VOICE[branch];
+    return (m && m[depth]) || null;
+  }
   // 実絵が納品された artFile をここへ登録する。未登録の深度は仮絵で動作する。
   // パイロット2枚は 2026-11-19 に本人が選定し公式化（PILOT-ART-OFFICIAL-REPORT.md）。
   const ART_READY = {
@@ -719,7 +730,7 @@
         setArt(DATA.afterArtFiles[branch], depth, branch, "DEPTH " + depth + " — " + branch.toUpperCase());
         const pages = [
           { t: t.jp + " — " + t.en, title: true },
-          { g: DATA.aftermath[branch][depth], voiceId: null },
+          { g: DATA.aftermath[branch][depth], voiceId: aftermathVoiceId(branch, depth) },
         ];
         const r = await runPages(pages, token, String(depth));
         if (r === "closed" || r === "skip") return;
