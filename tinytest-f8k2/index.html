@@ -4,14 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#74a7dd">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <title>タイニーファーミング リメイク｜段階2</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body { width:100%; height:100%; overflow:hidden; background:#0a0e23; touch-action:none;
     font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif; }
   #app { position:fixed; inset:0; }
-  #app canvas { display:block; }
+  #app canvas { display:block; touch-action:none; }
   #status { position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
     color:#dfe8ff; font-size:15px; background:#0a0e23; z-index:50; padding:24px; text-align:center; }
   .chip { position:fixed; z-index:10; color:#fff; background:rgba(10,16,38,.62); border:1px solid rgba(255,255,255,.22);
@@ -31,8 +35,9 @@
   .tbtn.on { background:rgba(255,255,255,.28); color:#fff; }
   #hint { bottom:calc(10px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
     font-size:11.5px; color:#aebadd; white-space:nowrap; }
-  #joy { position:fixed; left:18px; bottom:calc(52px + env(safe-area-inset-bottom)); width:118px; height:118px; z-index:12;
-    border-radius:50%; background:rgba(255,255,255,.09); border:1.5px solid rgba(255,255,255,.3); touch-action:none; }
+  #joy { position:fixed; left:0; top:0; width:118px; height:118px; z-index:12; opacity:0; pointer-events:none;
+    border-radius:50%; background:rgba(255,255,255,.09); border:1.5px solid rgba(255,255,255,.3); touch-action:none; transition:opacity .1s; }
+  #joy.on { opacity:1; }
   #joyKnob { position:absolute; left:50%; top:50%; width:52px; height:52px; border-radius:50%;
     background:rgba(255,255,255,.38); border:1.5px solid rgba(255,255,255,.55); transform:translate(-50%,-50%); pointer-events:none; }
   .rbtn { position:fixed; right:18px; z-index:12; width:64px; height:64px; border-radius:50%;
@@ -124,7 +129,7 @@
     <button id="endingReturnBtn" onclick="TF1.endingReturn()">村へもどる</button>
   </div>
 </div>
-<div class="chip" id="hint">左下パッドで移動／近づくとボタンが出ます</div>
+<div class="chip" id="hint">画面を押してドラッグで移動／近づくとボタンが出ます</div>
 <script>window.__TF_FIREBASE_CONFIG__ = {"apiKey": "AIzaSyBo7bij7JU5omDhfLchRfMNz_SXRCbDfQg", "authDomain": "tinyfarming.firebaseapp.com", "projectId": "tinyfarming", "storageBucket": "tinyfarming.firebasestorage.app", "messagingSenderId": "977762485986", "appId": "1:977762485986:web:085b6e0573bfaf46dc00bb"};</script>
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/11.6.1/firebase-auth-compat.js"></script>
@@ -148,6 +153,9 @@
   // ---------- 基本 ----------
   var HQ = true;
   if (location.search.indexOf('hq=1') >= 0) HQ = true;
+  // W2（WORLD-REDESIGN-v1 §4）：大島を通常起動の正式な生活圏に切り替え済み。
+  // W5 棚卸し：常時有効化で不要になった BIG_MODE フラグは除去した。?view=big は検証フックとして互換残置（飛び先＝新構造のスポーン）。
+  var FARM_OFF = { x: 18, z: 4 }; // 農場区画の平行移動量（最終版 §1.2 決定値 (+18,+4)。W1 実施値 (+13,+3) から W2 ステップ0で修正）
   var renderer;
   try { renderer = new THREE.WebGLRenderer({ antialias: HQ, powerPreference: 'high-performance' }); }
   catch (e) { fail('WebGL が使えません'); return; }
@@ -492,6 +500,37 @@
 
   // ---------- ワールド ----------
   var obstacles = [];
+  // ---------- W3：エリア基盤（WORLD-REDESIGN-v1 §2.1） ----------
+  // areaId でプレイヤー・敵・障害物の所属を分ける。描画は worldGrp／forestGrp にまとめ、現在のエリアだけ visible にする。
+  // 座標方式：森ダンジョン内部マップは旧・森の島と同一座標（中心 (0,-34)）に置く「同一座標・エリア切替」方式。
+  // 理由：BOSS_HOME.forest (0,-42.9)／BOSS_SIGN_POS (2.7,-39.9)／敵6体の相対配置がそのまま絶対座標として使え、
+  // ボス戦・祓い・加護・残置と会話の既存実装を無変更で乗せられるため（遠方オフセット方式だと全定数の換算が必要になる）。
+  var curArea = 'world';
+  var AREA_FLOORS = {
+    world: [{ x: 0, z: 0, R: 50 }],
+    forest: [{ x: 0, z: -34, R: 13 }]
+  };
+  var obstaclesByArea = { world: obstacles, forest: [] };
+  var buildGrp = null;  // 造形ヘルパーの追加先（null＝scene）。森内部の造形中だけ forestGrp に切り替える
+  var buildObs = null;  // 造形ヘルパーの障害物登録先（null＝world の obstacles）
+  function curObstacles() { return obstaclesByArea[curArea] || obstacles; }
+  function areaObstacles(a) { return obstaclesByArea[a] || []; }
+  function walkableFor(area, x, z) {
+    var fl = AREA_FLOORS[area]; if (!fl) return false;
+    for (var i = 0; i < fl.length; i++) {
+      var f = fl[i], m = f.R > 8 ? 1.0 : 0.8;
+      if (Math.hypot(x - f.x, z - f.z) < f.R - m) return true;
+    }
+    return false;
+  }
+  function standableFor(area, x, z) {
+    if (!walkableFor(area, x, z)) return false;
+    var obs = areaObstacles(area);
+    for (var i = 0; i < obs.length; i++) {
+      if (Math.hypot(x - obs[i].x, z - obs[i].z) < obs[i].r + 0.45) return false;
+    }
+    return true;
+  }
   function jitter(geo, amt, seed) {
     var p = geo.attributes.position;
     for (var i = 0; i < p.count; i++) {
@@ -504,31 +543,43 @@
     }
     geo.computeVertexNormals();
   }
-  function makeIsland(R, cx, cz) {
+  function makeIsland(R, cx, cz, big) {
     var grp = new THREE.Group(); grp.position.set(cx, 0, cz);
+    var gTex = grassTex, dTex = dirtTex, rTex = rockTex;
+    if (big) {
+      // W1：大島はタイルの大きさが旧島と揃うよう、テクスチャを複製して繰り返し回数を半径比（R/15）で増やす。
+      // 生成方式・フィルタ設定は元のまま（2026-11-24 の地面真っ黒化対策には触れない）
+      var tk = R / 15;
+      gTex = grassTex.clone(); gTex.repeat.set(6 * tk, 6 * tk); gTex.needsUpdate = true;
+      dTex = dirtTex.clone(); dTex.repeat.set(3 * tk, 3 * tk); dTex.needsUpdate = true;
+      rTex = rockTex.clone(); rTex.repeat.set(2 * tk, 2 * tk); rTex.needsUpdate = true;
+    }
     var top = new THREE.Mesh(
       new THREE.CylinderGeometry(R, R * 0.97, 1.4, 40),
-      [new THREE.MeshLambertMaterial({ map: dirtTex }), new THREE.MeshLambertMaterial({ map: grassTex }), new THREE.MeshLambertMaterial({ color: 0x5d534b })]
+      [new THREE.MeshLambertMaterial({ map: dTex }), new THREE.MeshLambertMaterial({ map: gTex }), new THREE.MeshLambertMaterial({ color: 0x5d534b })]
     );
     top.position.y = -0.7; top.receiveShadow = true;
     grp.add(top);
-    var under = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.97, R * 0.2, R * 1.05, 22, 3), new THREE.MeshLambertMaterial({ map: rockTex, flatShading: true }));
+    var under = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.97, R * 0.2, R * 1.05, 22, 3), new THREE.MeshLambertMaterial({ map: rTex, flatShading: true }));
     jitter(under.geometry, 0.14, cx * 3.1 + cz);
     under.position.y = -1.4 - R * 0.5;
     grp.add(under);
     scene.add(grp);
+    return grp;
   }
-  var FARM = { x: 0, z: 0, R: 15 };
-  var SMALL = { x: 26, z: 0, R: 5.5 };
-  var VILLAGE = { x: -31, z: 0, R: 12 };
-  var ISLANDS = [FARM, SMALL, VILLAGE];
-  var CORRIDORS = [
-    { x0: 13.2, x1: 21.8, z: 0, w: 1.3 },
-    { x0: -21.5, x1: -13.2, z: 0, w: 1.3 } // 2026-11-25 修正：村側の歩行可能端(-20.0)へ重なるよう延長（旧-19.9では0.1の死に帯があり橋を渡れなかった）
-  ];
-  makeIsland(FARM.R, FARM.x, FARM.z);
-  makeIsland(SMALL.R, SMALL.x, SMALL.z);
-  makeIsland(VILLAGE.R, VILLAGE.x, VILLAGE.z);
+  // W2：街区画の中心（広場）。現行の村の内部レイアウト（広場中心 (-31, 0.8) からの相対配置）を (-22, 3) へ平行移動した基準点
+  var VILLAGE = { x: -22, z: 3 }; // W5 棚卸し：未使用だった R フィールド（旧・村の島の半径の名残）を除去
+  var BIG = { x: 0, z: 0, R: 50 };
+  // W3：小島（旧 SMALL）は廃止。中身（スライム×2・看板・木・提灯）は森ダンジョン内部と北の林へ吸収した（§3.3）。
+  // 橋・回廊（CORRIDORS）も全廃し、歩行可能域は AREA_FLOORS（大島の円＋各ダンジョン内部の円）の単純な構成になった。
+  // W3：大島 R50（中心 (0,0)、W-1 決定）が正式な生活圏。旧・農場島／村の島の円盤と農場⇔村の橋＋回廊は撤去済み。
+  // W2 で維持した大島の -0.05 沈下は、重なる小島・森の島が無くなったため解消した（上面 y=0 に復帰。描画確認は W3 報告書）
+  var bigGrp = makeIsland(BIG.R, BIG.x, BIG.z, true);
+  bigGrp.visible = true; // walkableFor() の既存マージン規則（R>8 → R-1.0）により歩行可能半径は 49 になる
+  // W2：自宅まわりの基点（睡眠・チュートリアル t09・スポーン・HP0復帰）。FARM_OFF (+18,+4) 適用後の座標
+  var HOME = { x: -6 + FARM_OFF.x, z: -4.5 + FARM_OFF.z };       // 自宅の中心 (12,-0.5)
+  var HOME_FRONT = { x: -6 + FARM_OFF.x, z: -1.5 + FARM_OFF.z }; // 自宅前（睡眠判定点） (12,2.5)
+  var SPAWN = { x: -1.5 + FARM_OFF.x, z: 3.5 + FARM_OFF.z };      // スポーン／HP0復帰 (16.5,7.5)
 
   function box(w, h, d, color, x, y, z, opts) {
     var m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshLambertMaterial({ color: color }));
@@ -536,7 +587,7 @@
     if (opts && opts.ry) m.rotation.y = opts.ry;
     if (opts && opts.rx) m.rotation.x = opts.rx;
     m.castShadow = !(opts && opts.noShadow); m.receiveShadow = true;
-    scene.add(m); return m;
+    (buildGrp || scene).add(m); return m;
   }
   // --- 造形用ヘルパー（作り込み） ---
   var MATC = {};
@@ -561,7 +612,7 @@
   }
   function tree(x, z, s) {
     s = s || 1;
-    var g = new THREE.Group(); g.position.set(x, 0, z); g.scale.set(s, s, s); scene.add(g);
+    var g = new THREE.Group(); g.position.set(x, 0, z); g.scale.set(s, s, s); (buildGrp || scene).add(g);
     var rnd = mulberry32((((x + 40) * 73.7 + (z + 40) * 149.3) * 100) | 0);
     var trunkMat = lmat(0x7a5230), trunkDark = lmat(0x634326);
     var flare = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.52, 0.4, 7), trunkDark);
@@ -587,7 +638,7 @@
       f.rotation.set(rnd() * 3, rnd() * 3, rnd() * 3);
       f.castShadow = true; g.add(f);
     });
-    obstacles.push({ x: x, z: z, r: 0.85 * s });
+    (buildObs || obstacles).push({ x: x, z: z, r: 0.85 * s });
   }
   var winMat = new THREE.MeshBasicMaterial({ color: 0xffd98a, transparent: true, opacity: 0.15 });
   function makeHouse(x, z, wall, roofC, s, withWindows) {
@@ -649,33 +700,10 @@
     }
     obstacles.push({ x: x, z: z, r: 3.4 * s });
   }
-  function makeBridge(x0, x1) {
-    var n = Math.max(4, Math.round((x1 - x0) / 0.72));
-    for (var i = 0; i < n; i++) {
-      var t = i / (n - 1), x = x0 + (x1 - x0) * t, y = -0.03 + Math.sin(t * Math.PI) * 0.3;
-      var pl = new THREE.Mesh(new THREE.BoxGeometry(0.78, 0.12, 2.7), new THREE.MeshLambertMaterial({ color: i % 2 ? 0x9a7850 : 0x8a6844 }));
-      pl.position.set(x, y, 0); pl.receiveShadow = true; scene.add(pl);
-      if (i % 3 === 0) [-1.25, 1.25].forEach(function (zo) {
-        var post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.0, 5), new THREE.MeshLambertMaterial({ color: 0x6d4c33 }));
-        post.position.set(x, y + 0.5, zo); scene.add(post);
-      });
-    }
-    [-1.25, 1.25].forEach(function (zo) {
-      var rail = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.07, 0.07), lmat(0x7d5f3d));
-      rail.position.set((x0 + x1) / 2, 0.85, zo); scene.add(rail);
-      var mid = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 0.055, 0.055), lmat(0x7d5f3d));
-      mid.position.set((x0 + x1) / 2, 0.48, zo); scene.add(mid);
-      [x0 + 0.25, x1 - 0.25].forEach(function (px) {
-        var ep = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.085, 1.15, 6), lmat(0x6d4c33));
-        ep.position.set(px, 0.55, zo); ep.castShadow = true; scene.add(ep);
-        var capB = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), lmat(0x8a6844));
-        capB.position.set(px, 1.18, zo); scene.add(capB);
-      });
-    });
-  }
+  // W5 棚卸し：旧・橋の生成関数 makeBridge は呼び出し元が無くなったため除去した（橋は W2／W3 で全廃済み。makeBridgeZ は元々存在しない）。
   var lampLights = [];
   function lantern(x, z, withLight) {
-    var g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
+    var g = new THREE.Group(); g.position.set(x, 0, z); (buildGrp || scene).add(g);
     var base = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.22, 0.2, 7), lmat(0x8d8578));
     base.position.y = 0.1; base.castShadow = true; g.add(base);
     var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.085, 1.7, 6), lmat(0x5f4630));
@@ -688,15 +716,15 @@
     var cap = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.24, 4), lmat(0x4a3826));
     cap.position.y = 2.22; cap.rotation.y = Math.PI / 4; cap.castShadow = true; g.add(cap);
     var glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0, depthWrite: false }));
-    glow.position.set(x, 1.88, z); glow.scale.set(3.4, 3.4, 1); scene.add(glow);
+    glow.position.set(x, 1.88, z); glow.scale.set(3.4, 3.4, 1); (buildGrp || scene).add(glow);
     var li = null;
-    if (withLight) { li = new THREE.PointLight(0xffb45e, 0, 13, 2); li.position.set(x, 1.9, z); scene.add(li); }
+    if (withLight) { li = new THREE.PointLight(0xffb45e, 0, 13, 2); li.position.set(x, 1.9, z); (buildGrp || scene).add(li); }
     lampLights.push({ glow: glow, light: li, headMat: headMat });
-    obstacles.push({ x: x, z: z, r: 0.4 });
+    (buildObs || obstacles).push({ x: x, z: z, r: 0.4 });
   }
 
   function makeSign(x, z) {
-    var g = new THREE.Group(); g.position.set(x, 0, z); scene.add(g);
+    var g = new THREE.Group(); g.position.set(x, 0, z); (buildGrp || scene).add(g);
     gbox(g, 0.14, 1.3, 0.14, lmat(0x6d4c33), 0, 0.65, 0);
     gbox(g, 1.24, 0.74, 0.06, lmat(0x6d4c33), 0, 1.32, 0, { noShadow: true });
     gbox(g, 1.1, 0.6, 0.08, lmat(0xa8895c), 0, 1.32, 0.01);
@@ -704,7 +732,7 @@
     paperS.position.set(0, 1.32, 0.06); g.add(paperS);
     var r1 = gbox(g, 0.78, 0.06, 0.3, lmat(0x8a4a3a), -0.31, 1.82, 0, { noShadow: true }); r1.rotation.z = 0.42;
     var r2 = gbox(g, 0.78, 0.06, 0.3, lmat(0x8a4a3a), 0.31, 1.82, 0, { noShadow: true }); r2.rotation.z = -0.42;
-    obstacles.push({ x: x, z: z, r: 0.4 }); // 夜間便・工程3：看板も solid（従来は obstacles 未登録ですり抜けできた）
+    (buildObs || obstacles).push({ x: x, z: z, r: 0.4 }); // 夜間便・工程3：看板も solid（従来は obstacles 未登録ですり抜けできた）
   }
   // 石碑（村の石碑。makeSign と同じ部品化の流儀：台＋本体＋笠を石材で組む）
   function makeStele(x, z) {
@@ -722,15 +750,15 @@
     obstacles.push({ x: x, z: z, r: 0.95 });
   }
 
-  // --- 農場の島 ---
-  makeHouse(-6, -4.5, 0xe9ddc0, 0xa34d3a, 1, true);
+  // --- 農場区画（区画全体を FARM_OFF (+18,+4) だけ平行移動して大島に置く） ---
+  makeHouse(HOME.x, HOME.z, 0xe9ddc0, 0xa34d3a, 1, true);
   for (var pi = 0; pi < 4; pi++) {
     var st = new THREE.Mesh(new THREE.CircleGeometry(0.55, 7), new THREE.MeshLambertMaterial({ color: 0xb9a888 }));
-    st.rotation.x = -Math.PI / 2; st.position.set(-5.6, 0.03, -1.1 + pi * 1.15); st.receiveShadow = true; scene.add(st);
+    st.rotation.x = -Math.PI / 2; st.position.set(-5.6 + FARM_OFF.x, 0.03, -1.1 + FARM_OFF.z + pi * 1.15); st.receiveShadow = true; scene.add(st);
   }
   var PLOTS = [];
   (function () {
-    var ox = 4.6, oz = -4.6;
+    var ox = 4.6 + FARM_OFF.x, oz = -4.6 + FARM_OFF.z; // W2：生成原点 (22.6,-0.6)。セーブは index 基準のため互換
     for (var i = 0; i < 4; i++) for (var j = 0; j < 3; j++) {
       var x = ox + i * 2.1, z = oz + j * 2.1;
       var soilMat = new THREE.MeshLambertMaterial({ map: soilTex });
@@ -752,26 +780,27 @@
   })();
   var pondMat = new THREE.MeshLambertMaterial({ color: 0x3d7ab8, transparent: true, opacity: 0.92 });
   (function () {
+    var px = 7.5 + FARM_OFF.x, pz = 5.5 + FARM_OFF.z; // W2：池 (25.5,9.5)
     var p = new THREE.Mesh(new THREE.CircleGeometry(2.7, 22), pondMat);
-    p.rotation.x = -Math.PI / 2; p.position.set(7.5, 0.05, 5.5); scene.add(p);
+    p.rotation.x = -Math.PI / 2; p.position.set(px, 0.05, pz); scene.add(p);
     var p2 = new THREE.Mesh(new THREE.CircleGeometry(1.7, 18), new THREE.MeshLambertMaterial({ color: 0x5b9bd5, transparent: true, opacity: 0.7 }));
-    p2.rotation.x = -Math.PI / 2; p2.position.set(7.3, 0.07, 5.3); scene.add(p2);
-    obstacles.push({ x: 7.5, z: 5.5, r: 2.9 });
+    p2.rotation.x = -Math.PI / 2; p2.position.set(px - 0.2, 0.07, pz - 0.2); scene.add(p2);
+    obstacles.push({ x: px, z: pz, r: 2.9 });
   })();
-  [[-11, 4], [-3, -10.5], [11.5, -6], [12.5, 2.5], [-12, -6], [3, 10.5], [-9.5, 9]].forEach(function (p) { tree(p[0], p[1], 0.9 + Math.random() * 0.35); });
+  [[-11, 4], [-3, -10.5], [11.5, -6], [12.5, 2.5], [-12, -6], [3, 10.5], [-9.5, 9]].forEach(function (p) { tree(p[0] + FARM_OFF.x, p[1] + FARM_OFF.z, 0.9 + Math.random() * 0.35); });
   for (var gi = 0; gi < 26; gi++) {
     var ga = Math.random() * Math.PI * 2, gr2 = 3 + Math.random() * 11;
     var tu = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.55, 4), new THREE.MeshLambertMaterial({ color: 0x478a38 }));
-    tu.position.set(Math.cos(ga) * gr2, 0.27, Math.sin(ga) * gr2); scene.add(tu);
+    tu.position.set(Math.cos(ga) * gr2 + FARM_OFF.x, 0.27, Math.sin(ga) * gr2 + FARM_OFF.z); scene.add(tu);
   }
   [[-3.6, -1.6, 0xff8fb3], [-8.6, -0.6, 0xffd94d], [-4.2, 2.8, 0xffffff], [1.8, -7.8, 0xff8fb3]].forEach(function (f) {
     var fl = new THREE.Mesh(new THREE.IcosahedronGeometry(0.17, 0), new THREE.MeshBasicMaterial({ color: f[2] }));
-    fl.position.set(f[0], 0.32, f[1]); scene.add(fl);
+    fl.position.set(f[0] + FARM_OFF.x, 0.32, f[1] + FARM_OFF.z); scene.add(fl);
   });
-  lantern(2.5, -6.8, true); lantern(-9.2, 0.8, false);
+  lantern(2.5 + FARM_OFF.x, -6.8 + FARM_OFF.z, true); lantern(-9.2 + FARM_OFF.x, 0.8 + FARM_OFF.z, false);
   var flameOuter, flameInner, fireLight, fireGlow;
   (function () {
-    var fx = 0.5, fz = 7.6;
+    var fx = 0.5 + FARM_OFF.x, fz = 7.6 + FARM_OFF.z; // W2：焚き火 (18.5,11.6)
     var ash = new THREE.Mesh(new THREE.CircleGeometry(0.8, 14), new THREE.MeshLambertMaterial({ color: 0x4a423c }));
     ash.rotation.x = -Math.PI / 2; ash.position.set(fx, 0.045, fz); ash.receiveShadow = true; scene.add(ash);
     [[0.15, 0.1], [-0.2, -0.12], [0.02, -0.22]].forEach(function (o) {
@@ -800,82 +829,150 @@
     fireGlow.position.set(fx, 1.2, fz); fireGlow.scale.set(6, 6, 1); scene.add(fireGlow);
     obstacles.push({ x: fx, z: fz, r: 1.5 });
   })();
-  makeBridge(13.6, 21.4);
-  tree(SMALL.x - 1.8, SMALL.z - 1.6, 0.95); tree(SMALL.x + 2.2, SMALL.z + 1.8, 0.8);
-  lantern(SMALL.x - 3.4, SMALL.z + 1.6, false);
-  makeSign(SMALL.x - 2.6, SMALL.z - 2.6);
+  // W3：農場⇔小島の橋・小島の木2本・提灯・看板は撤去（木・提灯は北の林の飾りへ、看板は鳥居脇へ吸収。§3.3）
 
-  // --- 村の島 ---
-  var STELE_POS = { x: VILLAGE.x - 0.8, z: -2.4 }; // 村の石碑（広場の北。表の歴史が読める）
+  // --- W2：道（設計書 §1.5。線分リスト ROADS から帯メッシュを生成し、判定と見た目を一致させる） ---
+  // W5：道の上での移動速度アップ（W-7 決定、×1.5）を移動処理に適用済み。対象はプレイヤーの移動のみ
+  // （敵・NPC・AI相方の徘徊速度には掛けない。同期時の相方表示は受信位置への補間のため、相手側で適用された速度がそのまま再現される）。
+  var ROAD_SPEED_MUL = 1.5; // 道の上での速度倍率（6.2 → 9.3 u/s。§1.5 の目安値）
+  var ROADS = [
+    { x0: -22, z0: 3, x1: 0, z1: -8, w: 2.6 },      // 本道：広場 (-22,3) → 大樹前 (0,-8)
+    { x0: 0, z0: -8, x1: 12, z1: -0.5, w: 2.6 },    // 本道：大樹前 → 自宅前 (12,-0.5)
+    { x0: 0, z0: -8, x1: 0, z1: -34, w: 2.6 },      // 北道：大樹前 → 森ダンジョン入口付近 (0,-34)
+    { x0: 16.5, z0: 7.5, x1: 21.5, z1: 7.5, w: 1.8 } // 農場区画の小道：スポーン付近 → 柵の南端
+  ];
+  function onRoad(x, z) {
+    for (var ri = 0; ri < ROADS.length; ri++) {
+      var r = ROADS[ri], dx = r.x1 - r.x0, dz = r.z1 - r.z0, L2 = dx * dx + dz * dz;
+      var t = L2 > 0 ? ((x - r.x0) * dx + (z - r.z0) * dz) / L2 : 0;
+      t = Math.max(0, Math.min(1, t));
+      if (Math.hypot(x - (r.x0 + dx * t), z - (r.z0 + dz * t)) <= r.w / 2) return true;
+    }
+    return false;
+  }
+  ROADS.forEach(function (r) {
+    var L = Math.hypot(r.x1 - r.x0, r.z1 - r.z0);
+    var tex = dirtTex.clone(); tex.needsUpdate = true; tex.repeat.set(Math.max(1, Math.round(L / 3)), 1);
+    var m = new THREE.Mesh(new THREE.BoxGeometry(L, 0.04, r.w), new THREE.MeshLambertMaterial({ map: tex }));
+    m.position.set((r.x0 + r.x1) / 2, 0.02, (r.z0 + r.z1) / 2);
+    m.rotation.y = -Math.atan2(r.z1 - r.z0, r.x1 - r.x0);
+    m.receiveShadow = true; scene.add(m);
+  });
+  // --- W2：大樹＋小広場（(0,-8)。村の象徴。石碑はこの根元へ移設） ---
   (function () {
-    var vx = VILLAGE.x;
+    var plaza = new THREE.Mesh(new THREE.CircleGeometry(3.4, 24), new THREE.MeshLambertMaterial({ color: 0xa9a294 }));
+    plaza.rotation.x = -Math.PI / 2; plaza.position.set(0, 0.025, -8); plaza.receiveShadow = true; scene.add(plaza);
+    var plaza2 = new THREE.Mesh(new THREE.CircleGeometry(2.0, 20), new THREE.MeshLambertMaterial({ color: 0xbdb4a2 }));
+    plaza2.rotation.x = -Math.PI / 2; plaza2.position.set(0, 0.04, -8); scene.add(plaza2);
+    tree(0, -8, 2.3); // 大樹：既存 tree 部品の拡大（障害物 r もスケールに追随）
+  })();
+
+  // --- W3：北の林（z -27〜-45 の帯）と森ダンジョン入口の鳥居 (0,-34)（WORLD-REDESIGN-v1 §1.2／§2.2） ---
+  // 鳥居の造形は現行の森入口鳥居（旧・森の島入口）を流用。木は密に植え、北道（x=0 の帯）と鳥居前は開ける。
+  // 小島から吸収した木・提灯もこの林の飾りに含む（§3.3）。看板は小島の看板の移設先として鳥居脇 (2.8,-32.6) に置く。
+  var TORII_WORLD = { x: 0, z: -34 };        // 大島側の鳥居（入口）
+  var TORII_SIGN_POS = { x: 2.8, z: -32.6 }; // 鳥居脇の看板（旧・小島の看板の移設先）
+  (function () {
+    box(0.46, 0.26, 0.46, 0x8d8578, -1.5, 0.13, -34); box(0.46, 0.26, 0.46, 0x8d8578, 1.5, 0.13, -34);
+    box(0.22, 3.0, 0.22, 0x8a4a3a, -1.5, 1.5, -34); box(0.22, 3.0, 0.22, 0x8a4a3a, 1.5, 1.5, -34);
+    box(3.9, 0.28, 0.3, 0x8a4a3a, 0, 3.05, -34); box(3.3, 0.2, 0.24, 0x8a4a3a, 0, 2.45, -34);
+    box(4.16, 0.15, 0.44, 0x3a3230, 0, 3.26, -34);
+    box(0.3, 0.52, 0.1, 0xd8cfc0, 0, 2.76, -34, { noShadow: true });
+    obstacles.push({ x: -1.5, z: -34, r: 0.45 }); obstacles.push({ x: 1.5, z: -34, r: 0.45 });
+    makeSign(TORII_SIGN_POS.x, TORII_SIGN_POS.z);
+    lantern(-3.4, -31.8, false); lantern(3.8, -37.5, false); // 小島の提灯を吸収（北の林の飾り）
+    var nrnd = mulberry32(20261127);
+    var placed = 0, guard = 0;
+    while (placed < 52 && guard++ < 400) {
+      var tx = -42 + nrnd() * 84, tz = -45.5 + nrnd() * 19;
+      if (Math.hypot(tx, tz) > 47.5) continue;              // 島の歩行可能域の内側に収める
+      if (Math.abs(tx) < 2.4 && tz > -38) continue;         // 北道と鳥居への approach を開ける
+      if (Math.hypot(tx - TORII_WORLD.x, tz - TORII_WORLD.z) < 4.2) continue;
+      if (Math.hypot(tx - TORII_SIGN_POS.x, tz - TORII_SIGN_POS.z) < 1.8) continue;
+      if (Math.hypot(tx - (-3.4), tz - (-31.8)) < 1.6 || Math.hypot(tx - 3.8, tz - (-37.5)) < 1.6) continue;
+      tree(tx, tz, 1.0 + nrnd() * 0.55);
+      placed++;
+    }
+    for (var nri = 0; nri < 8; nri++) { // 林の岩（飾り）
+      var rx = -38 + nrnd() * 76, rz = -45 + nrnd() * 17;
+      if (Math.abs(rx) < 2.4 || Math.hypot(rx - TORII_WORLD.x, rz - TORII_WORLD.z) < 4.2) continue;
+      var rk = new THREE.Mesh(new THREE.DodecahedronGeometry(0.35 + nrnd() * 0.4), new THREE.MeshLambertMaterial({ color: 0x7d746a, flatShading: true }));
+      rk.scale.y = 0.78; rk.rotation.y = nrnd() * 3; rk.castShadow = true;
+      rk.position.set(rx, 0.28, rz); scene.add(rk);
+    }
+  })();
+
+  // --- 街区画（旧・村の島の内部レイアウトを広場中心 (-22,3) へ平行移動。vz = VILLAGE.z が広場中心の z） ---
+  var STELE_POS = { x: 2.4, z: -6.2 }; // W2：村の石碑は大樹 (0,-8) の根元へ移設（表の歴史が読める）
+  (function () {
+    var vx = VILLAGE.x, vz = VILLAGE.z;
     var plaza = new THREE.Mesh(new THREE.CircleGeometry(4.2, 24), new THREE.MeshLambertMaterial({ color: 0xa9a294 }));
-    plaza.rotation.x = -Math.PI / 2; plaza.position.set(vx, 0.02, 0.8); plaza.receiveShadow = true; scene.add(plaza);
+    plaza.rotation.x = -Math.PI / 2; plaza.position.set(vx, 0.02, vz); plaza.receiveShadow = true; scene.add(plaza);
     var plaza2 = new THREE.Mesh(new THREE.CircleGeometry(2.5, 20), new THREE.MeshLambertMaterial({ color: 0xbdb4a2 }));
-    plaza2.rotation.x = -Math.PI / 2; plaza2.position.set(vx, 0.035, 0.8); scene.add(plaza2);
+    plaza2.rotation.x = -Math.PI / 2; plaza2.position.set(vx, 0.035, vz); scene.add(plaza2);
     // 露天商
-    box(2.6, 1.0, 1.2, 0x8a6844, vx + 2.8, 0.5, -3.8);
-    box(2.2, 0.52, 0.05, 0xc94f4f, vx + 2.8, 0.58, -3.17, { noShadow: true });
-    box(2.2, 0.14, 0.055, 0xf5efdd, vx + 2.8, 0.58, -3.17, { noShadow: true });
-    box(0.12, 2.3, 0.12, 0x6d4c33, vx + 1.7, 1.15, -4.5); box(0.12, 2.3, 0.12, 0x6d4c33, vx + 3.9, 1.15, -4.5);
-    box(0.12, 2.3, 0.12, 0x6d4c33, vx + 1.7, 1.15, -3.1); box(0.12, 2.3, 0.12, 0x6d4c33, vx + 3.9, 1.15, -3.1);
+    box(2.6, 1.0, 1.2, 0x8a6844, vx + 2.8, 0.5, vz - 4.6);
+    box(2.2, 0.52, 0.05, 0xc94f4f, vx + 2.8, 0.58, vz - 3.97, { noShadow: true });
+    box(2.2, 0.14, 0.055, 0xf5efdd, vx + 2.8, 0.58, vz - 3.97, { noShadow: true });
+    box(0.12, 2.3, 0.12, 0x6d4c33, vx + 1.7, 1.15, vz - 5.3); box(0.12, 2.3, 0.12, 0x6d4c33, vx + 3.9, 1.15, vz - 5.3);
+    box(0.12, 2.3, 0.12, 0x6d4c33, vx + 1.7, 1.15, vz - 3.9); box(0.12, 2.3, 0.12, 0x6d4c33, vx + 3.9, 1.15, vz - 3.9);
     // 縞模様の天幕（赤白ストライプ＋前垂れ）
-    var awnG = new THREE.Group(); awnG.position.set(vx + 2.8, 2.35, -3.8); awnG.rotation.x = -0.16; scene.add(awnG);
+    var awnG = new THREE.Group(); awnG.position.set(vx + 2.8, 2.35, vz - 4.6); awnG.rotation.x = -0.16; scene.add(awnG);
     for (var si = 0; si < 6; si++) {
       var stripe = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.07, 2.3), lmat(si % 2 ? 0xf5efdd : 0xc94f4f));
       stripe.position.set(-1.375 + 0.275 + si * 0.55, 0, 0); stripe.castShadow = true; awnG.add(stripe);
     }
     var valance = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.26, 0.05), lmat(0xc94f4f));
     valance.position.set(0, -0.15, 1.14); awnG.add(valance);
-    box(0.7, 0.5, 0.7, 0xa8895c, vx + 2.1, 1.25, -3.8); box(0.7, 0.5, 0.7, 0x9a7850, vx + 3.4, 1.25, -3.7);
+    box(0.7, 0.5, 0.7, 0xa8895c, vx + 2.1, 1.25, vz - 4.6); box(0.7, 0.5, 0.7, 0x9a7850, vx + 3.4, 1.25, vz - 4.5);
     var apple = new THREE.Mesh(new THREE.IcosahedronGeometry(0.3, 0), new THREE.MeshLambertMaterial({ color: 0xe84a5f, flatShading: true }));
-    apple.position.set(vx + 2.1, 1.65, -3.8); apple.castShadow = true; scene.add(apple);
+    apple.position.set(vx + 2.1, 1.65, vz - 4.6); apple.castShadow = true; scene.add(apple);
     [[0, 0], [0.2, 0.1], [0.1, -0.14]].forEach(function (o) {
       var orng = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 6), lmat(0xf59e42));
-      orng.position.set(vx + 3.3 + o[0], 1.58, -3.75 + o[1]); orng.castShadow = true; scene.add(orng);
+      orng.position.set(vx + 3.3 + o[0], 1.58, vz - 4.55 + o[1]); orng.castShadow = true; scene.add(orng);
     });
     var bottle = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.36, 7), lmat(0x4a7d4f));
-    bottle.position.set(vx + 2.78, 1.18, -4.08); bottle.castShadow = true; scene.add(bottle);
-    [[1.35, -3.25, 0.34], [1.12, -3.72, 0.26]].forEach(function (sk) {
+    bottle.position.set(vx + 2.78, 1.18, vz - 4.88); bottle.castShadow = true; scene.add(bottle);
+    [[1.35, -4.05, 0.34], [1.12, -4.52, 0.26]].forEach(function (sk) {
       var sack = new THREE.Mesh(new THREE.SphereGeometry(sk[2], 9, 7), lmat(0xc9b18a));
-      sack.scale.y = 0.72; sack.position.set(vx + sk[0], sk[2] * 0.68, sk[1]); sack.castShadow = true; scene.add(sack);
+      sack.scale.y = 0.72; sack.position.set(vx + sk[0], sk[2] * 0.68, vz + sk[1]); sack.castShadow = true; scene.add(sack);
     });
     var barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.8, 9), lmat(0x8a6844));
-    barrel.position.set(vx + 4.2, 0.4, -3.15); barrel.castShadow = true; scene.add(barrel);
+    barrel.position.set(vx + 4.2, 0.4, vz - 3.95); barrel.castShadow = true; scene.add(barrel);
     [0.18, 0.62].forEach(function (by) {
       var band = new THREE.Mesh(new THREE.CylinderGeometry(0.345, 0.345, 0.05, 9), lmat(0x4a423c));
-      band.position.set(vx + 4.2, by, -3.15); scene.add(band);
+      band.position.set(vx + 4.2, by, vz - 3.95); scene.add(band);
     });
     // 天幕の端から吊るす提灯（夜は lampLights 連動で灯る）
     var cord = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.3, 4), lmat(0x4a423c));
-    cord.position.set(vx + 3.8, 2.0, -2.68); scene.add(cord);
+    cord.position.set(vx + 3.8, 2.0, vz - 3.48); scene.add(cord);
     var hangMat = new THREE.MeshBasicMaterial({ color: 0xffd9a0 });
     var hangBody = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.15, 0.27, 8), hangMat);
-    hangBody.position.set(vx + 3.8, 1.76, -2.68); scene.add(hangBody);
+    hangBody.position.set(vx + 3.8, 1.76, vz - 3.48); scene.add(hangBody);
     [1.92, 1.6].forEach(function (cy) {
       var hcap = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.045, 8), lmat(0x4a423c));
-      hcap.position.set(vx + 3.8, cy, -2.68); scene.add(hcap);
+      hcap.position.set(vx + 3.8, cy, vz - 3.48); scene.add(hcap);
     });
     var hangGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0, depthWrite: false }));
-    hangGlow.position.set(vx + 3.8, 1.76, -2.68); hangGlow.scale.set(1.8, 1.8, 1); scene.add(hangGlow);
+    hangGlow.position.set(vx + 3.8, 1.76, vz - 3.48); hangGlow.scale.set(1.8, 1.8, 1); scene.add(hangGlow);
     lampLights.push({ glow: hangGlow, light: null, headMat: hangMat });
-    obstacles.push({ x: vx + 2.8, z: -3.8, r: 1.7 });
+    obstacles.push({ x: vx + 2.8, z: vz - 4.6, r: 1.7 });
     // 依頼ボード
-    box(0.12, 1.6, 0.12, 0x6d4c33, vx - 3.6, 0.8, 3.6); box(0.12, 1.6, 0.12, 0x6d4c33, vx - 2.4, 0.8, 3.6);
-    box(1.9, 1.25, 0.1, 0xa8895c, vx - 3.0, 1.35, 3.6);
+    box(0.12, 1.6, 0.12, 0x6d4c33, vx - 3.6, 0.8, vz + 2.8); box(0.12, 1.6, 0.12, 0x6d4c33, vx - 2.4, 0.8, vz + 2.8);
+    box(1.9, 1.25, 0.1, 0xa8895c, vx - 3.0, 1.35, vz + 2.8);
     var paper = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.8), new THREE.MeshBasicMaterial({ color: 0xf5efdd }));
-    paper.position.set(vx - 3.0, 1.35, 3.66); scene.add(paper);
-    obstacles.push({ x: vx - 3.0, z: 3.6, r: 1.1 });
+    paper.position.set(vx - 3.0, 1.35, vz + 2.86); scene.add(paper);
+    obstacles.push({ x: vx - 3.0, z: vz + 2.8, r: 1.1 });
     // 村の石碑（表の歴史）
     makeStele(STELE_POS.x, STELE_POS.z);
     // 村人の家
-    makeHouse(vx - 5.5, -4.5, 0xf0e6cc, 0x7a9a52, 0.9, true);
-    makeHouse(vx + 5.2, -7, 0xe8dcc0, 0x5f7fae, 0.8, true);
-    makeHouse(vx - 5, 6.2, 0xf5ead2, 0xa34d3a, 0.85, true);
-    tree(vx - 7, 1.5, 1.0); tree(vx + 6.5, 3.5, 0.9); tree(vx + 1, -9.5, 1.05); tree(vx - 7, -8, 0.9);
-    lantern(vx + 1.8, 0.2, false); lantern(vx - 2.5, -2.2, false);
+    makeHouse(vx - 5.5, vz - 5.3, 0xf0e6cc, 0x7a9a52, 0.9, true);
+    makeHouse(vx + 5.2, vz - 7.8, 0xe8dcc0, 0x5f7fae, 0.8, true);
+    makeHouse(vx - 5, vz + 5.4, 0xf5ead2, 0xa34d3a, 0.85, true);
+    tree(vx - 7, vz + 0.7, 1.0); tree(vx + 6.5, vz + 2.7, 0.9); tree(vx + 1, vz - 10.3, 1.05); tree(vx - 7, vz - 8.8, 0.9);
+    lantern(vx + 1.8, vz - 0.6, false); lantern(vx - 2.5, vz - 3.0, false);
   })();
-  makeBridge(-19.6, -14.6);
+  // W2：農場⇔村の橋は撤去済み（道に置き換え）
 
   // ---------- キャラ ----------
   function makeChar(texKey, x, z, stepLen, bobAmp, scale) {
@@ -885,33 +982,17 @@
     var mesh = new THREE.Mesh(geo, mat); mesh.position.set(x, 0, z); scene.add(mesh);
     var sh = new THREE.Mesh(new THREE.PlaneGeometry(1.5 * scale, 1.5 * scale), new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false }));
     sh.rotation.x = -Math.PI / 2; sh.position.set(x, 0.04, z); scene.add(sh);
-    return { texKey: texKey, mesh: mesh, shadow: sh, x: x, z: z, dir: 'down', flip: false, moving: false, dist: 0, stepLen: stepLen, bobAmp: bobAmp, frame: 0, _lastKey: '', face: 0 };
+    return { texKey: texKey, mesh: mesh, shadow: sh, x: x, z: z, dir: 'down', flip: false, moving: false, dist: 0, stepLen: stepLen, bobAmp: bobAmp, frame: 0, _lastKey: '', face: 0, area: 'world' };
   }
-  function walkable(x, z) {
-    for (var i = 0; i < ISLANDS.length; i++) {
-      var isl = ISLANDS[i], m = isl.R > 8 ? 1.0 : 0.8;
-      if (Math.hypot(x - isl.x, z - isl.z) < isl.R - m) return true;
-    }
-    for (var j = 0; j < CORRIDORS.length; j++) {
-      var c = CORRIDORS[j];
-      if (c.axis === 'z') { if (z > c.from && z < c.to && Math.abs(x - c.at) < c.w) return true; }
-      else if (x > c.x0 && x < c.x1 && Math.abs(z - c.z) < c.w) return true;
-    }
-    return false;
-  }
+  // W3：walkable は「現在のエリアの歩行可能域」で判定する形に一般化した（エリア別判定は walkableFor）
+  function walkable(x, z) { return walkableFor(curArea, x, z); }
   // 夜間便・工程3：その座標に立てるか（walkable かつ、全ての障害物の押し出し範囲の外）。
   // 徘徊AIの目標選定専用。移動そのものは従来どおり moveChar＋collide でプレイヤーと同じ規則に従う（AI専用の甘い判定は作らない）
-  function standable(x, z) {
-    if (!walkable(x, z)) return false;
-    for (var i = 0; i < obstacles.length; i++) {
-      var o = obstacles[i];
-      if (Math.hypot(x - o.x, z - o.z) < o.r + 0.45) return false;
-    }
-    return true;
-  }
+  function standable(x, z) { return standableFor(curArea, x, z); }
   function collide(ch) {
-    for (var i = 0; i < obstacles.length; i++) {
-      var o = obstacles[i], dx = ch.x - o.x, dz = ch.z - o.z, d = Math.hypot(dx, dz), min = o.r + 0.45;
+    var obs = areaObstacles(ch && ch.area ? ch.area : curArea);
+    for (var i = 0; i < obs.length; i++) {
+      var o = obs[i], dx = ch.x - o.x, dz = ch.z - o.z, d = Math.hypot(dx, dz), min = o.r + 0.45;
       if (d < min && d > 0.001) { ch.x = o.x + dx / d * min; ch.z = o.z + dz / d * min; }
     }
   }
@@ -989,10 +1070,10 @@
     var sp = Math.hypot(vx, vz);
     ch.moving = sp > 0.01;
     if (!ch.moving) { setPose(ch, false); return; }
-    var nx = ch.x + vx * dt, nz = ch.z + vz * dt;
-    if (walkable(nx, nz)) { ch.x = nx; ch.z = nz; }
-    else if (walkable(nx, ch.z)) { ch.x = nx; }
-    else if (walkable(ch.x, nz)) { ch.z = nz; }
+    var nx = ch.x + vx * dt, nz = ch.z + vz * dt, cha = ch.area || curArea;
+    if (walkableFor(cha, nx, nz)) { ch.x = nx; ch.z = nz; }
+    else if (walkableFor(cha, nx, ch.z)) { ch.x = nx; }
+    else if (walkableFor(cha, ch.x, nz)) { ch.z = nz; }
     collide(ch);
     ch.face = Math.atan2(vx, vz);
     ch.dist += sp * dt;
@@ -1024,7 +1105,7 @@
         var a = Math.random() * Math.PI * 2, r = Math.random() * w.range;
         var nx = w.home.x + Math.cos(a) * r, nz = w.home.z + Math.sin(a) * r;
         // 工程3：目標は「立てる場所」だけにする（従来は walkable のみで、池・家・畑・柵など障害物の内側も目標になり得た）
-        if (standable(nx, nz)) { w.tx = nx; w.tz = nz; w.state = 'walk'; w.t = 7; w._sx = w.ch.x; w._sz = w.ch.z; w._st = 0; }
+        if (standableFor(w.ch.area || 'world', nx, nz)) { w.tx = nx; w.tz = nz; w.state = 'walk'; w.t = 7; w._sx = w.ch.x; w._sz = w.ch.z; w._st = 0; }
         else w.t = 0.6;
       }
     } else {
@@ -1043,9 +1124,9 @@
     w.ch.mesh.rotation.y = yaw;
   }
 
-  var girl = makeChar('f', -1.5, 3.5, 0.95, 0.1);
-  var boy = makeChar('m', 2.5, -1.5, 1.35, 0.055);
-  var boyW = makeWalker(boy, { x: 0, z: 0 }, 9, 3.4);
+  var girl = makeChar('f', SPAWN.x, SPAWN.z, 0.95, 0.1);
+  var boy = makeChar('m', 2.5 + FARM_OFF.x, -1.5 + FARM_OFF.z, 1.35, 0.055);
+  var boyW = makeWalker(boy, { x: FARM_OFF.x, z: FARM_OFF.z }, 9, 3.4);
   // ---------- 便2：操作キャラの一般化と男の子のHP/RP（SY-5 推奨(a)の先行実装） ----------
   // 男の子がプレイヤー操作の間だけ意味を持つ状態。AI時は無敵・HPなし（従来どおり）で、この値は使わない。
   // セーブ形式 tfRemakeStage1 には含めない（便2では保持・同期・表示まで。本格的な被弾/消費は便4）。
@@ -1058,9 +1139,9 @@
   function statsFor(ch) { return ch === boy ? boyStats : S; }
   function myStats() { return statsFor(myChar()); }
   var NPC_DEFS = [
-    { tex: 'n1', name: '村長エルダ', x: VILLAGE.x, z: 3.2, home: { x: VILLAGE.x, z: 0.8 }, range: 3.2, speed: 2.1, scale: 1, lines: ['おお、よく来たね。畑の調子はどうだい？', '依頼ボードを見ておくれ。この村は助け合いでできておる。', '橋の向こうの小島は、昔は花畑だったそうじゃよ。'] },
-    { tex: 'n2', name: '露天商ミント', x: VILLAGE.x + 2.8, z: -1.55, home: { x: VILLAGE.x + 2.8, z: -1.55 }, range: 0.55, speed: 1.6, scale: 1, lines: ['いらっしゃい！種ならうちが一番よ。', '収穫物は買い取るから、どんどん持ってきてね。', 'ジャガイモが売れたら、珍しい種を仕入れてあげる。'] }, // 工程3：出現位置・ホームを露天商の正面（広場側）へ移動（従来は露天商の障害物リング内側にあり、目標選定が全て弾かれて徘徊できなかった）
-    { tex: 'n3', name: 'ポポ', x: VILLAGE.x + 2, z: 4.5, home: { x: VILLAGE.x, z: 1.5 }, range: 6, speed: 3.6, scale: 0.78, lines: ['ねえねえ、橋の向こうの小島、探検した？', '大きくなったら私も畑やるんだ！', '焚き火のそば、夜はあったかいよ。'] }
+    { tex: 'n1', name: '村長エルダ', x: VILLAGE.x, z: VILLAGE.z + 2.4, home: { x: VILLAGE.x, z: VILLAGE.z }, range: 3.2, speed: 2.1, scale: 1, lines: ['おお、よく来たね。畑の調子はどうだい？', '依頼ボードを見ておくれ。この村は助け合いでできておる。', '大樹のまわりは、昔は花畑だったそうじゃよ。'] },
+    { tex: 'n2', name: '露天商ミント', x: VILLAGE.x + 2.8, z: VILLAGE.z - 2.35, home: { x: VILLAGE.x + 2.8, z: VILLAGE.z - 2.35 }, range: 0.55, speed: 1.6, scale: 1, lines: ['いらっしゃい！種ならうちが一番よ。', '収穫物は買い取るから、どんどん持ってきてね。', 'ジャガイモが売れたら、珍しい種を仕入れてあげる。'] }, // 工程3：出現位置・ホームを露天商の正面（広場側）へ移動（従来は露天商の障害物リング内側にあり、目標選定が全て弾かれて徘徊できなかった）
+    { tex: 'n3', name: 'ポポ', x: VILLAGE.x + 2, z: VILLAGE.z + 3.7, home: { x: VILLAGE.x, z: VILLAGE.z + 0.7 }, range: 6, speed: 3.6, scale: 0.78, lines: ['ねえねえ、大樹の根もとの石碑、もう見た？', '大きくなったら私も畑やるんだ！', '焚き火のそば、夜はあったかいよ。'] }
   ];
   var npcs = NPC_DEFS.map(function (d) {
     var ch = makeChar(d.tex, d.x, d.z, 1.1, 0.08, d.scale);
@@ -1080,12 +1161,27 @@
     if (e.key.toLowerCase() === 'j' || e.key.toLowerCase() === 'x') doAttack();
   });
   window.addEventListener('keyup', function (e) { keys[e.key.toLowerCase()] = false; });
+  // プニコン式（2026-11-26）：画面のどこを触っても（ボタン類の上は除く）その触れた位置にスティックが現れるフローティング方式
   var joy = { active: false, id: null, cx: 0, cy: 0 };
   var joyBase = document.getElementById('joy'), joyKnob = document.getElementById('joyKnob');
-  joyBase.addEventListener('pointerdown', function (e) { joy.active = true; joy.id = e.pointerId; var r = joyBase.getBoundingClientRect(); joy.cx = r.left + r.width / 2; joy.cy = r.top + r.height / 2; joyBase.setPointerCapture(e.pointerId); joyMove(e); });
-  joyBase.addEventListener('pointermove', function (e) { if (joy.active && e.pointerId === joy.id) joyMove(e); });
-  function joyEnd(e) { if (e.pointerId === joy.id) { joy.active = false; input.x = 0; input.y = 0; joyKnob.style.transform = 'translate(-50%,-50%)'; } }
-  joyBase.addEventListener('pointerup', joyEnd); joyBase.addEventListener('pointercancel', joyEnd);
+  function joyIsUiTarget(t) {
+    return !!(t && t.closest && t.closest('button, input, select, textarea, a, .chip, #panel, #endingOverlay, #status'));
+  }
+  window.addEventListener('pointerdown', function (e) {
+    if (joy.active) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (typeof panelOpen !== 'undefined' && panelOpen) return;
+    if (joyIsUiTarget(e.target)) return;
+    joy.active = true; joy.id = e.pointerId; joy.cx = e.clientX; joy.cy = e.clientY;
+    joyBase.style.left = (joy.cx - 59) + 'px'; joyBase.style.top = (joy.cy - 59) + 'px';
+    joyBase.classList.add('on');
+    if (e.cancelable) e.preventDefault();
+    joyMove(e);
+  }, { passive: false });
+  window.addEventListener('pointermove', function (e) { if (joy.active && e.pointerId === joy.id) joyMove(e); });
+  function joyEnd(e) { if (!joy.active || (e && e.pointerId !== undefined && e.pointerId !== joy.id)) return; joy.active = false; joy.id = null; input.x = 0; input.y = 0; joyKnob.style.transform = 'translate(-50%,-50%)'; joyBase.classList.remove('on'); }
+  window.addEventListener('pointerup', joyEnd); window.addEventListener('pointercancel', joyEnd);
+  window.addEventListener('blur', function () { joyEnd(null); });
   function joyMove(e) {
     var dx = e.clientX - joy.cx, dy = e.clientY - joy.cy, d = Math.hypot(dx, dy), max = 34;
     if (d > max) { dx *= max / d; dy *= max / d; }
@@ -1117,7 +1213,10 @@
     cur.sun.setHex(tgt.sun); cur.bg.setHex(tgt.bg);
     cur.sunI = tgt.sunI; cur.hemiI = tgt.hemiI; cur.star = tgt.star; cur.lamp = tgt.lamp; cur.az = tgt.az; cur.el = tgt.el;
   })();
+  // W3：森ダンジョン内はエリア固定の色調（昼の木漏れ日寄り）。時間帯 TIMES の影響を受けない（§2.2）
+  var FOREST_TIME = { sun: 0xffe2a8, sunI: 1.05, hemiI: 0.82, bg: 0x5c7a4a, star: 0.0, lamp: 0.2, az: 2.6, el: 1.05 };
   function applyTime(dt) {
+    var savedTgt = tgt; if (curArea === 'forest') tgt = FOREST_TIME; // 森の中だけ固定色調に差し替え、世界の時間帯選択は保持する
     var k = Math.min(1, dt * 2.2);
     cur.sun.lerp(new THREE.Color(tgt.sun), k); cur.bg.lerp(new THREE.Color(tgt.bg), k);
     cur.sunI += (tgt.sunI - cur.sunI) * k; cur.hemiI += (tgt.hemiI - cur.hemiI) * k;
@@ -1137,6 +1236,7 @@
     });
     winMat.opacity = 0.12 + lamp * 0.8;
     fireGlow.material.opacity = 0.25 + lamp * 0.55;
+    tgt = savedTgt;
   }
 
   // ---------- ゲーム状態 ----------
@@ -1570,7 +1670,7 @@
     { sp: '', text: 'むかし、この村は「実りの果実」の恵みで豊かに実る村だった。けれど果実が眠りについて長い年月が過ぎ、畑は荒れ、店は細り、若者は村を去っていった。' },
     { sp: '', text: 'そんな村に、ふたりの開拓者が移り住んでくる。荒れた畑と小さな家から始まる、新しい暮らしの物語――。' },
     { sp: '村長エルダ', text: 'おお、来てくれたか！　わしが村長のエルダじゃ。遠いところを、ようこそ。' },
-    { sp: '村長エルダ', text: '約束どおり、橋の向こうの畑と家はあんたらのものじゃ。荒れてはおるが、手を入れればきっと実る。' },
+    { sp: '村長エルダ', text: '約束どおり、村の東の畑と家はあんたらのものじゃ。荒れてはおるが、手を入れればきっと実る。' },
     { sp: '村長エルダ', text: 'まずは畑を耕して、最初の作物を育ててみなさい。困ったら、依頼ボードとわしを頼っておくれ。' },
     { sp: '', text: 'こうして、ふたりの開拓の日々が始まった。畑を耕し、種をまき、水をやろう。実ったら、村の露天商で売ることができる。' }
   ];
@@ -1630,7 +1730,7 @@
       { sp: '', text: 'まだ開かれていないものは名前が「？？？」に伏せてあって、ヒントだけが見える。次に何を目指せばいいか迷ったら、このヒントを頼りにしよう。' }
     ],
     t07: [
-      { sp: '', text: '森の島には魔物がいる。近づくと向かってくるから、右下の「⚔️」ボタンで剣を振って戦おう。' },
+      { sp: '', text: 'ここは始まりの森の奥。魔物がいる。近づくと向かってくるから、右下の「⚔️」ボタンで剣を振って戦おう。' },
       { sp: '', text: '敵が攻撃する直前、足元に赤い扇の予告が出る。その範囲から出れば当たらない。もしHPがゼロになっても、家で目が覚めてHP半分で戻ってこられるから、怖がらずに挑んで大丈夫。' }
     ],
     t09: [
@@ -1768,8 +1868,8 @@
     if (tutIdx >= 0 || tutSuppressed()) return;
     var mc = myChar();
     if (!tutSeen('t03')) { for (var i = 0; i < PLOTS.length; i++) { if (Math.hypot(mc.x - PLOTS[i].x, mc.z - PLOTS[i].z) < 1.9) { queueTutorial('t03'); break; } } }
-    if (!tutSeen('t09')) { if (Math.hypot(mc.x - (-6), mc.z - (-1.5)) < 2.5) queueTutorial('t09'); }
-    if (!tutSeen('t07') && typeof FOREST !== 'undefined' && FOREST) { if (Math.hypot(mc.x - FOREST.x, mc.z - FOREST.z) < FOREST.R) queueTutorial('t07'); }
+    if (!tutSeen('t09')) { if (Math.hypot(mc.x - HOME_FRONT.x, mc.z - HOME_FRONT.z) < 2.5) queueTutorial('t09'); }
+    if (!tutSeen('t07') && curArea === 'forest') queueTutorial('t07'); // W3：t07 は森ダンジョンへ入った時に発火する
   }
 
   // ---------- 睡眠・成長 ----------
@@ -1840,6 +1940,40 @@
       syncSendEvent({ type: 'plot', index: plotIdx, base: plotBefore, plot: { st: p.st, crop: p.crop, prog: p.prog, watered: p.watered, soil: soilSnapshot(p) } });
     }
   }
+  // ---------- W3：エリア遷移（入口インタラクト→黒フェード→areaId 切替→フェード復帰。§2.2） ----------
+  var areaBusy = false; // 遷移中は操作を受け付けない
+  var FOREST_SPAWN_IN = { x: 0, z: -23.6 };  // 内部マップの入口スポーン（入口側の鳥居。相対 (0,+10.4)）
+  var FOREST_EXIT_OUT = { x: 0, z: -31.6 };  // 森を出た先の大島側スポーン（鳥居の南）
+  var worldGrp = null, forestGrp = null;     // エリア描画グループ（森セクションで生成・割当）
+  function refreshCharVisibility() {
+    [girl, boy].concat(npcs.map(function (n) { return n.ch; })).forEach(function (ch) {
+      var vis = (ch.area || 'world') === curArea;
+      ch.mesh.visible = vis; ch.shadow.visible = vis;
+    });
+  }
+  function setArea(a) {
+    curArea = a;
+    if (worldGrp) worldGrp.visible = (a === 'world');
+    if (forestGrp) forestGrp.visible = (a === 'forest');
+    var mc = myChar(); mc.area = a;
+    refreshCharVisibility();
+    // W4：エリア遷移は同期へ即時に伝える（0.2秒の定期書込を待たない）。sync 側の定義は後方にあるため typeof ガード越しに呼ぶ
+    if (typeof syncOnAreaChanged === 'function') syncOnAreaChanged();
+  }
+  function transitionTo(area, sx, sz) {
+    if (areaBusy || panelOpen) return;
+    areaBusy = true;
+    var fade = document.getElementById('fade');
+    fade.style.opacity = '1';
+    setTimeout(function () {
+      setArea(area);
+      var mc = myChar();
+      mc.x = sx; mc.z = sz; camTarget.set(sx, 0, sz);
+      girlSm.x = 0; girlSm.z = 0; setPose(mc, false);
+      fade.style.opacity = '0';
+      setTimeout(function () { areaBusy = false; }, 400);
+    }, 650);
+  }
   function findInteract() {
     var mc = myChar();
     var best = null, bestD = 1e9;
@@ -1848,13 +1982,13 @@
       var d = Math.hypot(mc.x - p.x, mc.z - p.z);
       if (d < 1.9) consider(d, plotLabel(p), function () { plotAction(p); });
     });
-    var sd = Math.hypot(mc.x - (VILLAGE.x + 2.8), mc.z - (-2.4));
+    var sd = Math.hypot(mc.x - (VILLAGE.x + 2.8), mc.z - (VILLAGE.z - 3.2));
     if (sd < 2.6) consider(sd, '🛒 お店', shopWithTut);
-    var bd = Math.hypot(mc.x - (VILLAGE.x - 3.0), mc.z - 3.6);
+    var bd = Math.hypot(mc.x - (VILLAGE.x - 3.0), mc.z - (VILLAGE.z + 2.8));
     if (bd < 2.4) consider(bd, '📌 依頼ボード', boardWithTut);
     var td = Math.hypot(mc.x - STELE_POS.x, mc.z - STELE_POS.z);
     if (td < 2.2) consider(td, '🗿 村の石碑', openStele);
-    var hd = Math.hypot(mc.x - (-6), mc.z - (-1.5));
+    var hd = Math.hypot(mc.x - HOME_FRONT.x, mc.z - HOME_FRONT.z);
     if (hd < 2.5) consider(hd, '🛏️ 休む', function () {
       openPanel('自宅', '<p>今日はもう休む？（作物が育ち、RPが全回復します）</p><button class="pbtn" onclick="TF1.sleep()">休む</button>');
     });
@@ -1866,8 +2000,20 @@
         openPanel(t.def.name, '<p>' + line + '</p>');
       });
     });
-    // 森ボス便：鎮まった守り龍との会話（talkables と同じ lineIdx 回し）
-    if (typeof enemies !== 'undefined' && enemies) {
+    // W3：鳥居の出入り（world＝入る／forest＝出る）と、鳥居脇の看板（旧・小島の看板の移設先）
+    if (curArea === 'world') {
+      var twd = Math.hypot(mc.x - TORII_WORLD.x, mc.z - TORII_WORLD.z);
+      if (twd < 2.8) consider(twd, '🚪 森に入る', function () { transitionTo('forest', FOREST_SPAWN_IN.x, FOREST_SPAWN_IN.z); });
+      var tsd = Math.hypot(mc.x - TORII_SIGN_POS.x, mc.z - TORII_SIGN_POS.z);
+      if (tsd < 2.2) consider(tsd, '🪧 看板を読む', function () {
+        openPanel('森の入口の看板', '<p>この先、鳥居の向こうは始まりの森。魔物が出るようになった。剣の用意をして、ふたりで進もう。</p>');
+      });
+    } else if (curArea === 'forest') {
+      var tod = Math.hypot(mc.x - FOREST_SPAWN_IN.x, mc.z - FOREST_SPAWN_IN.z);
+      if (tod < 2.8) consider(tod, '🚪 森を出る', function () { transitionTo('world', FOREST_EXIT_OUT.x, FOREST_EXIT_OUT.z); });
+    }
+    // 森ボス便：鎮まった守り龍との会話（talkables と同じ lineIdx 回し）。W3：森エリアに居る時だけ候補にする
+    if (curArea === 'forest' && typeof enemies !== 'undefined' && enemies) {
       enemies.forEach(function (be) {
         if (!be.boss || be.state !== 'calmed' || be.dead) return;
         var bd = Math.hypot(mc.x - be.x, mc.z - be.z);
@@ -1879,8 +2025,8 @@
         });
       });
     }
-    // 森ボス便：龍の間の看板（既存の看板には読み取り機構が無いため、ここに候補として配線する）
-    if (typeof BOSS_SIGN_POS !== 'undefined' && BOSS_SIGN_POS) {
+    // 森ボス便：龍の間の看板（既存の看板には読み取り機構が無いため、ここに候補として配線する）。W3：森エリア内だけ
+    if (curArea === 'forest' && typeof BOSS_SIGN_POS !== 'undefined' && BOSS_SIGN_POS) {
       var sgd = Math.hypot(mc.x - BOSS_SIGN_POS.x, mc.z - BOSS_SIGN_POS.z);
       if (sgd < 2.2) consider(sgd, '🪧 看板を読む', function () {
         openPanel('龍の間の看板', '<p>瘴気は夜ごとに満ちる。挑むなら1日で祓い切る覚悟で。</p>');
@@ -1888,7 +2034,7 @@
     }
     return best;
   }
-  function doAction() { if (!panelOpen && currentAction) currentAction.fn(); }
+  function doAction() { if (!panelOpen && !areaBusy && currentAction) currentAction.fn(); }
   actBtn.addEventListener('click', doAction);
 
   // ---------- 初期化 ----------
@@ -1913,7 +2059,7 @@
     advanceAct(girl, dt); advanceAct(boy, dt);
     var mc = myChar();
 
-    if (!panelOpen) {
+    if (!panelOpen && !areaBusy) {
       var ix = input.x, iy = input.y;
       if (keys['a'] || keys['arrowleft']) ix -= 1;
       if (keys['d'] || keys['arrowright']) ix += 1;
@@ -1921,7 +2067,9 @@
       if (keys['s'] || keys['arrowdown']) iy += 1;
       var il = Math.hypot(ix, iy); if (il > 1) { ix /= il; iy /= il; }
       var s = Math.sin(yaw), c = Math.cos(yaw);
-      var vx = (ix * c + iy * s) * 6.2, vz = (-ix * s + iy * c) * 6.2;
+      // W5（§1.5／W-7）：道の上（world エリア内・onRoad）でのみプレイヤーの移動速度に ROAD_SPEED_MUL を掛ける
+      var spdMul = (curArea === 'world' && il > 0.05 && onRoad(mc.x, mc.z)) ? ROAD_SPEED_MUL : 1;
+      var vx = (ix * c + iy * s) * 6.2 * spdMul, vz = (-ix * s + iy * c) * 6.2 * spdMul;
       // 加速・減速を滑らかに（目標速度へ指数減衰で寄せる）
       var kk = Math.min(1, (il > 0.05 ? 9 : 13) * dt);
       girlSm.x += (vx - girlSm.x) * kk;
@@ -1942,7 +2090,7 @@
 
     tutProximityCheck();
     tutTick();
-    currentAction = panelOpen ? null : findInteract();
+    currentAction = (panelOpen || areaBusy) ? null : findInteract();
     if (currentAction) { actBtn.textContent = currentAction.label; actBtn.style.display = 'block'; }
     else actBtn.style.display = 'none';
 
@@ -2029,7 +2177,53 @@
       if (!el) { el = document.createElement('div'); el.id = 'tfpos'; el.style.display = 'none'; document.body.appendChild(el); }
       el.textContent = JSON.stringify(window.__tfPos);
     }, 200);
-    if (q.view === 'village') { girl.x = VILLAGE.x + 1; girl.z = 2.5; camTarget.set(girl.x, 0, girl.z); }
+    if (q.view === 'village') { girl.x = VILLAGE.x + 1; girl.z = VILLAGE.z + 1.7; camTarget.set(girl.x, 0, girl.z); }
+    if (q.view === 'big') { girl.x = SPAWN.x; girl.z = SPAWN.z; camTarget.set(girl.x, 0, girl.z); }
+    // W1 検収用：歩行スキャン（walkable のグリッド走査＋経路探索）・農業ループ・旧セーブ互換を
+    // 実ビルド上で数値確認するための読み取り専用フック（既存の __tfSeen／__tfPos と同じ流儀）
+    window.__tfWorld = {
+      big: true, // W5：大島が常時正式な生活圏（旧 BIG_MODE フラグは除去済み。互換のため true 固定で残す）
+      roadMul: ROAD_SPEED_MUL,
+      onRoadNow: function () { var mc = myChar(); return curArea === 'world' && onRoad(mc.x, mc.z); },
+      moveSpeed: function () { return Math.hypot(girlSm.x, girlSm.z); },
+      walkable: walkable, standable: standable,
+      obstacles: obstacles,
+      home: HOME, homeFront: HOME_FRONT, spawn: SPAWN,
+      village: VILLAGE, stele: STELE_POS, bigTree: { x: 0, z: -8 },
+      roads: ROADS, onRoad: onRoad,
+      shop: { x: VILLAGE.x + 2.8, z: VILLAGE.z - 4.6 }, board: { x: VILLAGE.x - 3.0, z: VILLAGE.z + 2.8 },
+      npcs: function () { return npcs.map(function (n) { return { name: n.def.name, x: n.ch.x, z: n.ch.z, home: n.def.home }; }); },
+      saveData: function () { try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; } },
+      area: function () { return curArea; },
+      walkableFor: walkableFor, standableFor: standableFor, obstaclesByArea: obstaclesByArea,
+      setArea: setArea, transitionTo: transitionTo,
+      torii: TORII_WORLD, toriiSign: TORII_SIGN_POS, forestSpawnIn: FOREST_SPAWN_IN, forestExitOut: FOREST_EXIT_OUT, forestPlaces: function () { return FOREST_PLACES; },
+      bossHome: function () { return BOSS_HOME; }, bossSignPos: function () { return BOSS_SIGN_POS; },
+      enemies: function () { return enemies.map(function (e) { return { kind: e.kind, area: e.area, x: e.x, z: e.z, hp: e.hp, dead: e.dead, state: e.state, boss: !!e.boss }; }); },
+      boyPos: function () { return [boy.x, boy.z]; },
+      teleport: function (x, z) { girl.x = x; girl.z = z; camTarget.set(x, 0, z); },
+      panelText: function () { var p = document.getElementById('panel'); return p ? p.textContent : ''; },
+      tutActive: function () { return tutIdx >= 0 ? tutId : null; },
+      actLabel: function () { return currentAction ? currentAction.label : null; },
+      doAction: function () { doAction(); },
+      hurt: function (d) { hurtPlayer(d || 999); },
+      panelOpen: function () { return panelOpen; },
+      endingState: function () { return { running: endingRunning, idx: endingIdx, phase: endingPhase }; },
+      plots: function () { return PLOTS.map(function (p) { return { x: p.x, z: p.z, st: p.st, crop: p.crop, prog: p.prog, watered: p.watered }; }); },
+      girlPos: function () { return [girl.x, girl.z]; },
+      // W4 検収用：同期のエリア対応（相方の所属・表示、自分の所属、敵スナップショットの購読状態、診断チップ）を読み取る
+      day: function () { return S.day; },
+      myState: function () { var mc = myChar(); return { area: mc.area || curArea, x: mc.x, z: mc.z, face: mc.face }; },
+      partnerState: function () { var pc = partnerChar(); return { area: pc.area || 'world', visible: pc.mesh.visible, x: pc.x, z: pc.z }; },
+      teleportMy: function (x, z, face) { var mc = myChar(); mc.x = x; mc.z = z; if (typeof face === 'number') mc.face = face; camTarget.set(x, 0, z); },
+      diagText: function () { var el = document.getElementById('syncDiag'); return el ? el.textContent : ''; },
+      syncState: function () {
+        if (typeof TFS === 'undefined' || !TFS) return { mode: 'none' };
+        var snaps = {};
+        Object.keys(TFS.worldSnaps || {}).forEach(function (a) { var sn = TFS.worldSnaps[a]; snaps[a] = { area: sn && sn.area, n: sn && Array.isArray(sn.enemies) ? sn.enemies.length : 0, hp: sn && Array.isArray(sn.enemies) ? sn.enemies.map(function (e) { return e.hp; }) : [] }; });
+        return { mode: (typeof syncCombatMode === 'function') ? syncCombatMode() : 'solo', isHost: !!TFS.isHost, role: TFS.role, partnerSeen: !!TFS.partnerSeen, partnerArea: TFS.partnerData ? (TFS.partnerData.area || null) : null, subAreas: Object.keys(TFS.worldSubs || {}), snaps: snaps };
+      }
+    };
     if (q.pos) { var p = q.pos.split(','); girl.x = parseFloat(p[0]); girl.z = parseFloat(p[1] || 0); camTarget.set(girl.x, 0, girl.z); }
     if (q.panel === 'shop') setTimeout(openShop, 500);
     if (q.panel === 'board') setTimeout(openBoard, 500);
@@ -2063,79 +2257,125 @@
     fitDist();
   });
 
-  // ---------- 段階2：森の島と戦闘 ----------
-  var FOREST = { x: 0, z: -34, R: 11 };
-  ISLANDS.push(FOREST);
-  CORRIDORS.push({ axis: 'z', from: -25.5, to: -13.0, at: 0, w: 1.3 }); // 2026-11-25 修正：両端を島の歩行可能域へ重ねた（旧設定では農場側0.2・森側1.2の死に帯があり徒歩で森へ行けなかった）
-  makeIsland(FOREST.R, FOREST.x, FOREST.z);
-  function makeBridgeZ(z0, z1) {
-    var n = Math.max(4, Math.round((z0 - z1) / 0.72));
-    for (var i = 0; i < n; i++) {
-      var t = i / (n - 1), z = z0 + (z1 - z0) * t, y = -0.03 + Math.sin(t * Math.PI) * 0.3;
-      var pl = new THREE.Mesh(new THREE.BoxGeometry(2.7, 0.12, 0.78), new THREE.MeshLambertMaterial({ color: i % 2 ? 0x9a7850 : 0x8a6844 }));
-      pl.position.set(0, y, z); pl.receiveShadow = true; scene.add(pl);
-      if (i % 3 === 0) [-1.25, 1.25].forEach(function (xo) {
-        var post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.0, 5), new THREE.MeshLambertMaterial({ color: 0x6d4c33 }));
-        post.position.set(xo, y + 0.5, z); scene.add(post);
-      });
-    }
-    [-1.25, 1.25].forEach(function (xo) {
-      var rail = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, z0 - z1), lmat(0x7d5f3d));
-      rail.position.set(xo, 0.85, (z0 + z1) / 2); scene.add(rail);
-      var mid = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.055, z0 - z1), lmat(0x7d5f3d));
-      mid.position.set(xo, 0.48, (z0 + z1) / 2); scene.add(mid);
-      [z0 - 0.25, z1 + 0.25].forEach(function (pz) {
-        var ep = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.085, 1.15, 6), lmat(0x6d4c33));
-        ep.position.set(xo, 0.55, pz); ep.castShadow = true; scene.add(ep);
-        var capB = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 6), lmat(0x8a6844));
-        capB.position.set(xo, 1.18, pz); scene.add(capB);
-      });
+  // ---------- W3：エリア描画グループの確定と森ダンジョン内部マップ ----------
+  // ここまでの world 造形（scene 直下）を worldGrp へ寄せ、空・光源・キャラだけを scene に残す。
+  worldGrp = new THREE.Group(); scene.add(worldGrp);
+  forestGrp = new THREE.Group(); forestGrp.visible = false; scene.add(forestGrp);
+  (function () {
+    var keep = [];
+    [hemi, sun, sun.target, moon, cloudGroup].forEach(function (o) { if (o) keep.push(o); });
+    [girl, boy].concat(npcs.map(function (n) { return n.ch; })).forEach(function (ch) { keep.push(ch.mesh); keep.push(ch.shadow); });
+    scene.children.slice().forEach(function (o) {
+      if (o === worldGrp || o === forestGrp) return;
+      if (keep.indexOf(o) >= 0 || o.isPoints) return; // 星（Points）は空の一部として scene に残す
+      worldGrp.add(o);
     });
-  }
-  makeBridgeZ(-22.4, -14.6);
+  })();
+  // 森ダンジョン内部マップ（WORLD-REDESIGN-v1 §2.3）：床は円盤 R13＋周囲を木・岩の壁で閉じた「中」の空間。
+  // 浮島の崖・裏側は作らない。内部レイアウトは旧・森の島の相対配置（森中心 (0,-34) からの相対値）を絶対座標で転用する。
+  var FOREST = { x: 0, z: -34, R: 13 };
   // 森ボス便：龍の間の定数（広場中心と看板位置。findInteract／updateCombat からも参照する）
-  var BOSS_HOME = { forest: { x: 0, z: -42.9 } };
-  var DRAGON_ROOM = { x: 0, z: -42.9, R: 3.2 }; // 通常敵の侵入禁止域（広場中心からの半径）
-  var BOSS_SIGN_POS = { x: 2.7, z: -39.9 };
-  (function () { // 森の島の飾りと門
+  var BOSS_HOME = { forest: { x: 0, z: -42.9 } };              // 相対 (0,-8.9)
+  var DRAGON_ROOMS = { forest: { x: 0, z: -42.9, R: 3.2 } };   // W3：龍の間の侵入クランプをエリア単位に一般化
+  var DRAGON_ROOM = DRAGON_ROOMS.forest;
+  var BOSS_SIGN_POS = { x: 2.7, z: -39.9 };                    // 相対 (2.7,-5.9)
+  // W3：祠・宝箱・採取ポイントの置き場（造形と配置のみ。中身の仕組みは ROUTE-DUNGEON 側の便の担当）
+  var FOREST_PLACES = {
+    shrine: { x: -4.5, z: -26.5 },  // 木霊の祠（入口付近・西の寄り道）
+    chest: { x: 5.5, z: -28 },      // 宝箱（入口付近・東の寄り道）
+    gather: { x: -7.6, z: -29.2 }   // 岩の採取ポイント（中ほど・西の寄り道）
+  };
+  (function () { // 森ダンジョン内部の造形（buildGrp／buildObs を forest 側へ切り替えて組み立てる）
+    buildGrp = forestGrp; buildObs = obstaclesByArea.forest;
+    // 床：円盤（上面 y=0）。地面テクスチャは既存 grass の複製で繰り返しだけを合わせる
+    // （生成方式・フィルタは不変。2026-11-24 の地面真っ黒化対策＝sRGBEncoding を付けない／地面系の再アップロードをしない、を維持）
+    var fTex = grassTex.clone(); fTex.repeat.set(5.2, 5.2); fTex.needsUpdate = true;
+    var floor = new THREE.Mesh(
+      new THREE.CylinderGeometry(13, 12.6, 0.6, 40),
+      [new THREE.MeshLambertMaterial({ map: dirtTex }), new THREE.MeshLambertMaterial({ map: fTex }), new THREE.MeshLambertMaterial({ color: 0x4a423c })]
+    );
+    floor.position.set(0, -0.3, -34); floor.receiveShadow = true; forestGrp.add(floor);
+    // 周囲の壁：木と岩を密に並べて「森の中」として閉じる（壁の木・岩は forest 側の障害物になる）
+    var wrnd = mulberry32(20261128);
+    for (var wi = 0; wi < 44; wi++) {
+      var wa = wi / 44 * Math.PI * 2 + (wrnd() - 0.5) * 0.06;
+      var wr = 12.55 + (wrnd() - 0.5) * 0.5;
+      tree(Math.cos(wa) * wr, -34 + Math.sin(wa) * wr, 1.25 + wrnd() * 0.5);
+    }
+    for (var wj = 0; wj < 22; wj++) {
+      var wa2 = (wj + 0.5) / 22 * Math.PI * 2;
+      var wrock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.55 + wrnd() * 0.45), new THREE.MeshLambertMaterial({ color: 0x7d746a, flatShading: true }));
+      wrock.scale.y = 0.85; wrock.rotation.y = wrnd() * 3; wrock.castShadow = true;
+      wrock.position.set(Math.cos(wa2) * 12.9, 0.3, -34 + Math.sin(wa2) * 12.9); forestGrp.add(wrock);
+      obstaclesByArea.forest.push({ x: wrock.position.x, z: wrock.position.z, r: 0.8 });
+    }
+    // 内部の飾りの木・岩（旧・森の島の配置を転用）
     tree(-6, -40, 1.15); tree(5.5, -41, 1.25); tree(-8, -31, 1.0); tree(8, -30, 1.1); tree(-3.5, -43, 1.2); tree(3, -26.5, 0.95); tree(-8.5, -37, 1.05);
+    // 入口側の鳥居（相対 (0,+10.4)。出る時の出口も同じ場所）
     box(0.46, 0.26, 0.46, 0x8d8578, -1.5, 0.13, -23.6); box(0.46, 0.26, 0.46, 0x8d8578, 1.5, 0.13, -23.6);
     box(0.22, 3.0, 0.22, 0x8a4a3a, -1.5, 1.5, -23.6); box(0.22, 3.0, 0.22, 0x8a4a3a, 1.5, 1.5, -23.6);
     box(3.9, 0.28, 0.3, 0x8a4a3a, 0, 3.05, -23.6); box(3.3, 0.2, 0.24, 0x8a4a3a, 0, 2.45, -23.6);
     box(4.16, 0.15, 0.44, 0x3a3230, 0, 3.26, -23.6);
     box(0.3, 0.52, 0.1, 0xd8cfc0, 0, 2.76, -23.6, { noShadow: true });
-    makeSign(2.6, -24.6);
+    obstaclesByArea.forest.push({ x: -1.5, z: -23.6, r: 0.45 }); obstaclesByArea.forest.push({ x: 1.5, z: -23.6, r: 0.45 });
     lantern(-2.8, -24.2, false);
-    // --- 森ボス便：龍の間（島の最奥。2つ目の鳥居＋円形広場） ---
-    // 鳥居は入口（z=-23.6）と同形を z=-40.8 に置く
+    // --- 龍の間（内部マップ最奥。2つ目の鳥居＋円形広場） ---
     box(0.46, 0.26, 0.46, 0x8d8578, -1.5, 0.13, -40.8); box(0.46, 0.26, 0.46, 0x8d8578, 1.5, 0.13, -40.8);
     box(0.22, 3.0, 0.22, 0x8a4a3a, -1.5, 1.5, -40.8); box(0.22, 3.0, 0.22, 0x8a4a3a, 1.5, 1.5, -40.8);
     box(3.9, 0.28, 0.3, 0x8a4a3a, 0, 3.05, -40.8); box(3.3, 0.2, 0.24, 0x8a4a3a, 0, 2.45, -40.8);
     box(4.16, 0.15, 0.44, 0x3a3230, 0, 3.26, -40.8);
     box(0.3, 0.52, 0.1, 0xd8cfc0, 0, 2.76, -40.8, { noShadow: true });
-    // 円形広場「龍の間」：中心 (0,-42.9)、円盤半径2.0（中心距離8.9＋2.0＝10.9 ≦ 島R11 に収める）
+    obstaclesByArea.forest.push({ x: -1.5, z: -40.8, r: 0.45 }); obstaclesByArea.forest.push({ x: 1.5, z: -40.8, r: 0.45 });
+    // 円形広場「龍の間」：中心 (0,-42.9)、円盤半径2.0（中心距離8.9＋2.0＝10.9 ≦ 床R13 に収める）
     var plazaB = new THREE.Mesh(new THREE.CircleGeometry(2.0, 26), new THREE.MeshLambertMaterial({ color: 0xa9a294 }));
-    plazaB.rotation.x = -Math.PI / 2; plazaB.position.set(0, 0.03, -42.9); plazaB.receiveShadow = true; scene.add(plazaB);
+    plazaB.rotation.x = -Math.PI / 2; plazaB.position.set(0, 0.03, -42.9); plazaB.receiveShadow = true; forestGrp.add(plazaB);
     var plazaB2 = new THREE.Mesh(new THREE.CircleGeometry(1.15, 22), new THREE.MeshLambertMaterial({ color: 0xbdb4a2 }));
-    plazaB2.rotation.x = -Math.PI / 2; plazaB2.position.set(0, 0.045, -42.9); plazaB2.receiveShadow = true; scene.add(plazaB2);
+    plazaB2.rotation.x = -Math.PI / 2; plazaB2.position.set(0, 0.045, -42.9); plazaB2.receiveShadow = true; forestGrp.add(plazaB2);
     for (var ri = 0; ri < 12; ri++) {
       var ra = ri / 12 * Math.PI * 2;
       var peb = new THREE.Mesh(new THREE.DodecahedronGeometry(0.15 + (ri % 3) * 0.04), new THREE.MeshLambertMaterial({ color: 0x7d746a, flatShading: true }));
       peb.scale.y = 0.7; peb.rotation.y = ri * 1.7; peb.castShadow = true;
-      peb.position.set(Math.cos(ra) * 2.12, 0.1, -42.9 + Math.sin(ra) * 2.12); scene.add(peb);
+      peb.position.set(Math.cos(ra) * 2.12, 0.1, -42.9 + Math.sin(ra) * 2.12); forestGrp.add(peb);
     }
     makeSign(BOSS_SIGN_POS.x, BOSS_SIGN_POS.z);
+    var rrnd = mulberry32(99);
     for (var i = 0; i < 7; i++) {
-      var rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4 + Math.random() * 0.4), new THREE.MeshLambertMaterial({ color: 0x7d746a, flatShading: true }));
-      var a = Math.random() * Math.PI * 2, r = 4 + Math.random() * 6;
-      rock.scale.y = 0.78; rock.rotation.y = Math.random() * 3; rock.castShadow = true;
-      rock.position.set(Math.cos(a) * r, 0.3, -34 + Math.sin(a) * r); scene.add(rock);
-      if (i % 2 === 0) {
-        var rock2 = new THREE.Mesh(new THREE.DodecahedronGeometry(0.22 + Math.random() * 0.15), rock.material);
-        rock2.scale.y = 0.8; rock2.rotation.y = Math.random() * 3;
-        rock2.position.set(rock.position.x + 0.55, 0.18, rock.position.z + 0.3); scene.add(rock2);
-      }
+      var ra3 = rrnd() * Math.PI * 2, rr3 = 4 + rrnd() * 6;
+      var rx3 = Math.cos(ra3) * rr3, rz3 = -34 + Math.sin(ra3) * rr3;
+      if (Math.hypot(rx3 - DRAGON_ROOM.x, rz3 - DRAGON_ROOM.z) < 3.8) continue;
+      if (Math.abs(rx3) < 1.9 && rz3 > -31) continue; // 入口からの通り道は開ける
+      var rock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.4 + rrnd() * 0.4), new THREE.MeshLambertMaterial({ color: 0x7d746a, flatShading: true }));
+      rock.scale.y = 0.78; rock.rotation.y = rrnd() * 3; rock.castShadow = true;
+      rock.position.set(rx3, 0.3, rz3); forestGrp.add(rock);
     }
+    // --- 祠・宝箱・採取ポイントの置き場（造形のみ） ---
+    (function () { // 木霊の祠：石の台座＋柱＋笠＋祠内の光る石
+      var sx = FOREST_PLACES.shrine.x, sz = FOREST_PLACES.shrine.z;
+      box(1.3, 0.24, 1.3, 0x6e675e, sx, 0.12, sz);
+      box(0.16, 0.85, 0.16, 0x8d8578, sx - 0.42, 0.66, sz - 0.3); box(0.16, 0.85, 0.16, 0x8d8578, sx + 0.42, 0.66, sz - 0.3);
+      box(0.16, 0.85, 0.16, 0x8d8578, sx - 0.42, 0.66, sz + 0.3); box(0.16, 0.85, 0.16, 0x8d8578, sx + 0.42, 0.66, sz + 0.3);
+      box(1.25, 0.16, 1.25, 0x5f574f, sx, 1.16, sz);
+      var core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.2, 0), new THREE.MeshBasicMaterial({ color: 0xa8e6a1 }));
+      core.position.set(sx, 0.62, sz); forestGrp.add(core);
+      obstaclesByArea.forest.push({ x: sx, z: sz, r: 0.85 });
+    })();
+    (function () { // 宝箱：木の箱＋蓋＋金の帯（開封処理は未実装＝置き場のみ）
+      var cx = FOREST_PLACES.chest.x, cz = FOREST_PLACES.chest.z;
+      box(0.95, 0.52, 0.62, 0x8a6844, cx, 0.26, cz);
+      box(1.02, 0.2, 0.68, 0x6d4c33, cx, 0.6, cz);
+      box(0.14, 0.74, 0.7, 0xd8b34a, cx, 0.37, cz, { noShadow: true });
+      obstaclesByArea.forest.push({ x: cx, z: cz, r: 0.7 });
+    })();
+    (function () { // 岩の採取ポイント：銅色の混じる岩の集まり（採取処理は未実装＝置き場のみ）
+      var gx = FOREST_PLACES.gather.x, gz = FOREST_PLACES.gather.z;
+      [[0, 0, 0.55, 0x7d746a], [0.7, 0.25, 0.38, 0x8a7a68], [-0.55, 0.35, 0.34, 0xb87333]].forEach(function (o) {
+        var m = new THREE.Mesh(new THREE.DodecahedronGeometry(o[2]), new THREE.MeshLambertMaterial({ color: o[3], flatShading: true }));
+        m.scale.y = 0.8; m.rotation.y = o[0] * 2.1; m.castShadow = true;
+        m.position.set(gx + o[0], o[2] * 0.55, gz + o[1]); forestGrp.add(m);
+      });
+      obstaclesByArea.forest.push({ x: gx, z: gz, r: 0.95 });
+    })();
+    buildGrp = null; buildObs = null;
   })();
 
   function fanGeo(r, fovDeg) {
@@ -2192,7 +2432,7 @@
     bar.add(barBg);
     var barFg = new THREE.Mesh(new THREE.PlaneGeometry(1.05, 0.1), new THREE.MeshBasicMaterial({ color: 0x7ed957, depthWrite: false }));
     barFg.position.z = 0.01; bar.add(barFg);
-    var e = { kind: kind, def: def, x: x, z: z, home: { x: x, z: z }, hp: def.hp, state: 'roam', t: Math.random() * 2, tx: x, tz: z, face: 0, kvx: 0, kvz: 0, grp: grp, body: body, tele: tele, line: line, bar: bar, barFg: barFg, hitDone: false, dead: false, hop: Math.random() * 6 };
+    var e = { kind: kind, def: def, x: x, z: z, home: { x: x, z: z }, hp: def.hp, state: 'roam', t: Math.random() * 2, tx: x, tz: z, face: 0, kvx: 0, kvz: 0, grp: grp, body: body, tele: tele, line: line, bar: bar, barFg: barFg, hitDone: false, dead: false, hop: Math.random() * 6, area: 'forest' };
     enemies.push(e);
     return e;
   }
@@ -2263,14 +2503,14 @@
     var nameTex = new THREE.CanvasTexture(nc); // 2026-11-24：CanvasTexture の sRGBEncoding は実機の真っ黒化対策で外す
     var namePlate = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: nameTex, transparent: true, depthWrite: false }));
     namePlate.position.set(0, 0.46, 0); bar.add(namePlate);
-    var e = { kind: kind, def: def, x: x, z: z, home: { x: x, z: z }, hp: def.hp, state: 'idle', t: 0, tx: x, tz: z, face: 0, kvx: 0, kvz: 0, grp: grp, body: body, tele: tele, line: line, bar: bar, barFg: barFg, hitDone: false, dead: false, hop: Math.random() * 6, boss: true, areaId: areaId, reach: 3.6, fanR: 3.45, atkCount: 0, kbMul: 0.25, chargeHits: {}, billboard: billboard, blob: blob, eyeMats: eyeMats, talkIdx: 0 };
+    var e = { kind: kind, def: def, x: x, z: z, home: { x: x, z: z }, hp: def.hp, state: 'idle', t: 0, tx: x, tz: z, face: 0, kvx: 0, kvz: 0, grp: grp, body: body, tele: tele, line: line, bar: bar, barFg: barFg, hitDone: false, dead: false, hop: Math.random() * 6, boss: true, areaId: areaId, area: areaId, reach: 3.6, fanR: 3.45, atkCount: 0, kbMul: 0.25, chargeHits: {}, billboard: billboard, blob: blob, eyeMats: eyeMats, talkIdx: 0 };
     enemies.push(e);
     if (S.boss && S.boss[areaId]) { e.state = 'calmed'; e.hp = 0; } // 鎮圧済みなら残置として起動する
     return e;
   }
   spawnEnemy('slime', 3, -30); spawnEnemy('slime', -4, -37); spawnEnemy('slime', 5.5, -38.5); spawnEnemy('slime', -2, -27.5);
   spawnEnemy('blueslime', -6.5, -31.5); spawnEnemy('blueslime', 7, -33);
-  spawnEnemy('slime', 24.3, 2.2); spawnEnemy('slime', 28.2, -2.2);
+  spawnEnemy('slime', 2.8, -27.5); spawnEnemy('slime', -3.2, -28.5); // W3：旧・小島のスライム×2 を森ダンジョン内部の入口付近へ再配置（内部の通常敵は合計8体＝エリア内上限に一致）
   spawnBoss('forest'); // 同期の index 照合のため、通常敵8体の直後（末尾 index 8）に固定する
   function respawnEnemies() {
     enemies.forEach(function (e) {
@@ -2375,13 +2615,14 @@
     // 便4：ゲストの攻撃は自分では判定せず、attack イベントでホストへ申告する（ホストが同じ扇形判定で代理実行し、結果はスナップショットで揃う）
     if ((typeof syncCombatMode === 'function') && syncCombatMode() === 'guest') {
       if (typeof syncSendEvent === 'function') {
-        syncSendEvent({ type: 'attack', x: Math.round(mc.x * 1000) / 1000, z: Math.round(mc.z * 1000) / 1000, face: Math.round((mc.face || 0) * 1000) / 1000, dir8: mc.dir8 || mc.dir || 'down' });
+        syncSendEvent({ type: 'attack', area: curArea, x: Math.round(mc.x * 1000) / 1000, z: Math.round(mc.z * 1000) / 1000, face: Math.round((mc.face || 0) * 1000) / 1000, dir8: mc.dir8 || mc.dir || 'down' });
       }
       updateHUD();
       return;
     }
     enemies.forEach(function (e) {
       if (e.dead) return;
+      if ((e.area || 'forest') !== curArea) return; // W3：攻撃判定は同じエリアの敵だけ
       if (e.boss && (e.state === 'calmed' || e.state === 'idle')) return; // 森ボス便：待機中・鎮まった龍は攻撃対象にしない（祓いの二重発火防止）
       var dx = e.x - mc.x, dz = e.z - mc.z, d = Math.hypot(dx, dz);
       if (d < 2.8 && Math.abs(angDiff(mc.face, Math.atan2(dx, dz))) < 0.96) {
@@ -2413,7 +2654,8 @@
     mc.mesh.material.color.setHex(0xff9999);
     if (ms.hp <= 0) {
       ms.hp = Math.ceil(ms.hpMax * 0.5);
-      mc.x = -1.5; mc.z = 3.5; camTarget.set(mc.x, 0, mc.z);
+      if (curArea !== 'world') setArea('world'); // W3：復帰先は world の自宅前（エリアも戻す）
+      mc.x = SPAWN.x; mc.z = SPAWN.z; camTarget.set(mc.x, 0, mc.z);
       toast('💫 目の前が真っ暗に…家で目が覚めた（HP半分で復帰）');
     } else toast('💥 ' + dmg + ' のダメージ！');
     updateHUD(); save();
@@ -2458,10 +2700,19 @@
   function checkBossTrigger(e) {
     if (!e.boss || e.state !== 'idle' || panelOpen) return;
     var mc = myChar();
-    var d = Math.hypot(mc.x - e.x, mc.z - e.z);
-    if (d >= 4.6) return;
-    if (S.storySeen.bossIntro) { e.state = 'approach'; }
-    else startBossIntro(e);
+    if ((mc.area || 'world') === (e.area || 'forest')) { // W3：同じエリアに居る時だけ発火
+      var d = Math.hypot(mc.x - e.x, mc.z - e.z);
+      if (d < 4.6) {
+        if (S.storySeen.bossIntro) { e.state = 'approach'; }
+        else startBossIntro(e);
+        return;
+      }
+    }
+    // W4：ホスト接続中、相方だけが龍の間に近づいた場合も戦闘を始める（会話パネルはホスト本人の端末でだけ出すため、既読時のみ）
+    if (typeof syncIsHostConnected === 'function' && syncIsHostConnected() && typeof TFS !== 'undefined' && TFS && TFS.partnerSeen && TFS.partnerData) {
+      var pc = partnerChar();
+      if ((pc.area || 'world') === (e.area || 'forest') && Math.hypot(pc.x - e.x, pc.z - e.z) < 4.6 && S.storySeen.bossIntro) e.state = 'approach';
+    }
   }
   // 祓い処理（STAGE3-DESIGN §3.1 の処理順。決着は killEnemy ではなくこちら）
   function purifyBoss(e) {
@@ -2551,14 +2802,15 @@
     fade.style.opacity = '1';
     setTimeout(function () {
       ov.style.display = 'none'; panelOpen = false;
+      if (curArea !== 'world') setArea('world'); // W3：帰還先は world エリアの村の広場（エリア切替を正しく行う）
       var mc = myChar();
-      mc.x = VILLAGE.x + 1; mc.z = 2.5; camTarget.set(mc.x, 0, mc.z);
+      mc.x = VILLAGE.x + 1; mc.z = VILLAGE.z + 1.7; camTarget.set(mc.x, 0, mc.z);
       girlSm.x = 0; girlSm.z = 0; setPose(mc, false);
       // 相方が受信駆動（同期接続中＋受信中）のときは相方を動かさない。AI駆動のときは一緒に村へ連れて行く
       var partnerDriven = (typeof syncIsConnected === 'function') && syncIsConnected() && typeof TFS !== 'undefined' && TFS && TFS.partnerSeen;
       if (!partnerDriven) {
         var pc = partnerChar();
-        pc.x = VILLAGE.x + 2.6; pc.z = 3.4;
+        pc.x = VILLAGE.x + 2.6; pc.z = VILLAGE.z + 2.6;
         if (pc === boy) { boyW.home = { x: pc.x, z: pc.z }; boyW.state = 'idle'; boyW.t = 2; boyW.tx = pc.x; boyW.tz = pc.z; }
         setPose(pc, false);
       }
@@ -2568,6 +2820,12 @@
     }, 650);
   };
 
+  // W4：別エリアの敵の見た目を消す（AIは回しても描画しない）
+  function hideEnemyVisuals(e) {
+    e.grp.visible = false; e.bar.visible = false; e.tele.visible = false; e.line.visible = false;
+    if (e.billboard) e.billboard.visible = false;
+    if (e.blob) e.blob.visible = false;
+  }
   function updateCombat(dt, t) {
     if (!enemies) return; // 初期化前（animate初回同期フレーム）のガード
     if (atkCd > 0) atkCd -= dt;
@@ -2580,21 +2838,36 @@
     if (typeof syncCombatModeTransition === 'function') syncCombatModeTransition(cmode);
     if (cmode === 'guest') { if (typeof syncDriveGuestEnemies === 'function') syncDriveGuestEnemies(dt); return; }
     var targets = combatTargets();
+    // W4：ホスト接続中は「どちらかのプレイヤーが居るエリア」の敵AIを回す（相方がダンジョン内でも敵が止まらない）。
+    // ソロ／お散歩（ローカルAI）は従来どおり現在のエリアだけ。別エリアの敵はAIだけ回し、描画は出さない
+    var aiAreas = {};
+    aiAreas[curArea] = true;
+    if (cmode === 'host' && typeof TFS !== 'undefined' && TFS && TFS.partnerSeen && TFS.partnerData && typeof TFS.partnerData.area === 'string') aiAreas[TFS.partnerData.area] = true;
     enemies.forEach(function (e) {
       if (e.dead) return;
-      // 対象選択：両プレイヤーのうち一番近い相手を狙う（ソロ時は従来どおり自分だけ）
+      var eArea = e.area || 'forest';
+      if (!aiAreas[eArea]) {
+        e.grp.visible = false; e.bar.visible = false; e.tele.visible = false; e.line.visible = false;
+        if (e.billboard) e.billboard.visible = false;
+        if (e.blob) e.blob.visible = false;
+        return;
+      }
+      var inCurArea = (eArea === curArea);
+      e.grp.visible = inCurArea;
+      // 対象選択：同じエリアに居るプレイヤーのうち一番近い相手を狙う（ソロ時は従来どおり自分だけ）
       var tgt = null, dx = 0, dz = 0, distP = 1e9;
       targets.forEach(function (tg) {
+        if ((tg.ch.area || 'world') !== (e.area || 'forest')) return;
         var ddx = tg.ch.x - e.x, ddz = tg.ch.z - e.z, dd = Math.hypot(ddx, ddz);
         if (dd < distP) { distP = dd; dx = ddx; dz = ddz; tgt = tg; }
       });
       // 森ボス便：idle／calmed の敵（待機中・鎮まった龍）は AI を回さず描画だけする
       if (e.boss && e.state === 'idle') checkBossTrigger(e);
-      if (e.state === 'idle' || e.state === 'calmed') { e.tele.visible = false; e.line.visible = false; renderEnemy(e, 0, distP, dt); return; }
+      if (e.state === 'idle' || e.state === 'calmed') { e.tele.visible = false; e.line.visible = false; renderEnemy(e, 0, distP, dt); if (!inCurArea) hideEnemyVisuals(e); return; }
       // ノックバック
       e.x += e.kvx * dt; e.z += e.kvz * dt;
       e.kvx *= Math.max(0, 1 - dt * 7); e.kvz *= Math.max(0, 1 - dt * 7);
-      if (!walkable(e.x, e.z)) { e.x -= e.kvx * dt * 1.2; e.z -= e.kvz * dt * 1.2; }
+      if (!walkableFor(e.area || 'forest', e.x, e.z)) { e.x -= e.kvx * dt * 1.2; e.z -= e.kvz * dt * 1.2; }
       e.tele.visible = false; e.line.visible = false;
       var spd = 0;
       if (e.state === 'roam') {
@@ -2602,7 +2875,7 @@
         if (e.t <= 0) {
           var a = Math.random() * Math.PI * 2, r = Math.random() * 3.5;
           var nx = e.home.x + Math.cos(a) * r, nz = e.home.z + Math.sin(a) * r;
-          if (walkable(nx, nz)) { e.tx = nx; e.tz = nz; }
+          if (walkableFor(e.area || 'forest', nx, nz)) { e.tx = nx; e.tz = nz; }
           e.t = 2 + Math.random() * 3;
         }
         var mx = e.tx - e.x, mz = e.tz - e.z, md = Math.hypot(mx, mz);
@@ -2623,6 +2896,7 @@
         if (e.t <= 0) {
           // 打撃判定は扇の中にいる全プレイヤーに対して行う（ゲスト分は hurtCombatTarget が notes で返す）
           targets.forEach(function (tg) {
+            if ((tg.ch.area || 'world') !== (e.area || 'forest')) return; // W4：別エリアのプレイヤーには当たらない（座標空間が重なるため必須）
             var hx = tg.ch.x - e.x, hz = tg.ch.z - e.z;
             if (Math.hypot(hx, hz) < (e.fanR || 2.15) && Math.abs(angDiff(e.face, Math.atan2(hx, hz))) < 1.05) hurtCombatTarget(tg, e.def.dmg);
           });
@@ -2634,11 +2908,12 @@
         if (e.t <= 0) { e.state = 'charge'; e.t = 0.42; e.hitDone = false; e.chargeHits = {}; }
       } else if (e.state === 'charge') {
         e.x += Math.sin(e.face) * 13 * dt; e.z += Math.cos(e.face) * 13 * dt; spd = 13;
-        if (!walkable(e.x, e.z)) { e.x -= Math.sin(e.face) * 13 * dt; e.z -= Math.cos(e.face) * 13 * dt; e.state = 'recover'; e.t = 0.8; }
+        if (!walkableFor(e.area || 'forest', e.x, e.z)) { e.x -= Math.sin(e.face) * 13 * dt; e.z -= Math.cos(e.face) * 13 * dt; e.state = 'recover'; e.t = 0.8; }
         // 突進の接触判定も両プレイヤーに（1回の突進で各プレイヤー1回まで）
         if (!e.chargeHits) e.chargeHits = {};
         targets.forEach(function (tg) {
           if (e.chargeHits[tg.key]) return;
+          if ((tg.ch.area || 'world') !== (e.area || 'forest')) return; // W4：別エリアのプレイヤーには当たらない
           if (Math.hypot(tg.ch.x - e.x, tg.ch.z - e.z) < 1.15) { hurtCombatTarget(tg, e.def.dmg); e.chargeHits[tg.key] = true; }
         });
         e.t -= dt;
@@ -2650,24 +2925,27 @@
       // 敵同士の分離（森ボス便：ボス自身は分離で動かさない。通常敵がボスから押し出される側は従来どおり）
       if (!e.boss) enemies.forEach(function (o) {
         if (o === e || o.dead) return;
+        if ((o.area || 'forest') !== (e.area || 'forest')) return; // W4：分離は同じエリア内だけ（座標空間が重なるため）
         var sx = e.x - o.x, sz = e.z - o.z, sd = Math.hypot(sx, sz);
         if (sd < 1.2 && sd > 0.01) { e.x += sx / sd * (1.2 - sd) * 0.5; e.z += sz / sd * (1.2 - sd) * 0.5; }
       });
-      // 森ボス便：通常敵は龍の間へ入れない（全移動経路に対する最終クランプ）
-      if (!e.boss) {
-        var bdx = e.x - DRAGON_ROOM.x, bdz = e.z - DRAGON_ROOM.z, bd = Math.hypot(bdx, bdz);
-        if (bd < DRAGON_ROOM.R) {
-          if (bd > 0.001) { e.x = DRAGON_ROOM.x + bdx / bd * DRAGON_ROOM.R; e.z = DRAGON_ROOM.z + bdz / bd * DRAGON_ROOM.R; }
-          else { e.z = DRAGON_ROOM.z + DRAGON_ROOM.R; }
+      // 森ボス便：通常敵は龍の間へ入れない（全移動経路に対する最終クランプ）。W3：エリア単位の部屋定義（DRAGON_ROOMS）で一般化
+      var room = DRAGON_ROOMS[e.area || 'forest'];
+      if (!e.boss && room) {
+        var bdx = e.x - room.x, bdz = e.z - room.z, bd = Math.hypot(bdx, bdz);
+        if (bd < room.R) {
+          if (bd > 0.001) { e.x = room.x + bdx / bd * room.R; e.z = room.z + bdz / bd * room.R; }
+          else { e.z = room.z + room.R; }
         }
       }
       renderEnemy(e, spd, distP, dt);
+      if (!inCurArea) hideEnemyVisuals(e); // W4：相方のエリアの敵はAIだけ回し、この端末には描かない
     });
     // 便4：ホストは敵スナップショットを 0.35 秒間隔で配り、敵HPが変わった瞬間は即時に配る
     if (cmode === 'host' && typeof syncHostCombatTick === 'function') syncHostCombatTick(dt, targets);
   }
 
-  // 検収用：森の島で敵の予備動作を再現
+  // 検収用：森ダンジョン内部で敵の予備動作を再現
   (function () {
     if (location.search.indexOf('demo2') >= 0) {
       girl.x = 0; girl.z = -29.2; girl.face = Math.PI;
@@ -2677,7 +2955,7 @@
       var b = enemies[4];
       b.x = 3.4; b.z = -30.5; b.state = 'windupCharge'; b.t = 99; b.face = Math.atan2(girl.x - b.x, girl.z - b.z);
     }
-    if (location.search.indexOf('view=forest') >= 0) { girl.x = 0; girl.z = -25.5; camTarget.set(girl.x, 0, girl.z); }
+    if (location.search.indexOf('view=forest') >= 0) { setArea('forest'); girl.x = FOREST_SPAWN_IN.x; girl.z = FOREST_SPAWN_IN.z; camTarget.set(girl.x, 0, girl.z); }
     if (/[?&]bossfight=/.test(location.search)) { // 検収用：龍の正面に女の子を置き、ボスを windup（テレグラフ）固定表示にする
       var be = enemies[enemies.length - 1];
       if (be && be.boss) {
@@ -2824,6 +3102,8 @@
     applyingShared: false, sleepBusy: false, pendingPlots: {},
     // 便4追加（戦闘同期：ホスト権威スナップショット）
     unsubWorld: null, worldTimerAcc: 0, worldLastSentAt: 0, worldLastRecvAt: 0,
+    // W4追加（エリア別スナップショット：エリア→購読解除関数／受信スナップショット／送信済みHP署名）
+    worldSubs: {}, worldSnaps: {}, worldHpSigs: {}, worldSubArea: null,
     // 工程3追加（ゲスト側エンディング発火の初回適用判定）
     sharedApplyCount: 0,
     worldHpSig: '', worldSnap: null, combatModePrev: 'solo', lastCombatInfo: '',
@@ -2848,6 +3128,9 @@
         var hpTxt = (pd.hp != null && pd.hpMax) ? ' HP ' + Math.ceil(pd.hp) + '/' + pd.hpMax : '';
         var rpTxt = (pd.rp != null && pd.rpMax) ? ' RP ' + Math.ceil(pd.rp) + '/' + pd.rpMax : '';
         lines.push('相方: ' + syncRoleName(pr) + ' 接続中 ✅ 受信中' + hpTxt + rpTxt);
+        // W4：別エリアの時は相方の居場所を出す（同じエリアの時は出さない）
+        var pArea = (typeof pd.area === 'string' && pd.area) ? pd.area : 'world';
+        if (pArea !== curArea) lines.push('相方は' + syncAreaLabel(pArea) + 'にいます');
       } else if (TFS.partnerEverSeen) {
         lines.push('相方: ' + syncRoleName(pr) + ' 途絶（12秒以上 受信なし）');
       } else {
@@ -2866,7 +3149,7 @@
       if (cm === 'host') {
         lines.push('戦闘同期: ホスト権威で敵を配布中' + (TFS.worldLastSentAt ? '（敵スナップショット送信 ' + syncTimeStr(TFS.worldLastSentAt) + '）' : '（敵スナップショット未送信）'));
       } else if (cm === 'guest') {
-        lines.push('戦闘同期: ゲスト（敵はホストのスナップショットで表示）' + (TFS.worldLastRecvAt ? '（受信 ' + syncTimeStr(TFS.worldLastRecvAt) + '）' : '（スナップショット待ち）'));
+        lines.push('戦闘同期: ゲスト（敵はホストのスナップショットで表示・自分のエリア分のみ）' + (TFS.worldLastRecvAt ? '（受信 ' + syncTimeStr(TFS.worldLastRecvAt) + '）' : '（スナップショット待ち）'));
       } else if (cm === 'stroll') {
         lines.push('戦闘同期: ⚠️ ホスト不在のため敵はローカルAI（この敵の状態は部屋に保存されません）');
       }
@@ -2929,25 +3212,51 @@
     return 'guest';
   }
   function syncSetCombatInfo(msg) { TFS.lastCombatInfo = msg; syncDiag(); }
-  function syncEnemyHpSig() { return enemies.map(function (e) { return e.kind + ':' + (e.dead ? -1 : e.hp); }).join(','); }
-  function syncEnemySnapshotPayload() {
+  // W4：エリアの表示名（診断チップ用。真相側の固有名詞は出さない）
+  function syncAreaLabel(area) { return area === 'forest' ? '森の中' : '村のほう'; }
+  // W4：そのエリアに所属する敵（配列順＝エリア内の index 約束。通常敵の後にボスが末尾）
+  function syncEnemiesOfArea(area) { return enemies.filter(function (e) { return (e.area || 'forest') === area; }); }
+  // W4：プレイヤーが居るエリア（自分＋受信中の相方）
+  function syncOccupiedAreas() {
+    var set = {}; set[curArea] = true;
+    if (TFS.partnerSeen && TFS.partnerData && typeof TFS.partnerData.area === 'string' && TFS.partnerData.area) set[TFS.partnerData.area] = true;
+    return Object.keys(set);
+  }
+  // W4：配布対象エリア＝プレイヤーが居るエリア ∪ 敵が居るエリア（将来 world に敵が増えても文書の扱いがそのまま耐える形）
+  function syncPublishAreas() {
+    var set = {};
+    syncOccupiedAreas().forEach(function (a) { set[a] = true; });
+    enemies.forEach(function (e) { set[e.area || 'forest'] = true; });
+    return Object.keys(set);
+  }
+  function syncEnemyHpSig(area) {
+    var list = area ? syncEnemiesOfArea(area) : enemies;
+    return list.map(function (e) { return e.kind + ':' + (e.dead ? -1 : e.hp); }).join(',');
+  }
+  function syncEnemySnapshotPayload(area) {
     return {
-      ts: Date.now(), hostClientId: TFS.clientId,
-      enemies: enemies.map(function (e) {
+      ts: Date.now(), hostClientId: TFS.clientId, area: area,
+      enemies: syncEnemiesOfArea(area).map(function (e) {
         return { k: e.kind, x: Math.round(e.x * 1000) / 1000, z: Math.round(e.z * 1000) / 1000, hp: e.hp, st: e.state, face: Math.round((e.face || 0) * 1000) / 1000, dead: !!e.dead };
       })
     };
   }
-  function syncWorldRef() { return syncRoomRef().collection('world').doc('enemies'); }
-  function syncWriteEnemySnapshot(force) {
+  // W4：敵スナップショットはエリア別文書（world/enemies_world／world/enemies_forest）。エリア内で index 約束（ボスは末尾）を維持する
+  function syncWorldRef(area) { return syncRoomRef().collection('world').doc('enemies_' + (area || curArea)); }
+  function syncWriteEnemySnapshot(force, area) {
     if (!syncIsHostConnected() || !TFS.db) return;
+    if (!area) { // エリア指定なし＝配布対象エリア全部へ（respawnEnemies 等の全エリア一括経路）
+      syncPublishAreas().forEach(function (a) { syncWriteEnemySnapshot(force, a); });
+      return;
+    }
     if (TFS.worldWriteBusy && !force) return;
     TFS.worldWriteBusy = true;
-    var payload = syncEnemySnapshotPayload();
-    syncWorldRef().set(payload).then(function () {
+    var payload = syncEnemySnapshotPayload(area);
+    syncWorldRef(area).set(payload).then(function () {
       TFS.worldWriteBusy = false;
       TFS.worldLastSentAt = Date.now();
-      TFS.worldHpSig = syncEnemyHpSig();
+      TFS.worldHpSigs[area] = syncEnemyHpSig(area);
+      if (area === curArea) TFS.worldHpSig = TFS.worldHpSigs[area];
       syncDiag();
     }).catch(function (e) {
       TFS.worldWriteBusy = false;
@@ -2955,23 +3264,39 @@
       syncSetCombatInfo('敵スナップショットの書込に失敗しました');
     });
   }
-  // 敵HP・生死が前回配布時と変わっていたら即時に配る（doAttack／killEnemy／respawnEnemies から呼ばれる）
+  // 敵HP・生死が前回配布時と変わっていたら即時に配る（doAttack／killEnemy／respawnEnemies から呼ばれる）。W4：エリア別に判定する
   function syncEnemyHpChangedCheck() {
     if (!syncIsHostConnected() || !TFS.db) return;
-    if (syncEnemyHpSig() !== TFS.worldHpSig) syncWriteEnemySnapshot(true);
+    syncPublishAreas().forEach(function (a) {
+      if (syncEnemyHpSig(a) !== TFS.worldHpSigs[a]) syncWriteEnemySnapshot(true, a);
+    });
   }
-  // ホストの毎フレーム処理：0.35秒間隔の定期配布。ただし敵が居る島にどちらのプレイヤーも居ない時は定期配布を絞る（§2.4。HP変化時は上の即時経路が配る）
+  // ホストの毎フレーム処理：0.35秒間隔の定期配布。W4：エリア別に、プレイヤーが居るエリアだけを配る。
+  // そのエリアの敵の近くに（同じエリアの）プレイヤーが居ない時は定期配布を絞る（§2.4。HP変化時は上の即時経路が配る）
   function syncHostCombatTick(dt, targets) {
     TFS.worldTimerAcc += dt;
     if (TFS.worldTimerAcc < 0.35) return;
     TFS.worldTimerAcc = 0;
-    var near = false;
-    enemies.forEach(function (e) {
-      if (e.dead || near) return;
-      (targets || []).forEach(function (tg) { if (Math.hypot(tg.ch.x - e.x, tg.ch.z - e.z) < 18) near = true; });
+    syncOccupiedAreas().forEach(function (area) {
+      var near = false;
+      syncEnemiesOfArea(area).forEach(function (e) {
+        if (e.dead || near) return;
+        (targets || []).forEach(function (tg) {
+          if ((tg.ch.area || 'world') !== area) return;
+          if (Math.hypot(tg.ch.x - e.x, tg.ch.z - e.z) < 18) near = true;
+        });
+      });
+      if (!near && syncEnemyHpSig(area) === TFS.worldHpSigs[area]) return;
+      syncWriteEnemySnapshot(false, area);
     });
-    if (!near && syncEnemyHpSig() === TFS.worldHpSig) return;
-    syncWriteEnemySnapshot(false);
+  }
+  // W4：エリア遷移時の同期フック（setArea から呼ばれる）。players への area 即時書込＋ゲストの購読先エリア切替＋ホストの現在エリア分の即時配布
+  function syncOnAreaChanged() {
+    if (!syncIsConnected() || !TFS.db) return;
+    syncWritePresence();
+    if (!TFS.isHost && !TFS.hostAbsent) syncEnsureWorldSub();
+    if (TFS.isHost) syncWriteEnemySnapshot(true, curArea);
+    syncDiag();
   }
   // モード遷移の後始末：ゲスト表示→ローカルAI（お散歩／切断）へ戻る時は、スナップショット由来の状態機械をローカルで回せる形に整える
   function syncCombatModeTransition(mode) {
@@ -2993,11 +3318,15 @@
     if (mode === 'guest') syncSetCombatInfo('敵はホストのスナップショットで表示します');
     syncDiag();
   }
-  // ゲスト側の敵駆動：AIは回さず、受信スナップショットへ係数0.35で寄せ、テレグラフは state／face から再構成する
+  // ゲスト側の敵駆動：AIは回さず、自分の居るエリアの受信スナップショットへ係数0.35で寄せ、テレグラフは state／face から再構成する。
+  // W4：スナップショットはエリア別文書で、index はエリア内の並び（ボスは末尾）。別エリアの敵は描かない
   function syncDriveGuestEnemies(dt) {
     var mc = myChar();
-    var snap = TFS.worldSnap;
-    enemies.forEach(function (e, idx) {
+    var snap = TFS.worldSnaps[curArea] || null;
+    var areaList = syncEnemiesOfArea(curArea);
+    enemies.forEach(function (e) {
+      if ((e.area || 'forest') !== curArea) { hideEnemyVisuals(e); return; }
+      var idx = areaList.indexOf(e);
       var s = snap && Array.isArray(snap.enemies) ? snap.enemies[idx] : null;
       if (!s) { // スナップショット未着の間は今の見た目のまま静止表示する（壊さない）
         e.tele.visible = false; e.line.visible = false;
@@ -3025,19 +3354,28 @@
       renderEnemy(e, dt > 0 ? step / dt : 0, Math.hypot(mc.x - e.x, mc.z - e.z), dt);
     });
   }
-  function syncStartWorldSub() {
+  // W4：ゲストは自分の居るエリアのスナップショットだけを購読する（エリア遷移で張り替える）
+  function syncEnsureWorldSub() {
     if (TFS.isHost) return; // スナップショットの受け手はゲストだけ（ホストは書く側）
-    if (TFS.unsubWorld) { try { TFS.unsubWorld(); } catch (e) {} TFS.unsubWorld = null; }
+    var area = curArea;
+    if (TFS.worldSubArea === area && TFS.worldSubs[area]) return;
+    Object.keys(TFS.worldSubs).forEach(function (a) { // 旧エリアの購読は外す（自分のエリア分だけを持つ）
+      if (a !== area && TFS.worldSubs[a]) { try { TFS.worldSubs[a](); } catch (e) {} delete TFS.worldSubs[a]; }
+    });
+    TFS.worldSubArea = area;
     try {
-      TFS.unsubWorld = syncWorldRef().onSnapshot(function (snap) {
+      TFS.worldSubs[area] = syncWorldRef(area).onSnapshot(function (snap) {
         if (!snap || !snap.exists) return;
-        TFS.worldSnap = snap.data() || null;
+        var d = snap.data() || null;
+        TFS.worldSnaps[area] = d;
+        if (area === curArea) TFS.worldSnap = d; // 互換用エイリアス（現在エリア分）
         TFS.worldLastRecvAt = Date.now();
-        var n = TFS.worldSnap && Array.isArray(TFS.worldSnap.enemies) ? TFS.worldSnap.enemies.length : 0;
-        syncSetCombatInfo('敵スナップショット受信（敵 ' + n + ' 体） ' + syncTimeStr(TFS.worldLastRecvAt));
+        var n = d && Array.isArray(d.enemies) ? d.enemies.length : 0;
+        syncSetCombatInfo('敵スナップショット受信（' + syncAreaLabel(area) + '・敵 ' + n + ' 体） ' + syncTimeStr(TFS.worldLastRecvAt));
       }, function (e) { TFS.lastError = '敵スナップショットの購読エラー: ' + syncErrText(e); syncDiag(); });
     } catch (e) { TFS.lastError = '敵スナップショットの購読開始失敗: ' + syncErrText(e); }
   }
+  function syncStartWorldSub() { syncEnsureWorldSub(); }
   // ホスト→ゲストの被弾受け渡し：ダメージ量だけを notes(kind:'hurt') で返し、hp の適用はゲスト本人端末の hurtPlayer が行う
   function syncSendHurtToGuest(dmg) {
     if (!syncIsHostConnected() || !TFS.db) return;
@@ -3063,9 +3401,13 @@
       return;
     }
     TFS.lastGuestAtkAt[key] = now;
+    // W4：申告者と同じエリアの敵にだけ代理判定する（area 未申告の旧形式は相方の現在エリア→forest の順で補う）
+    var atkArea = (typeof ev.area === 'string' && ev.area) ? ev.area :
+      ((TFS.partnerData && typeof TFS.partnerData.area === 'string' && TFS.partnerData.area) ? TFS.partnerData.area : 'forest');
     var hits = 0, kills = 0;
     enemies.forEach(function (e) {
       if (e.dead) return;
+      if ((e.area || 'forest') !== atkArea) return;
       if (e.boss && (e.state === 'calmed' || e.state === 'idle')) return; // 森ボス便：doAttack と同じガード
       var dx = e.x - ev.x, dz = e.z - ev.z, d = Math.hypot(dx, dz);
       if (d < 2.8 && Math.abs(angDiff(ev.face, Math.atan2(dx, dz))) < 0.96) {
@@ -3343,6 +3685,7 @@
     var mc = myChar(); var ms = statsFor(mc); var act = getAct(mc);
     return {
       ts: Date.now(), clientId: TFS.clientId, role: TFS.role, host: !!TFS.isHost, uid: TFS.uid || null,
+      area: mc.area || curArea, // W4：所属エリア（書き手は本人端末のみ＝項目別権威と同型）
       x: Math.round(mc.x * 1000) / 1000, z: Math.round(mc.z * 1000) / 1000,
       dir: mc.dir || 'down', dir8: mc.dir8 || mc.dir || 'down',
       flip: !!mc.flip, flip8: !!mc.flip8, face: mc.face || 0,
@@ -3382,6 +3725,8 @@
       // 切断（ts 12秒超）：相手が男の子なら現在位置を home としてAI復帰（実際の再開は次フレームから）
       if (partnerChar() === boy) { boyW.home = { x: boy.x, z: boy.z }; boyW.state = 'idle'; boyW.t = 1 + Math.random() * 2; boyW.tx = boy.x; boyW.tz = boy.z; }
       clearAct(partnerChar());
+      // W4：AI復帰する相方は world の住人として扱う（ダンジョン内に取り残して表示・対象選択が破綻しないように）
+      partnerChar().area = 'world'; refreshCharVisibility();
       toast('⚪ 相方が離れました');
     }
     syncDiag();
@@ -3392,6 +3737,9 @@
     var d = TFS.partnerData;
     if (typeof d.x !== 'number' || typeof d.z !== 'number') return false;
     var ch = partnerChar();
+    // W4：相方の所属エリアを受信値で更新する（描画は refreshCharVisibility が同じエリアの時だけ出し、敵の対象選択もこれで絞る）
+    var newArea = (typeof d.area === 'string' && d.area) ? d.area : 'world';
+    if (ch.area !== newArea) { ch.area = newArea; refreshCharVisibility(); }
     var dx = d.x - ch.x, dz = d.z - ch.z;
     var distLeft = Math.hypot(dx, dz);
     var mx = 0, mz = 0;
@@ -3464,6 +3812,8 @@
     if (TFS.unsubEvents) { try { TFS.unsubEvents(); } catch (e) {} TFS.unsubEvents = null; }
     if (TFS.unsubNotes) { try { TFS.unsubNotes(); } catch (e) {} TFS.unsubNotes = null; }
     if (TFS.unsubWorld) { try { TFS.unsubWorld(); } catch (e) {} TFS.unsubWorld = null; }
+    Object.keys(TFS.worldSubs).forEach(function (a) { try { TFS.worldSubs[a](); } catch (e) {} }); // W4：エリア別購読も全て外す
+    TFS.worldSubs = {}; TFS.worldSubArea = null;
     if (TFS.sharedTimer) { clearTimeout(TFS.sharedTimer); TFS.sharedTimer = null; }
   }
   // 自分の接続を切ってソロに戻る：操作キャラは girl に戻り、男の子は現在位置を home にAI復帰する
@@ -3474,7 +3824,8 @@
     TFS.partnerSeen = false; TFS.partnerData = null; TFS.partnerEverSeen = false; TFS.partnerActT0 = 0; TFS.lastError = '';
     TFS.miPending = 0; TFS.miBaseline = null; TFS.hostSeen = false; TFS.hostEverSeen = false; TFS.hostTs = 0; TFS.hostAbsent = false; TFS.connectedAt = 0; TFS.lastEventInfo = ''; TFS.processedEvents = {}; TFS.processedNotes = {}; TFS.pendingPlots = {}; TFS.sharedApplyCount = 0;
     // 便4：戦闘同期の状態も落とす（敵は次フレームからローカルAIに戻る。syncCombatModeTransition が状態機械を整える）
-    TFS.worldSnap = null; TFS.worldLastSentAt = 0; TFS.worldLastRecvAt = 0; TFS.worldHpSig = ''; TFS.worldTimerAcc = 0; TFS.lastCombatInfo = ''; TFS.lastGuestAtkAt = {};
+    TFS.worldSnap = null; TFS.worldSnaps = {}; TFS.worldHpSigs = {}; TFS.worldLastSentAt = 0; TFS.worldLastRecvAt = 0; TFS.worldHpSig = ''; TFS.worldTimerAcc = 0; TFS.lastCombatInfo = ''; TFS.lastGuestAtkAt = {};
+    boy.area = 'world'; refreshCharVisibility(); // W4：切断後は男の子（AI相方）を world の住人に戻す
     boyW.home = { x: boy.x, z: boy.z }; boyW.state = 'idle'; boyW.t = 1 + Math.random() * 2; boyW.tx = boy.x; boyW.tz = boy.z;
     clearAct(boy); girlSm.x = 0; girlSm.z = 0;
     if (wasBoy) camTarget.set(girl.x, 0, girl.z);
@@ -3487,8 +3838,9 @@
     TFS.connectedAt = Date.now(); TFS.miBaseline = syncMoneyInvJson(); TFS.miPending = 0;
     TFS.hostAbsent = false; TFS.hostTs = 0; TFS.lastEventInfo = ''; TFS.sharedApplyCount = 0;
     // 便4：戦闘同期の初期化（モード遷移の基準を現在の接続形態に合わせる）
-    TFS.worldSnap = null; TFS.worldLastSentAt = 0; TFS.worldLastRecvAt = 0; TFS.worldTimerAcc = 0; TFS.lastCombatInfo = ''; TFS.lastGuestAtkAt = {};
-    TFS.worldHpSig = syncEnemyHpSig();
+    TFS.worldSnap = null; TFS.worldSnaps = {}; TFS.worldLastSentAt = 0; TFS.worldLastRecvAt = 0; TFS.worldTimerAcc = 0; TFS.lastCombatInfo = ''; TFS.lastGuestAtkAt = {};
+    TFS.worldHpSigs = {}; syncPublishAreas().forEach(function (a) { TFS.worldHpSigs[a] = syncEnemyHpSig(a); }); // W4：エリア別署名で初期化
+    TFS.worldHpSig = syncEnemyHpSig(curArea);
     TFS.combatModePrev = TFS.isHost ? 'host' : 'guest';
     if (TFS.isHost) { TFS.hostSeen = true; TFS.hostEverSeen = true; TFS.hostTs = Date.now(); }
     else { TFS.hostSeen = false; TFS.hostEverSeen = false; }
@@ -3605,6 +3957,16 @@
   }
 
 })();
+</script>
+<script>
+// PWA: Service Worker 登録（相対パス。未対応環境・sw.js 未配置時は静かに諦め、ゲーム起動を妨げない）
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    try {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
+    } catch (e) { /* SW 登録失敗は無視 */ }
+  });
+}
 </script>
 </body>
 </html>
