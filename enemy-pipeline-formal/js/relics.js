@@ -9,31 +9,41 @@
     // 提示・抽選は必ず candidates() / draw() を経由し、プールが混ざらない構造にする（FINAL §2.0／§3 0-1）。
     // 第0陣 0-6 (R-19): 表示二層化。description＝効果文、flavor＝フレーバーに分離した。
     // 文面は RELICS-TEXT-DRAFT.md（下書き）＋ RELICS-TEXT-AUDIT.md（精査）の確定形。
-    { id: "relic_vessel07_os", name: "VESSEL 07 基礎OS", description: "戦闘開始時、自動的に防護（BLK）を 2 得る。", flavor: "遠隔からの音響信号を受信し、体内の自動穿孔機で物理カードとして複製・実行するアナログ式OS。ハッキングを完全に無効化する。", trigger: "start_of_combat", effects: [{ type: "add_block", value: 2 }], pool: "normal", weight: 1, excludeFor: [], pinned: true },
-    { id: "relic_optical_camo", name: "旧世代の光学迷彩", description: "戦闘開始時、防護（BLK）を 8 得る。", flavor: "旧世代の光学迷彩クローク。最新式のセンサーには通用しない。それでも、目を逸らさせるには十分だった。", trigger: "start_of_combat", effects: [{ type: "add_block", value: 8 }], pool: "normal", weight: 1, excludeFor: [] },
-    { id: "relic_overdose_injector", name: "オーバードーズ・インジェクター", description: "ターン開始時、電力を +1 する（上限を超えて加算される）。その際、捨て札にフラッシュバック（呪装）が 1 枚混ざる。", flavor: "興奮剤の自動注入器。切れ味と引き換えに、古い記憶が蘇る。", trigger: "start_of_turn", effects: [{ type: "add_energy", value: 1 }, { type: "add_card_to_discard", card_id: "curse_flashback", value: 1 }], pool: "normal", weight: 1, excludeFor: [] },
+    // レリック見直しv2（J-4 A案）: 基礎OS は戦闘開始時 BLK 2 → 4。
+    { id: "relic_vessel07_os", name: "VESSEL 07 基礎OS", description: "戦闘開始時、自動的に防護（BLK）を 4 得る。", flavor: "遠隔からの音響信号を受信し、体内の自動穿孔機で物理カードとして複製・実行するアナログ式OS。ハッキングを完全に無効化する。", trigger: "start_of_combat", effects: [{ type: "add_block", value: 4 }], pool: "normal", weight: 1, excludeFor: [], pinned: true },
+    // レリック見直しv2（J-4 B案・09看板）: 戦闘開始時の NOISE が 0 以下なら 16、そうでなければ基礎値 4。
+    { id: "relic_optical_camo", name: "旧世代の光学迷彩", description: "戦闘開始時、防護（BLK）を 4 得る。戦闘開始時の NOISE が 0 以下なら、代わりに 16 得る。", flavor: "旧世代の光学迷彩クローク。最新式のセンサーには通用しない。それでも、目を逸らさせるには十分だった。", trigger: "start_of_combat", effects: [{ type: "add_block", value: 4, boostValue: 16, when: { kind: "noise_le", value: 0 } }], pool: "normal", weight: 1, excludeFor: [] },
+    // レリック見直しv2（J-5 B案・00看板）: HP が最大HPの半分以下なら電力 +2、そうでなければ +1（呪装は従来どおり）。
+    { id: "relic_overdose_injector", name: "オーバードーズ・インジェクター", description: "ターン開始時、電力を +1 する（上限を超えて加算される）。HP が最大HPの半分以下なら、代わりに +2 する。その際、捨て札にフラッシュバック（呪装）が 1 枚混ざる。", flavor: "興奮剤の自動注入器。切れ味と引き換えに、古い記憶が蘇る。", trigger: "start_of_turn", effects: [{ type: "add_energy", value: 1, boostValue: 2, when: { kind: "hp_ratio_le", value: 0.5 } }, { type: "add_card_to_discard", card_id: "curse_flashback", value: 1 }], pool: "normal", weight: 1, excludeFor: [] },
     // U-1 決定 (c): スタン系は 07／04 では実質無効のため、両機体のランでは抽選から外す（excludeFor で処理）。
-    { id: "relic_hydraulic_actuator", name: "油圧式関節アクチュエータ", description: "カードの効果でスタンを与えるとき、その値が +1 される。CQC の自動スタンや、罠のスタンには適用されない。", flavor: "関節部の油圧アクチュエータ。止めるための圧は、砕くための圧と紙一重だ。", trigger: "on_apply_stun", effects: [{ type: "increase_stun", value: 1 }], pool: "normal", weight: 1, excludeFor: ["vessel07", "vessel04"] },
+    // レリック見直しv2（J-7 B案）: 3ターン目以降はスタン +2、2ターン目までは基礎値 +1。
+    { id: "relic_hydraulic_actuator", name: "油圧式関節アクチュエータ", description: "カードの効果でスタンを与えるとき、その値が +1 される。3 ターン目以降は、代わりに +2 される。CQC の自動スタンや、罠のスタンには適用されない。", flavor: "関節部の油圧アクチュエータ。止めるための圧は、砕くための圧と紙一重だ。", trigger: "on_apply_stun", effects: [{ type: "increase_stun", value: 1, boostValue: 2, when: { kind: "turn_ge", value: 3 } }], pool: "normal", weight: 1, excludeFor: ["vessel07", "vessel04"] },
     { id: "relic_analog_wiretap", name: "アナログ盗聴装置", description: "マップ生成時、スキャン回数が +1 される。", flavor: "アナログ盗聴装置。デジタルの耳には聞こえない周波数で、壁の向こうを聞く。", trigger: "on_map_generation", effects: [{ type: "add_scan_uses", value: 1 }], pool: "normal", weight: 1, excludeFor: [] },
     // 第1陣（FINAL §2.1）: N-1 装甲箔ロール。戦闘開始時 BLK +12 と引き換えに捨て札へ呪装×1（既存プリミティブの複合）。
-    { id: "relic_armor_foil_roll", name: "装甲箔ロール", description: "戦闘開始時、防護（BLK）を 12 得る。その際、捨て札にフラッシュバック（呪装）が 1 枚混ざる。", flavor: "命令を刻むための金属箔を、身を守る板に転用した。箔が減るたび、届くはずだった指令も減っていく。", trigger: "start_of_combat", effects: [{ type: "add_block", value: 12 }, { type: "add_card_to_discard", card_id: "curse_flashback", value: 1 }], pool: "normal", weight: 1, excludeFor: [] },
+    // レリック見直しv2（J-4 A案）: BLK 12 → 16。
+    { id: "relic_armor_foil_roll", name: "装甲箔ロール", description: "戦闘開始時、防護（BLK）を 16 得る。その際、捨て札にフラッシュバック（呪装）が 1 枚混ざる。", flavor: "命令を刻むための金属箔を、身を守る板に転用した。箔が減るたび、届くはずだった指令も減っていく。", trigger: "start_of_combat", effects: [{ type: "add_block", value: 16 }, { type: "add_card_to_discard", card_id: "curse_flashback", value: 1 }], pool: "normal", weight: 1, excludeFor: [] },
     // 第1陣（FINAL §2.1）: N-2 広域受信アンテナ。希少枠（R-7: weight 0.5）。盗聴装置と合算される。
     { id: "relic_wideband_antenna", name: "広域受信アンテナ", description: "マップ生成時、スキャン回数が +2 される。", flavor: "銅線を編んだ即席のアンテナ。死線のノイズの底から、かすかな信号を掬い上げる。", trigger: "on_map_generation", effects: [{ type: "add_scan_uses", value: 2 }], pool: "normal", weight: 0.5, excludeFor: [] },
     // 第1陣（FINAL §2.1）: N-3 逆止弁リレー。ターン開始時 BLK +3（防護失効より後に発火する既存の順序に乗る）。
-    { id: "relic_check_valve_relay", name: "逆止弁リレー", description: "ターン開始時、防護（BLK）を 3 得る。", flavor: "逆流を止める小さな弁が、回路の節目で音を立てる。その音は、守りが届いた合図だった。", trigger: "start_of_turn", effects: [{ type: "add_block", value: 3 }], pool: "normal", weight: 1, excludeFor: [] },
+    // レリック見直しv2（J-5 B案・09/13看板）: ターン開始時 NOISE が 2 以下なら 6、そうでなければ基礎値 2。
+    { id: "relic_check_valve_relay", name: "逆止弁リレー", description: "ターン開始時、防護（BLK）を 2 得る。そのターンの開始時 NOISE が 2 以下なら、代わりに 6 得る。", flavor: "逆流を止める小さな弁が、回路の節目で音を立てる。その音は、守りが届いた合図だった。", trigger: "start_of_turn", effects: [{ type: "add_block", value: 2, boostValue: 6, when: { kind: "turn_start_noise_le", value: 2 } }], pool: "normal", weight: 1, excludeFor: [] },
     // 第1陣（FINAL §2.1）: N-6 増圧シリンダー。希少枠（R-7）。スタン +2 はカードのスタン効果のみに乗る
     // （stunBonus の合算経路。CQC 自動スタン・罠には乗らない）。U-1 決定 (c) で 07／04 は抽選除外。
-    { id: "relic_pressure_cylinder", name: "増圧シリンダー", description: "カードの効果でスタンを与えるとき、その値が +2 される。CQC の自動スタンや、罠のスタンには適用されない。", flavor: "圧を上げれば、止める力も上がる。物理は単純だ。単純なものは、決して裏切らない。", trigger: "on_apply_stun", effects: [{ type: "increase_stun", value: 2 }], pool: "normal", weight: 0.5, excludeFor: ["vessel07", "vessel04"] },
+    // レリック見直しv2（J-7 B案）: スタン上限 5 以上の敵へは +3、そうでなければ基礎値 +2。
+    { id: "relic_pressure_cylinder", name: "増圧シリンダー", description: "カードの効果でスタンを与えるとき、その値が +2 される。スタンの上限が 5 以上の敵に対しては、代わりに +3 される。CQC の自動スタンや、罠のスタンには適用されない。", flavor: "圧を上げれば、止める力も上がる。物理は単純だ。単純なものは、決して裏切らない。", trigger: "on_apply_stun", effects: [{ type: "increase_stun", value: 2, boostValue: 3, when: { kind: "enemy_stun_max_ge", value: 5 } }], pool: "normal", weight: 0.5, excludeFor: ["vessel07", "vessel04"] },
     // 第1陣（FINAL §2.1）: N-8 死線の中継コイル。希少枠（R-7）。前提の上限超え加算は第0陣 0-8 で完了済み。
     { id: "relic_deadline_relay_coil", name: "死線の中継コイル", description: "ターン開始時、電力を +1 する（上限を超えて加算される）。", flavor: "死線の途中に噛ませた中継コイル。遠くからの信号が、衰える前に力を取り戻す。", trigger: "start_of_turn", effects: [{ type: "add_energy", value: 1 }], pool: "normal", weight: 0.5, excludeFor: [] },
     // 第1陣（FINAL §2.2）: RB-3 二重箔送り装甲。ボスプール初の候補。戦闘開始時 BLK +16（無条件の基礎枠）。
-    { id: "relic_double_foil_armor", name: "二重箔送り装甲", description: "戦闘開始時、防護（BLK）を 16 得る。", flavor: "箔は二重に送られる。一枚は命令に、一枚は盾に。", trigger: "start_of_combat", effects: [{ type: "add_block", value: 16 }], pool: "boss", weight: 1, excludeFor: [] },
+    // レリック見直しv2（J-4 A案）: BLK 16 → 24。
+    { id: "relic_double_foil_armor", name: "二重箔送り装甲", description: "戦闘開始時、防護（BLK）を 24 得る。", flavor: "箔は二重に送られる。一枚は命令に、一枚は盾に。", trigger: "start_of_combat", effects: [{ type: "add_block", value: 24 }], pool: "boss", weight: 1, excludeFor: [] },
     // 第2陣 2A（FINAL §2.1）: N-4 回収キャリパー。新規トリガー on_combat_victory＋レリック経路の heal。
     // 回復は戦闘側 HP へ入れて既存の同期（run.hp = battle.player.hp）に乗せる（applyVictory を参照）。
-    { id: "relic_salvage_caliper", name: "回収キャリパー", description: "戦闘に勝利した時、HP を 5 回復する。", flavor: "倒した敵の残骸から、使える部品を測り取る。戦場は最も正直な資材置き場だ。", trigger: "on_combat_victory", effects: [{ type: "heal", value: 5 }], pool: "normal", weight: 1, excludeFor: [] },
+    // レリック見直しv2（J-6 B案・00看板）: 勝利時の HP が最大HPの 25% 以下なら 16、そうでなければ基礎値 4。
+    { id: "relic_salvage_caliper", name: "回収キャリパー", description: "戦闘に勝利した時、HP を 4 回復する。勝利時の HP が最大HPの 25% 以下なら、代わりに 16 回復する。", flavor: "倒した敵の残骸から、使える部品を測り取る。戦場は最も正直な資材置き場だ。", trigger: "on_combat_victory", effects: [{ type: "heal", value: 4, boostValue: 16, when: { kind: "hp_ratio_le", value: 0.25 } }], pool: "normal", weight: 1, excludeFor: [] },
     // 第2陣 2A（FINAL §2.1）: N-7 携帯溶接トーチ。on_map_generation の heal（applyMapRelics へ配線）。
     // U-3 確定解釈: イベント入手時は即時発火せず、次のマップ生成から適用する（盗聴スキャンの即時発火は現行例外として別経路）。
-    { id: "relic_welding_torch", name: "携帯溶接トーチ", description: "マップ生成時、HP を 3 回復する。", flavor: "層を移る合間に、溶接の火花が散る。完璧な修理ではない。だが次の一歩には足りる。", trigger: "on_map_generation", effects: [{ type: "heal", value: 3 }], pool: "normal", weight: 1, excludeFor: [] },
+    // レリック見直しv2（J-6 A案）: HP回復 3 → 6。
+    { id: "relic_welding_torch", name: "携帯溶接トーチ", description: "マップ生成時、HP を 6 回復する。", flavor: "層を移る合間に、溶接の火花が散る。完璧な修理ではない。だが次の一歩には足りる。", trigger: "on_map_generation", effects: [{ type: "heal", value: 6 }], pool: "normal", weight: 1, excludeFor: [] },
     // 第2陣 2B（FINAL §2.2）: RB-1 指揮者のメトロノーム。ターン開始時 1 ドロー。
     // 実ドローは battle.js の drawCards() でしか行えないため、applyBattle では処理せず、
     // beginPlayerTurn 側の接続（startOfTurnDraws）が本ドローより前に解決する。
@@ -41,31 +51,40 @@
     // 第2陣 2C（FINAL §2.2／R-10）: RB-2 大口径穿孔ヘッド。常時補正（trigger "always"）。
     // ダメージ基礎値 +1（1ヒットごと）。変換系（noScale）には乗らず、倍率は +1 の後に乗る。
     // 罠ダメージにも適用する。適用箇所は battle.js（applyEffect／trapFireDamage）。
-    { id: "relic_large_bore_punch_head", name: "大口径穿孔ヘッド", description: "与えるダメージの基礎値が +1 される（多段ヒットは 1 ヒットごと）。罠のダメージにも適用される。変換系のダメージには適用されず、倍率による補正はこの +1 の後に計算される。", flavor: "大きな孔は、大きな命令だ。箔を貫く音も、それだけ重く響く。", trigger: "always", effects: [{ type: "damage_base", value: 1 }], pool: "boss", weight: 1, excludeFor: [] },
+    // レリック見直しv2（J-9 B案・07看板）: スタンしている敵へのヒットは +3、そうでなければ基礎値 +1。
+    // 「スタンしている」の判定はフィニッシャーと同じ蓄積基準（enemy.stun が 1 以上）とする。
+    { id: "relic_large_bore_punch_head", name: "大口径穿孔ヘッド", description: "与えるダメージの基礎値が +1 される（多段ヒットは 1 ヒットごと）。スタンしている敵へのヒットは、代わりに +3 される。罠のダメージにも適用される。変換系のダメージには適用されず、倍率による補正はこの加算の後に計算される。", flavor: "大きな孔は、大きな命令だ。箔を貫く音も、それだけ重く響く。", trigger: "always", effects: [{ type: "damage_base", value: 1, boostValue: 3, when: { kind: "enemy_stun_ge", value: 1 } }], pool: "boss", weight: 1, excludeFor: [] },
     // 第2陣 2C（FINAL §2.2／R-14）: RB-4 耐熱セラミック隔壁。常時補正（trigger "always"）。
     // 敵ダメージを1ヒットごとに 1 軽減する。実装は strikeVolley() の固定軽減列で、合算は
     // SYSTEM_CAPS.fixedReductionTotal の上限を受ける。コスト系 HP（自傷・スリップ等）は
     // strikeVolley を通らないため自然に対象外になる。
-    { id: "relic_ceramic_bulkhead", name: "耐熱セラミック隔壁", description: "敵から受けるダメージが 1 減る（1 ヒットごと）。半減などの倍率補正の後に引かれ、0 未満にはならない。自分で支払うコストによる HP の減少は軽減されない。", flavor: "炉の熱にも砲火の熱にも、陶は黙って耐える。割れる時は、一度だけ大きく鳴る。", trigger: "always", effects: [{ type: "fixed_reduction", value: 1 }], pool: "boss", weight: 1, excludeFor: [] },
+    // レリック見直しv2（J-9 A案）: 固定軽減 1 → 2（合算上限 10 は不変）。
+    { id: "relic_ceramic_bulkhead", name: "耐熱セラミック隔壁", description: "敵から受けるダメージが 2 減る（1 ヒットごと）。半減などの倍率補正の後に引かれ、0 未満にはならない。自分で支払うコストによる HP の減少は軽減されない。", flavor: "炉の熱にも砲火の熱にも、陶は黙って耐える。割れる時は、一度だけ大きく鳴る。", trigger: "always", effects: [{ type: "fixed_reduction", value: 2 }], pool: "boss", weight: 1, excludeFor: [] },
     // 第2陣 2D（FINAL §2.1／R-9）: N-5 残響ダンパー。NOISE の段階低下（0化ではない）。
     // 発火は「現在値が 1 以上のときだけ −1」の専用ガード（applyBattle の reduce_noise）。
     // スナップショット順序（そのターンの変換系は下げる前の NOISE で計算）と帯域再同期は
     // battle.js beginPlayerTurn 側の処理順で担保する（FINAL の J-9 固定事項）。
-    { id: "relic_echo_damper", name: "残響ダンパー", description: "ターン開始時、NOISE が 1 以上なら 1 下がる（0 以下にはならない）。この低下が変換系カードの計算に反映されるのは、翌ターンから。", flavor: "穿孔機の駆動音を、綿と鉛の壁が飲み込む。静けさは買えない。だが、少しだけなら借りられる。", trigger: "start_of_turn", effects: [{ type: "reduce_noise", value: 1 }], pool: "normal", weight: 1, excludeFor: [] },
+    // レリック見直しv2（J-8 B案・04/09看板）: 現在 NOISE が 5 以上なら −2、そうでなければ基礎値 −1
+    // （R-9 解釈: 下げ幅の条件変化は「0 に触れない段階低下」の例外範囲内。ガードと下限は従来どおり）。
+    { id: "relic_echo_damper", name: "残響ダンパー", description: "ターン開始時、NOISE が 1 以上なら 1 下がる（0 以下にはならない）。NOISE が 5 以上なら、代わりに 2 下がる。この低下が変換系カードの計算に反映されるのは、翌ターンから。", flavor: "穿孔機の駆動音を、綿と鉛の壁が飲み込む。静けさは買えない。だが、少しだけなら借りられる。", trigger: "start_of_turn", effects: [{ type: "reduce_noise", value: 1, boostValue: 2, when: { kind: "noise_ge", value: 5 } }], pool: "normal", weight: 1, excludeFor: [] },
     // 第2陣 2D（FINAL §2.2／精査 J-4）: RB-5 帯域緩衝スプリング。常時補正（trigger "always"）。
     // 帯域「判定」に使う NOISE だけを −2 する（実値・表示・変換系の基準は不変）。
     // 適用する消費者は syncAlertBuff（攻撃上乗せ）と追加行動の回数だけ。警報の予告判定と
     // 完全露呈リセットは生値のまま（battle.js の judgedBand を参照）。
-    { id: "relic_band_buffer_spring", name: "帯域緩衝スプリング", description: "帯域の判定に限り、NOISE が実際より 2 低いものとして扱われる（0 未満にはならない）。NOISE そのものは変わらず、警報の予告と完全露呈の判定は実際の NOISE で行われる。", flavor: "穿孔の衝撃を、バネが半拍だけ遅らせる。その半拍が、命の長さになることがある。", trigger: "always", effects: [{ type: "band_shift", value: 2 }], pool: "boss", weight: 1, excludeFor: [] },
+    // レリック見直しv2（J-9 A案）: 帯域判定 −2 → −3。
+    { id: "relic_band_buffer_spring", name: "帯域緩衝スプリング", description: "帯域の判定に限り、NOISE が実際より 3 低いものとして扱われる（0 未満にはならない）。NOISE そのものは変わらず、警報の予告と完全露呈の判定は実際の NOISE で行われる。", flavor: "穿孔の衝撃を、バネが半拍だけ遅らせる。その半拍が、命の長さになることがある。", trigger: "always", effects: [{ type: "band_shift", value: 3 }], pool: "boss", weight: 1, excludeFor: [] },
     // 第2陣 2E（FINAL §2.2／R-12＋R-17）: RB-6 予備心臓ポンプ。常時（致死時の判定介入）。
     // ラン中 1 回だけ、全経路の致死を HP 1 で耐える。使用済みはラン側の任意フィールド
     // （battle state の relicUsed）に記録し、消費は consumeLethalGuard が行う。
     // 介入箇所は battle.js の trySparePump（敵攻撃／炉心溶融／スリップ／カード自傷）。
-    { id: "relic_spare_heart_pump", name: "予備心臓ポンプ", description: "ラン中に 1 回だけ、HP が 0 になるダメージを受けた時、HP 1 で耐える。敵の攻撃のほか、自分のコストやスリップなど発生源を問わない。多段攻撃の途中で発動した場合、その攻撃の残りのヒットも HP 1 で受け切る。", flavor: "止まった心臓の代わりに回る、小さなポンプ。一度きりの鼓動が、まだ終わっていないと告げる。", trigger: "always", effects: [{ type: "lethal_guard", value: 1 }], pool: "boss", weight: 1, excludeFor: [] },
+    // レリック見直しv2（J-9 A'案）: 復帰量を HP 1 固定から最大HPの 25%（切り捨て）へ。
+    // 復帰量の算出は battle.js の trySparePump が lethal_guard 効果の reviveRatio を読んで行う。
+    { id: "relic_spare_heart_pump", name: "予備心臓ポンプ", description: "ラン中に 1 回だけ、HP が 0 になるダメージを受けた時、最大HPの 25% の HP で耐える。敵の攻撃のほか、自分のコストやスリップなど発生源を問わない。多段攻撃の途中で発動した場合、その攻撃の残りのヒットも受け切る。", flavor: "止まった心臓の代わりに回る、小さなポンプ。一度きりの鼓動が、まだ終わっていないと告げる。", trigger: "always", effects: [{ type: "lethal_guard", value: 1, reviveRatio: 0.25 }], pool: "boss", weight: 1, excludeFor: [] },
     // 第2陣 2F（FINAL §2.2／R-11）: RB-7 余熱回収フィン。新規トリガー end_of_turn。
     // ターン終了時、残電力 ×2 を BLK へ変換する（固定レート。倍率は乗らない）。
     // WEAVER の固有OS『余剰電力装甲』と重なるため、13 のランではキャラ別除外する。
-    { id: "relic_heat_recovery_fin", name: "余熱回収フィン", description: "ターン終了時、残っている電力 1 につき、防護（BLK）を 2 得る。", flavor: "捨てられるはずの熱を、鰭が拾い直す。無駄の少ない機械は、長く戦える。", trigger: "end_of_turn", effects: [{ type: "energy_to_block", value: 2 }], pool: "boss", weight: 1, excludeFor: ["vessel13"] },
+    // レリック見直しv2（J-9 B'案・00看板）: 残電力が 3 以上ならレート ×4、2 以下は基礎レート ×2。
+    { id: "relic_heat_recovery_fin", name: "余熱回収フィン", description: "ターン終了時、残っている電力 1 につき、防護（BLK）を 2 得る。残っている電力が 3 以上なら、代わりに 1 につき 4 得る。", flavor: "捨てられるはずの熱を、鰭が拾い直す。無駄の少ない機械は、長く戦える。", trigger: "end_of_turn", effects: [{ type: "energy_to_block", value: 2, boostValue: 4, when: { kind: "energy_ge", value: 3 } }], pool: "boss", weight: 1, excludeFor: ["vessel13"] },
   ].map((relic) => Object.freeze({
     ...relic,
     pool: relic.pool || "normal",
@@ -282,20 +301,49 @@
     }
   }
 
+  /* レリック見直しv2（J-1）: 条件付き効果の汎用基盤。
+     effect に when（{ kind, value }）と boostValue がある効果は、発火時点で既存の
+     状態量だけを参照して条件を判定し、成立時は boostValue、不成立時は value（基礎値）を
+     解決値とする。参照する状態量は下書き §1.2 の列挙に限る（現在NOISE／ターン開始時
+     NOISE／HP割合／ターン数／残電力／敵のスタン値・スタン上限）。新しい状態量・
+     判定タイミングは作らない。状態が不足する呼び出し（UIプレビュー等の素の { relics }
+     や検証用の最小状態）では条件は不成立として基礎値に倒す（J-3 の基礎値保証）。 */
+  function conditionMet(state, when) {
+    if (!when || !state) return false;
+    const player = state.player || null;
+    switch (when.kind) {
+      case "noise_le": return typeof state.noise === "number" && state.noise <= when.value;
+      case "noise_ge": return typeof state.noise === "number" && state.noise >= when.value;
+      case "turn_start_noise_le": return typeof state.turnStartNoise === "number" && state.turnStartNoise <= when.value;
+      case "hp_ratio_le": return !!player && (player.hpMax || 0) > 0 && (player.hp || 0) / player.hpMax <= when.value;
+      case "turn_ge": return typeof state.turn === "number" && state.turn >= when.value;
+      case "energy_ge": return !!player && (player.energy || 0) >= when.value;
+      case "enemy_stun_ge": return !!state.enemy && (state.enemy.stun || 0) >= when.value;
+      case "enemy_stun_max_ge": return !!state.enemy && (state.enemy.stunMax || 0) >= when.value;
+      default: return false;
+    }
+  }
+
+  function effectValue(state, effect) {
+    if (effect && typeof effect.boostValue === "number" && conditionMet(state, effect.when)) return effect.boostValue;
+    return (effect && effect.value) || 0;
+  }
+
   function stunBonus(state) {
     let extra = 0;
     eachEffect(state && state.relics, "on_apply_stun", (relic, effect) => {
-      if (effect.type === "increase_stun") extra += effect.value;
+      if (effect.type === "increase_stun") extra += effectValue(state, effect);
     });
     return extra;
   }
 
   // 第2陣 2C (RB-2): 常時補正のダメージ基礎値ボーナス合計（battle.js の applyEffect／
   // trapFireDamage が引く）。変換系への適用可否は呼び出し側の noScale 判定に委ねる。
+  // 見直しv2（J-9 B案）: スタン中の敵への評価は effectValue が enemy.stun を見て切り替える。
   function damageBaseBonus(state) {
     let bonus = 0;
     eachEffect(state && state.relics, "always", (relic, effect) => {
-      if (effect.type === "damage_base") bonus += effect.value;
+      if (effect.type === "damage_base") bonus += effectValue(state, effect);
     });
     return bonus;
   }
@@ -351,8 +399,11 @@
         return;
       }
       if (effect.type === "add_block") {
-        state.player.block += effect.value;
-        log.push(`PART ${relic.name}  BLOCK +${effect.value}`);
+        // 見直しv2（J-1）: 条件付き add_block は effectValue で解決する（迷彩＝戦闘開始時
+        // NOISE、逆止弁＝ターン開始時 NOISE を参照）。
+        const v = effectValue(state, effect);
+        state.player.block += v;
+        log.push(`PART ${relic.name}  BLOCK +${v}`);
         return;
       }
       if (effect.type === "add_energy") {
@@ -361,7 +412,9 @@
         // 従来の Math.min 頭打ちでは、ターン開始時に上限まで戻った直後に発火するこの効果が
         // 実質増えず、ログ表示（PWR +1）と実効が食い違っていた（インジェクターの不一致を解消）。
         // 第2陣後半: 合算は SYSTEM_CAPS.energyPerTurn の天井を受ける（現行の到達最大 +2 では不発）。
-        let amount = effect.value;
+        // 見直しv2（J-5 B案）: インジェクターの跳ね（+2）は amount 確定後に天井を受ける
+        // （energyPerTurn=2 の内側で設計済み。コイルとの両取り時は合算で頭打ちになるのが仕様）。
+        let amount = effectValue(state, effect);
         const cap = SYSTEM_CAPS.energyPerTurn;
         if (typeof cap === "number") {
           amount = Math.max(0, Math.min(amount, cap - energyGranted));
@@ -379,7 +432,9 @@
         // beginPlayerTurn が本処理より前に確定済みのため、変換系への反映は翌ターンから。
         const before = state.noise || 0;
         if (before >= 1) {
-          state.noise = Math.max(0, before - (effect.value || 0));
+          // 見直しv2（J-8 B案）: 現在 NOISE が 5 以上なら下げ幅は boostValue（2）。
+          // ガード（1 以上でのみ発火）と下限 0 は従来どおり。
+          state.noise = Math.max(0, before - effectValue(state, effect));
           if (state.noise !== before) log.push(`PART ${relic.name}  NOISE ${before} → ${state.noise}`);
         }
         return;
@@ -387,7 +442,8 @@
       if (effect.type === "energy_to_block") {
         // 第2陣 2F (RB-7): ターン終了時、残電力を固定レートで BLK へ変換する。
         // レリック効果は原則固定値であり、倍率（騒音力学等）は一切乗らない。
-        const gain = Math.max(0, state.player.energy || 0) * (effect.value || 0);
+        // 見直しv2（J-9 B'案）: レートは残電力 3 以上で boostValue（×4）、2 以下は value（×2）。
+        const gain = Math.max(0, state.player.energy || 0) * effectValue(state, effect);
         if (gain > 0) {
           state.player.block = (state.player.block || 0) + gain;
           log.push(`PART ${relic.name}  BLOCK +${gain}`);
@@ -422,9 +478,11 @@
     if (!state || !state.player) return log;
     eachEffect(state.relics, "on_combat_victory", (relic, effect) => {
       if (effect.type !== "heal") return;
+      // 見直しv2（J-6 B案）: キャリパーの条件は回復前の現在 HP（＝勝利時の HP）で評価する。
+      const amount = effectValue(state, effect);
       const before = state.player.hp || 0;
       const cap = typeof state.player.hpMax === "number" ? state.player.hpMax : before;
-      state.player.hp = Math.min(cap, before + (effect.value || 0));
+      state.player.hp = Math.min(cap, before + amount);
       const healed = state.player.hp - before;
       if (healed > 0) log.push(`PART ${relic.name}  HP +${healed}`);
     });
@@ -462,6 +520,8 @@
     summary,
     detail,
     eachEffect,
+    conditionMet,
+    effectValue,
     stunBonus,
     damageBaseBonus,
     fixedReduction,

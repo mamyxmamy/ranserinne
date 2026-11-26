@@ -105,18 +105,26 @@
   }
 
   /* 第2陣 2E (RB-6 予備心臓ポンプ／R-12＋R-17): 致死時の判定介入。
-     対象プレイヤーの HP が 0 以下で、致死回避レリックが未使用なら消費して HP を 1 に
-     戻し、true を返す。使用済みの記録は state.relicUsed（ラン側の任意フィールドと
-     共有されるオブジェクト）へ残るため、戦闘をまたいでもラン中 1 回限りになる。
+     対象プレイヤーの HP が 0 以下で、致死回避レリックが未使用なら消費して HP を
+     復帰量まで戻し、true を返す。使用済みの記録は state.relicUsed（ラン側の任意
+     フィールドと共有されるオブジェクト）へ残るため、戦闘をまたいでもラン中 1 回限りになる。
      介入箇所は致死経路4系統: strikeVolley（敵攻撃）／playCard の炉心溶融の支払い／
-     applyPlayerEndProcessing の臨界排熱スリップ／applyEffect のカード自傷。 */
+     applyPlayerEndProcessing の臨界排熱スリップ／applyEffect のカード自傷。
+     レリック見直しv2（J-9 ポンプ A'案）: 復帰量はレリックの lethal_guard 効果が
+     reviveRatio を持つ場合に最大HP × 比率（切り捨て・最低 1）、無ければ従来どおり 1。
+     復帰量の算出はここ（戦闘側）が持ち、レリック側は比率の宣言だけを行う。 */
   function trySparePump(view, log) {
     if (!view || !view.player || (view.player.hp || 0) > 0) return false;
     if (!root.Relics || !root.Relics.consumeLethalGuard) return false;
     const relic = root.Relics.consumeLethalGuard(view);
     if (!relic) return false;
-    view.player.hp = 1;
-    if (log) log.push(`PART ${relic.name}  HP 1 で耐えた`);
+    let revived = 1;
+    const guard = (relic.effects || []).find((effect) => effect.type === "lethal_guard");
+    if (guard && typeof guard.reviveRatio === "number") {
+      revived = Math.max(1, Math.floor((view.player.hpMax || 0) * guard.reviveRatio));
+    }
+    view.player.hp = revived;
+    if (log) log.push(`PART ${relic.name}  HP ${revived} で耐えた`);
     return true;
   }
 
@@ -1982,7 +1990,7 @@
     // レリックのターン開始時効果より前に消すので、レリックで付いた防護はそのターン中有効。
     // 例外（RELIC-TURNSTART-INVESTIGATION §5 案A）: 戦闘の最初のプレイヤーターン（turn 1）では
     // 失効しない。beginCombat／beginCombatMP は startCombat（戦闘開始時レリックの BLK 付与。
-    // 基礎OS +2／光学迷彩 +8／装甲箔ロール +12／二重箔送り装甲 +16）→ 初回 beginPlayerTurn の
+    // 基礎OS +4／光学迷彩 基礎 +4・条件時 16／装甲箔ロール +16／二重箔送り装甲 +24）→ 初回 beginPlayerTurn の
     // 順で呼ぶため、ここで失効させると戦闘開始 BLK が敵の初撃を受ける前に消えてしまう。
     // turn は resolveFullTurn で加算される戦闘単位の番号で、スナップショットにも往復する。
     // 復元（restoreCombat）は beginPlayerTurn を呼ばず静止状態から再開するため、ターン1の
