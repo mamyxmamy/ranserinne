@@ -386,7 +386,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 58.1</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 59.0</span></div>
             </div>
 
             <div class="hidden">
@@ -1786,7 +1786,56 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     { text: '持ち主を探して届け出る', condition: () => true, hint: '人徳上昇・謝礼', effect: (s) => { s.virtue += 20; recordChronology("落し物を届け出て称えられる"); return { money: 30, hp: 0, log: '財布は裕福な商人の物だった。涙を流して感謝され、謝礼をたっぷりと受け取った。' }; } },
                     { text: '誰も見ていない。今のうちに懐へ入れる', condition: () => true, hint: '悪逆上昇・銭獲得', effect: (s) => { s.karma += 15; return { money: 120, hp: 0, log: '周囲を素早く見回し、財布を懐にねじ込んだ。しばらくは後ろめたさが付きまとう……。' }; } },
                     { text: '拾わずに通り過ぎる', condition: () => true, hint: '運上昇', effect: (s) => { s.luck += 15; return { hp: 0, log: '他人の不幸に付け込む真似はしない。何も見なかったことにして歩き去った。' }; } }
-                ] }
+                ] },
+            { id: 'white_snake_skin', mode: ['normal'], weight: 15, condition: () => true,
+            title: '白蛇の抜け殻', text: '野辺の岩陰で、真っ白な蛇の抜け殻を見つけた。戦国の世で白蛇は福を呼ぶ生き物とされる。完全な形のままの抜け殻は珍しい。',
+            choices: [
+            { text: '大切に懐へしまい、お守りにする', condition: () => true, hint: '運上昇', effect: (s) => { s.luck += 20; recordChronology("白蛇の抜け殻を拾い、福を懐に入れる"); return { hp: 0, log: '薄く透ける抜け殻を丁寧に畳み、懐へ入れた。心なしか、足取りが軽い。'};}},
+            { text: '薬種商に目利きさせ、高く売る', condition: (s) => s.strategy >= 30, hint: '知略で判定・銭獲得', effect: (s) => { if (critRoll('strategy', 0.4 + (s.strategy * 0.005))) { return { money: 150, hp: 0, log: '薬種として高値がついた。白蛇の恵みは、銭の形で懐に残った。'};} return { money: 40, hp: 0, log: '「ありふれた蛇の皮だ」と値切られ、二束三文にしかならなかった。'};}},
+            { text: 'そのままにして立ち去る', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 10; return { hp: 0, log: '福は独り占めするものではない。抜け殻は岩陰に戻し、手を合わせて野辺を後にした。'};}}
+            ]},
+            { id: 'temple_lottery', mode: ['normal'], weight: 20, condition: () => true,
+            title: '祭りの富くじ', text: '祭りの境内で、寺の富籤が売られている。一番富は破格の銭と噂され、籤売りの声に人垣ができている。',
+            choices: [
+            { text: '富籤を一枚買う', condition: (s) => s.money >= 30, hint: '運で判定・大勝ちか外れか', effect: (s) => { if (critRoll('luck', 0.35 + (s.luck * 0.004))) { s.luck += 15; recordChronology("祭りの富籤で一番富を引き当てる"); return { money: 200, hp: 0, log: '一番富！境内に歓声が上がり、祭りの夜に懐が大きく膨らんだ。'};} return { money: -30, hp: 0, log: '外れ籤は風に舞った。祭りの賑わいだけが残った。'};}},
+            { text: '籤売りの手伝いをして日銭を稼ぐ', condition: () => true, hint: '堅実・銭獲得', effect: (s) => { return { money: 40, hp: 0, log: '人垣の熱気に当てられながらも、声を張り上げて籤を売りさばき、堅実に日銭を稼いだ。'};}},
+            { text: '見物だけして帰る', condition: () => true, hint: '小回復', effect: (s) => { return { hp: 5, log: '賑わいを肴に甘酒を飲み、祭りの夜を楽しんだ。'};}}
+            ]},
+            { id: 'road_fortune_teller', mode: ['normal'], weight: 15, condition: () => true,
+            title: '易者の辻占', text: '街道の辻に、易者が小さな机を出している。「戦国の世、運命を知る者は生き残る」――その言葉に、足が止まった。',
+            choices: [
+            { text: '運勢を占ってもらう', condition: (s) => s.money >= 20, hint: '運で判定・大吉か凶か', effect: (s) => { if (critRoll('luck', 0.4 + (s.luck * 0.004))) { s.luck += 20; recordChronology("辻占で大吉を引き、足取り軽く旅を続ける"); return { money: -20, hp: 0, log: '「大吉。これほどの相は滅多に出ぬ」易者の言葉に背筋が伸びた。銭以上の値があった。'};} return { money: -20, hp: -5, log: '「凶。しばらく川に近づくな」当たるも八卦、当たらぬも八卦。だが少しだけ気が重くなった。'};}},
+            { text: '易者の客引きを眺め、人の心理を学ぶ', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 10; return { hp: 0, log: '不安な顔、安堵する顔。占いとは、人の心を読む術でもあった。'};}},
+            { text: '占いなど当てにせず立ち去る', condition: () => true, hint: '回避', effect: () => ({ hp: 0, log: '己の運命は己で切り開く。易者の声を背に、街道を歩いた。'})}
+            ]},
+            { id: 'ambushed_cargo', mode: ['normal'], weight: 20, condition: () => true,
+            title: '襲われゆく荷駄', text: '街道の先で悲鳴が上がった。野盗の一団が商人の荷駄を襲っている。助けに入る義理はない。だが、見過ごすかどうかは別の話だ。',
+            choices: [
+            { text: '襲撃に加わり、分け前にあずかる', condition: () => true, hint: '悪逆で判定・銭獲得か負傷か', effect: (s) => { if (critRoll('karma', 0.35 + (s.karma * 0.004))) { s.karma += 15; return { money: 120, hp: 0, log: '乱戦に紛れて荷を奪い、闇に紛れた。我ながら、様になっている。'};} return { hp: -30, log: '商人の用心棒は手練れだった。斬られ、這う這うの体で逃げ延びた。'};}},
+            { text: '商人を助け、野盗を追い払う', condition: () => true, hint: '武功で判定・礼金と名声', effect: (s) => { if (critRoll('valor', 0.35 + (s.valor * 0.005))) { s.valor += 15; s.virtue += 10; recordChronology("街道で襲われゆく商人を救う"); return { money: 60, hp: 0, log: '刀を抜いて割って入ると、野盗は荷を捨てて逃げた。商人は平身低頭で礼金を差し出した。'};} return { hp: -25, log: '多勢に無勢。商人ともども打ちのめされ、荷は奪われた。'};}},
+            { text: '物陰から成り行きを見届ける', condition: () => true, hint: '運上昇', effect: (s) => { s.luck += 10; return { hp: 0, log: '騒ぎが収まるまで息を殺した。生き残る術は、首を突っ込まないことでもある。'};}}
+            ]},
+            { id: 'youth_dare', mode: ['normal'], weight: 20, condition: (s) => s.age >= 15 && s.age <= 29,
+            title: '度胸試し', text: '若者たちが集まり、「度胸試し」と称して高い橋から川へ飛び込む遊びが始まった。皆の視線が、あなたに集まっている。',
+            choices: [
+            { text: '一番高い場所から飛び込む', condition: () => true, hint: '武功で判定・名を上げるか笑い者か', effect: (s) => { if (critRoll('valor', 0.4 + (s.valor * 0.005))) { s.valor += 20; s.luck += 5; recordChronology("若気の度胸試しで皆を唸らせる"); return { hp: 0, log: '風を切って落ち、水柱が高く上がった。歓声の中、若さとはこういうものだと笑った。'};} return { hp: -20, log: '腹から落ちて水面に叩きつけられた。笑い者になったが、それも若さのうちだ。'};}},
+            { text: '流れの緩い場所を見極めて飛ぶ', condition: () => true, hint: '運で判定・運上昇', effect: (s) => { if (critRoll('luck', 0.45 + (s.luck * 0.003))) { s.luck += 20; return { hp: 0, log: '水の色で深さを読んだ。無事に浮かび上がると、計算ずくの度胸に皆が感心した。'};} return { hp: -10, log: '読みが外れ、浅瀬で足を挫いた。知恵も度胸も、まだ修行が足りない。'};}},
+            { text: '若い衆の熱に乗らず、見物に徹する', condition: () => true, hint: '知略上昇', effect: (s) => { s.strategy += 10; return { hp: 0, log: '若さの熱に流されなかった。冷静さもまた、生き残る力だ。'};}}
+            ]},
+            { id: 'old_rival', mode: ['normal'], weight: 20, condition: (s) => s.age >= 35,
+            title: 'かつての宿敵', text: '茶屋の前で、見覚えのある背中と行き合った。若き日に刃を交え、競い合った宿敵。今は互いに、老いを感じる年になった。',
+            choices: [
+            { text: '酒を酌み交わし、昔話に花を咲かせる', condition: (s) => s.money >= 30, hint: '人徳・運上昇', effect: (s) => { s.virtue += 15; s.luck += 5; recordChronology("かつての宿敵と和解し、酒を酌み交わす"); return { money: -30, hp: 0, log: '剣を交えた話も、今は笑い話。戦国の世で、生きて再会できたこと自体が僥倖だった。'};}},
+            { text: '今一度、真剣で決着をつける', condition: (s) => s.valor >= 50, hint: '武功で判定・決着か負傷か', effect: (s) => { if (critRoll('valor', 0.4 + (s.valor * 0.004))) { s.valor += 25; return { hp: -10, log: '数合で勝負はついた。互いに深く礼をし、剣を収めた。決着もまた、情けである。'};} return { hp: -30, log: '衰えぬ腕に敗れた。だが不思議と、悔しさより清々しさが残った。'};}},
+            { text: '何も言わず、静かにすれ違う', condition: () => true, hint: '人徳上昇', effect: (s) => { s.virtue += 5; return { hp: 0, log: '目が合った気がしたが、互いに何も言わなかった。それもまた、戦国を生き抜いた者同士の礼儀だ。'};}}
+            ]},
+            { id: 'lightning_strike', mode: ['normal'], weight: 10, condition: (s) => s.age >= 18,
+            title: '落雷の夜', text: '激しい夕立の夜、耳をつんざく轟音と共に、近くの大木に雷が落ちた。火の手が上がり、雨と炎が入り混じる。',
+            choices: [
+            { text: '雨に打たれながら消火に走る', condition: () => true, hint: '人徳上昇・負傷', effect: (s) => { s.virtue += 20; recordChronology("落雷の火事を消し止め、村人に感謝される"); return { hp: -15, log: '村人総出で水を運び、火は家々に燃え移る前に消えた。ずぶ濡れの体に、感謝の声が温かい。'};}},
+            { text: '風向きを読み、燃える枝を切り落とす', condition: (s) => s.strategy >= 30, hint: '知略上昇・軽傷', effect: (s) => { s.strategy += 10; return { hp: -5, log: '延焼の道を断った。雷火は恐ろしいが、理をもってすれば御せる。'};}},
+            { text: '焼け跡に残った銅の釘や金具を拾い集める', condition: () => true, hint: '悪逆上昇・銭獲得', effect: (s) => { s.karma += 15; return { money: 70, hp: 0, log: '皆が火に気を取られる隙に、焼け跡の金具を拾った。雷の恵みとは言い難いが、銭にはなった。'};}}
+            ]},
         ];
 
         // v52: 極・二つ名（通常の二つ名の上位層。全10種。閾値は2026-11-14に実番付の現在トップを実測して設定した）
@@ -2052,7 +2101,21 @@ body.pc-on #ranking-screen { font-size: 15px; }
                         else { s.deathCause = 'battle'; return { hp: -40, log: '見つかった！乱闘の末に深手を負い、命からがら藪の中へ転がり込んだ……。' }; }
                     } },
                     { text: '山中に潜伏し、ほとぼりが冷めるのを待つ', condition: () => true, hint: '体力減少・逃亡継続', effect: (s) => { return { hp: -15, log: '息を殺して山中に潜む日々。寒さと飢えに耐え、検問が緩むのをじっと待ち続けた。' }; } }
-                ] }
+                ] },
+            { id: 'fugitive_river', mode: ['fugitive'], weight: 40, condition: () => true,
+            title: '渡し守の舟', text: '逃亡の果てに、大きな川へ行き当たった。対岸へ渡らねば追手に追いつかれる。川辺の小屋には、舟を出す渡し守の老人が一人。',
+            choices: [
+            { text: '渡し賃を払い、静かに渡してもらう', condition: (s) => s.money >= 30, hint: '安全・小回復', effect: (s) => { return { money: -30, hp: 5, log: '老人は何も聞かず、櫂を漕いだ。川霧の中、追手の声が遠ざかっていく。'};}},
+            { text: '情けに訴え、訳を話して乗せてもらう', condition: () => true, hint: '人徳で判定・回復', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 5; recordChronology("渡し守の情けに救われる"); return { hp: 15, log: '老人はしばらく黙って川を見ていたが、やがて舟を出した。「若い頃、俺も逃げたことがある」'};} return { hp: -10, log: '老人は首を振り、小屋の戸を閉めた。浅瀬を探し、冷たい川を歩いて渡るしかなかった。'};}},
+            { text: '夜を待ち、泳いで渡る', condition: () => true, hint: '運で判定・失敗で大ダメージ', effect: (s) => { if (critRoll('luck', 0.45 + (s.luck * 0.003))) { s.luck += 10; return { hp: -5, log: '冷たい川を泳ぎ切り、対岸の藪に倒れ込んだ。追手の灯りは、もう見えない。'};} return { hp: -30, log: '流れに呑まれ、荷も体力も大きく失った。命があっただけが幸いだった。'};}}
+            ]},
+            { id: 'fugitive_abandoned_child', mode: ['fugitive'], weight: 30, condition: () => true,
+            title: '捨て子の声', text: '人里離れた山道で、赤子の泣き声がする。笹に包まれた捨て子だ。追われる身の自分に、余分な荷を抱える余裕はないはずだった。',
+            choices: [
+            { text: '近くの村の門前まで運び、そっと置いてくる', condition: () => true, hint: '人徳で判定・人徳大幅上昇', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.3 + (s.virtue * 0.007)))) { s.virtue += 20; recordChronology("逃亡の道で捨て子を村へ届ける"); return { hp: -5, log: '村の明かりが見える場所まで運び、門を叩いて姿を消した。泣き声が、やがて温かいざわめきに変わった。'};} return { hp: -15, log: '村に近づきすぎて人に見つかり、慌てて山へ戻った。子は幸い、村の女が拾い上げたという。'};}},
+            { text: '握り飯と銭を添えて、街道沿いに置く', condition: (s) => s.money >= 20, hint: '人徳上昇', effect: (s) => { s.virtue += 10; return { money: -20, hp: 0, log: '見つけてもらえるよう、街道の目のつく場所に寝かせた。せめてもの銭と飯を添えて。'};}},
+            { text: '見なかったことにして立ち去る', condition: () => true, hint: '悪逆上昇', effect: (s) => { s.karma += 15; return { hp: 0, log: '泣き声を背に、足を早めた。逃亡者に情けは重い。その夜は、なかなか眠れなかった。'};}}
+            ]},
         ];
 
 
@@ -3038,7 +3101,28 @@ chronWin: '一攫千金の渡世をものにし、名を上げる', chronFail: '
 logWin: (g, l) => '街道で襲撃を受けたが、腕と天運が味方した。荷駄は無事に届き、礼金は破格、商人の覚えもめでたくなった。流れ者の身に、名と銭が転がり込んだ一夜となった。（' + l + ' +' + g + '）',
 logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。礼金どころか違約の借りが残り、傷の痛みと共に懐も寒くなった。それでも渡世人は、明日を笑って歩くほかない。（' + l + ' -' + g + '）'})},
 { text: '話には乗らず、日銭を稼ぐ', condition: () => true, hint: '武功上昇', effect: (s) => { s.valor += 5; return { hp: 0, log: '甘い話には毒がある。用心棒の日銭で、今日も食いつないだ。'};}}
-]}
+]},
+            { id: 'merchant_salvage', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'merchant',
+            title: '難破船の積荷', text: '嵐の翌朝、浜に難破船が打ち上げられた。積荷の絹や陶器が波間に漂っている。持ち主の船乗りたちは、行方が知れない。',
+            choices: [
+            { text: '漂着物を集め、自分の蔵へ運び込む', condition: () => true, hint: '運で判定・銭獲得・悪逆上昇', effect: (s) => { if (critRoll('luck', 0.35 + (s.luck * 0.004))) { s.karma += 10; return { money: 220, hp: 0, log: '濡れた絹は乾かせば売れる。拾う神ありとはこのことだ。'};} s.karma += 10; return { money: 60, hp: -5, log: '大半は海水で傷んでいたが、売れる分だけでも拾い集めた。'};}},
+            { text: '船乗りを捜し、助けを呼ぶ', condition: () => true, hint: '人徳大幅上昇・礼', effect: (s) => { s.virtue += 20; recordChronology("難破船の船乗りを救い、積荷の礼を受ける"); return { money: 80, hp: 0, log: '岩場で数人の船乗りを救い出した。積荷の一部を礼に受け取り、名も上がった。'};}},
+            { text: '積荷の権利を地元の有力者と交渉する', condition: (s) => s.strategy >= 40, hint: '知略上昇・銭獲得', effect: (s) => { s.strategy += 10; return { money: 120, hp: 0, log: '漂着物の取り分を文書で取り決めた。争いにならぬよう根回しするのも商いだ。'};}}
+            ]},
+            { id: 'peasant_headman', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'peasant' && s.age >= 30,
+            title: '名主の跡目', text: '村の名主が病に倒れ、跡目を巡って村が二つに割れた。実直な長老派と、やり手の若頭派。あなたの言葉が、村の行く末を左右する。',
+            choices: [
+            { text: '長老を推し、穏便に収める', condition: () => true, hint: '人徳で判定・人徳大幅上昇', effect: (s) => { if (critRoll('virtue', Math.min(0.95, 0.35 + (s.virtue * 0.006)))) { s.virtue += 25; recordChronology("名主の跡目争いを収め、村の長と頼られる"); return { hp: 0, log: '双方の言い分を聞き、祭りの席で盃を交わさせた。村は一つに戻った。'};} s.virtue += 5; return { hp: -5, log: '収めきれず、しばらく村に気まずい空気が流れた。それでも、歩き回ったこと自体は伝わった。'};}},
+            { text: '若頭の才覚を買い、裏で根回しする', condition: () => true, hint: '知略・銭獲得', effect: (s) => { s.strategy += 15; s.karma += 5; return { money: 30, hp: 0, log: '若頭が名主となり、村の商いは活気づいた。根回しの礼が、袖の下から届いた。'};}},
+            { text: '跡目を狙う者の帳簿の不正を暴く', condition: (s) => s.strategy >= 40, hint: '知略・人徳上昇', effect: (s) => { s.strategy += 10; s.virtue += 10; return { hp: 0, log: '若頭の横領を年貢帳から暴いた。村の空気は清くなったが、恨みも買った。'};}}
+            ]},
+            { id: 'monk_debate', mode: ['normal'], weight: 20, condition: (s) => s.classInfo.id === 'monk',
+            title: '宗論の場', text: '隣山の僧が「宗論」を挑んできた。負ければ檀家の信頼を失い、勝てば寺の名が上がる。経典の知識と弁舌の勝負だ。',
+            choices: [
+            { text: '正面から経典の解釈で論破する', condition: () => true, hint: '知略で判定・名声と喜捨', effect: (s) => { if (critRoll('strategy', Math.min(0.95, 0.35 + (s.strategy * 0.006)))) { s.strategy += 10; s.virtue += 15; recordChronology("宗論で隣山の僧を論破し、寺の名を上げる"); return { money: 50, hp: 0, log: '問答は三日三晩続き、最後は相手が合掌して退いた。檀家の喜捨も増えた。'};} s.strategy -= 5; return { hp: -5, log: '言葉に詰まり、論破された。経典を読み直す日々が始まった。'};}},
+            { text: '相手の心に寄り添い、勝敗を超えた話をする', condition: () => true, hint: '人徳大幅上昇・小回復', effect: (s) => { s.virtue += 20; return { hp: 5, log: '勝ち負けを離れた話に、相手の僧も聴衆も静かに耳を澄ました。宗論は法話の会となった。'};}},
+            { text: '挑発に乗らず、黙して座り続ける', condition: () => true, hint: '人徳・運上昇', effect: (s) => { s.virtue += 10; s.luck += 5; return { hp: 0, log: '何を言われても座り続けた。その姿が、どんな弁舌よりも雄弁だったと後に語られた。'};}}
+            ]},
         ];
 
         const AGE_EVENTS = [
