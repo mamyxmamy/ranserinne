@@ -386,7 +386,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 58.0</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 58.1</span></div>
             </div>
 
             <div class="hidden">
@@ -4655,11 +4655,6 @@ fit(jisei, 858, 40, '#E9C767');
 
 if (reasonText) fit(`「${reasonText}」`, 912, 36, '#E9C767');
 
-if (picks.length) {
-ctx.fillStyle = '#9b8f83'; ctx.font = `30px ${mincho}`;
-ctx.fillText('― 人生の節目 ―', 540, 968);
-picks.forEach((en, i) => { const t = `${en.age}歳　${en.text.length > 30? en.text.slice(0, 30) + '…': en.text}`; fit(t, 1006 + i * 34, 32, '#CFC6AE', undefined, 860);});
-}
 
 // v58: 能力レーダーチャート（5軸・閾値ベースの段階スケール。頂点ラベルに数値を併記し、従来の数値2行は廃止）
 const radarStats = [
@@ -4677,9 +4672,9 @@ const pts = radarAnchors.concat([[cap, 1]]);
 for (let i = 1; i < pts.length; i++) { if (v <= pts[i][0]) { const x0 = pts[i - 1][0], y0 = pts[i - 1][1], x1 = pts[i][0], y1 = pts[i][1]; return y0 + (y1 - y0) * (v - x0) / (x1 - x0);}}
 return 1;
 };
-const RCX = 540, RCY = raidMode? 1124: 1130, RR = raidMode? 42: 48;
+const RCX = 540, RCY = raidMode? 1092: 1110, RR = raidMode? 100: 130;
 const rPt = (i, ratio) => { const a = (-90 + i * 72) * Math.PI / 180; return [RCX + Math.cos(a) * RR * ratio, RCY + Math.sin(a) * RR * ratio];};
-ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 1.5;
+ctx.strokeStyle = 'rgba(255,255,255,0.24)'; ctx.lineWidth = 2.5;
 [1 / 3, 2 / 3, 1].forEach(r => { ctx.beginPath(); for (let i = 0; i < 5; i++) { const p = rPt(i, r); i? ctx.lineTo(p[0], p[1]): ctx.moveTo(p[0], p[1]);} ctx.closePath(); ctx.stroke();});
 for (let i = 0; i < 5; i++) { const p = rPt(i, 1); ctx.beginPath(); ctx.moveTo(RCX, RCY); ctx.lineTo(p[0], p[1]); ctx.stroke();}
 const rRatio = (s) => Math.max(radarScale(s.value, s.cap), 0.02);
@@ -4687,19 +4682,17 @@ ctx.beginPath();
 radarStats.forEach((s, i) => { const p = rPt(i, rRatio(s)); i? ctx.lineTo(p[0], p[1]): ctx.moveTo(p[0], p[1]);});
 ctx.closePath();
 ctx.fillStyle = isPremium? 'rgba(233,199,103,0.45)': 'rgba(201,162,39,0.35)'; ctx.fill();
-ctx.strokeStyle = '#C9A227'; ctx.lineWidth = 3; ctx.stroke();
+ctx.strokeStyle = '#C9A227'; ctx.lineWidth = 4.5; ctx.stroke();
 ctx.fillStyle = '#C9A227';
-radarStats.forEach((s, i) => { const p = rPt(i, rRatio(s)); ctx.beginPath(); ctx.arc(p[0], p[1], 5, 0, Math.PI * 2); ctx.fill();});
-ctx.fillStyle = '#EDE6D6'; ctx.font = `700 27px ${mincho}`;
+radarStats.forEach((s, i) => { const p = rPt(i, rRatio(s)); ctx.beginPath(); ctx.arc(p[0], p[1], 7, 0, Math.PI * 2); ctx.fill();});
+ctx.fillStyle = '#EDE6D6'; ctx.font = `700 40px ${mincho}`;
 const rLabel = (i) => `${radarStats[i].name} ${radarStats[i].value.toLocaleString()}`;
-let rp0 = rPt(0, 1); ctx.textAlign = 'left'; ctx.fillText(rLabel(0), rp0[0] + 16, rp0[1] + 9);
-let rp1 = rPt(1, 1); ctx.textAlign = 'left'; ctx.fillText(rLabel(1), rp1[0] + 14, rp1[1] + 9);
-let rp2 = rPt(2, 1); ctx.textAlign = 'left'; ctx.fillText(rLabel(2), rp2[0] + 10, rp2[1] + 22);
-let rp3 = rPt(3, 1); ctx.textAlign = 'right'; ctx.fillText(rLabel(3), rp3[0] - 10, rp3[1] + 22);
-let rp4 = rPt(4, 1); ctx.textAlign = 'right'; ctx.fillText(rLabel(4), rp4[0] - 14, rp4[1] + 9);
+let rp0 = rPt(0, 1); ctx.textAlign = 'left'; ctx.fillText(rLabel(0), rp0[0] + 18, rp0[1] + 13);
+let rp1 = rPt(1, 1); ctx.textAlign = 'left'; ctx.fillText(rLabel(1), rp1[0] + 16, rp1[1] + 13);
+let rp2 = rPt(2, 1); ctx.textAlign = 'left'; ctx.fillText(rLabel(2), rp2[0] + 12, rp2[1] + 26);
+let rp3 = rPt(3, 1); ctx.textAlign = 'right'; ctx.fillText(rLabel(3), rp3[0] - 12, rp3[1] + 26);
+let rp4 = rPt(4, 1); ctx.textAlign = 'right'; ctx.fillText(rLabel(4), rp4[0] - 16, rp4[1] + 13);
 ctx.textAlign = 'center';
-
-fit(`所持金 ${(state.money || 0).toLocaleString()}文　獲得冥銭 +${earned}${heiTxt? '　' + heiTxt: ''}`, raidMode? 1212: 1228, raidMode? 26: 30, '#9b8f83');
 
 if (window.__raidCard) {
 ctx.fillStyle = 'rgba(38,16,54,0.92)'; ctx.fillRect(140, 1222, 800, 96);
@@ -4709,8 +4702,6 @@ ctx.fillText('― 共討戦 ― 寒霜夢幻 ―', 540, 1254);
 ctx.fillStyle = '#FFFFFF'; ctx.font = `900 37px ${mincho}`;
 ctx.fillText(`第${window.__raidCard.gen}世代の番人に ${window.__raidCard.dmg.toLocaleString()} ダメージ`, 540, 1302);
 } else {
-ctx.fillStyle = '#9b8f83'; ctx.font = `33px ${mincho}`;
-ctx.fillText(`二つ名図鑑：${zukanCount}/${zukanTotal}種`, 540, 1270);
 ctx.fillStyle = '#6E655B'; ctx.font = `22px ${mincho}`;
 ctx.fillText('https://mamyxmamy.github.io/ranserinne/', 540, 1300);
 }
