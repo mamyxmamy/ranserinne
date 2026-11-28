@@ -386,7 +386,7 @@ body.pc-on #ranking-screen { font-size: 15px; }
             <div class="w-full text-center flex-shrink-0 mt-1 relative">
                 <h1 class="text-[2.55rem] leading-none font-black text-[#E9DCC0] tracking-[0.1em]" style="text-shadow: 0 2px 16px rgba(0,0,0,0.85), 0 0 42px rgba(120,30,20,0.35);">戦国人生絵巻</h1>
                 <div class="text-gold text-[15px] font-bold tracking-[0.42em] mt-2" style="text-shadow: 0 1px 10px rgba(0,0,0,0.9);">- 乱世の輪廻 -</div>
-                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 59.0</span></div>
+                <div class="mt-1.5"><span class="text-[10px] text-gray-400 tracking-[0.3em]">ver 60.0</span></div>
             </div>
 
             <div class="hidden">
@@ -823,6 +823,16 @@ body.pc-on #ranking-screen { font-size: 15px; }
                 </section>
 
                 <section>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 倍速とオートモード</h3>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li><strong class="text-white">倍速:</strong> 画面上の「速さ」ボタンで、歳月の進む速さを三段階（通常／速い／最速）に切り替えられます。ルーレットなどの演出の速さは変わりません。</li>
+                        <li><strong class="text-white">オートモード:</strong> 画面上の「オート」ボタンから伸ばしたい能力を一つ選ぶと、その能力が伸びる選択肢を自動で選んで進みます（何を選んだかはログに残ります）。</li>
+                        <li><strong class="text-white">必ず止まる場面:</strong> 大勝負、命に関わる決断、裏ルートの入口と段、判断できない選択肢では、自動で選ばず止まります。オート中は画面をタップすれば即座に止まり、手動に戻ります。</li>
+                        <li><strong class="text-yellow-400">代償:</strong> オートを使った人生では、オート中の出来事での能力上昇と、死後に得る冥銭が八割になります。寿命への加算（大往生の蓄積・共討戦の礼など）は減りません。</li>
+                    </ul>
+                </section>
+
+                <section>
                     <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 身分と初期能力</h3>
                     <p class="mb-1">能力は全員0から。身分差は初期の体力・所持金と、生まれ持つ加護（武将＝武功+20／忍者＝知略+20・運+20／僧侶＝人徳+30／公家＝知略+20・人徳+10）のみです。</p>
                     <p class="text-gray-400">農民 体力80・5文／足軽 90・15文／商人 70・300文／武将 90・150文／忍者 70・30文／僧侶 80・20文／公家 60・100文</p>
@@ -914,6 +924,17 @@ body.pc-on #ranking-screen { font-size: 15px; }
                     <ul class="list-disc pl-4 space-y-1">
                         <li>通常の二つ名のさらに上にある称号で、全10種。生涯を終えた瞬間に、最終的な能力や生き様が条件を満たしていれば獲得できます（複数同時もあり）。</li>
                         <li>例：武功5,000以上「修羅の化身」／享年150歳以上で大往生「生ける伝説」／能力5種すべて250以上「万能の奇才」／素寒貧のまま享年120歳以上「貧しき神」など。条件の一覧は絵巻図鑑の二つ名タブ末尾で見られます。</li>
+                    </ul>
+                </section>
+
+                <section>
+                    <h3 class="text-green-300 font-bold mb-1 border-b border-green-900/50 pb-1">◆ 裏ルート（能力特化の道）（v60新要素）</h3>
+                    <ul class="list-disc pl-4 space-y-1">
+                        <li>能力を極めた人生には、その能力にちなんだ専用の物語（全5つの道）が開かれます。一定の能力と20歳以上で「入口」の誘いが訪れ、受けるかどうかは自分で選べます（見送っても、条件を満たす限りまた巡ってきます）。</li>
+                        <li>入れるのは<span class="font-bold">1人生に1つの道だけ</span>。道は4つの段からなり、段と段の間は最短で4年。進むには、その段が求める能力の高さを保ち続ける必要があります。</li>
+                        <li>能力が求める高さを割り込むと、道は<span class="font-bold">眠り（停滞）</span>ます。失われることはなく、能力を満たし直せば再び動き出します。戦場や逃亡の最中も道は進みません。</li>
+                        <li>最後まで歩き切ると、その道にちなんだ<span class="text-gold font-bold">固有の二つ名</span>が、その人生の二つ名として最優先で授けられます。</li>
+                        <li>悪逆の道「修羅の辻」の果てには、命を懸けた大きな賭けがあると噂されます。詳細は、歩いた者だけが知っています。</li>
                     </ul>
                 </section>
 
@@ -1268,7 +1289,8 @@ body.pc-on #ranking-screen { font-size: 15px; }
             { id: 'hl_okina', name: "呪われた翁面", hint: "業が深く長生きした者が取り憑かれる", type: "karma", value: 30, effect: "初期悪逆 +30", flavor: "能の翁面は本来、長寿と安寧を司る神聖な面で、舞台の最初に現れる祝いの象徴である。しかし長く人の念を吸った面には魂が宿ると畏れられ、能楽の世界では面は『生きているもの』として扱われた。" },
             { id: 'hl_kitsune', name: "霊狐の毛皮", hint: "途方もない幸運で生き延びた者が得る", type: "luck", value: 35, effect: "初期運 +35", flavor: "稲荷の使いとされる白狐は、神の眷属であると同時に人を化かす不思議な存在。その毛皮は強い守護と幸運の証とされ、同時に近づく者を試すような霊力を帯びると恐れられた。" },
             { id: 'hl_aoi', name: "四葉の葵紋", hint: "戦火の中で運良く拾う品", type: "luck", value: 10, effect: "初期運 +10", flavor: "葵紋といえば徳川家の三つ葉葵が知られるが、四葉の葵紋は本来存在しない『あり得ない紋』。だからこそ見つけた者には特別な幸運が舞い込むという、戦国の野に伝わる小さな吉兆の品である。" },
-            { id: 'hl_club', name: "古びた木の棍棒", hint: "素寒貧の縛りを背負い、大往生を遂げた猛者が遺す伝説の武器", type: "luck", value: 50, effect: "初期運 +50（伝説の素寒貧の証）", flavor: "名も持たぬ素寒貧が生涯握り続けた、ただの木の棍棒。金も身分も家宝の加護も捨てた者が唯一頼った武器であり、その生き様そのものが伝説となった。持たざる者の意地の結晶である。" }
+            { id: 'hl_club', name: "古びた木の棍棒", hint: "素寒貧の縛りを背負い、大往生を遂げた猛者が遺す伝説の武器", type: "luck", value: 50, effect: "初期運 +50（伝説の素寒貧の証）", flavor: "名も持たぬ素寒貧が生涯握り続けた、ただの木の棍棒。金も身分も家宝の加護も捨てた者が唯一頼った武器であり、その生き様そのものが伝説となった。持たざる者の意地の結晶である。" },
+            { id: 'hl_tenka_daiaku', name: "金印・天下大悪", hint: "修羅の辻を歩き切り、死の賭けに勝った者のみが手にする", type: "karma", value: 60, effect: "初期悪逆 +60", flavor: "討伐隊を退けた夜、奪った軍用金から鋳させた金印。印面には「天下大悪」の四文字。持つ者の悪名そのものを格上げする品であり、天下の大悪党の証として裏社会に知れ渡る。" }
         ];
 
         // v54: 家宝合成システム。被った家宝は自動還元されず「素材」として家宝蔵にストックされる（sengoku_heirloom_materials）。
@@ -1634,7 +1656,12 @@ body.pc-on #ranking-screen { font-size: 15px; }
             { name: "飢餓に倒れし者", hint: "飢えに耐えきれず命を落とす" },
             { name: "病魔に蝕まれし者", hint: "疫病に倒れる" },
             { name: "名もなき草奔", hint: "戦国の世に生きる" },
-            { name: "冥府の門を叩きし者", hint: "共討戦にて、冥府の門の番人に挑む" }];
+            { name: "冥府の門を叩きし者", hint: "共討戦にて、冥府の門の番人に挑む" },
+            { name: "天下の大悪党", hint: "修羅の辻を最後まで歩き切る" },
+            { name: "救国の聖人", hint: "衆生の灯を最後まで歩き切る" },
+            { name: "天運無双", hint: "天命の賽を最後まで歩き切る" },
+            { name: "剣聖", hint: "剣の求道を最後まで歩き切る" },
+            { name: "臥龍先生", hint: "伏龍の径を最後まで歩き切る" }];
 
         const WIFE_NAMES = ['千代', 'まつ', '寧々', 'お市', '濃姫', '小松', '妙玖', '早川殿', '甲斐姫', 'お田鶴'];
 
@@ -3334,6 +3361,226 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
                 ] }
         ];
 
+// ==========================================
+// v60: 裏ルート（能力特化の専用イベント鎖）
+// 1人生1ルート。入口は受諾制、段は4年間隔・weight 150、ゲート割れは停滞のみ（R-1〜R-10 確定仕様）
+// ==========================================
+const ROUTES = {
+karma: { name: '修羅の辻', stat: 'karma', gates: [120, 120, 170, 230, 300], title: '天下の大悪党'},
+virtue: { name: '衆生の灯', stat: 'virtue', gates: [120, 120, 170, 230, 300], title: '救国の聖人'},
+valor: { name: '剣の求道', stat: 'valor', gates: [120, 120, 170, 230, 300], title: '剣聖'},
+strategy: { name: '伏龍の径', stat: 'strategy', gates: [120, 120, 170, 230, 300], title: '臥龍先生'},
+luck: { name: '天命の賽', stat: 'luck', gates: [100, 100, 130, 170, 220], title: '天運無双'}
+};
+function routeReady(s, routeId, stage) {
+if (!s ||!s.classInfo || s.classInfo.id === 'sukanpin') return false;
+if (s.mode!== 'normal') return false;
+const r = s.flags && s.flags.route;
+if (!r || r.id!== routeId || r.done) return false;
+if (r.stage!== stage) return false;
+if (s.age - r.lastAge < 4) return false;
+const def = ROUTES[routeId];
+if ((s[def.stat] || 0) < def.gates[stage]) return false;
+return true;
+}
+function routeEntryReady(s, routeId) {
+if (!s ||!s.classInfo || s.classInfo.id === 'sukanpin') return false;
+if (s.age < 20) return false;
+if (s.flags && s.flags.route) return false;
+return (s[ROUTES[routeId].stat] || 0) >= ROUTES[routeId].gates[0];
+}
+// 段を消化した時に呼ぶ（done=true で完走）。最終段で完走にならない分岐では routeHold を使う
+function routeAdvance(s, done) {
+const r = s.flags && s.flags.route;
+if (!r) return;
+r.lastAge = s.age;
+if (done) r.done = true;
+else if (r.stage < 4) r.stage += 1;
+}
+// 完走を持ち越す時に呼ぶ（段は進めず、間隔の起点だけ更新する）
+function routeHold(s) {
+const r = s.flags && s.flags.route;
+if (r) r.lastAge = s.age;
+}
+
+const ROUTE_EVENTS = [
+// ===== 悪逆ルート「修羅の辻」 =====
+{ id: 'route_karma_entry', mode: ['normal'], weight: 150, condition: (s) => routeEntryReady(s, 'karma'),
+title: '闇市からの誘い', text: 'あなたの悪名は、闇の世界では既に通り名になっている。ある夜、闇市の顔役を名乗る老人が訪ねてきた。「あんたの悪は、まだ小さい。小さいままで終わるか、天下に届く悪になるか――大きな仕事がある。受けるかどうかは、あんた次第だ」',
+choices: [
+{ text: '老人の誘いを受け、修羅の辻へ進む', condition: () => true, hint: '悪逆の道「修羅の辻」に入る', effect: (s) => { s.flags.route = { id: 'karma', stage: 1, lastAge: s.age, done: false}; recordChronology("闇市の誘いを受け、修羅の辻を歩み始める"); return { hp: 0, log: '老人の目を見て、静かに頷いた。この先は、戻れない道だと分かっていた。'};}},
+{ text: '足を洗い、誘いを断る', condition: () => true, hint: '見送る（誘いはまた巡ってくる）', effect: (s) => { return { hp: 0, log: '首を振ると、老人は笑って言った。「気が変わったら、闇市へ来な」その背中は、夜に溶けて消えた。'};}}
+]},
+{ id: 'route_karma_1', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'karma', 1),
+title: '縄張り争い', text: '闇の仕事で名が売れ始めた頃、縄張りを接する盗賊団「赤蜥蜴」が、あなたの抱える仕事場を襲い、仲間を傷つけた。闇の掟では、やられたらやり返すのが筋。ここで引けば、名は地に落ちる。',
+choices: [
+{ text: '力で正面から叩き潰す', condition: () => true, hint: '武功で判定・勝てば悪逆上昇、敗れれば負傷', effect: (s) => { routeAdvance(s, false); if (critRoll('valor', Math.min(0.85, 0.4 + (s.valor || 0) * 0.004))) { s.karma += 15; recordChronology("縄張り争いで盗賊団を叩き潰し、闇に名を売る"); return { money: 100, hp: 0, log: '赤蜥蜴の頭目を表で斬り伏せ、残党は散り散りに逃げた。闇の者たちは、それ以来あなたの名を畏れを込めて口にする。（悪逆 +15）'};} return { hp: -25, log: '返り討ちに遭い、深手を負って引き下がった。縄張りは守ったが、代償は安くなかった。'};}},
+{ text: '敵の内側に手を回し、内側から崩す', condition: () => true, hint: '知略で判定・勝てば悪逆と知略上昇、失敗で始末に銭がかかる', effect: (s) => { routeAdvance(s, false); if (critRoll('strategy', Math.min(0.85, 0.4 + (s.strategy || 0) * 0.004))) { s.karma += 15; s.strategy += 5; return { hp: 0, log: '金と噂をばらまいて三日、赤蜥蜴は内輪揉めで自壊した。刃を交えずに勝つ味を、あなたは覚えた。（悪逆 +15）'};} return { money: -100, hp: -10, log: '工作は露見し、始末に銭と血が要った。闇の駆け引きは、まだ学ぶことが多い。'};}},
+{ text: '銭で縄張りを買い取り、争いを避ける', condition: (s) => s.money >= 150, hint: '確実・悪逆小幅上昇', effect: (s) => { routeAdvance(s, false); s.karma += 10; return { money: -150, hp: 0, log: '銭を積んで縄張りを買い取った。血を流さずに済むなら、それに越したことはない。闇の者たちは「太っ腹な新しい親分」として、あなたを迎えた。（悪逆 +10）'};}}
+]},
+{ id: 'route_karma_2', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'karma', 2),
+title: '暗殺の請負', text: '顔役から、破格の報酬の仕事が回ってきた。標的は、かつて飢えていたあなたに飯を食わせた男の、今は大身となった倅。情を知らぬ仕事なら容易い。だが標的の顔には、あの日の恩人の面影がある。',
+choices: [
+{ text: '情を捨て、仕事を果たす', condition: () => true, hint: '悪逆で判定・成功で大金、失敗で返り討ち', effect: (s) => { routeAdvance(s, false); if (critRoll('karma', Math.min(0.85, 0.35 + (s.karma || 0) * 0.004))) { s.karma += 15; recordChronology("かつての恩に連なる者を討ち、情を捨てた悪党として知られる"); return { money: 300, hp: 0, log: '夜明け前、仕事は終わった。恩人の顔が脳裏をよぎったが、振り払った。悪の道に、情を持ち込んだら死ぬ。（悪逆 +15）'};} return { hp: -30, log: '標的の用心棒は手練れだった。返り討ちに遭い、這う這うの体で闇に逃げ帰った。'};}},
+{ text: '標的を逃がし、果たしたことにする', condition: () => true, hint: '知略で判定・露見すれば信用を失う', effect: (s) => { routeAdvance(s, false); if (critRoll('strategy', Math.min(0.85, 0.35 + (s.strategy || 0) * 0.004))) { s.karma += 10; s.strategy += 10; return { money: 150, hp: 0, log: '偽の首級と証文を用意し、標的は遠国へ落とした。報酬は懐に、情は胸に。誰にも気づかれていない。（悪逆 +10）'};} s.karma -= 10; return { money: -150, hp: -10, log: '細工は見抜かれた。依頼主の信用を失い、始末金と傷だけが残った。（悪逆 -10）'};}},
+{ text: '仕事を断り、違約を払う', condition: (s) => s.money >= 100, hint: '確実・悪逆は伸びない', effect: (s) => { routeAdvance(s, false); s.virtue += 5; recordChronology("恩に背く仕事を断り、違約を払う"); return { money: -100, hp: 0, log: '違約の銭を置き、仕事を返した。顔役は意外そうに笑った。「悪党にも、やらねえ事があるんだな」その一言が、妙に胸に残った。（人徳 +5）'};}}
+]},
+{ id: 'route_karma_3', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'karma', 3),
+title: '討伐の触れ', text: 'あなたの悪名は、ついに諸国の大名の耳にも届いた。近隣の諸侯が兵を出し合い、「天下の大悪党」討伐の触れが回った。逃げるか、迎え撃つか。いずれにせよ、静かな暮らしはもう戻らない。',
+choices: [
+{ text: '砦を構え、迎撃の支度を整える', condition: (s) => s.money >= 200, hint: '確実・武功と悪逆上昇', effect: (s) => { routeAdvance(s, false); s.valor += 10; s.karma += 15; recordChronology("討伐の触れを受け、迎撃の砦を構える"); return { money: -200, hp: 0, log: '山に砦を構え、落とし穴と矢狭間を巡らせた。討つなら討ってみせよ。その構え自体が、悪名をさらに押し上げた。（悪逆 +15）'};}},
+{ text: '山野に潜み、討伐隊を出し抜く', condition: () => true, hint: '運で判定・失敗で負傷', effect: (s) => { routeAdvance(s, false); if (critRoll('luck', Math.min(0.85, 0.4 + (s.luck || 0) * 0.004))) { s.karma += 15; return { hp: 0, log: '討伐隊は空の根城を包囲し、虚しく解散した。山の影から眺めるあなたを、誰も見つけられなかった。（悪逆 +15）'};} return { hp: -30, log: '山狩りに追い立てられ、崖から落ちて深手を負った。何とか逃げ延びたが、安住の地は失われた。'};}},
+{ text: '身代わりの影武者を立て、世間を欺く', condition: () => true, hint: '知略で判定・失敗でも悪名は広がる', effect: (s) => { routeAdvance(s, false); if (critRoll('strategy', Math.min(0.85, 0.4 + (s.strategy || 0) * 0.004))) { s.karma += 10; s.strategy += 10; return { hp: 0, log: '影武者は討たれ、世間は「大悪党は死んだ」と祝った。本物のあなたは、別の土地で新しい悪事に手を染めている。（悪逆 +10）'};} s.karma += 10; return { hp: -15, log: '影武者の芝居は見抜かれ、本物は逃げ延びた。だが「死をも欺く大悪党」の噂は、かえって悪名を広げた。（悪逆 +10）'};}}
+]},
+{ id: 'route_karma_4', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'karma', 4),
+title: '討伐隊との決着', text: '討伐隊が、ついにあなたの根城を取り囲んだ。数は十倍。だが、ここまで歩いてきた道の果てがこの戦であることだけは確かだ。逃げ道は既に断った。あとは、どう戦い切るかだけが残されている。',
+choices: [
+{ text: '正面から討伐隊を迎え撃つ', condition: () => true, hint: '悪逆で判定・即死はない', effect: (s) => { if (critRoll('karma', Math.min(0.85, 0.4 + (s.karma || 0) * 0.003))) { s.karma += 15; routeAdvance(s, true); recordChronology("討伐隊を退け、天下の大悪党として名を残す"); return { money: 300, hp: 0, log: '十倍の兵を相手に、根城は落ちなかった。夜明け、討伐隊は旗を巻いて退いた。天下の大悪党の名は、この日をもって揺るがぬものとなった。（悪逆 +15）'};} s.deathCause = 'battle'; routeAdvance(s, true); recordChronology("討伐隊を退け、天下の大悪党として名を残す"); return { hp: -45, log: '討伐隊は退けた。だが体中を斬られ、立っているのがやっとだった。それでも――道は、歩き切った。'};}},
+{ text: '死出の賭け――単身、敵陣の只中で軍用金を奪う', condition: () => true, hint: '死と隣り合わせ・成功率 最大50%（悪逆で変動）・勝てば莫大な報酬', effect: (s) => { if (critRoll('karma', Math.min(0.50, 0.35 + (s.karma || 0) * 0.0005))) { s.karma += 150; s.valor += 50; s.money = (s.money || 0) + 300000; if (!window.unlockedHeirlooms) window.unlockedHeirlooms = []; if (!window.unlockedHeirlooms.some(h => h.id === 'hl_tenka_daiaku')) { const inst = heirloomInstance('hl_tenka_daiaku'); if (inst) { window.unlockedHeirlooms.push(inst); if (!window.heirloomHistory) window.heirloomHistory = []; if (!window.heirloomHistory.includes('hl_tenka_daiaku')) window.heirloomHistory.push('hl_tenka_daiaku');}} saveMetaProgress(); routeAdvance(s, true); recordChronology("死出の賭けに勝ち、軍用金を奪い尽くす"); return { hp: 0, log: '単身で敵陣に躍り込み、総大将の首級寸前まで迫って軍用金の在処を吐かせた。奪った金は山と積まれ、その夜、奪った金から金印を鋳させた。印面には「天下大悪」の四文字。死の賭けに勝った者だけが持つ、悪の証である。（悪逆 +150）（武功 +50）'};} s.deathCause = 'battle'; recordChronology("討伐隊の只中で、笑いながら斃れる"); return { hp: -999, log: '敵陣の只中で、矢と槍に囲まれた。笑いながら斃れたと、後に残った者たちが語ったという。'};}},
+{ text: '夜陰に紛れて根城を捨て、逃げ延びる', condition: () => true, hint: '今回は逃げる（完走は持ち越し）', effect: (s) => { routeHold(s); return { hp: -10, log: '根城を捨て、闇に紛れた。道はまだ終わっていない。だが討伐隊も、まだ諦めていない。'};}}
+]},
+// ===== 人徳ルート「衆生の灯」 =====
+{ id: 'route_virtue_entry', mode: ['normal'], weight: 150, condition: (s) => routeEntryReady(s, 'virtue'),
+title: '村々の相談役', text: 'あなたの人望は、近隣の村々では知らぬ者がないほどになっていた。ある日、五つの村の長が連れ立って訪ねてきた。「どうか、我らの相談役になって下され。水の事、道の事、争いの事――あんたの言葉なら、皆が聞く耳を持つ」',
+choices: [
+{ text: '相談役の役目を引き受ける', condition: () => true, hint: '人徳の道「衆生の灯」に入る', effect: (s) => { s.flags.route = { id: 'virtue', stage: 1, lastAge: s.age, done: false}; recordChronology("村々の相談役となり、衆生の灯を歩み始める"); return { hp: 0, log: '五人の長の目を見て、頷いた。背負う暮らしが、また少し重くなる。それでも、目を逸らすことはできなかった。'};}},
+{ text: '静かな暮らしを選び、丁重に断る', condition: () => true, hint: '見送る（頼みはまた巡ってくる）', effect: (s) => { return { hp: 0, log: '頭を下げて断った。長たちは残念そうに帰っていった。だが村の困り事は、きっとまたあなたの門を叩く。'};}}
+]},
+{ id: 'route_virtue_1', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'virtue', 1),
+title: '水争いの調停', text: '夏、雨が降らず、川の水が細った。上流の村と下流の村が、水門の開け閉めを巡って刃傷寸前になっている。相談役としての最初の大仕事がこれだった。どちらの肩を持っても、片方に恨まれる。',
+choices: [
+{ text: '両村の長を同じ席に着け、夜を徹して話し合わせる', condition: () => true, hint: '人徳で判定・成功で人徳上昇', effect: (s) => { routeAdvance(s, false); if (critRoll('virtue', Math.min(0.85, 0.4 + (s.virtue || 0) * 0.004))) { s.virtue += 15; recordChronology("水争いを調停し、両村に水を分け合う"); return { hp: 0, log: '夜明け前、両村の長は同じ杯で水を飲み干した。水門は日替わりで開ける取り決めが成り、田には再び水が走った。（人徳 +15）'};} s.virtue += 5; return { hp: -5, log: '話し合いは夜通し平行線だった。それでも、刃傷だけは避けられた。疲れ切った体に、村人たちの差し入れた粥が沁みた。（人徳 +5）'};}},
+{ text: '私財で下流に井戸を掘り、水源を分け合う', condition: (s) => s.money >= 150, hint: '確実・人徳上昇', effect: (s) => { routeAdvance(s, false); s.virtue += 15; s.luck += 5; return { money: -150, hp: 0, log: '井戸掘りに私財を投じ、三日で水脈に届いた。下流の村に新しい水源が生まれ、争いの種そのものが消えた。井戸端には、あなたの名が刻まれた。（人徳 +15）'};}},
+{ text: '水の配分表を作り、番を決めて両村に守らせる', condition: () => true, hint: '知略で判定・成功で人徳と知略上昇', effect: (s) => { routeAdvance(s, false); if (critRoll('strategy', Math.min(0.85, 0.4 + (s.strategy || 0) * 0.004))) { s.virtue += 10; s.strategy += 10; return { hp: 0, log: '刻限と水量を細かく定めた配分表が、両村に受け入れられた。数字は、人の恨みを静めることがある。（人徳 +10）'};} s.virtue += 5; return { hp: 0, log: '配分表は作ったが、不満の声は消えなかった。それでも、決まりがあるだけ争いよりはましだった。（人徳 +5）'};}}
+]},
+{ id: 'route_virtue_2', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'virtue', 2),
+title: '大飢饉', text: '凶作が続き、ついに大飢饉が村々を襲った。道端に倒れる者が出始め、あなたの蔵の前には、食べ物を求める人々の列ができた。蓄えは有限で、救える命にも限りがある。それでも、蔵の戸は開けなければならない。',
+choices: [
+{ text: '蓄えを全て放出し、救済に回す', condition: (s) => s.money >= 300, hint: '確実・人徳上昇', effect: (s) => { routeAdvance(s, false); s.virtue += 15; recordChronology("大飢饉に私財の全てを放ち、村々を救う"); return { money: -300, hp: 0, log: '蔵を開け、米も銭も全て粥と種籾に替えた。一冬、延べ千人を超える腹を満たした。蔵は空になったが、村に死者は出なかった。（人徳 +15）'};}},
+{ text: '寺社と富める家を回り、勧進を募る', condition: () => true, hint: '人徳で判定・成功で人徳上昇', effect: (s) => { routeAdvance(s, false); if (critRoll('virtue', Math.min(0.85, 0.4 + (s.virtue || 0) * 0.004))) { s.virtue += 15; return { money: 50, hp: 0, log: '頭を下げて回った勧進は、思いのほか集まった。富める家々も、あなたのためならばと蔵を開けた。人望とは、こういう時に使うものだった。（人徳 +15）'};} s.virtue += 5; return { hp: -10, log: '勧進は思うように集まらず、歩き回って体をすり減らした。それでも、集まった分だけの命は繋げた。（人徳 +5）'};}},
+{ text: '救う順序を決め、限られた粥を分ける', condition: () => true, hint: '知略で判定・現実的な配分、恨みを買うことも', effect: (s) => { routeAdvance(s, false); if (critRoll('strategy', Math.min(0.85, 0.4 + (s.strategy || 0) * 0.004))) { s.virtue += 10; s.strategy += 5; return { hp: 0, log: '子と働き手から先に配る順序を定め、列の混乱を収めた。冷たいようでいて、村全体の命を繋ぐ配分だった。（人徳 +10）'};} s.virtue += 5; s.karma += 5; return { hp: 0, log: '配分に漏れた家から、恨みの声が上がった。救うとは、誰かを見捨てる決断でもあると知った。（人徳 +5）'};}}
+]},
+{ id: 'route_virtue_3', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'virtue', 3),
+title: '合戦の危機', text: '隣国の大名同士が、あなたの村々を戦場に選んだ。兵が通れば、田は踏み荒らされ、救ってきた人々の暮らしは灰になる。両軍から「調停者として立て」と使者が来た。だが戦の機嫌は読めず、失敗すれば「口だけの善人」の汚名と、身の危険が待っている。',
+choices: [
+{ text: '両軍の陣へ赴き、戦を止めるよう説く', condition: () => true, hint: '人徳で判定・失敗で汚名と負傷', effect: (s) => { routeAdvance(s, false); if (critRoll('virtue', Math.min(0.85, 0.35 + (s.virtue || 0) * 0.004))) { s.virtue += 15; recordChronology("両軍の間に立ち、村々への戦禍を防ぐ"); return { hp: 0, log: '両軍の陣を往復し、兵を引く名分を双方に用意した。戦は回避され、村々に兵の影は落ちなかった。（人徳 +15）'};} s.virtue -= 10; return { hp: -20, log: '説得は退けられ、陣中で押し問答の末に傷を負った。「口だけの善人」の声が、どこからか聞こえた。（人徳 -10）'};}},
+{ text: '戦が始まる前に、人々と家財を山へ退避させる', condition: (s) => s.money >= 100, hint: '確実・人徳上昇', effect: (s) => { routeAdvance(s, false); s.virtue += 10; return { money: -100, hp: 0, log: '人足を雇い、老人と子から山の寺へ運んだ。戦は村を通り過ぎ、焼けた家はあっても、命は全て残った。（人徳 +10）'};}},
+{ text: '一方の大名に取り入り、戦場を他国へ逸らす', condition: () => true, hint: '知略で判定・成功で人徳上昇、戦を他所へ移す呵責も残る', effect: (s) => { routeAdvance(s, false); if (critRoll('strategy', Math.min(0.85, 0.35 + (s.strategy || 0) * 0.004))) { s.virtue += 10; s.karma += 5; return { hp: 0, log: '進軍路の情報を細工し、戦場は隣国へ逸れた。自分の村は救われた。だが、逸れた先の村のことは、長く胸に残った。（人徳 +10）'};} s.virtue -= 5; return { hp: -15, log: '工作は見抜かれ、両軍から疑いの目を向けられた。危うく命を落としかけ、村にも累が及びかけた。（人徳 -5）'};}}
+]},
+{ id: 'route_virtue_4', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'virtue', 4),
+title: '戦を止める交渉', text: '戦国の世の転び所となる大戦が迫り、諸国の使者があなたの元へ集った。「あんたの言葉なら、両軍とも耳を貸す」――救ってきた命の数が、そのまま言葉の重さになっていた。この交渉が成れば、数万の命が救われる。生涯で一度きりの、大仕事である。',
+choices: [
+{ text: '両軍の間に立ち、戦を止める最後の交渉に臨む', condition: () => true, hint: '人徳で判定・成功で完走', effect: (s) => { if (critRoll('virtue', Math.min(0.85, 0.4 + (s.virtue || 0) * 0.004))) { s.virtue += 15; s.luck += 10; routeAdvance(s, true); recordChronology("戦を止める交渉を成し遂げ、救国の聖人として名を残す"); return { hp: 0, log: '交渉の席で、両軍の大名が同時に矛を収めた。数万の兵が、戦わずに帰っていく。その光景を見た時、積み重ねてきた施しの全てが、この日のためだったのだと思えた。（人徳 +15）'};} s.virtue += 5; routeHold(s); return { hp: -15, log: '交渉は決裂し、戦は始まった。それでも、あなたの言葉に耳を貸した将がいたことは確かだった。道は、まだ終わっていない。'};}},
+{ text: '交渉の前に、傷つく人々のための救護の備えを整える', condition: (s) => s.money >= 200, hint: '確実・完走', effect: (s) => { s.virtue += 15; routeAdvance(s, true); recordChronology("救護の備えをもって戦を未然に止める"); return { money: -200, hp: 0, log: '薬草と布と人足を用意し、どちらが勝っても命を救う備えを先に整えた。その覚悟が両軍に伝わり、交渉の席の空気が変わった。戦は、始まる前に終わった。（人徳 +15）'};}},
+{ text: '身の危険を避け、調停役を辞退する', condition: () => true, hint: '今回は見送る（完走は持ち越し）', effect: (s) => { routeHold(s); return { hp: 0, log: '今の自分には、まだ背負い切れない。そう判断して使者に頭を下げた。村々を見渡せば、やるべきことはまだ山ほどある。'};}}
+]},
+// ===== 運ルート「天命の賽」 =====
+{ id: 'route_luck_entry', mode: ['normal'], weight: 150, condition: (s) => routeEntryReady(s, 'luck'),
+title: '賭場からの招待', text: 'あなたの強運は、賭場の世界では既に噂になっていた。ある夜、土地一番の賭場の胴元が、丁重な使者を寄越してきた。「天運の持ち主とお見受けした。我が賭場の上座に、ぜひお掛けいただきたい」――運だけで生きてきた者への、招待状だった。',
+choices: [
+{ text: '招待を受け、天命の賽の道へ進む', condition: () => true, hint: '運の道「天命の賽」に入る', effect: (s) => { s.flags.route = { id: 'luck', stage: 1, lastAge: s.age, done: false}; recordChronology("賭場の招待を受け、天命の賽を歩み始める"); return { hp: 0, log: '招待状を懐に入れた。どうせ運だけで生きてきたのだ。その運がどこまで通じるか、確かめてみるのも悪くない。'};}},
+{ text: '賭場の誘いを断り、地道に暮らす', condition: () => true, hint: '見送る（誘いはまた巡ってくる）', effect: (s) => { return { hp: 0, log: '使者に丁重に頭を下げた。だが帰り道、懐の賽が妙に重かった気がした。'};}}
+]},
+{ id: 'route_luck_1', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'luck', 1),
+title: '大博打', text: '賭場の上座。胴元自らが相手を務める大勝負が用意されていた。張る銭も桁違いなら、負けた時の代償も桁違いだ。周囲の息を呑む音が聞こえる。だが、あなたの手は震えていなかった。賽の目はいつも、あなたに味方してきたのだから。',
+choices: [
+{ text: '大勝負に乗る', condition: () => true, hint: '運で判定・大勝ちか大負けか', effect: (s) => { routeAdvance(s, false); if (critRoll('luck', 0.35 + (s.luck || 0) * 0.004)) { s.luck += 15; recordChronology("胴元との大博打に勝ち、賭場に名を轟かせる"); return { money: 400, hp: 0, log: '賽は、今日もあなたの前に転がった。胴元は苦笑いし、山と積まれた銭があなたのものになった。やはり、持っている。（運 +15）'};} return { money: -200, hp: -15, log: '珍しく、賽が裏切った。借金の肩代わりに痛い目も見た。だが指は無事だった。それもまた、運のうちか。'};}},
+{ text: '小さく張り、場の流れを読む', condition: () => true, hint: '確実・小銭と運上昇', effect: (s) => { routeAdvance(s, false); s.luck += 5; return { money: 50, hp: 0, log: '大きくは張らず、流れの良い時だけ乗った。堅実に勝ちを積み、場の者たちに「あの人は流れが見える」と囁かれた。（運 +5）'};}},
+{ text: '他人の勝負を眺め、胴元の癖を見抜く', condition: () => true, hint: '知略上昇', effect: (s) => { routeAdvance(s, false); s.strategy += 15; s.luck += 5; return { hp: 0, log: '賽の転がし方、目の止め方。胴元の癖を半分ほど読み切った。運だけに頼らない勝ち方もあると知った。（知略 +15）'};}}
+]},
+{ id: 'route_luck_2', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'luck', 2),
+title: '奇跡の生還', text: '合戦の帰り、夜通しの雨で川が増水し、渡し場で仲間と共に孤立した。流木に掴まったあなただけが、なぜか岸へ打ち上げられた。だが川下からは、仲間の名を呼ぶ声が、やがて聞こえなくなった。助かった理由は、腕でも知恵でもない。運――ただ、それだけだった。',
+choices: [
+{ text: '流木にしがみつき、運に身を任せる', condition: () => true, hint: '運で判定・成功で運上昇、失敗で重傷', effect: (s) => { routeAdvance(s, false); if (critRoll('luck', Math.min(0.85, 0.4 + (s.luck || 0) * 0.004))) { s.luck += 15; return { hp: 0, log: '激流に揉まれながらも、体は岩の窪みに収まっていた。岸に上がって空を見た。また助かった。それだけのことだ。（運 +15）'};} return { hp: -35, log: '流木から手が離れ、岩に体を打ちつけた。九死に一生を得たが、傷は深かった。'};}},
+{ text: '仲間を一人でも多く引き上げようとする', condition: () => true, hint: '人徳上昇・負傷', effect: (s) => { routeAdvance(s, false); s.virtue += 15; s.luck += 5; recordChronology("増水した川で仲間を引き上げ、共に生還する"); return { hp: -20, log: '流されかける仲間の腕を掴み、岸へ引き上げた。全員は救えなかった。それでも、救えた命の分だけ、胸の重さは軽くなった。（人徳 +15）'};}},
+{ text: '流された荷の中から、値のある物だけ拾う', condition: () => true, hint: '悪逆上昇・銭獲得', effect: (s) => { routeAdvance(s, false); s.karma += 10; s.luck += 5; return { money: 100, hp: 0, log: '岸に流れ着いた荷から、濡れていない金物だけを拾った。死に損なった者の荷だ。だが、拾わなければ川が持っていく。（悪逆 +10）'};}}
+]},
+{ id: 'route_luck_3', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'luck', 3),
+title: '夢か現か', text: '夢か現か。浅い眠りの中で、山の神とも天狗ともつかぬ影が、賽を転がしながら言った。「お前の器には、運が満ちすぎておる。運とはな、使うほどに減るものだ。残りを数えたことはあるか」――目が覚めた後も、その言葉だけが耳に残った。',
+choices: [
+{ text: '警告を胸に刻み、運の使い方を改める', condition: () => true, hint: '運上昇', effect: (s) => { routeAdvance(s, false); s.luck += 15; recordChronology("夢で「運は減るもの」と諭され、胸に刻む"); return { hp: 0, log: '夢の言葉を、笑い飛ばす気にはなれなかった。それ以来、無駄な賭けは減り、ここぞの勝負にだけ運を使うようになった。（運 +15）'};}},
+{ text: '「運はまだ尽きぬ」と夢の中で笑い飛ばす', condition: () => true, hint: '運で判定・運の前借り', effect: (s) => { routeAdvance(s, false); if (critRoll('luck', 0.45 + (s.luck || 0) * 0.003)) { s.luck += 15; return { hp: 0, log: '影は愉快そうに賽を転がし、「その意気やよし」と消えた。目覚めた体に、妙な自信が満ちていた。（運 +15）'};} s.luck -= 20; return { hp: 0, log: '影は静かに首を振った。「前借りは、返してもらうぞ」目覚めた朝から、つまらないことで躓くようになった。（運 -20）'};}},
+{ text: '神仏に供物を捧げ、運の加護を願う', condition: (s) => s.money >= 100, hint: '確実・運上昇', effect: (s) => { routeAdvance(s, false); s.luck += 10; return { money: -100, hp: 0, log: '社に供物を捧げ、手を合わせた。神頼みが効くかどうかは分からない。だが、合わせた手の分だけ、心は静かになった。（運 +10）'};}}
+]},
+{ id: 'route_luck_4', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'luck', 4),
+title: '天との大勝負', text: '胴元から、最後の誘いが届いた。賭けるのは財産の全て、そして――望むなら、命そのもの。「天運の持ち主が、天と賽を振る。一世一代とは、このことだ」数十年、運だけで生き延びてきた。その運の総決算が、今夜決まる。',
+choices: [
+{ text: '財産の全てを賽に懸ける', condition: () => true, hint: '運で判定・勝てば大金、敗れれば全財産を失う', effect: (s) => { if (critRoll('luck', Math.min(0.85, 0.4 + (s.luck || 0) * 0.004))) { s.luck += 15; routeAdvance(s, true); recordChronology("天との大勝負に勝ち、天運無双として名を残す"); return { money: 3000, hp: 0, log: '賽の目は、最後まであなたを見放さなかった。胴元は深々と頭を下げた。「天運無双――この賭場で、その名を贈れる日が来るとは」（運 +15）'};} routeHold(s); return { money: -(s.money || 0), hp: 0, log: '賽は、静かに裏の目で止まった。財産は一夜で消えた。だが命はある。運の器が空になったのかどうかは、まだ分からない。'};}},
+{ text: '命運そのものを懸ける', condition: () => true, hint: '死と隣り合わせ・運で判定・勝てば莫大な富', effect: (s) => { if (critRoll('luck', Math.min(0.85, 0.45 + (s.luck || 0) * 0.003))) { s.luck += 15; routeAdvance(s, true); recordChronology("命運を懸けた大勝負に勝ち、天すら味方につける"); return { money: 10000, hp: 0, log: '命を懸けた賽は、これ以上ない目で止まった。賭場中が息を呑み、胴元は震える手で銭を数えた。天すら、あなたの味方だった。（運 +15）'};} s.deathCause = 'wound'; recordChronology("命運を懸けた勝負に敗れ、天運尽きる"); return { hp: -999, log: '賽の音が、やけに長く聞こえた。天運は、ここで尽きた。'};}},
+{ text: '賭場を後にし、静かに暮らす', condition: () => true, hint: '今回は見送る（完走は持ち越し）', effect: (s) => { routeHold(s); return { hp: 0, log: '胴元の誘いに、静かに頭を下げて賭場を出た。運の総決算は、まだ先でいい。今夜は、よく眠れそうだった。'};}}
+]},
+// ===== 武功ルート「剣の求道」 =====
+{ id: 'route_valor_entry', mode: ['normal'], weight: 150, condition: (s) => routeEntryReady(s, 'valor'),
+title: '果たし状の山', text: 'あなたの腕の冴えは、諸国の道場や戦場で知らぬ者がないほどになっていた。果たし状が、月に何通も届くようになる。挑む者は皆、一流の使い手ばかりだ。剣の道を極めるとは、こういうことか――と、柄を握る手に力が入った。',
+choices: [
+{ text: '果たし合いを受け続け、求道の道へ進む', condition: () => true, hint: '武功の道「剣の求道」に入る', effect: (s) => { s.flags.route = { id: 'valor', stage: 1, lastAge: s.age, done: false}; recordChronology("果たし状を受け続け、剣の求道を歩み始める"); return { hp: 0, log: '果たし状の束を、静かに机に置いた。逃げる気は、最初からない。一通ずつ、全て受ける。'};}},
+{ text: '果たし状を断り、静かに腕を磨く', condition: () => true, hint: '見送る（果たし状はまた届く）', effect: (s) => { return { hp: 0, log: '果たし状には返事を出さず、朝の素振りを続けた。だが強い相手の噂を聞くたび、柄を握る手が疼いた。'};}}
+]},
+{ id: 'route_valor_1', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'valor', 1),
+title: '隻眼の剣豪', text: '果たし状の主は、隻眼の剣豪だった。諸国を巡り、名のある使い手を数多く斬ったと噂される。対峙した瞬間、隻眼の奥の静けさに、並の相手でないことを悟った。竹林の葉が、風もないのに揺れている。',
+choices: [
+{ text: '正面から真剣で挑む', condition: () => true, hint: '武功で判定・勝てば武功上昇、敗れれば重傷', effect: (s) => { routeAdvance(s, false); if (critRoll('valor', Math.min(0.85, 0.4 + (s.valor || 0) * 0.004))) { s.valor += 15; recordChronology("隻眼の剣豪との果たし合いに勝利する"); return { hp: -15, log: '数合ののち、隻眼の剣が止まった。「見事」その一言を残し、剣豪は竹林へ消えた。あなたの剣は、また一歩深まった。（武功 +15）'};} s.deathCause = 'battle'; return { hp: -40, log: '一閃に敗れ、深い傷を負った。だが、斬られながら見た型の冴えは、体に刻まれた。'};}},
+{ text: 'まず相手の型を観察し、間合いを読む', condition: () => true, hint: '知略で判定・成功で武功と知略上昇', effect: (s) => { routeAdvance(s, false); if (critRoll('strategy', Math.min(0.85, 0.4 + (s.strategy || 0) * 0.004))) { s.valor += 10; s.strategy += 10; return { hp: -5, log: '相手の呼吸と足運びを読み切り、最小の動きで剣を制した。勝ち方にも、深さがある。（武功 +10）'};} return { hp: -25, log: '読みは届かず、剣豪の間合いに呑まれた。傷は負ったが、読む稽古の意味は分かった。'};}},
+{ text: '引き分けを申し出て、教えを乞う', condition: () => true, hint: '確実・武功と人徳上昇', effect: (s) => { routeAdvance(s, false); s.valor += 10; s.virtue += 5; return { hp: 0, log: '剣を収め、頭を下げた。剣豪はしばし黙し、やがて型の癖を一つだけ指摘して去った。その一言が、何十日もの稽古に値した。（武功 +10）'};}}
+]},
+{ id: 'route_valor_2', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'valor', 2),
+title: '一騎打ち', text: '大合戦の最中、敵の総大将が馬を進め、一騎打ちを申し込んできた。両軍数万の視線が、二人の上に集まる。ここで勝てば、武名は諸国に響く。敗れれば――戦の帰趨さえ左右しかねない。',
+choices: [
+{ text: '一騎打ちを受け、敵将と正面から斬り合う', condition: () => true, hint: '武功で判定・勝てば武名、敗れれば重傷', effect: (s) => { routeAdvance(s, false); if (critRoll('valor', Math.min(0.85, 0.4 + (s.valor || 0) * 0.004))) { s.valor += 15; recordChronology("大合戦の一騎打ちで敵将を討ち、武名を轟かせる"); return { money: 100, hp: 0, log: '敵将の馬印が、泥に倒れた。両軍にどよめきが走り、戦の流れは一気に味方へ傾いた。その一騎打ちは、諸国の語り草となった。（武功 +15）'};} s.deathCause = 'battle'; return { hp: -45, log: '敵将の槍に敗れ、味方に担ぎ出された。戦は続いたが、あなたの出番は終わった。'};}},
+{ text: '敵将の槍先をいなし、味方の盾として戦い抜く', condition: () => true, hint: '確実・人徳と武功上昇、負傷', effect: (s) => { routeAdvance(s, false); s.virtue += 10; s.valor += 5; return { hp: -20, log: '一騎打ちの華は譲り、崩れかける味方の前で盾となった。名は上がらなかったが、その背中を守られた兵たちは、後々まであなたを慕った。（人徳 +10）'};}},
+{ text: '一騎打ちの隙に、敵の本陣を突く', condition: () => true, hint: '武功で判定（低め）・成功で大功、失敗で重傷', effect: (s) => { routeAdvance(s, false); if (critRoll('valor', 0.3 + (s.valor || 0) * 0.004)) { s.valor += 15; s.karma += 5; return { money: 150, hp: 0, log: '一騎打ちの誘いを囮と見抜き、虚を突いて本陣を崩した。卑劣との声もあったが、戦は勝った者のものだ。（武功 +15）'};} s.deathCause = 'battle'; return { hp: -50, log: '本陣の守りは固く、深手を負って退いた。策と腕、どちらも半端だったと悟った。'};}}
+]},
+{ id: 'route_valor_3', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'valor', 3),
+title: '守るもの', text: '果たし合いで倒した剣士の遺族が、あなたの元を訪ねてきた。恨みの言葉を吐くかと思えば、そうではなかった。行き場を失ったその子は、あなたの剣に憧れ、弟子入りを願っているという。強くなるほど、背負うものが増えていく。それが、剣の道の代償だった。',
+choices: [
+{ text: '子を弟子に取り、剣と生き方を教える', condition: () => true, hint: '人徳と武功上昇', effect: (s) => { routeAdvance(s, false); s.virtue += 10; s.valor += 10; recordChronology("倒した剣士の遺児を弟子に取る"); return { hp: 0, log: '子の素振りは、まだ拙い。だが教えることで、自分の剣の癖も見えてきた。守るものができた剣は、少しだけ重く、少しだけ強くなった。（武功 +10）'};}},
+{ text: '遺族の暮らしの支えを渡し、静かに見送る', condition: (s) => s.money >= 100, hint: '人徳上昇', effect: (s) => { routeAdvance(s, false); s.virtue += 15; return { money: -100, hp: 0, log: '暮らしの支えを渡し、頭を下げた。子は深く礼をして去った。斬った相手への償いなど、本来はあり得ない。それでも、せずにはいられなかった。（人徳 +15）'};}},
+{ text: '剣の道に情は無用と、弟子入りを断る', condition: () => true, hint: '武功上昇・人徳低下', effect: (s) => { routeAdvance(s, false); s.valor += 15; s.virtue -= 5; return { hp: 0, log: '冷たく断り、門を閉ざした。その夜の稽古は、いつもより長かった。振るう剣に、迷いはなかったことにする。（武功 +15）'};}}
+]},
+{ id: 'route_valor_4', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'valor', 4),
+title: '頂を決める一戦', text: '天下最強と名高い武芸者が、あなたの前に立った。その名を聞かぬ者はなく、その剣の前に散った者は数知れない。果たし状でも戦場でもない。ただ、頂を決めるためだけの一戦。観衆はなく、鳥の声さえ止んでいた。',
+choices: [
+{ text: '全力をもって決戦に臨む', condition: () => true, hint: '武功で判定・敗れても重傷まで', effect: (s) => { if (critRoll('valor', Math.min(0.85, 0.4 + (s.valor || 0) * 0.004))) { s.valor += 15; routeAdvance(s, true); recordChronology("天下最強との決戦を制し、剣聖として名を残す"); return { hp: 0, log: '長い沈黙ののち、二つの剣が一度だけ交わった。相手は剣を収め、「頂は、譲ろう」と言った。剣聖の名は、この日静かに定まった。（武功 +15）'};} s.deathCause = 'battle'; routeHold(s); return { hp: -45, log: '届かなかった。深手を負い、膝をついた。相手は何も言わず、剣を収めて背を向けた。頂は、まだ遠い。'};}},
+{ text: '死を恐れぬ一手――捨て身の秘剣を放つ', condition: () => true, hint: '死と隣り合わせ・武功で判定・勝てば完走', effect: (s) => { if (critRoll('valor', Math.min(0.75, 0.3 + (s.valor || 0) * 0.0015))) { s.valor += 15; routeAdvance(s, true); recordChronology("捨て身の秘剣で決戦を制する"); return { hp: -20, log: '身を捨てた一太刀が、相手の剣を紙一重でかわし、届いた。立っていたのは、あなただった。死を恐れぬ剣が、頂を切り開いた。（武功 +15）'};} s.deathCause = 'battle'; recordChronology("頂を決める一戦で、捨て身の一手及ばず斃れる"); return { hp: -999, log: '捨て身の一手は、静かにいなされた。倒れる間際、相手の剣の美しさだけが、はっきりと見えた。'};}},
+{ text: '決戦の時期ではないと、剣を収める', condition: () => true, hint: '今回は見送る（完走は持ち越し）', effect: (s) => { routeHold(s); return { hp: 0, log: '相手の佇まいを見て、静かに剣を収めた。今ではない。その判断もまた、求道のうちだった。'};}}
+]},
+// ===== 知略ルート「伏龍の径」 =====
+{ id: 'route_strategy_entry', mode: ['normal'], weight: 150, condition: (s) => routeEntryReady(s, 'strategy'),
+title: '影からの誘い', text: 'あなたの読みの深さは、表の世界よりも裏の世界で先に知られていた。ある夜、諸国の情報と人の動きを束ねる元締めの使いが来た。「天下の転び所を見極める目を持つ者は、そう多くない。表で剣を振るうより、影で天下を動かす気はないか」',
+choices: [
+{ text: '情報網の誘いを受け、伏龍の径へ進む', condition: () => true, hint: '知略の道「伏龍の径」に入る', effect: (s) => { s.flags.route = { id: 'strategy', stage: 1, lastAge: s.age, done: false}; recordChronology("情報網の誘いを受け、伏龍の径を歩み始める"); return { hp: 0, log: '使いの言葉に、静かに頷いた。剣の届かない場所で戦う道が、自分の性には合っている。'};}},
+{ text: '表の暮らしに留まり、誘いを断る', condition: () => true, hint: '見送る（誘いはまた巡ってくる）', effect: (s) => { return { hp: 0, log: '丁重に断った。だが使いの去った後も、諸国の噂の一つ一つが、以前より意味を持って聞こえた。'};}}
+]},
+{ id: 'route_strategy_1', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'strategy', 1),
+title: '偽情報の流布合戦', text: '敵勢力の調略が、あなたの関わる土地にも及んできた。偽の触れ、偽の密書、偽の寝返りの噂。真実だけでは、嘘の速さに追いつけない。守るべき真実と、流すべき嘘。その配分を決めるのは、あなただ。',
+choices: [
+{ text: '敵の偽情報に、より大きな偽情報をぶつける', condition: () => true, hint: '知略で判定・失敗で知略低下', effect: (s) => { routeAdvance(s, false); if (critRoll('strategy', Math.min(0.85, 0.4 + (s.strategy || 0) * 0.004))) { s.strategy += 15; recordChronology("偽情報の流布合戦を制し、敵の調略を封じる"); return { hp: 0, log: '流した偽情報は、敵の陣中で真実より速く広がった。敵は疑心暗鬼に陥り、調略どころではなくなった。嘘は、使い方で武器になる。（知略 +15）'};} s.strategy -= 15; return { hp: 0, log: '偽情報は見抜かれ、かえってこちらの手の内を読まれた。読みの浅さを、痛いほど知った。（知略 -15）'};}},
+{ text: '真実だけを握り、嘘には一切手を出さない', condition: () => true, hint: '確実・知略と人徳上昇', effect: (s) => { routeAdvance(s, false); s.strategy += 10; s.virtue += 5; return { hp: 0, log: '嘘は流さず、確かな情報だけを必要な場所へ届けた。派手さはないが、あなたの情報は「当たる」と信頼を集め始めた。（知略 +10）'};}},
+{ text: '二重の嘘を重ね、敵の情報網そのものを掴む', condition: () => true, hint: '知略で判定（低め）・成功で知略と悪逆上昇、失敗で知略大幅低下', effect: (s) => { routeAdvance(s, false); if (critRoll('strategy', 0.3 + (s.strategy || 0) * 0.004)) { s.strategy += 15; s.karma += 5; return { hp: 0, log: '二重の嘘に釣られた敵の連絡役を押さえ、情報網の全容が見えた。敵は、まだ気づいていない。（知略 +15）'};} s.strategy -= 20; return { hp: 0, log: '重ねた嘘が互いに矛盾し、網は自壊した。策を弄びすぎたと、静かに反省した。（知略 -20）'};}}
+]},
+{ id: 'route_strategy_2', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'strategy', 2),
+title: '二重スパイ', text: '敵方に送り込んだ内通者から、文が届くようになった。だが最近、その文の調子が微かに変わっている。敵に取り込まれたか、それとも――泳がせれば大きな魚が釣れる。切り捨てれば、安全だが目は潰れる。内通者の命は、あなたの計算の中にある。',
+choices: [
+{ text: '内通者を泳がせ、敵の出方を待つ', condition: () => true, hint: '知略で判定・失敗で情報が漏れる', effect: (s) => { routeAdvance(s, false); if (critRoll('strategy', Math.min(0.85, 0.4 + (s.strategy || 0) * 0.004))) { s.strategy += 15; return { hp: 0, log: '泳がせた内通者は、敵の作戦の全容を抱えて戻った。待つことも、策のうちだった。（知略 +15）'};} s.strategy -= 10; return { money: -100, hp: 0, log: '内通者は敵に寝返っており、こちらの情報が筒抜けだった。漏れた情報の始末に、銭と時間が消えた。（知略 -10）'};}},
+{ text: '文の癖から裏切り者を炙り出す', condition: () => true, hint: '知略で判定・成功で知略上昇', effect: (s) => { routeAdvance(s, false); if (critRoll('strategy', Math.min(0.85, 0.35 + (s.strategy || 0) * 0.004))) { s.strategy += 10; return { money: 100, hp: 0, log: '文の癖の変化は、別の人間の筆だった。炙り出された敵の工作役から、工作金まで押さえた。（知略 +10）'};} s.strategy -= 10; s.virtue -= 5; return { hp: 0, log: '読みは外れ、味方の連絡役を疑い傷つけた。疑うことにも、代償がある。（知略 -10）'};}},
+{ text: '内通者に情をかけ、身の安全を優先させる', condition: () => true, hint: '人徳で判定・人徳と知略上昇', effect: (s) => { routeAdvance(s, false); if (critRoll('virtue', Math.min(0.85, 0.4 + (s.virtue || 0) * 0.004))) { s.virtue += 10; s.strategy += 5; return { hp: 0, log: '危険を知らせて逃がした内通者は、後日、別の土地から恩返しの情報を寄越した。情もまた、長い目では情報網になる。（人徳 +10）'};} s.strategy -= 5; return { hp: 0, log: '情をかけた分、情報は細った。だが、命までは失わせなかった。それでよしとする。（知略 -5）'};}}
+]},
+{ id: 'route_strategy_3', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'strategy', 3),
+title: '天下分け目の前夜', text: '天下分け目の戦が迫り、勝敗を決めるのは一人の大名の寝返りと目されていた。その工作の采配を、あなたが握っている。準備は進んでいる。だが、策が漏れた気配もある。漏れれば、あなたは「策士策に溺れる」の汚名を着て、表の世界から消えることになる。',
+choices: [
+{ text: '寝返り工作を最後まで推し進める', condition: () => true, hint: '知略で判定・失敗で知略大幅低下', effect: (s) => { routeAdvance(s, false); if (critRoll('strategy', Math.min(0.85, 0.4 + (s.strategy || 0) * 0.004))) { s.strategy += 15; recordChronology("天下分け目の寝返り工作を成し遂げ、戦を決する"); return { hp: 0, log: '決戦の朝、目当ての大名の旗が静かに翻った。戦の勝敗は、その瞬間に決していた。あなたの名は、どこにも残らなかった。それでいい。（知略 +15）'};} s.strategy -= 25; return { hp: -10, log: '工作は寸前で漏れ、寝返りは潰えた。追われる身となり、読みの深さそのものに傷がついた。（知略 -25）'};}},
+{ text: '漏れた時の逃げ道と口止めを用意してから動く', condition: (s) => s.money >= 150, hint: '確実・知略上昇', effect: (s) => { routeAdvance(s, false); s.strategy += 10; return { money: -150, hp: 0, log: '逃げ道と口止めを先に買ってから、工作を進めた。策は半分だけ実を結んだが、あなたの身は無傷だった。伏龍は、退路の深さで生き残る。（知略 +10）'};}},
+{ text: '工作を中止し、策の痕跡を消す', condition: () => true, hint: '知略と人徳上昇・勝負の夜は過ぎていく', effect: (s) => { routeAdvance(s, false); s.strategy += 5; s.virtue += 5; recordChronology("天下分け目の前夜、工作を畳んで痕跡を消す"); return { hp: 0, log: '漏れの気配を重く見て、工作の全てを消した。天下分け目の戦は、あなたの手を離れて決した。策士の仕事は、引く判断も含めて策のうちだ。（知略 +5）'};}}
+]},
+{ id: 'route_strategy_4', mode: ['normal'], weight: 150, condition: (s) => routeReady(s, 'strategy', 4),
+title: '最後の謀', text: '大局を動かす、最後の謀の時が来た。成れば、あなたの名は歴史に残らない。だが天下の転び所は、間違いなくあなたの手で動く。失敗すれば、知略も立場も全てを失う。伏龍が世に出るか、闇に消えるか――静かな決戦が始まる。',
+choices: [
+{ text: '最後の謀を放つ', condition: () => true, hint: '知略で判定・失敗で知略大幅低下と立場の喪失', effect: (s) => { if (critRoll('strategy', Math.min(0.85, 0.4 + (s.strategy || 0) * 0.004))) { s.strategy += 15; routeAdvance(s, true); recordChronology("名を残さず天下を転がし、臥龍先生として影に語られる"); return { hp: 0, log: '謀は音もなく完遂した。天下の転び所が変わったことに、誰もあなたの手を見ていない。歴史に名は残らない。だが影の中では、臥龍先生の名が静かに語られ始めた。（知略 +15）'};} s.strategy -= 40; routeHold(s); return { money: -200, hp: 0, log: '謀は破れ、策の痕跡が表沙汰になった。知略は地に落ち、影の世界からも追われた。伏龍は、一度地に伏すことになった。（知略 -40）'};}},
+{ text: '謀の半分だけを使い、退路を残す', condition: () => true, hint: '確実・完走（控えめな成果）', effect: (s) => { s.strategy += 10; routeAdvance(s, true); recordChronology("退路を残したまま大局を動かし、影に生き残る"); return { hp: 0, log: '大局は半分だけ動いた。だが、それで十分だった。誰にも気づかれず、失うものもなく、伏龍は伏龍のまま生き残った。勝ち切ることより、消えずにいることが、この道の極みだった。（知略 +10）'};}},
+{ text: '謀を封印し、影の世界から身を引く', condition: () => true, hint: '今回は見送る（完走は持ち越し）', effect: (s) => { routeHold(s); return { hp: 0, log: '用意した謀を、封をしたまま仕舞った。今ではない。その判断の重さは、謀そのものと同じだけあった。'};}}
+]}
+];
+
         const EVENTS = [
             ...NORMAL_EVENTS,
             ...BATTLE_EVENTS,
@@ -3341,7 +3588,8 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
             ...CLASS_EVENTS,
             ...AGE_EVENTS,
             ...STAT_EVENTS,
-            ...HISTORY_EVENTS
+            ...HISTORY_EVENTS,
+            ...ROUTE_EVENTS
         ];
 
         // ==========================================
@@ -3362,6 +3610,11 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
 
         function calculateTitle(s) {
             if (s.age >= 60 && s.flags.sukanpin) return "伝説の素寒貧";
+
+            // v60: 裏ルート完走時は、そのルートの二つ名を最優先で返す（R-7）
+            if (s.flags && s.flags.route && s.flags.route.done && ROUTES[s.flags.route.id]) {
+                return ROUTES[s.flags.route.id].title;
+            }
 
             // v51.1: 格（優先帯）は維持しつつ、帯の中に複数の候補がある場合は重み付き抽選にする。
             // 取得済みの二つ名は重み1、未取得は重み3として、図鑑が埋まりやすくする。
@@ -3487,7 +3740,7 @@ logFail: (g, l) => '襲撃の刃に傷を負い、荷の一部を奪われた。
             return '末';
         }
         window.__gachaPool = function() {
-            return HEIRLOOMS_DB.filter(c => c.id !== 'hl_club').map(c => {
+            return HEIRLOOMS_DB.filter(c => c.id !== 'hl_club' && c.id !== 'hl_tenka_daiaku').map(c => {
                 const inst = heirloomInstance(c.id);
                 if (!inst) return null;
                 const grade = heirloomGradeName(inst);
@@ -4662,7 +4915,7 @@ const deathText = isPremium? "大往生": (document.getElementById('go-main-titl
 const zukanCount = (window.unlockedTitles || []).length;
 const zukanTotal = (typeof TITLES_DB!== 'undefined')? TITLES_DB.length: 50;
 const lifeRank = calculateLifeRank(state);
-const earned = Math.floor((state.age + state.valor + state.karma + state.luck + state.strategy + state.virtue) / 10);
+const earned = (typeof window.__saLastEarnedMeisen === 'number') ? window.__saLastEarnedMeisen : Math.floor((state.age + state.valor + state.karma + state.luck + state.strategy + state.virtue) / 10);
 const reasonEl = document.getElementById(isPremium? 'premium-reason': 'go-reason');
 const reasonText = reasonEl? reasonEl.innerText.trim(): '';
 const jisei = window.__jiseiPick(isPremium, deathText, title);
@@ -5017,7 +5270,12 @@ setTimeout(() => __startDraw(null), 2500);
             '第六天魔王': { key: 'karma', val: 10, text: '前世は第六天魔王。その魔の残響が、影に宿る' },
             '天に愛されし御子': { key: 'luck', val: 10, text: '前世は天に愛されし御子。その寵愛の残響が、運に宿る' },
             '不老不死の化身': { key: 'luck', val: 10, text: '前世は百の歳を越えた不老不死の化身。その天寿の加護が宿る' },
-            '伝説の仙人': { key: 'luck', val: 10, text: '前世は伝説の仙人。その長寿の加護が宿る' }
+            '伝説の仙人': { key: 'luck', val: 10, text: '前世は伝説の仙人。その長寿の加護が宿る' },
+            '天下の大悪党': { key: 'karma', val: 10, text: '前世は天下の大悪党。その悪の残響が、影に宿る' },
+            '救国の聖人': { key: 'virtue', val: 10, text: '前世は救国の聖人。その徳の残響が、心に宿る' },
+            '天運無双': { key: 'luck', val: 10, text: '前世は天運無双と謳われた。その寵愛の残響が、運に宿る' },
+            '剣聖': { key: 'valor', val: 10, text: '前世は剣聖と謳われた。その武の残響が、腕に宿る' },
+            '臥龍先生': { key: 'strategy', val: 10, text: '前世は臥龍先生と呼ばれた策士。その知の残響が、頭に宿る' }
         };
         // 死因 reason は past_lives に日本語文で保存されるため、文面の特徴語で分類する
         window.__pastLifeKarma = function(prev) {
@@ -5239,7 +5497,10 @@ setTimeout(() => __startDraw(null), 2500);
         function scheduleNextAutoPlay(delay = 900) {
             stopAutoPlay();
             if (!state.isAlive || isWaitingForChoice) return;
-            autoPlayTimer = setTimeout(() => { if (state.isAlive && !isWaitingForChoice && !isProcessing) advanceGame(); }, delay);
+            // v60: 倍速（通常×1／速い×3／最速×8、下限120ms）。演出タイマーは対象外
+            const saDiv = (typeof window.__saSpeedDivisor === 'function') ? window.__saSpeedDivisor() : 1;
+            const effDelay = Math.max(120, Math.round(delay / saDiv));
+            autoPlayTimer = setTimeout(() => { if (state.isAlive && !isWaitingForChoice && !isProcessing) advanceGame(); }, effDelay);
         }
 
         window.manualAdvance = function(e) {
@@ -5463,6 +5724,7 @@ setTimeout(() => __startDraw(null), 2500);
             logContainer.appendChild(card);
             choicesContainer.innerHTML = '';
 
+            const saEntries = [];
             ev.choices.forEach((choice) => {
                 const isSelectable = !choice.condition || choice.condition(state);
                 const btn = document.createElement('button'); btn.type = 'button';
@@ -5471,6 +5733,7 @@ setTimeout(() => __startDraw(null), 2500);
                     const hintHtml = choice.hint ? `<span class="text-[10px] text-gray-400 mt-0.5 ml-3">↳ ${choice.hint}</span>` : '';
                     btn.innerHTML = `<span class="font-bold flex items-center leading-snug"><span class="text-gold text-xs mr-1 shrink-0">◆</span>${choice.text}</span>${hintHtml}`;
                     btn.onclick = () => { executeChoice(choice); };
+                    saEntries.push({ choice: choice, btn: btn });
                 } else {
                     btn.className = "w-full text-left py-2 px-3 rounded text-xs sm:text-sm text-red-400/40 bg-red-950/10 border border-red-900/30 transition-all flex flex-col cursor-not-allowed"; btn.disabled = true;
                     const hintHtml = choice.hint ? `<span class="text-[10px] text-red-500/40 mt-0.5 ml-3">↳ ${choice.hint} 【条件不足】</span>` : '';
@@ -5481,6 +5744,8 @@ setTimeout(() => __startDraw(null), 2500);
 
             advanceBtn.classList.add('hidden'); choicesContainer.classList.remove('hidden'); choicesContainer.classList.add('flex');
             requestAnimationFrame(() => { card.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); setTimeout(() => { if (logContainer) logContainer.scrollTop = logContainer.scrollHeight; }, 50); });
+            // v60: オートモードの自動選択フック（共討戦はこの関数を通らないため無関係）
+            if (typeof window.__saOnChoices === 'function') { try { window.__saOnChoices(ev, saEntries); } catch (e) {} }
         }
 
         function executeChoice(choice) {
@@ -5500,6 +5765,15 @@ setTimeout(() => __startDraw(null), 2500);
                 if (pol && typeof state[pol] === 'number') { const pd = state[pol] - beforeStats[pol]; if (pd > 0) state[pol] += pd; }
                 const tier = window.__tier || 0; const tierStat = window.__tierStat;
                 if (tier >= 2 && tierStat && typeof state[tierStat] === 'number') state[tierStat] += (tier === 3 ? 15 : 5);
+                // v60: オートモードの代償（自動で選ばれたイベントの能力上昇分は8割。寿命系は対象外）
+                // ただしオートが停止した場面（裏ルート・大勝負・命に関わる決断・判定不能）を手動で選んだ場合は対象外とし、saAutoUsed も立てない
+                if (typeof window.__saAutoOn === 'function' && window.__saAutoOn()) {
+                    const saStoppedScene = (typeof window.__saTakeSceneStopped === 'function') && window.__saTakeSceneStopped();
+                    if (!saStoppedScene) {
+                        ['valor', 'karma', 'strategy', 'virtue', 'luck'].forEach(k => { const d = state[k] - beforeStats[k]; if (d > 0) state[k] = beforeStats[k] + Math.floor(d * 0.8); });
+                        if (state.flags) state.flags.saAutoUsed = true;
+                    }
+                }
                 if (tier >= 2) for (let ci = chronBefore; ci < state.chronology.length; ci++) state.chronology[ci].text += (tier === 3 ? '【超成功】' : '【大成功】');
                 if (tier >= 2 && tierStat === 'virtue') { state.flags.bonds = state.flags.bonds || []; state.flags.bonds.push({ age: state.age, event: state.flags.currentEventTitle || '' }); }
                 let hpChg = res.hp || 0; const moneyChg = res.money || 0;
@@ -5659,7 +5933,10 @@ setTimeout(() => __startDraw(null), 2500);
 
                 if (state.age >= 60) window.greatDeathCount = (window.greatDeathCount || 0) + 1;
 
-                const earnedMeisen = Math.floor((state.age + state.valor + state.karma + state.luck + state.strategy + state.virtue) / 10);
+                let earnedMeisen = Math.floor((state.age + state.valor + state.karma + state.luck + state.strategy + state.virtue) / 10);
+                // v60: オートを使った人生は死亡時の冥銭収入も8割（大往生・共討戦等の寿命加算は対象外）
+                if (state.flags && state.flags.saAutoUsed) earnedMeisen = Math.floor(earnedMeisen * 0.8);
+                window.__saLastEarnedMeisen = earnedMeisen;
                 window.meisen += earnedMeisen;
 
                 if (!window.unlockedDeaths.includes(state.deathCause)) window.unlockedDeaths.push(state.deathCause);
@@ -7553,5 +7830,246 @@ window.__guideTitleCheck = function(delay) { setTimeout(function() { try { var s
     }
 })();
 </script>
+<script>
+// v60: 倍速モード＋オートモード（設計書 speed-auto-design-draft-2026-11-27、判断 S-1〜S-10）
+// 倍速は scheduleNextAutoPlay 内の係数フック（window.__saSpeedDivisor）経由、
+// オートは presentEventChoices 末尾フック（window.__saOnChoices）と executeChoice 内の
+// ペナルティフック（window.__saAutoOn）経由で接続する。共討戦フローには触れない。
+(function () {
+var STAT_NAME = { valor: '武功', strategy: '知略', virtue: '人徳', karma: '悪逆', luck: '運'};
+var STAT_KEYS = ['valor', 'strategy', 'virtue', 'karma', 'luck'];
+// 即死級の選択肢を含むイベント（実測で hp<=-900 を確認した7件。大勝負は id 接尾辞で判定）
+var DEATH_EVENT_IDS = ['battle_front', 'encounter_shingen', 'battle_duel', 'battle_arson', 'ninja_mission', 'independence', 'inherit_50'];
+var PILL = 'absolute top-2 z-[80] h-9 px-2.5 flex items-center justify-center rounded-full bg-black/60 border border-[#3A322A] text-[10px] font-bold text-gray-300 shadow-md backdrop-blur-sm active:scale-95 transition-transform';
+
+// ---------- 倍速 ----------
+var speedMode = 1;
+try { var sv = parseInt(localStorage.getItem('sengoku_speed_mode') || '1', 10); if (sv >= 1 && sv <= 3) speedMode = sv;} catch (e) {}
+var DIVISORS = { 1: 1, 2: 3, 3: 8};
+var SPEED_LABEL = { 1: '通常', 2: '速い', 3: '最速'};
+window.__saSpeedDivisor = function () { return DIVISORS[speedMode] || 1;};
+window.__saSpeedMode = function () { return speedMode;};
+function refreshSpeedBtn() { var b = document.getElementById('sa-speed-btn'); if (b) b.textContent = '速さ:' + SPEED_LABEL[speedMode];}
+window.__saCycleSpeed = function (e) {
+if (e && e.stopPropagation) e.stopPropagation();
+speedMode = (speedMode % 3) + 1;
+try { localStorage.setItem('sengoku_speed_mode', String(speedMode));} catch (err) {}
+refreshSpeedBtn();
+};
+
+// ---------- オート ----------
+var auto = { on: false, target: null, pendingTimer: null, pendingBtn: null};
+// 直近に提示された場面が「オート停止場面」だったか（停止場面の手動解決をペナルティ対象外にするため executeChoice 側へ受け渡す）
+var sceneStopped = false;
+window.__saAutoOn = function () { return!!auto.on;};
+// 停止場面フラグを取り出して消す（executeChoice のペナルティフック専用）
+window.__saTakeSceneStopped = function () { var v = sceneStopped; sceneStopped = false; return v;};
+window.__saAutoTarget = function () { return auto.target;};
+
+function saLog(html) {
+var lc = document.getElementById('log-container');
+if (!lc) return;
+var div = document.createElement('div');
+div.className = 'log-entry';
+div.innerHTML = html;
+lc.appendChild(div);
+requestAnimationFrame(() => { if (lc) lc.scrollTop = lc.scrollHeight;});
+}
+function clearPending() {
+if (auto.pendingTimer) { clearTimeout(auto.pendingTimer); auto.pendingTimer = null;}
+if (auto.pendingBtn) { try { auto.pendingBtn.style.boxShadow = '';} catch (e) {} auto.pendingBtn = null;}
+}
+function refreshAutoUI() {
+['sa-auto-btn', 'sa-auto-btn-game'].forEach(function (id) {
+var b = document.getElementById(id);
+if (b) {
+b.textContent = auto.on? ('オート中:' + STAT_NAME[auto.target]): 'オート';
+b.style.borderColor = auto.on? '#E8C268': '#3A322A';
+b.style.color = auto.on? '#E8C268': '#D1D5DB';
+}
+});
+var bn = document.getElementById('sa-auto-banner');
+if (bn) {
+if (auto.on) { bn.textContent = 'オート中：目標・' + STAT_NAME[auto.target] + '（上昇・冥銭は8割）― 画面タップで停止'; bn.classList.remove('hidden');}
+else bn.classList.add('hidden');
+}
+}
+function setAuto(on) {
+auto.on =!!on;
+if (!auto.on) clearPending();
+refreshAutoUI();
+}
+window.__saToggleAuto = function (e) {
+if (e && e.stopPropagation) e.stopPropagation();
+if (auto.on) { setAuto(false); saLog('<span class="text-gray-400">オート停止：手動に戻った</span>'); return;}
+var scr = document.getElementById('sa-target-screen');
+if (scr) { scr.classList.remove('hidden'); scr.classList.add('flex');}
+};
+window.__saCloseAutoPanel = function (e) {
+if (e && e.stopPropagation) e.stopPropagation();
+var scr = document.getElementById('sa-target-screen');
+if (scr) { scr.classList.add('hidden'); scr.classList.remove('flex');}
+};
+window.__saStartAuto = function (stat) {
+if (!STAT_NAME[stat]) return;
+auto.target = stat;
+window.__saCloseAutoPanel();
+setAuto(true);
+saLog('<span class="font-bold text-gold">【オート開始】</span>目標は' + STAT_NAME[stat] + '。伸びる選択肢を自動で選びます（上昇・冥銭は8割）。');
+};
+
+// hint の格付け：格1=上昇系（上昇/増加/アップ/+数値。ただし「成功率上昇」は除く）／格2=「〜で判定・成功率」系
+function gradeOf(hint, name) {
+if (!hint || hint.indexOf(name) < 0) return 0;
+var decRe = new RegExp(name + '[^、。・／/]{0,3}(減少|低下|下がる)');
+if (decRe.test(hint) || hint.indexOf(name + '-') >= 0 || hint.indexOf(name + '－') >= 0) return 0;
+var rising = hint.replace(/成功率上昇/g, '');
+if (rising.indexOf('上昇') >= 0 || rising.indexOf('増加') >= 0 || rising.indexOf('アップ') >= 0 || /[+＋]\s*\d/.test(rising)) return 1;
+if (hint.indexOf('判定') >= 0 || hint.indexOf('成功率') >= 0) return 2;
+return 0;
+}
+
+window.__saOnChoices = function (ev, entries) {
+sceneStopped = false;
+if (!auto.on ||!auto.target) return;
+var gs = document.getElementById('game-screen');
+if (!gs || gs.classList.contains('hidden')) return;
+var stop = function (reason) { sceneStopped = true; saLog('<span class="text-gray-400">オート停止：' + reason + '</span>');};
+if (!ev ||!ev.id) return;
+if (ev.id.indexOf('route_') === 0) return stop('裏ルートの決断のため、手動で選んでください');
+if (/_grand_gamble$/.test(ev.id) || ev.id === 'battle_camp_gamble') return stop('大勝負のため、手動で選んでください');
+if (DEATH_EVENT_IDS.indexOf(ev.id) >= 0) return stop('命に関わる決断のため、手動で選んでください');
+if (!entries || entries.length === 0) return stop('選べる選択肢が見当たらないため、手動で確認してください');
+var name = STAT_NAME[auto.target];
+for (var i = 0; i < entries.length; i++) {
+var h = (entries[i].choice.hint || '').replace(/即死はない/g, '').replace(/即死なし/g, '');
+if (h.indexOf('即死') >= 0 || h.indexOf('大負傷') >= 0) return stop('命に関わる選択肢があるため、手動で選んでください');
+}
+var g1 = null, g2 = null;
+for (var j = 0; j < entries.length; j++) {
+var g = gradeOf(entries[j].choice.hint || '', name);
+if (g === 1 &&!g1) g1 = entries[j];
+else if (g === 2 &&!g2) g2 = entries[j];
+}
+var pick = g1 || g2;
+if (!pick) return stop(name + 'が伸びる選択肢が見当たらないため、手動で選んでください');
+var delay = (speedMode === 3)? 300: (speedMode === 2)? 600: 800;
+auto.pendingBtn = pick.btn;
+try { pick.btn.style.boxShadow = '0 0 0 2px #E8C268 inset, 0 0 12px rgba(232,194,104,0.55)';} catch (e) {}
+auto.pendingTimer = setTimeout(function () {
+auto.pendingTimer = null; auto.pendingBtn = null;
+if (!auto.on) return;
+try { pick.btn.style.boxShadow = '';} catch (e) {}
+saLog('<span class="text-gray-400">（目標：' + name + '）</span>「' + String(pick.choice.text || '').replace(/【.*?】/g, '') + '」を選んだ');
+pick.btn.click();
+}, delay);
+};
+
+// ワンタップ停止：オート中、ゲーム画面へのタップで即座に手動へ戻る。
+// 保留中の自動選択は、選択肢へのタップ含めどのタップでもまず破棄する（誤爆防止）。
+document.addEventListener('pointerdown', function (e) {
+if (!auto.on &&!auto.pendingTimer) return;
+var gs = document.getElementById('game-screen');
+if (!gs || gs.classList.contains('hidden')) return;
+var t = e.target;
+if (t && t.closest && (t.closest('#sa-target-screen') || t.closest('#sa-auto-btn') || t.closest('#sa-auto-btn-game') || t.closest('#sa-speed-btn') || t.closest('#bgm-toggle-btn') || t.closest('#layout-toggle-btn'))) return;
+if (!(t && t.closest && t.closest('#game-screen'))) return;
+if (auto.pendingTimer) clearPending();
+if (!auto.on) return;
+if (t.closest && t.closest('#choices-container')) return; // 選択肢のタップは本人の決断として扱い、オートは維持
+setAuto(false);
+saLog('<span class="text-gray-400">オート停止：タップにより手動に戻った</span>');
+}, true);
+document.addEventListener('keydown', function (e) {
+if (!auto.on &&!auto.pendingTimer) return;
+var gs = document.getElementById('game-screen');
+if (!gs || gs.classList.contains('hidden')) return;
+if (auto.pendingTimer) clearPending();
+if ((e.key === 'Enter' || e.key === ' ') && auto.on) { setAuto(false); saLog('<span class="text-gray-400">オート停止：手動に戻った</span>');}
+}, true);
+
+// 死亡・結果画面・タイトルでは必ず止まる
+function watchStop(id) {
+var el = document.getElementById(id);
+if (!el ||!window.MutationObserver) return;
+new MutationObserver(function () { try { if (!el.classList.contains('hidden') && auto.on) setAuto(false);} catch (e) {}}).observe(el, { attributes: true, attributeFilter: ['class']});
+}
+
+// ---------- UI 注入 ----------
+function buildUI() {
+var app = document.getElementById('app-container');
+if (!app) return;
+if (!document.getElementById('sa-speed-btn')) {
+var sb = document.createElement('button');
+sb.id = 'sa-speed-btn'; sb.type = 'button';
+sb.setAttribute('aria-label', '速度切替（通常／速い／最速）');
+sb.className = PILL; sb.style.left = 'calc(50% + 108px)';
+sb.onclick = function (e) { window.__saCycleSpeed(e);};
+app.appendChild(sb);
+}
+if (!document.getElementById('sa-auto-btn')) {
+var ab = document.createElement('button');
+ab.id = 'sa-auto-btn'; ab.type = 'button';
+ab.setAttribute('aria-label', 'オートモード ON/OFF');
+ab.className = PILL; ab.style.left = '0.5rem';
+ab.onclick = function (e) { window.__saToggleAuto(e);};
+app.appendChild(ab);
+}
+var gs = document.getElementById('game-screen');
+var lc = document.getElementById('log-container');
+if (gs && lc &&!document.getElementById('sa-auto-banner')) {
+var bn = document.createElement('div');
+bn.id = 'sa-auto-banner';
+bn.className = 'hidden shrink-0 text-center text-[10px] font-bold text-[#E8C268] bg-[#241C10] border-b border-yellow-800/60 py-1 px-2 z-20';
+gs.insertBefore(bn, lc);
+}
+if (!document.getElementById('sa-target-screen')) {
+var scr = document.createElement('div');
+scr.id = 'sa-target-screen';
+scr.className = 'hidden absolute inset-0 z-[95] flex-col items-center justify-center p-6 text-center';
+scr.style.background = 'rgba(5,4,3,0.95)';
+var btns = STAT_KEYS.map(function (k) {
+return '<button type="button" onclick="window.__saStartAuto(\'' + k + '\')" class="w-full max-w-xs bg-[#201C18] hover:bg-[#2A2118] text-white border border-[#3A322A] py-3 text-base font-bold tracking-[0.3em] rounded-sm active:scale-95 transition-all">' + STAT_NAME[k] + '</button>';
+}).join('');
+scr.innerHTML =
+'<h3 class="text-gold text-2xl font-black mb-1 tracking-[0.3em]">オートモード</h3>' +
+'<p class="text-[11px] text-gray-400 mb-3">伸ばしたい能力を一つ選ぶと、その能力が伸びる選択肢を自動で選んで進みます。</p>' +
+'<p class="text-[11px] text-gray-400 mb-3">大勝負・命に関わる決断・裏ルートでは必ず止まります。<br>オート中は画面タップでいつでも即停止します。</p>' +
+'<p class="text-[11px] text-yellow-400 font-bold mb-5">代償：オート中の能力上昇と、この人生の冥銭収入は八割になります。</p>' +
+'<div class="w-full max-w-xs space-y-2 mb-4 flex flex-col items-center">' + btns + '</div>' +
+'<button type="button" onclick="window.__saCloseAutoPanel()" class="text-gray-400 text-xs underline underline-offset-4 py-1">やめる</button>';
+app.appendChild(scr);
+}
+var actionBar = document.getElementById('action-bar');
+var ccEl = document.getElementById('choices-container');
+if (actionBar && ccEl && !document.getElementById('sa-auto-btn-game')) {
+var row = document.createElement('div');
+row.className = 'w-full flex justify-end mb-2';
+var gb = document.createElement('button');
+gb.id = 'sa-auto-btn-game'; gb.type = 'button';
+gb.setAttribute('aria-label', 'オートモード ON/OFF');
+gb.className = 'text-[10px] font-bold px-2.5 py-1.5 rounded-full bg-black/60 border border-[#3A322A] text-gray-300 active:scale-95 transition-transform';
+gb.textContent = 'オート';
+gb.onclick = function (e) { window.__saToggleAuto(e); };
+row.appendChild(gb);
+actionBar.insertBefore(row, ccEl);
+}
+var gsEl = document.getElementById('game-screen');
+if (gsEl && window.MutationObserver) {
+var syncPill = function () { var pill = document.getElementById('sa-auto-btn'); if (pill) pill.style.display = gsEl.classList.contains('hidden') ? '' : 'none'; };
+new MutationObserver(function () { try { syncPill(); } catch (e) {} }).observe(gsEl, { attributes: true, attributeFilter: ['class'] });
+syncPill();
+}
+refreshSpeedBtn();
+refreshAutoUI();
+watchStop('gameover-screen');
+watchStop('premium-screen');
+watchStop('start-screen');
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', buildUI);
+else buildUI();
+})();
+</script>
+
 </body>
 </html>
